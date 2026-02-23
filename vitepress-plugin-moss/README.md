@@ -47,7 +47,7 @@ yarn add vitepress-plugin-moss
 
 ### 1. Configure VitePress
 
-The plugin is invoked from VitePress's own `buildEnd` hook — it is **not** added to `vite.plugins`.
+The plugin is easy to integrate using the `vite.plugins` option in your VitePress config. This handles both the search configuration and the build-time indexing automatically.
 
 ```ts
 // docs/.vitepress/config.ts
@@ -66,14 +66,13 @@ export default defineConfig({
       },
     },
   },
-  async buildEnd(siteConfig) {
-    const plugin = await mossIndexerPlugin(siteConfig)
-    if (typeof plugin.buildEnd === 'function') {
-      await (plugin.buildEnd as Function).call({ environment: { name: 'client' } })
-    }
-  },
+  vite: {
+    plugins: [mossIndexerPlugin()]
+  }
 })
 ```
+
+Once integrated via `vite.plugins`, the Moss search component will automatically replace the default VitePress search bar (Zero-Config UI).
 
 The plugin activates only when `search.provider` is `'moss'`. If the provider is anything else, `mossIndexerPlugin` returns a no-op and `buildEnd` exits immediately.
 

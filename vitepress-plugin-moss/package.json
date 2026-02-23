@@ -1,6 +1,6 @@
 {
   "name": "vitepress-plugin-moss",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Moss semantic search plugin for VitePress",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -16,10 +16,16 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
-    }
+    },
+    "./Search.vue": "./Search.vue",
+    "./types": "./types.ts"
   },
   "files": [
-    "dist"
+    "dist",
+    "Search.vue",
+    "SearchButton.vue",
+    "types.ts",
+    "InferEdgeLogo_Dark_Icon.png"
   ],
   "scripts": {
     "build": "vite build",
@@ -30,6 +36,7 @@
     "vitepress": ">=1.0.0"
   },
   "dependencies": {
+    "@inferedge/moss": "^1.0.0-beta.5",
     "@moss-tools/md-indexer": "^1.0.0-beta.2",
     "obug": "^1.0.0"
   },

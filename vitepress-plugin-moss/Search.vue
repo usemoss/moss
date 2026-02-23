@@ -5,7 +5,11 @@ import SearchButton from './SearchButton.vue';
 // @ts-ignore — resolved by the virtual module at build time
 import getMossConfig from 'virtual:moss-config';
 
+console.log('[MossSearch] Component loaded');
 const config = getMossConfig();
+console.log('[MossSearch] Config:', config);
+import InferEdgeLogo from './InferEdgeLogo_Dark_Icon.png';
+console.log('[MossSearch] Logo imported:', !!InferEdgeLogo);
 
 // ---------------------------------------------------------------------------
 // State
@@ -49,6 +53,7 @@ const loadIndex = async () => {
   errorMsg.value = '';
   try {
     const { MossClient } = await import('@inferedge/moss');
+    console.log('[Moss] Client imported successfully');
     mossClient = new MossClient(config.projectId, config.projectKey);
     await mossClient.loadIndex(config.indexName);
     indexLoaded = true;
@@ -350,7 +355,10 @@ const getTypeIcon = (r: MossResult): string => {
           </span>
           <span class="moss-footer-brand">
             Search by
-            <a href="https://moss.dev" target="_blank" rel="noopener noreferrer">Moss</a>
+            <a href="https://moss.dev" target="_blank" rel="noopener noreferrer">
+              <img :src="InferEdgeLogo" alt="Moss" class="moss-footer-logo" />
+              Moss
+            </a>
           </span>
         </div>
       </div>
@@ -618,5 +626,13 @@ const getTypeIcon = (r: MossResult): string => {
 
 .moss-footer-brand a:hover {
   text-decoration: underline;
+}
+
+.moss-footer-logo {
+  display: inline-block;
+  height: 16px;
+  width: auto;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 </style>
