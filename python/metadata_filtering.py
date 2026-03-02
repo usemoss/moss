@@ -10,11 +10,10 @@ from datetime import datetime
 from typing import List
 
 from dotenv import load_dotenv
+from inferedge_moss import DocumentInfo, MossClient, QueryOptions
 
 # Load environment variables
 load_dotenv()
-
-from inferedge_moss import DocumentInfo, MossClient, QueryOptions
 
 
 async def metadata_filtering_sample() -> None:
