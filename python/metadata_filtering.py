@@ -80,8 +80,7 @@ async def metadata_filtering_sample() -> None:
         eq_results = await client.query(
             index_name,
             "running gear",
-            QueryOptions(top_k=5, alpha=0.5),
-            filter=eq_filter,
+            QueryOptions(top_k=5, alpha=0.5, filter=eq_filter),
         )
         for item in eq_results.docs:
             print(f"- {item.id} | score={item.score:.3f} | metadata={item.metadata}")
@@ -96,8 +95,7 @@ async def metadata_filtering_sample() -> None:
         and_results = await client.query(
             index_name,
             "running shoes",
-            QueryOptions(top_k=5, alpha=0.6),
-            filter=and_filter,
+            QueryOptions(top_k=5, alpha=0.6, filter=and_filter),
         )
         for item in and_results.docs:
             print(f"- {item.id} | score={item.score:.3f} | metadata={item.metadata}")
@@ -107,8 +105,7 @@ async def metadata_filtering_sample() -> None:
         in_results = await client.query(
             index_name,
             "city essentials",
-            QueryOptions(top_k=5),
-            filter=in_filter,
+            QueryOptions(top_k=5, filter=in_filter),
         )
         for item in in_results.docs:
             print(f"- {item.id} | score={item.score:.3f} | metadata={item.metadata}")
@@ -121,8 +118,7 @@ async def metadata_filtering_sample() -> None:
         near_results = await client.query(
             index_name,
             "city products",
-            QueryOptions(top_k=5),
-            filter=near_filter,
+            QueryOptions(top_k=5, filter=near_filter),
         )
         for item in near_results.docs:
             print(f"- {item.id} | score={item.score:.3f} | metadata={item.metadata}")
