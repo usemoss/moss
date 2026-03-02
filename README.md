@@ -36,6 +36,7 @@ Install deps: `pip install -r python/requirements.txt`, then run any script with
 - [`comprehensive_sample.py`](python/comprehensive_sample.py) — end-to-end flow: session creation, context building, streaming responses
 - [`load_and_query_sample.py`](python/load_and_query_sample.py) — ingest domain knowledge, then query
 - [`custom_embedding_sample.py`](python/custom_embedding_sample.py) — create an index with custom OpenAI embeddings and run queries
+- [`metadata_filtering.py`](python/metadata_filtering.py) — query a loaded index with metadata filters (`$eq`, `$and`, `$in`, `$near`) — requires `inferedge-moss>=1.0.0b17`
 
 > ![Moss Python walkthrough](https://github.com/user-attachments/assets/d826023d-92d6-49ac-8e5e-81cf04d409c5)
 
