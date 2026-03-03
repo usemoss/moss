@@ -11,9 +11,7 @@ console.log('[MossSearch] Config:', config);
 import InferEdgeLogo from './InferEdgeLogo_Dark_Icon.png';
 console.log('[MossSearch] Logo imported:', !!InferEdgeLogo);
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
+
 const isOpen = ref(false);
 const query = ref('');
 const results = ref<MossResult[]>([]);
@@ -44,22 +42,33 @@ interface MossResult {
 // Moss client
 // ---------------------------------------------------------------------------
 let mossClient: any = null;
-let indexLoaded = false;
+const isClientReady = ref(false);
+const indexLoaded = ref(false);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-const loadIndex = async () => {
-  if (indexLoaded || isIndexLoading.value) return;
-  isIndexLoading.value = true;
+// Phase 1: import SDK and create client — fast, enables cloud (hot-path) queries immediately
+const initClient = async () => {
+  if (mossClient) return;
   errorMsg.value = '';
   try {
     const { MossClient } = await import('@inferedge/moss');
-    console.log('[Moss] Client imported successfully');
     mossClient = new MossClient(config.projectId, config.projectKey);
-    await mossClient.loadIndex(config.indexName);
-    indexLoaded = true;
+    isClientReady.value = true;
   } catch (err: any) {
-    console.error('[Moss] Failed to load search index:', err);
-    errorMsg.value = 'Could not load search index. Check your Moss configuration.';
+    console.error('[Moss] Failed to initialize client:', err);
+    errorMsg.value = 'Could not initialize search. Check your Moss configuration.';
+  }
+};
+
+// Phase 2: download model + index locally — runs in background, enables sub-10ms on-device queries
+const loadLocalIndex = async () => {
+  if (indexLoaded.value || isIndexLoading.value || !mossClient) return;
+  isIndexLoading.value = true;
+  try {
+    await mossClient.loadIndex(config.indexName);
+    indexLoaded.value = true;
+  } catch (err: any) {
+    console.error('[Moss] Failed to load local index, staying on cloud search:', err);
   } finally {
     isIndexLoading.value = false;
   }
@@ -70,7 +79,8 @@ const loadIndex = async () => {
 // ---------------------------------------------------------------------------
 const open = async () => {
   isOpen.value = true;
-  loadIndex(); // fire & forget — UI shows loading state
+  await initClient(); // fast — just SDK import + constructor; enables cloud queries
+  loadLocalIndex();   // fire & forget — background model + index download
   await nextTick();
   searchInput.value?.focus();
 };
@@ -87,7 +97,7 @@ const close = () => {
 // Search
 // ---------------------------------------------------------------------------
 const performSearch = async (q: string) => {
-  if (!q.trim() || !mossClient || !indexLoaded) {
+  if (!q.trim() || !mossClient) {
     results.value = [];
     return;
   }
@@ -113,6 +123,16 @@ watch(query, (q) => {
     return;
   }
   debounceTimer = setTimeout(() => performSearch(q), 200);
+});
+
+// Re-run search when client first becomes available (edge case: user typed before import finished)
+watch(isClientReady, (ready) => {
+  if (ready && query.value.trim()) performSearch(query.value);
+});
+
+// Seamless handoff: re-run active query with local index once it finishes downloading
+watch(indexLoaded, (loaded) => {
+  if (loaded && query.value.trim()) performSearch(query.value);
 });
 
 // ---------------------------------------------------------------------------
@@ -286,16 +306,8 @@ const getTypeIcon = (r: MossResult): string => {
 
         <!-- Body: status / results -->
         <div class="moss-body">
-          <!-- Index loading -->
-          <div v-if="isIndexLoading" class="moss-status">
-            <svg class="moss-spinner" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-            <span>Loading search index…</span>
-          </div>
-
-          <!-- Error -->
-          <div v-else-if="errorMsg" class="moss-status moss-status--error">
+          <!-- Error (e.g. bad credentials — client could not be initialized) -->
+          <div v-if="errorMsg" class="moss-status moss-status--error">
             <span>{{ errorMsg }}</span>
           </div>
 
@@ -304,8 +316,8 @@ const getTypeIcon = (r: MossResult): string => {
             <span>Type to search the docs</span>
           </div>
 
-          <!-- Searching -->
-          <div v-else-if="isSearching" class="moss-status">
+          <!-- Searching (only shown when no prior results to display) -->
+          <div v-else-if="isSearching && results.length === 0" class="moss-status">
             <svg class="moss-spinner" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
@@ -353,8 +365,14 @@ const getTypeIcon = (r: MossResult): string => {
             <kbd>↵</kbd> select &nbsp;
             <kbd>Esc</kbd> close
           </span>
+          <span v-if="isIndexLoading" class="moss-footer-syncing" title="Downloading local index for sub-10ms search">
+            <svg class="moss-spinner-sm" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            Syncing locally…
+          </span>
           <span class="moss-footer-brand">
-            Search by
+            Powered by
             <a href="https://moss.dev" target="_blank" rel="noopener noreferrer">
               <img :src="InferEdgeLogo" alt="Moss" class="moss-footer-logo" />
               Moss
@@ -617,6 +635,20 @@ const getTypeIcon = (r: MossResult): string => {
   background: var(--vp-c-bg-soft);
   border: 1px solid var(--vp-c-divider);
   border-radius: 3px;
+}
+
+.moss-footer-syncing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--vp-c-text-3);
+  opacity: 0.8;
+}
+
+.moss-spinner-sm {
+  flex-shrink: 0;
+  animation: moss-spin 0.8s linear infinite;
 }
 
 .moss-footer-brand a {

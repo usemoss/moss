@@ -49,8 +49,8 @@ typings/
 dist
 dist-ssr
 *.local
-.vitepress/dist
-.vitepress/cache
+demo-site/docs/.vitepress/dist
+demo-site/docs/.vitepress/cache
 
 # npm pack
 *.tgz

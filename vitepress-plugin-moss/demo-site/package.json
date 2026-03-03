@@ -7,7 +7,10 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "docs:dev": "vitepress dev docs",
+    "predocs:build": "pnpm -C .. install && pnpm -C .. run build",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "keywords": [],
   "author": "",
@@ -15,7 +18,7 @@
   "type": "module",
   "dependencies": {
     "vitepress": "^1.6.4",
-    "vitepress-plugin-moss": "file:.."
+    "vitepress-plugin-moss": "link:.."
   },
   "devDependencies": {
     "dotenv": "^17.3.1"
