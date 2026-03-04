@@ -10,10 +10,10 @@
     "docs:dev": "vitepress dev docs",
     "documentation:dev": "vitepress dev documentation",
     "index:docs": "node --experimental-strip-types scripts/index-docs.ts",
-    "predocs:build": "pnpm -C .. install && pnpm -C .. run build",
+    "predocs:build": "pnpm -C .. install --no-frozen-lockfile && pnpm -C .. run build",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "documentation:build": "pnpm -C .. install && pnpm -C .. run build && vitepress build documentation",
+    "documentation:build": "pnpm -C .. install --no-frozen-lockfile && pnpm -C .. run build && vitepress build documentation",
     "documentation:preview": "vitepress preview documentation"
   },
   "keywords": [],
