@@ -1,6 +1,6 @@
 {
   "name": "vitepress-plugin-moss",
-  "version": "1.0.3",
+  "version": "1.0.0-beta.1",
   "description": "Moss semantic search plugin for VitePress",
   "type": "module",
   "main": "./dist/index.cjs",
