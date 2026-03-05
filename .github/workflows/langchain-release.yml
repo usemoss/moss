@@ -10,6 +10,8 @@ concurrency:
 jobs:
   determine-version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.compute.outputs.version }}
       major_minor: ${{ steps.compute.outputs.major_minor }}
