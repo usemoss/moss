@@ -1,0 +1,8 @@
+services:
+  python-app:
+    build: ./python
+    env_file: .env
+
+  javascript-app:
+    build: ./javascript
+    env_file: .env
