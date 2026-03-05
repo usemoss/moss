@@ -53,6 +53,9 @@
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.54.0"
   },
+  "overrides": {
+    "minimatch": "^9.0.7"
+  },
   "files": [
     "*.ts",
     "*.json",
