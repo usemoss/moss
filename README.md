@@ -1,6 +1,6 @@
 <!-- markdownlint-disable-next-line MD033 -->
 
-# <img src="https://github.com/user-attachments/assets/c4e39933-40c4-462d-a9a3-135458c6705f" alt="Moss logo" width="48" style="vertical-align: middle; margin-right: 8px;" /> Moss Samples
+# <img src="https://github.com/user-attachments/assets/c4e39933-40c4-462d-a9a3-135458c6705f" alt="Moss logo" width="48" style="vertical-align: middle; margin-right: 8px;" /> Moss
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=7289da&label=Discord)](https://discord.gg/eMXExuafBR)
