@@ -1,5 +1,8 @@
 name: Publish vitepress-plugin-moss
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
 
