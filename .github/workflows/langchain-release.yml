@@ -27,7 +27,7 @@ jobs:
         shell: python
         run: |
           import tomllib, pathlib, sys
-          p = pathlib.Path("cookbook/langchain/pyproject.toml")
+          p = pathlib.Path("examples/cookbook/langchain/pyproject.toml")
           if not p.exists():
               print(f"Error: {p} not found", file=sys.stderr)
               sys.exit(1)
@@ -60,7 +60,7 @@ jobs:
       contents: write # for tagging
 
     env:
-      PKG_DIR: cookbook/langchain
+      PKG_DIR: examples/cookbook/langchain
       VERSION: ${{ needs.determine-version.outputs.version }}
 
     steps:

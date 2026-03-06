@@ -22,11 +22,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install ruff mypy
-        if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+        if [ -f examples/python/requirements.txt ]; then pip install -r examples/python/requirements.txt; fi
     - name: Lint with ruff
-      run: ruff check python pipecat-moss livekit-moss-vercel
+      run: ruff check examples/python apps/pipecat-moss apps/livekit-moss-vercel
     - name: Type check with mypy
-      run: mypy python pipecat-moss livekit-moss-vercel --ignore-missing-imports
+      run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports
 
   javascript-lint:
     runs-on: ubuntu-latest
@@ -37,13 +37,13 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: javascript/package-lock.json
+        cache-dependency-path: examples/javascript/package-lock.json
     - name: Install dependencies
-      working-directory: javascript
+      working-directory: examples/javascript
       run: npm ci
     - name: Lint
-      working-directory: javascript
+      working-directory: examples/javascript
       run: npm run lint
     - name: Type check
-      working-directory: javascript
+      working-directory: examples/javascript
       run: npm run type-check
