@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="https://github.com/user-attachments/assets/c4e39933-40c4-462d-a9a3-135458c6705f" alt="Moss" width="80" />
+<img src="assets/moss-logo.png" alt="Moss" width="80" />
 
 # Moss
 
