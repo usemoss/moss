@@ -151,7 +151,7 @@ npx tsx load_and_query_sample.ts
 ```bash
 cd apps/next-js
 npm install
-cp ../.env.example .env      # Add your credentials
+cp ../../.env.example .env   # Add your credentials
 npm run dev                  # Open http://localhost:3000
 ```
 
