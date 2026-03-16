@@ -10,6 +10,25 @@ export type { MossSearchOptions } from './types.js'
 const debug = createDebug('vitepress:moss-indexer')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+const charMap: Record<string, string> = {
+  '<': '\\u003C',
+  '>': '\\u003E',
+  '/': '\\u002F',
+  '\\': '\\\\',
+  '\b': '\\b',
+  '\f': '\\f',
+  '\n': '\\n',
+  '\r': '\\r',
+  '\t': '\\t',
+  '\0': '\\0',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029'
+}
+
+function escapeUnsafeChars(str: string): string {
+  return str.replace(/[<>/\\\b\f\n\r\t\0\u2028\u2029]/g, x => charMap[x] ?? x)
+}
+
 export function mossIndexerPlugin(): Plugin {
   const virtualModuleId = 'virtual:moss-config'
   const resolvedVirtualModuleId = '\0' + virtualModuleId
@@ -48,7 +67,7 @@ export function mossIndexerPlugin(): Plugin {
           return 'export default () => ({})'
         }
         const searchOptions = searchConfig.options || {}
-        return `export default () => (${JSON.stringify(searchOptions)})`
+        return `export default () => (${escapeUnsafeChars(JSON.stringify(searchOptions))})`
       }
     },
     async buildEnd() {
