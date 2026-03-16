@@ -1,121 +1,290 @@
-<!-- markdownlint-disable-next-line MD033 -->
+<!-- markdownlint-disable MD033 MD041 -->
 
-# <img src="https://github.com/user-attachments/assets/c4e39933-40c4-462d-a9a3-135458c6705f" alt="Moss logo" width="48" style="vertical-align: middle; margin-right: 8px;" /> Moss
+<div align="center">
+
+<img src="https://github.com/user-attachments/assets/c4e39933-40c4-462d-a9a3-135458c6705f" alt="Moss" width="80" />
+
+# Moss
+
+### Real-time semantic search for AI agents. Sub-10 ms.
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
-[![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=7289da&label=Discord)](https://discord.gg/eMXExuafBR)
+[![npm](https://img.shields.io/npm/v/@inferedge/moss)](https://www.npmjs.com/package/@inferedge/moss)
+[![PyPI](https://img.shields.io/pypi/v/inferedge-moss)](https://pypi.org/project/inferedge-moss/)
+[![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=7289da&label=Discord)](https://moss.link/discord)
 
-Working examples for [Moss](https://moss.dev) — the real-time search runtime for AI agents.
+[Website](https://moss.dev) · [Docs](https://docs.moss.dev) · [Discord](https://moss.link/discord) · [Blog](https://moss.dev/blog)
 
-Each sample is kept thin on purpose. Copy what you need straight into your own project, swap in your data, and go. Python, TypeScript, Next.js, Pipecat voice agents, and Docker are all covered.
-
-**Questions? Join our [Discord](https://discord.gg/eMXExuafBR).**
+</div>
 
 ---
 
-## Repo structure
+Moss is the search runtime that lives inside your Conversational AI agent.
+
+Index documents, query them semantically, and get results back **in under 10 ms** - fast enough for real-time conversation.
+
+<!-- TODO: Replace with actual GIF of terminal session (record with asciinema/vhs) -->
+<!-- ![Moss demo](https://github.com/user-attachments/assets/YOUR_GIF_HERE) -->
+
+## Quickstart
+
+### Python
+
+```bash
+pip install inferedge-moss
+```
+
+```python
+from inferedge_moss import MossClient, QueryOptions
+
+client = MossClient("your_project_id", "your_project_key")
+
+# Create an index and add documents
+await client.create_index("support-docs", [
+    {"id": "1", "text": "Refunds are processed within 3-5 business days."},
+    {"id": "2", "text": "You can track your order on the dashboard."},
+    {"id": "3", "text": "We offer 24/7 live chat support."},
+])
+
+# Load and query — results in <10 ms
+await client.load_index("support-docs")
+results = await client.query("support-docs", "how long do refunds take?", QueryOptions(top_k=3))
+
+for doc in results.docs:
+    print(f"[{doc.score:.3f}] {doc.text}")  # Returned in {results.time_taken_ms}ms
+```
+
+### TypeScript
+
+```bash
+npm install @inferedge/moss
+```
+
+```typescript
+import { MossClient } from "@inferedge/moss";
+
+const client = new MossClient("your_project_id", "your_project_key");
+
+// Create an index and add documents
+await client.createIndex("support-docs", [
+  { id: "1", text: "Refunds are processed within 3-5 business days." },
+  { id: "2", text: "You can track your order on the dashboard." },
+  { id: "3", text: "We offer 24/7 live chat support." },
+]);
+
+// Load and query — results in <10 ms
+await client.loadIndex("support-docs");
+const results = await client.query("support-docs", "how long do refunds take?", { topK: 3 });
+
+results.docs.forEach((doc) => {
+  console.log(`[${doc.score.toFixed(3)}] ${doc.text}`); // Returned in ${results.timeTakenInMs}ms
+});
+```
+
+> Get your project credentials at [moss.dev](https://moss.dev) - free tier available.
+
+## Why Moss?
+
+**Vector databases were built for batch analytics. Moss was built for real-time agents.**
+
+If you're building a voice bot, a copilot, or any AI system that talks to humans, you need retrieval that keeps up with conversation. A 200-500 ms round trip to a vector database kills the experience. Moss delivers results in single-digit milliseconds - fast enough that retrieval disappears from the latency budget.
+
+<!-- > [Reproduce these benchmarks →](./benchmarks/) -->
+
+Moss isn't a database! It's a **search runtime**. You don't manage clusters, tune HNSW parameters, or worry about sharding. You index documents, load them into the runtime, and query. That's it.
+
+## Features
+
+- **Sub-10 ms semantic search** - p99 of 8 ms
+- **Built-in embedding models** - no OpenAI key required (or bring your own)
+- **Metadata filtering** - filter by `$eq`, `$and`, `$in`, `$near` operators
+- **Document management** - add, upsert, retrieve, and delete documents
+- **Python + TypeScript SDKs** - async-first, type-safe
+- **Framework integrations** - LangChain, DSPy, Pipecat, LiveKit, LlamaIndex
+
+## Examples
+
+This repo contains working examples you can copy straight into your project:
 
 ```text
-├── examples/          # Standalone SDK samples (copy-paste friendly)
-│   ├── python/        # Python SDK samples
-│   ├── javascript/    # TypeScript/Node SDK samples
-│   └── cookbook/      # Integrations (LangChain, DSPy, …)
-│       ├── langchain/
-│       └── dspy/
-│
-├── apps/              # Full runnable apps and integrations
-│   ├── next-js/       # Next.js semantic search UI
-│   ├── pipecat-moss/  # Pipecat voice agent
-│   ├── livekit-moss-vercel/  # LiveKit voice agent on Vercel
-│   └── docker/        # Dockerized Python + JS example (ECS/K8s pattern)
-│
-└── packages/
-    └── vitepress-plugin-moss/  # VitePress search plugin
+examples/
+├── python/                  # Python SDK samples
+│   ├── load_and_query_sample.py
+│   ├── comprehensive_sample.py
+│   ├── custom_embedding_sample.py
+│   └── metadata_filtering.py
+├── javascript/              # TypeScript SDK samples
+│   ├── load_and_query_sample.ts
+│   ├── comprehensive_sample.ts
+│   └── custom_embedding_sample.ts
+└── cookbook/                # Framework integrations
+    ├── langchain/           # LangChain retriever
+    └── dspy/                # DSPy module
+
+apps/
+├── next-js/                 # Next.js semantic search UI
+├── pipecat-moss/            # Pipecat voice agent with Moss retrieval
+├── livekit-moss-vercel/     # LiveKit voice agent on Vercel
+└── docker/                  # Dockerized examples (ECS/K8s pattern)
 ```
 
----
-
-## Setup
-
-1. Sign up at [moss.dev](https://moss.dev/) and create an index from the dashboard.
-2. Open **View secrets** and save the values to your `.env`:
+### Run the Python examples
 
 ```bash
-MOSS_PROJECT_ID=your_project_id
-MOSS_PROJECT_KEY=your_project_key
+cd examples/python
+pip install -r requirements.txt
+cp ../../.env.example .env   # Add your credentials
+python load_and_query_sample.py
 ```
 
-> ![Moss Portal walkthrough](https://github.com/user-attachments/assets/c3db9d2d-0df5-4cec-99fd-7d49d0a30844)
-
-For full setup details and pricing, see the [docs](https://docs.moss.dev).
-
----
-
-## Python
-
-Install deps: `pip install -r examples/python/requirements.txt`, then run any script with `python path/to/sample.py`.
-
-- [`comprehensive_sample.py`](examples/python/comprehensive_sample.py) — end-to-end flow: index creation, document operations, semantic search
-- [`load_and_query_sample.py`](examples/python/load_and_query_sample.py) — ingest domain knowledge, then query
-- [`custom_embedding_sample.py`](examples/python/custom_embedding_sample.py) — create an index with custom OpenAI embeddings and run queries
-- [`metadata_filtering.py`](examples/python/metadata_filtering.py) — query a loaded index with metadata filters (`$eq`, `$and`, `$in`, `$near`) — requires `inferedge-moss>=1.0.0b17`
-
-> ![Moss Python walkthrough](https://github.com/user-attachments/assets/d826023d-92d6-49ac-8e5e-81cf04d409c5)
-
-## TypeScript
-
-Install deps: `npm install` inside `examples/javascript/`, then run with `npm run start`.
-
-- [`comprehensive_sample.ts`](examples/javascript/comprehensive_sample.ts) — full workflow in TypeScript, ready for Node
-- [`load_and_query_sample.ts`](examples/javascript/load_and_query_sample.ts) — index FAQs and issue targeted queries
-- [`custom_embedding_sample.ts`](examples/javascript/custom_embedding_sample.ts) — provision an index, push OpenAI embeddings, query
-
-## Next.js
-
-A web-based semantic search interface using Next.js 15 and Server Actions. Shows how to call Moss securely from the server while serving a responsive UI.
+### Run the TypeScript examples
 
 ```bash
-cd apps/next-js && npm install && npm run dev
+cd examples/javascript
+npm install
+cp ../../.env.example .env   # Add your credentials
+npx tsx load_and_query_sample.ts
 ```
 
-Open `http://localhost:3000`. See the [`apps/next-js/`](apps/next-js/) directory for details.
-
-## Pipecat Voice Agent
-
-A voice bot that plugs Moss retrieval into [Pipecat's](https://github.com/pipecat-ai/pipecat) real-time pipeline — sub-10ms semantic search for a customer support agent.
-
-- [`apps/pipecat-moss/pipecat-quickstart/`](apps/pipecat-moss/pipecat-quickstart/) — ingest FAQs with `create-index.py`, wire into Pipecat, deploy to Pipecat Cloud
-
-## LiveKit Voice Agent
-
-A LiveKit-powered voice agent with Moss retrieval, deployable to Vercel.
-
-- [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) — agent and React frontend
-
-## Docker
-
-Containerized Python and JS examples showing how to run Moss inside Docker — the same pattern used on AWS ECS, Kubernetes, and similar runtimes.
+### Run the Next.js app
 
 ```bash
-cd apps/docker && cp .env.example .env && docker compose up --build
+cd apps/next-js
+npm install
+cp ../.env.example .env      # Add your credentials
+npm run dev                  # Open http://localhost:3000
 ```
 
-See [`apps/docker/`](apps/docker/) for details.
+### Run the Pipecat voice agent
 
----
+Sub-10 ms retrieval plugged into [Pipecat's](https://github.com/pipecat-ai/pipecat) real-time voice pipeline — a customer support agent that actually keeps up with conversation.
 
-## Learn more
+```bash
+cd apps/pipecat-moss/pipecat-quickstart
+# See README for setup and Pipecat Cloud deployment
+```
 
-- [Documentation](https://docs.moss.dev) — API reference, guides, architecture
-- [Website](https://moss.dev) — product overview and pricing
-- [Launch YC post](https://www.ycombinator.com/launches/Oiq-moss-real-time-semantic-search-for-conversational-ai)
+## SDK Reference
+
+### Python (`inferedge-moss`)
+
+```python
+from inferedge_moss import MossClient, DocumentInfo, QueryOptions, MutationOptions, GetDocumentsOptions
+
+client = MossClient(project_id, project_key)
+
+# Index management
+await client.create_index(name, documents, model_id="moss-minilm")
+await client.get_index(name)
+await client.list_indexes()
+await client.delete_index(name)
+
+# Document operations
+await client.add_docs(name, documents, MutationOptions(upsert=True))
+await client.get_docs(name)
+await client.get_docs(name, GetDocumentsOptions(doc_ids=["id1", "id2"]))
+await client.delete_docs(name, ["id1", "id2"])
+
+# Search
+await client.load_index(name)
+results = await client.query(name, "your query", QueryOptions(top_k=5))
+# results.docs[0].id, .text, .score, .metadata
+# results.time_taken_ms
+```
+
+### TypeScript (`@inferedge/moss`)
+
+```typescript
+import { MossClient, DocumentInfo } from "@inferedge/moss";
+
+const client = new MossClient(projectId, projectKey);
+
+// Index management
+await client.createIndex(name, documents, { modelId: "moss-minilm" });
+await client.getIndex(name);
+await client.listIndexes();
+await client.deleteIndex(name);
+
+// Document operations
+await client.addDocs(name, documents, { upsert: true });
+await client.getDocs(name);
+await client.getDocs(name, { docIds: ["id1", "id2"] });
+await client.deleteDocs(name, ["id1", "id2"]);
+
+// Search
+await client.loadIndex(name);
+const results = await client.query(name, "your query", { topK: 5 });
+// results.docs[0].id, .text, .score, .metadata
+// results.timeTakenInMs
+```
+
+## Integrations
+
+| Framework | Status | Example |
+|-----------|--------|---------|
+| [LangChain](https://github.com/langchain-ai/langchain) | Available | [`examples/cookbook/langchain/`](examples/cookbook/langchain/) |
+| [DSPy](https://github.com/stanfordnlp/dspy) | Available | [`examples/cookbook/dspy/`](examples/cookbook/dspy/) |
+| [Pipecat](https://github.com/pipecat-ai/pipecat) | Available | [`apps/pipecat-moss/`](apps/pipecat-moss/) |
+| [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
+| [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
+| [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
+| [Vercel AI SDK](https://sdk.vercel.ai) | Coming soon | — |
+| [CrewAI](https://github.com/crewAIInc/crewAI) | Coming soon | — |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                  Your Application               │
+│         (Voice bot, Copilot, Chat agent)        │
+└────────────────────┬────────────────────────────┘
+                     │
+          ┌──────────▼──────────┐
+          │     Moss SDK        │
+          │(Python / TypeScript)│
+          └──────────┬──────────┘
+                     │  HTTPS
+          ┌──────────▼──────────┐
+          │   Moss Runtime      │
+          │  ┌───────────────┐  │
+          │  │  Embedding    │  │
+          │  │  Engine       │  │
+          │  └───────┬───────┘  │
+          │  ┌───────▼───────┐  │
+          │  │  Search       │  │
+          │  │  Runtime      │◄─┼── Sub-10 ms queries
+          │  └───────────────┘  │
+          └─────────────────────┘
+```
+
+The SDKs in this repo are thin clients that talk to the Moss runtime over HTTPS. The runtime handles embedding, indexing, and search — you don't need to manage any infrastructure.
 
 ## Contributing
 
-If you spot gaps or want another language example, open an issue or PR. We track feedback closely.
+We welcome contributions! Here's where the community can have the most impact:
 
-See our [Contributing Guide](CONTRIBUTING.md) for details.
+- **New SDK bindings** — Swift, Go, Elixir,...
+- **Framework integrations** — Vercel AI SDK, CrewAI, Haystack, AutoGen
+- **Reranking support** — plug in cross-encoder rerankers
+- **Doc-parsing connectors** — PDF, DOCX, HTML, Markdown ingestion
+- **Examples and tutorials** — if you build something with Moss, we'd love to feature it
+
+See our [Contributing Guide](CONTRIBUTING.md) for setup instructions and our [Roadmap](ROADMAP.md) for what's planned.
+
+Check out issues labeled [`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue) to get started.
+
+## Community
+
+- [Discord](https://moss.link/discord) — ask questions, share what you're building
+- [GitHub Issues](https://github.com/usemoss/moss/issues) — bug reports and feature requests
+- [Twitter](https://x.com/usemoss) — announcements and updates
 
 ## License
 
-[BSD 2-Clause License](LICENSE)
+[BSD 2-Clause License](LICENSE) — the SDKs, examples, and integrations in this repo are fully open source.
+
+---
+
+<div align="center">
+  <sub>Built by the team at <a href="https://moss.dev">Moss</a> · Backed by <a href="https://www.ycombinator.com">Y Combinator</a></sub>
+</div>
