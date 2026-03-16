@@ -23,8 +23,7 @@ Moss is the search runtime that lives inside your Conversational AI agent.
 
 Index documents, query them semantically, and get results back **in under 10 ms** - fast enough for real-time conversation.
 
-<!-- TODO: Replace with actual GIF of terminal session (record with asciinema/vhs) -->
-<!-- ![Moss demo](https://github.com/user-attachments/assets/YOUR_GIF_HERE) -->
+![Moss Python walkthrough](https://github.com/user-attachments/assets/d826023d-92d6-49ac-8e5e-81cf04d409c5)
 
 ## Quickstart
 
