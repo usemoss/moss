@@ -22,10 +22,10 @@ Pull requests are the best way to propose changes to the codebase. We actively w
 
 In short, when you submit code changes, your submissions are understood to be under the same [BSD 2-Clause License](LICENSE) that covers the project. Feel free to contact the maintainers if that's a concern.
 
-## Report bugs using GitHub's [issues](https://github.com/usemoss/moss-samples/issues)
+## Report bugs using GitHub's [issues](https://github.com/usemoss/moss/issues)
 
-We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/usemoss/moss-samples/issues/new); it's that easy!
+We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/usemoss/moss/issues/new); it's that easy!
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under its MIT License.
+By contributing, you agree that your contributions will be licensed under the BSD 2-Clause License.
