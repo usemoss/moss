@@ -47,3 +47,60 @@ jobs:
     - name: Type check
       working-directory: examples/javascript
       run: npm run type-check
+
+  python-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install package
+      working-directory: examples/cookbook/langchain
+      run: python -m pip install -e .
+    - name: Run tests
+      working-directory: examples/cookbook/langchain
+      run: python -m unittest -v
+
+  next-js-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: apps/next-js/package-lock.json
+    - name: Install dependencies
+      working-directory: apps/next-js
+      run: npm ci
+    - name: Build
+      working-directory: apps/next-js
+      run: npm run build
+    - name: Run tests
+      working-directory: apps/next-js
+      run: npm test
+
+  vitepress-plugin-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: latest
+    - name: Install dependencies
+      working-directory: packages/vitepress-plugin-moss
+      run: pnpm install --frozen-lockfile
+    - name: Build
+      working-directory: packages/vitepress-plugin-moss
+      run: pnpm build
+    - name: Run tests
+      working-directory: packages/vitepress-plugin-moss
+      run: pnpm test
