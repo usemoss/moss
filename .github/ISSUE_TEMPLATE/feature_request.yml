@@ -1,0 +1,50 @@
+name: Feature Request
+description: Suggest an improvement or new capability for Moss
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing an improvement.
+
+        Please use this form for concrete feature ideas, API proposals, and scoped improvements that could lead to implementation work or a pull request.
+
+        Use the community Discord for troubleshooting, usage questions, and early brainstorming: https://moss.link/discord
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What feature or improvement are you asking for?
+      placeholder: Describe the feature clearly and concisely.
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: What problem are you trying to solve, and who benefits?
+      placeholder: Explain the real-world workflow, constraint, or gap this would address.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: If you have an idea for the shape of the solution, describe it here.
+      placeholder: Outline the API, behavior, or UX you would like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives_considered
+    attributes:
+      label: Alternatives considered
+      description: What alternatives or workarounds have you tried?
+      placeholder: Describe any alternative approaches you considered and why they fall short.
+    validations:
+      required: false
