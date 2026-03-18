@@ -12,7 +12,7 @@
 [![npm](https://img.shields.io/npm/v/@inferedge/moss)](https://www.npmjs.com/package/@inferedge/moss)
 [![npm downloads](https://img.shields.io/npm/dt/@inferedge/moss?label=npm+downloads)](https://www.npmjs.com/package/@inferedge/moss)
 [![PyPI](https://img.shields.io/pypi/v/inferedge-moss)](https://pypi.org/project/inferedge-moss/)
-[![PyPI downloads](https://static.pepy.tech/personalized-badge/inferedge-moss-core?period=total&units=international_system&left_color=grey&right_color=orange&left_text=pypi+downloads)](https://pepy.tech/project/inferedge-moss-core)
+[![PyPI downloads](https://static.pepy.tech/personalized-badge/inferedge-moss-core?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=pypi+downloads)](https://pepy.tech/project/inferedge-moss-core)
 [![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=7289da&label=Discord)](https://moss.link/discord)
 
 [Website](https://moss.dev) · [Docs](https://docs.moss.dev) · [Discord](https://moss.link/discord) · [Blog](https://moss.dev/blog)
