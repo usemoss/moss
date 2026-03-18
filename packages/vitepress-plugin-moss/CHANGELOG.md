@@ -18,5 +18,3 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Configurable `apiKey`, `indexId`, `placeholder`, and `maxResults` options
 
 ---
-
-[1.0.0-beta.1]: https://github.com/inferedge/moss-samples/releases/tag/vitepress-plugin-moss-v1.0.0-beta.1

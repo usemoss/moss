@@ -93,7 +93,7 @@ asyncio.run(main())
 ### Prerequisites
 
 - Python 3.8 or higher
-- Valid InferEdge project credentials
+- Valid Moss project credentials
 
 ### Environment Setup
 
@@ -105,9 +105,9 @@ pip install inferedge-moss
 
 2. **Get your credentials:**
 
-Sign up at [InferEdge Platform](https://platform.inferedge.dev) to get your `project_id` and `project_key`.
+Sign up at [Moss Platform](https://portal.usemoss.dev) to get your `project_id` and `project_key`.
 
-3. **Set up environment variables (optional):**
+1. **Set up environment variables (optional):**
 
 ```bash
 export MOSS_PROJECT_ID="your-project-id"
