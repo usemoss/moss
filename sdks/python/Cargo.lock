@@ -1013,7 +1013,7 @@ dependencies = [
 
 [[package]]
 name = "moss"
-version = "0.8.0"
+version = "0.8.4"
 dependencies = [
  "bm25",
  "chrono",
@@ -1036,7 +1036,7 @@ dependencies = [
 
 [[package]]
 name = "moss-core-py"
-version = "0.8.0"
+version = "0.8.4"
 dependencies = [
  "moss",
  "pyo3",

@@ -1,6 +1,6 @@
 [package]
 name = "moss-core-py"
-version = "0.8.0"
+version = "0.8.4"
 edition = "2024"
 license = "BSD-2-Clause"
 publish = false
