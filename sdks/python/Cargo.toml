@@ -2,9 +2,9 @@
 name = "moss-core-py"
 version = "0.8.0"
 edition = "2024"
-license = "Proprietary"
+license = "BSD-2-Clause"
 publish = false
-description = "Proprietary core index logic for Moss (Python extension module)"
+description = "Core index logic for Moss (Python extension module)"
 repository = "https://github.com/usemoss/moss"
 
 [lib]
