@@ -52,7 +52,7 @@ pipeline = Pipeline([
 
 Tested with Pipecat v0.0.99. Please upgrade to this version (or newer) to ensure API compatibility with the snippets below.
 
-## Contributing 
+## Contributing
 
 If you are contributing or want to build from source, follow the [CONTRIBUTING.md](CONTRIBUTING.md) setup steps.
 

@@ -13,7 +13,13 @@ from typing import Any
 
 from inferedge_moss import MossClient, SearchResult
 from loguru import logger
-from pipecat.frames.frames import ErrorFrame, Frame, LLMContextFrame, LLMMessagesFrame, MetricsFrame
+from pipecat.frames.frames import (
+    ErrorFrame,
+    Frame,
+    LLMContextFrame,
+    LLMMessagesFrame,
+    MetricsFrame,
+)
 from pipecat.metrics.metrics import ProcessingMetricsData
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContextFrame

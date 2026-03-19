@@ -5,7 +5,7 @@ description = "Moss vector search integration for Pipecat"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "inferedge-moss>=1.0.0b8",
+    "inferedge-moss>=1.0.0b18",
     "loguru>=0.7.0",
     "pipecat-ai>=0.0.99",
     "pydantic>=2.0.0",
@@ -20,7 +20,6 @@ dev = [
     "deepgram-sdk>=3.2.0,<5.0.0",
     "fastapi>=0.121.2",
     "opencv-python>=4.11.0.86",
-    
     "python-dotenv>=1.2.1",
     "ruff>=0.1.0",
 ]

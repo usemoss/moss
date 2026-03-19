@@ -29,7 +29,7 @@ jobs:
         run: |
           import os, pathlib, re, sys
 
-          text = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+          text = pathlib.Path("packages/pipecat-moss/pyproject.toml").read_text(encoding="utf-8")
           match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
           if not match:
               print("Could not find version in pyproject", file=sys.stderr)
@@ -86,7 +86,7 @@ jobs:
           import os, pathlib, re, sys
 
           expected = os.environ["EXPECTED_VERSION"]
-          path = pathlib.Path("pyproject.toml")
+          path = pathlib.Path("packages/pipecat-moss/pyproject.toml")
           text = path.read_text(encoding="utf-8")
           match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
           if not match:
@@ -103,6 +103,7 @@ jobs:
           print(f"Metadata version matches expected {expected}")
 
       - name: Build distributions
+        working-directory: packages/pipecat-moss
         run: |
           rm -rf "${DIST_DIR}"
           python -m build
@@ -112,7 +113,7 @@ jobs:
         run: |
           import glob, subprocess, sys
 
-          wheels = glob.glob("dist/*.whl")
+          wheels = glob.glob("packages/pipecat-moss/dist/*.whl")
           if not wheels:
               raise SystemExit("No wheel found in dist/")
 
@@ -129,7 +130,7 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          twine upload --skip-existing dist/*
+          twine upload --skip-existing packages/pipecat-moss/dist/*
 
       - name: Tag release
         if: matrix.python == '3.11'
