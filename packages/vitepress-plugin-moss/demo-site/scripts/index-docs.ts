@@ -31,11 +31,34 @@ console.log(`Built ${allDocs.length} chunks`)
 
 // Filter out chunks with 3 or fewer words in the text field — these are
 // typically empty sections, lone headings, or nav-only content not worth indexing
-const filtered = allDocs.filter((doc: any) => {
+const wordFiltered = allDocs.filter((doc: any) => {
   const wordCount = doc.text?.trim().split(/\s+/).filter(Boolean).length ?? 0
   return wordCount > 3
 })
 
+// Filter out structural-only section headings that carry no semantic value
+// (e.g. "Parameters", "Constructors", "Methods" are just navigation anchors)
+// const STRUCTURAL_TITLES = new Set(['Parameters', 'Constructors', 'Methods', 'Properties', 'Type declaration'])
+// const structuralFiltered = wordFiltered.filter((doc: any) => {
+//   const title: string = (doc.metadata?.title ?? '').trim().replace(/\u200b/g, '').trim()
+//   return !STRUCTURAL_TITLES.has(title)
+// })
+
+// Deduplicate: within the same page (groupId), keep only the first chunk per
+// section title — repeated headings are redundant sub-sections of the same topic
+// const seen = new Set<string>()
+// const filtered = structuralFiltered.filter((doc: any) => {
+//   const key = `${doc.metadata?.groupId ?? ''}||${doc.metadata?.title ?? ''}`
+//   if (seen.has(key)) return false
+//   seen.add(key)
+//   return true
+// })
+
+// console.log(`After filtering (>3 words): ${wordFiltered.length} chunks`)
+// console.log(`After removing structural headings: ${structuralFiltered.length} chunks`)
+// console.log(`After deduplicating by (page, section): ${filtered.length} chunks (removed ${allDocs.length - filtered.length} total)`)
+
+const filtered = wordFiltered
 console.log(`After filtering (>3 words): ${filtered.length} chunks (removed ${allDocs.length - filtered.length})`)
 
 // Write filtered chunks to temp file (used for inspect and upload)
@@ -61,6 +84,6 @@ console.log(`Uploading to index: ${indexName}`)
 await createIndex(tempFile, { projectId, projectKey, indexName, modelName: 'moss-minilm' })
 
 // Clean up temp file
-fs.unlinkSync(tempFile)
+// fs.unlinkSync(tempFile)
 
 console.log('Done.')

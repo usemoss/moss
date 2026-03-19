@@ -1,3 +1,7 @@
+---
+title: "DocumentInfo (Python)"
+---
+
 [inferedge-moss v1.0.0b16](../README.md)
 
 [inferedge-moss](../globals.md) / DocumentInfo

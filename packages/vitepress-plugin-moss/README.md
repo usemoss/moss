@@ -2,6 +2,8 @@
 
 A [VitePress](https://vitepress.dev) plugin that adds [Moss](https://moss.dev) semantic (AI) search to your docs. At build time it reads your Markdown source, chunks it, and uploads it to the Moss cloud. At runtime the search UI uses a **hot-path**: it queries the cloud immediately so search works from the very first keystroke, while the local model and index download in the background. Once ready, all queries automatically switch to sub-10 ms on-device search — no user action needed.
 
+**Live demo:** [moss-samples-plugin.vercel.app](https://moss-samples-plugin.vercel.app/)
+
 ---
 
 ## How it works

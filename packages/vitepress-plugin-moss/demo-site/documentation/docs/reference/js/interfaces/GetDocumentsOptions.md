@@ -1,3 +1,7 @@
+---
+title: "GetDocumentsOptions (JS)"
+---
+
 [**@inferedge/moss v1.0.0-beta.7**](../README.md)
 
 ***
