@@ -7,7 +7,7 @@ Gives AI agents the ability to search, create indexes, and manage documents thro
 ## Install
 
 ```bash
-npm install @inferedge/moss-ai @inferedge/moss ai zod
+npm install @moss-tools/vercel-sdk @inferedge/moss ai zod
 ```
 
 ## Usage
@@ -79,7 +79,7 @@ import {
   mossDeleteDocsTool,
   mossCreateIndexTool,
   mossListIndexesTool,
-} from '@inferedge/moss-ai';
+} from '@moss-tools/vercel-sdk';
 
 const tools = {
   search: mossSearchTool({ client, indexName: 'docs' }),

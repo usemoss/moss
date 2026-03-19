@@ -1,5 +1,5 @@
 {
-  "name": "@inferedge/moss-ai",
+  "name": "@moss-tools/vercel-sdk",
   "version": "0.1.0",
   "description": "Vercel AI SDK tools for MOSS semantic search",
   "type": "module",
