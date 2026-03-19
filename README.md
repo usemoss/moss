@@ -90,7 +90,20 @@ results.docs.forEach((doc) => {
 
 If you're building a voice bot, a copilot, or any AI system that talks to humans, you need retrieval that keeps up with conversation. A 200-500 ms round trip to a vector database kills the experience. Moss delivers results in single-digit milliseconds - fast enough that retrieval disappears from the latency budget.
 
-<!-- > [Reproduce these benchmarks →](./benchmarks/) -->
+### Benchmarks
+
+End-to-end query latency (embedding + search) on 100,000 documents, 750 measured queries, top_k=5. Tested with Macbook pro (M4 Pro, 24GB).
+
+| System | P50 | P95 | P99 | Mean |
+|--------|-----|-----|-----|------|
+| **Moss** | **3.1 ms** | **4.3 ms** | **5.4 ms** | **3.3 ms** |
+| Pinecone | 432.6 ms | 732.1 ms | 934.2 ms | 485.8 ms |
+| Qdrant | 597.8 ms | 775.0 ms | 1120.2 ms | 637.6ms |
+| ChromaDB | 351.8 ms | 423.5 ms | 538.5 ms | 358.0 ms |
+
+Moss includes embedding in the measurement — competitors use an external embedding service ([modal](https://modal.com/docs/examples/text_embeddings_inference)). Pinecone uses cloud search.
+
+> [Reproduce these benchmarks →](./benchmarks/)
 
 Moss isn't a database! It's a **search runtime**. You don't manage clusters, tune HNSW parameters, or worry about sharding. You index documents, load them into the runtime, and query. That's it.
 
