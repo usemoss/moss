@@ -3,7 +3,7 @@ import path from 'node:path'
 import matter from 'gray-matter'
 import pLimit from 'p-limit'
 import * as cheerio from 'cheerio'
-import type { VitePressModule, VitePressSiteConfig, MarkdownRenderer, MossDocument, MossMetadata } from './types.js'
+import type { VitePressModule, MarkdownRenderer, MossDocument, MossMetadata } from './types.js'
 
 // Converts backslashes to forward slashes for cross-platform consistency
 function slash(p: string): string {

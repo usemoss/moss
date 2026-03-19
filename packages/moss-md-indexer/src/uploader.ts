@@ -1,5 +1,5 @@
 import fs from 'fs-extra'
-import { MossRestClient, DocumentInfo } from "@inferedge-rest/moss";
+import { MossRestClient } from "@inferedge-rest/moss";
 import type { MossCreds, MossDocument } from './types.js'
 
 /**

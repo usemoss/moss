@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.0-beta.3] - 2026-02-18
+
+- Internal maintenance
+
 ## [1.0.0-beta.2] - 2026-02-03
 
 - Fixed ESM related conflicts

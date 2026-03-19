@@ -2,7 +2,7 @@ import path from 'node:path'
 import pc from 'picocolors'
 import dotenv from 'dotenv'
 import { buildJsonDocs } from './builder.js'
-import { uploadDocuments, createIndex } from './uploader.js'
+import { uploadDocuments } from './uploader.js'
 import type { MossCreds } from './types.js'
 
 // Re-export functions for advanced usage

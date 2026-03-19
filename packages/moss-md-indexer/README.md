@@ -77,6 +77,9 @@ const creds = {
   modelName: 'moss-minilm' // Optional
 }
 
+// Upload the pre-built index file to Moss
+await createIndex(outputFile, { creds })
+```
 
 ## VitePress Configuration
 
