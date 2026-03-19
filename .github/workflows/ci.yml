@@ -95,7 +95,7 @@ jobs:
         cache-dependency-path: packages/vercel-sdk/package-lock.json
     - name: Install dependencies
       working-directory: packages/vercel-sdk
-      run: npm install
+      run: npm ci
     - name: Build
       working-directory: packages/vercel-sdk
       run: npm run build
