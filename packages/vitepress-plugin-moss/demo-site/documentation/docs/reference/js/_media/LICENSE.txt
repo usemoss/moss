@@ -1,6 +1,6 @@
 Copyright (c) 2025 InferEdge Inc.
-Required Notice: Copyright InferEdge Inc. (https://inferedge.dev)
-Licensor Line of Business: InferEdge MOSS Runtime (https://inferedge.dev)
+Required Notice: Copyright InferEdge Inc. (https://moss.dev)
+Licensor Line of Business: InferEdge MOSS Runtime (https://moss.dev)
 
 # PolyForm Shield License 1.0.0
 

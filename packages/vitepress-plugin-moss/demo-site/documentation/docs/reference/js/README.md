@@ -130,8 +130,8 @@ This package is licensed under the [PolyForm Shield License 1.0.0](_media/LICENS
 
 - ✅ Free for testing, evaluation, internal use, and modifications.
 - ❌ Not permitted for production or competing commercial use.
-- 📩 For commercial licenses, contact: <contact@inferedge.dev>
+- 📩 For commercial licenses, contact: <contact@moss.dev>
 
 ## 📬 Contact
 
-For support, commercial licensing, or partnership inquiries, contact us: [contact@inferedge.dev](mailto:contact@inferedge.dev)
+For support, commercial licensing, or partnership inquiries, contact us: [contact@moss.dev](mailto:contact@moss.dev)
