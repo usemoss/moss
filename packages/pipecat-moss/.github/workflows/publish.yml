@@ -1,0 +1,147 @@
+name: Publish pipecat-moss
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: pipecat-moss-release
+  cancel-in-progress: false
+
+jobs:
+  determine-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      major_minor: ${{ steps.compute.outputs.major_minor }}
+      patch: ${{ steps.compute.outputs.patch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Read version from pyproject
+        id: compute
+        shell: python
+        run: |
+          import os, pathlib, re, sys
+
+          text = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+          match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
+          if not match:
+              print("Could not find version in pyproject", file=sys.stderr)
+              sys.exit(1)
+          version = match.group(1)
+
+          semver = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+          if not semver:
+              print(f"Invalid version format in pyproject: {version}", file=sys.stderr)
+              sys.exit(1)
+          major, minor, patch = semver.group(1), semver.group(2), semver.group(3)
+          major_minor = f"{major}.{minor}"
+
+          out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
+          with out.open("a", encoding="utf-8") as fh:
+              fh.write(f"version={version}\n")
+              fh.write(f"major_minor={major_minor}\n")
+              fh.write(f"patch={patch}\n")
+
+          print(f"Publishing version: {version}")
+
+  build-and-publish:
+    needs: determine-version
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.determine-version.outputs.version }}
+      DIST_DIR: dist
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Validate metadata version
+        shell: python
+        env:
+          EXPECTED_VERSION: ${{ env.VERSION }}
+        run: |
+          import os, pathlib, re, sys
+
+          expected = os.environ["EXPECTED_VERSION"]
+          path = pathlib.Path("pyproject.toml")
+          text = path.read_text(encoding="utf-8")
+          match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
+          if not match:
+              print(f"Could not find version in {path}", file=sys.stderr)
+              sys.exit(1)
+          actual = match.group(1)
+          if actual != expected:
+              print(
+                  f"Version mismatch for {path}: expected {expected}, found {actual}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          print(f"Metadata version matches expected {expected}")
+
+      - name: Build distributions
+        run: |
+          rm -rf "${DIST_DIR}"
+          python -m build
+
+      - name: Smoke test import
+        shell: python
+        run: |
+          import glob, subprocess, sys
+
+          wheels = glob.glob("dist/*.whl")
+          if not wheels:
+              raise SystemExit("No wheel found in dist/")
+
+          wheel = wheels[0]
+          subprocess.check_call([sys.executable, "-m", "pip", "install", "--force-reinstall", wheel])
+
+          import importlib
+          module = importlib.import_module("pipecat_moss")
+          print("import ok; sample attrs:", dir(module)[:5])
+
+      - name: Publish to PyPI
+        if: matrix.python == '3.11'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          twine upload --skip-existing dist/*
+
+      - name: Tag release
+        if: matrix.python == '3.11'
+        env:
+          VERSION: ${{ env.VERSION }}
+        run: |
+          git fetch --tags --force
+          if git rev-parse "pipecat-moss-v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag pipecat-moss-v${VERSION} already exists"
+          else
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git tag "pipecat-moss-v${VERSION}"
+            git push origin "pipecat-moss-v${VERSION}"
+          fi

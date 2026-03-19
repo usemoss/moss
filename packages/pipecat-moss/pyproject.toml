@@ -1,0 +1,63 @@
+[project]
+name = "pipecat-moss"
+version = "0.0.2"
+description = "Moss vector search integration for Pipecat"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "inferedge-moss>=1.0.0b8",
+    "loguru>=0.7.0",
+    "pipecat-ai>=0.0.99",
+    "pydantic>=2.0.0",
+    "pipecat-ai[runner]>=0.0.99",
+]
+
+[dependency-groups]
+dev = [
+    "aiortc>=1.14.0",
+    "cartesia>=2.0.17",
+    "daily-python>=0.21.0",
+    "deepgram-sdk>=3.2.0,<5.0.0",
+    "fastapi>=0.121.2",
+    "opencv-python>=4.11.0.86",
+    
+    "python-dotenv>=1.2.1",
+    "ruff>=0.1.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+    "D",  # pydocstyle
+]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
