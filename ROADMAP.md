@@ -48,7 +48,7 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 ### Search Quality
 
 - [ ] **Reranking support** — plug in cross-encoder rerankers (Cohere Rerank, bge-reranker, etc.) as a post-retrieval step
-- [ ] **Hybrid search** — combine semantic search with BM25 keyword matching
+- [x] **Hybrid search** — combine semantic search with BM25 keyword matching
 - [ ] **Multi-vector retrieval** — support ColBERT-style late interaction models
 
 ### Data Ingestion
