@@ -5,10 +5,10 @@ build-backend = "maturin"
 [project]
 name = "inferedge-moss-core"                # PyPI distribution name
 version = "0.8.0"                      # keep in sync with tags or CI bump
-description = "Proprietary core index logic for Moss"
+description = "Core index logic for Moss"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "SEE LICENSE IN LICENSE" }
+license = { file = "LICENSE" }
 authors = [{ name = "InferEdge, Inc." }]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -20,7 +20,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Rust",
-  "License :: Other/Proprietary License",
+  "License :: BSD License",
   "Operating System :: OS Independent",
 ]
 

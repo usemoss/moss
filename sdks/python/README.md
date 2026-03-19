@@ -29,11 +29,10 @@ pip install inferedge-moss
 
 ## 📄 License
 
-This package is licensed under the [PolyForm Shield License 1.0.0](./LICENSE).
+This package is licensed under the [BSD 2-Clause "Simplified" License](./LICENSE).
 
-- ✅ Free for testing, evaluation, internal use, and modifications.
-- ❌ Not permitted for production or competing commercial use.
-- 📩 For commercial licenses, contact: <contact@moss.dev>
+- ✅ Permissive open-source license allowing use, modification, and distribution.
+- ⚖️ Requires preservation of copyright and license notices.
 
 ## 📬 Contact
 
