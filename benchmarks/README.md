@@ -54,7 +54,7 @@ Competitors need an embedding service. Two options:
 Set `OPENAI_API_KEY` in `.env`. Uses `text-embedding-3-small` (1536 dims).
 This is the most common production setup.
 
-**Option B: Self-hosted on Modal**
+**Option B: Self-hosted on [Modal](https://modal.com/docs/examples/text_embeddings_inference)**
 Deploy the embedding server:
 ```bash
 pip install modal
