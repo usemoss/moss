@@ -34,7 +34,7 @@ export function mossAddDocsTool(options: MossAddDocsToolOptions) {
       .describe('Documents to add (1-100).'),
   };
 
-  const inputSchema = boundIndexName
+  const inputSchema = boundIndexName != null
     ? z.object(baseFields)
     : z.object({
         indexName: z
@@ -68,7 +68,7 @@ export function mossDeleteDocsTool(options: MossDeleteDocsToolOptions) {
       .describe('IDs of documents to delete (1-100).'),
   };
 
-  const inputSchema = boundIndexName
+  const inputSchema = boundIndexName != null
     ? z.object(baseFields)
     : z.object({
         indexName: z

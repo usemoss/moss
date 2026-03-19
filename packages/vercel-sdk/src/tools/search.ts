@@ -22,7 +22,7 @@ export function mossSearchTool(options: MossSearchToolOptions) {
       .describe('Number of results to return (1-100, default 5).'),
   };
 
-  const inputSchema = boundIndexName
+  const inputSchema = boundIndexName != null
     ? z.object(baseFields)
     : z.object({
         indexName: z
