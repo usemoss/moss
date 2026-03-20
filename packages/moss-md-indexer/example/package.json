@@ -1,0 +1,19 @@
+{
+  "name": "@moss-tools/md-indexer-example",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx build-and-upload.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "@moss-tools/md-indexer": "file:../"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4"
+  }
+}
+
