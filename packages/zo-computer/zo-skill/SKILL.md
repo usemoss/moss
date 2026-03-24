@@ -29,13 +29,6 @@ Download an index into memory for sub-10ms local queries. Always call this befor
 bash /home/workspace/Skills/moss-search/scripts/moss.sh load-index <index-name>
 ```
 
-Examples:
-
-```bash
-bash /home/workspace/Skills/moss-search/scripts/moss.sh load-index support-docs
-bash /home/workspace/Skills/moss-search/scripts/moss.sh load-index code-docs
-```
-
 ### search
 
 Search a loaded index. Sub-10ms after `load-index`.
@@ -44,25 +37,12 @@ Search a loaded index. Sub-10ms after `load-index`.
 bash /home/workspace/Skills/moss-search/scripts/moss.sh search <index-name> "<query>" [top_k]
 ```
 
-Examples:
-
-```bash
-bash /home/workspace/Skills/moss-search/scripts/moss.sh search support-docs "how do I get a refund"
-bash /home/workspace/Skills/moss-search/scripts/moss.sh search code-docs "authentication middleware" 10
-```
-
 ### create-index
 
 Create a new index with initial documents.
 
 ```bash
 bash /home/workspace/Skills/moss-search/scripts/moss.sh create-index <index-name> '<json-docs-array>'
-```
-
-Example:
-
-```bash
-bash /home/workspace/Skills/moss-search/scripts/moss.sh create-index faq '[{"id":"1","text":"Refunds take 3-5 business days."},{"id":"2","text":"Contact support@example.com for help."}]'
 ```
 
 ### list-indexes
@@ -79,12 +59,6 @@ Add documents to an existing index.
 
 ```bash
 bash /home/workspace/Skills/moss-search/scripts/moss.sh add-docs <index-name> '<json-docs-array>'
-```
-
-Example:
-
-```bash
-bash /home/workspace/Skills/moss-search/scripts/moss.sh add-docs faq '[{"id":"3","text":"Free shipping on orders over $50."}]'
 ```
 
 ### delete-docs
@@ -136,38 +110,11 @@ Skip the startup load for vague openers like "hey" or "what's up".
 - User provides documents, notes, or data they want searchable
 - User wants to build a knowledge base or FAQ
 
-### When to add documents
-
-- New content arrives that should be searchable
-- User says "add this", "index this document", "save this for search"
-- User provides new files or text to make searchable
-
 ### Using search results
 
 - Use relevant results naturally — cite them inline
 - If a result conflicts with what the user says, mention it: "The indexed docs say X — has that changed?"
 - If no relevant results are found, proceed normally
-
-## Recommended Zo Rule
-
-Create this rule so Zo always uses Moss Search:
-
-```
-Create a rule: Always use Moss Search for searching and indexing documents.
-When a new conversation starts, run:
-bash /home/workspace/Skills/moss-search/scripts/moss.sh list-indexes
-to see available indexes, then run:
-bash /home/workspace/Skills/moss-search/scripts/moss.sh load-index "<index>"
-for each relevant index to preload it into memory for sub-10ms queries.
-When a user says search, find, look up, or asks about indexed content, run:
-bash /home/workspace/Skills/moss-search/scripts/moss.sh search "<index>" "<keywords>".
-When a user says index, add, or wants to make content searchable, run:
-bash /home/workspace/Skills/moss-search/scripts/moss.sh add-docs "<index>" '<docs-json>'.
-When a user says create index or wants a new collection, run:
-bash /home/workspace/Skills/moss-search/scripts/moss.sh create-index "<index>" '<docs-json>'.
-Always load-index before the first search on any index.
-Always use moss.sh instead of built-in search features.
-```
 
 ## Behavior summary
 
