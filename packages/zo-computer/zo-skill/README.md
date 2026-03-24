@@ -9,7 +9,7 @@ Sub-10ms semantic search for [Zo](https://zo.computer) powered by [Moss](https:/
 3. Paste this into your Zo terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/usemoss/moss/zo-computer-plugin/packages/zo-computer/zo-skill/install.sh | bash -s -- <PROJECT_ID> <PROJECT_KEY>
+curl -fsSL https://raw.githubusercontent.com/usemoss/moss/main/packages/zo-computer/zo-skill/install.sh | bash -s -- <PROJECT_ID> <PROJECT_KEY>
 ```
 
 ## Create a Zo Rule
