@@ -59,7 +59,7 @@ class MossIndexProcessor(FrameProcessor):
         result = await self._client.query(
             self._index_name,
             query,
-            options=QueryOptions(top_k=self._top_k),
+            options=QueryOptions(top_k=self._top_k, alpha=self._alpha),
         )
 
         # Emit retrieval latency metrics
