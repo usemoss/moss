@@ -55,16 +55,18 @@ chmod 600 "$MOSS_ENV"
 echo "Configuring MCPorter..."
 mkdir -p "$(dirname "$MCPORTER_CONFIG")"
 
+MOSS_SERVER='{"command": "npx", "args": ["-y", "@moss-tools/mcp-server"]}'
+
 if [ -f "$MCPORTER_CONFIG" ]; then
   # Merge into existing config
   EXISTING=$(cat "$MCPORTER_CONFIG")
-  echo "$EXISTING" | jq --arg id "$PROJECT_ID" --arg key "$PROJECT_KEY" \
-    '. + {"moss": {"command": "npx", "args": ["-y", "@moss-tools/mcp-server"], "env": {"MOSS_PROJECT_ID": $id, "MOSS_PROJECT_KEY": $key}}}' \
+  echo "$EXISTING" | jq --argjson srv "$MOSS_SERVER" --arg id "$PROJECT_ID" --arg key "$PROJECT_KEY" \
+    '.mcpServers.moss = ($srv + {env: {MOSS_PROJECT_ID: $id, MOSS_PROJECT_KEY: $key}})' \
     > "$MCPORTER_CONFIG"
 else
   # Create new config
-  jq -n --arg id "$PROJECT_ID" --arg key "$PROJECT_KEY" \
-    '{"moss": {"command": "npx", "args": ["-y", "@moss-tools/mcp-server"], "env": {"MOSS_PROJECT_ID": $id, "MOSS_PROJECT_KEY": $key}}}' \
+  jq -n --argjson srv "$MOSS_SERVER" --arg id "$PROJECT_ID" --arg key "$PROJECT_KEY" \
+    '{mcpServers: {moss: ($srv + {env: {MOSS_PROJECT_ID: $id, MOSS_PROJECT_KEY: $key}})}}' \
     > "$MCPORTER_CONFIG"
 fi
 
