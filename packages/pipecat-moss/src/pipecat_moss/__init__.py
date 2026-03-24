@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from inferedge_moss import (
-    AddDocumentsOptions,
     DocumentInfo,
     GetDocumentsOptions,
     IndexInfo,
@@ -14,7 +13,6 @@ from inferedge_moss import (
 from .moss_retrieval_service import MossRetrievalService
 
 __all__ = [
-    "AddDocumentsOptions",
     "DocumentInfo",
     "GetDocumentsOptions",
     "IndexInfo",
