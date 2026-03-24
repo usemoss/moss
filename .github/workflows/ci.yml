@@ -83,6 +83,26 @@ jobs:
       working-directory: apps/next-js
       run: npm test
 
+  vercel-sdk-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: packages/vercel-sdk/package-lock.json
+    - name: Install dependencies
+      working-directory: packages/vercel-sdk
+      run: npm ci
+    - name: Build
+      working-directory: packages/vercel-sdk
+      run: npm run build
+    - name: Run tests
+      working-directory: packages/vercel-sdk
+      run: npm test
+
   vitepress-plugin-test:
     runs-on: ubuntu-latest
     steps:

@@ -7,6 +7,7 @@ This is a living document. We update it as priorities shift based on community f
 - [x] Python SDK (`inferedge-moss`) — async-first, type-safe
 - [x] TypeScript SDK (`@inferedge/moss`) — full feature parity with Python
 - [x] Built-in embedding models (`moss-minilm`)
+- [x] **Hybrid search** — combine semantic search with BM25 keyword matching
 - [x] Custom embedding support (bring your own OpenAI, Cohere, etc.)
 - [x] Metadata filtering (`$eq`, `$and`, `$in`, `$near`)
 - [x] Document management (add, upsert, get, delete)
@@ -48,7 +49,6 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 ### Search Quality
 
 - [ ] **Reranking support** — plug in cross-encoder rerankers (Cohere Rerank, bge-reranker, etc.) as a post-retrieval step
-- [ ] **Hybrid search** — combine semantic search with BM25 keyword matching
 - [ ] **Multi-vector retrieval** — support ColBERT-style late interaction models
 
 ### Data Ingestion

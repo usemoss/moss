@@ -1,0 +1,1042 @@
+[
+  {
+    "id": "api-reference.html",
+    "text": "api-reference",
+    "metadata": {
+      "title": "api-reference",
+      "groupId": "api-reference.html",
+      "type": "page",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "api-reference",
+      "sanitizedText": "api-reference",
+      "navigation": "api-reference.html"
+    }
+  },
+  {
+    "id": "api-reference.html#api-reference-0",
+    "text": "API Reference ​\n\nThis page contains the API reference documentation.",
+    "metadata": {
+      "title": "API Reference ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​",
+      "sanitizedText": "This page contains the API reference documentation.",
+      "navigation": "api-reference.html#api-reference"
+    }
+  },
+  {
+    "id": "api-reference.html#myfunction-1",
+    "text": "myFunction ​\n\nA sample function that demonstrates the search indexing.",
+    "metadata": {
+      "title": "myFunction ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​ > myFunction ​",
+      "sanitizedText": "A sample function that demonstrates the search indexing.",
+      "navigation": "api-reference.html#myfunction"
+    }
+  },
+  {
+    "id": "api-reference.html#myfunction-2",
+    "text": "myFunction ​\n\nParameters:",
+    "metadata": {
+      "title": "myFunction ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​ > myFunction ​",
+      "sanitizedText": "Parameters:",
+      "navigation": "api-reference.html#myfunction"
+    }
+  },
+  {
+    "id": "api-reference.html#myfunction-3",
+    "text": "myFunction ​\n\nReturns:",
+    "metadata": {
+      "title": "myFunction ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​ > myFunction ​",
+      "sanitizedText": "Returns:",
+      "navigation": "api-reference.html#myfunction"
+    }
+  },
+  {
+    "id": "api-reference.html#myfunction-4",
+    "text": "myFunction ​\n\nExample:",
+    "metadata": {
+      "title": "myFunction ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​ > myFunction ​",
+      "sanitizedText": "Example:",
+      "navigation": "api-reference.html#myfunction"
+    }
+  },
+  {
+    "id": "api-reference.html#myclass-5",
+    "text": "MyClass ​\n\nA sample class for demonstration purposes.",
+    "metadata": {
+      "title": "MyClass ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Classes ​ > MyClass ​",
+      "sanitizedText": "A sample class for demonstration purposes.",
+      "navigation": "api-reference.html#myclass"
+    }
+  },
+  {
+    "id": "api-reference.html#constructor-6",
+    "text": "constructor() ​\n\nCreates a new instance of MyClass.",
+    "metadata": {
+      "title": "constructor() ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Classes ​ > MyClass ​ > Methods ​ > constructor() ​",
+      "sanitizedText": "Creates a new instance of MyClass.",
+      "navigation": "api-reference.html#constructor"
+    }
+  },
+  {
+    "id": "api-reference.html#process-7",
+    "text": "process() ​\n\nProcesses the data.",
+    "metadata": {
+      "title": "process() ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Classes ​ > MyClass ​ > Methods ​ > process() ​",
+      "sanitizedText": "Processes the data.",
+      "navigation": "api-reference.html#process"
+    }
+  },
+  {
+    "id": "api-reference.html#myfunction-8",
+    "text": "myFunction ​\n\ninput (string): The input string",
+    "metadata": {
+      "title": "myFunction ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​ > myFunction ​",
+      "sanitizedText": "input (string): The input string",
+      "navigation": "api-reference.html#myfunction"
+    }
+  },
+  {
+    "id": "api-reference.html#myfunction-9",
+    "text": "myFunction ​\n\nstring: The processed result",
+    "metadata": {
+      "title": "myFunction ​",
+      "groupId": "api-reference.html",
+      "type": "text",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​ > myFunction ​",
+      "sanitizedText": "string: The processed result",
+      "navigation": "api-reference.html#myfunction"
+    }
+  },
+  {
+    "id": "api-reference.html#myfunction-10",
+    "text": "myFunction ​\n\nconst result = myFunction('test')",
+    "metadata": {
+      "title": "myFunction ​",
+      "groupId": "api-reference.html",
+      "type": "code",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​ > myFunction ​",
+      "sanitizedText": "const result = myFunction('test')",
+      "navigation": "api-reference.html#myfunction"
+    }
+  },
+  {
+    "id": "api-reference.html#process-11",
+    "text": "process() ​\n\nconst instance = new MyClass()\ninstance.process()",
+    "metadata": {
+      "title": "process() ​",
+      "groupId": "api-reference.html",
+      "type": "code",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Classes ​ > MyClass ​ > Methods ​ > process() ​",
+      "sanitizedText": "const instance = new MyClass() instance.process()",
+      "navigation": "api-reference.html#process"
+    }
+  },
+  {
+    "id": "api-reference.html-12",
+    "text": "api-reference\n\nAPI Reference ​",
+    "metadata": {
+      "title": "api-reference",
+      "groupId": "api-reference.html",
+      "type": "header",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "api-reference",
+      "sanitizedText": "API Reference ​",
+      "navigation": "api-reference.html"
+    }
+  },
+  {
+    "id": "api-reference.html#api-reference-13",
+    "text": "API Reference ​\n\nFunctions ​",
+    "metadata": {
+      "title": "API Reference ​",
+      "groupId": "api-reference.html",
+      "type": "header",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​",
+      "sanitizedText": "Functions ​",
+      "navigation": "api-reference.html#api-reference"
+    }
+  },
+  {
+    "id": "api-reference.html#functions-14",
+    "text": "Functions ​\n\nmyFunction ​",
+    "metadata": {
+      "title": "Functions ​",
+      "groupId": "api-reference.html",
+      "type": "header",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​",
+      "sanitizedText": "myFunction ​",
+      "navigation": "api-reference.html#functions"
+    }
+  },
+  {
+    "id": "api-reference.html#myfunction-15",
+    "text": "myFunction ​\n\nClasses ​",
+    "metadata": {
+      "title": "myFunction ​",
+      "groupId": "api-reference.html",
+      "type": "header",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Functions ​ > myFunction ​",
+      "sanitizedText": "Classes ​",
+      "navigation": "api-reference.html#myfunction"
+    }
+  },
+  {
+    "id": "api-reference.html#classes-16",
+    "text": "Classes ​\n\nMyClass ​",
+    "metadata": {
+      "title": "Classes ​",
+      "groupId": "api-reference.html",
+      "type": "header",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Classes ​",
+      "sanitizedText": "MyClass ​",
+      "navigation": "api-reference.html#classes"
+    }
+  },
+  {
+    "id": "api-reference.html#myclass-17",
+    "text": "MyClass ​\n\nMethods ​",
+    "metadata": {
+      "title": "MyClass ​",
+      "groupId": "api-reference.html",
+      "type": "header",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Classes ​ > MyClass ​",
+      "sanitizedText": "Methods ​",
+      "navigation": "api-reference.html#myclass"
+    }
+  },
+  {
+    "id": "api-reference.html#methods-18",
+    "text": "Methods ​\n\nconstructor() ​",
+    "metadata": {
+      "title": "Methods ​",
+      "groupId": "api-reference.html",
+      "type": "header",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Classes ​ > MyClass ​ > Methods ​",
+      "sanitizedText": "constructor() ​",
+      "navigation": "api-reference.html#methods"
+    }
+  },
+  {
+    "id": "api-reference.html#constructor-19",
+    "text": "constructor() ​\n\nprocess() ​",
+    "metadata": {
+      "title": "constructor() ​",
+      "groupId": "api-reference.html",
+      "type": "header",
+      "groupTitle": "api-reference",
+      "displayBreadcrumb": "API Reference ​ > Classes ​ > MyClass ​ > Methods ​ > constructor() ​",
+      "sanitizedText": "process() ​",
+      "navigation": "api-reference.html#constructor"
+    }
+  },
+  {
+    "id": "examples.html",
+    "text": "examples",
+    "metadata": {
+      "title": "examples",
+      "groupId": "examples.html",
+      "type": "page",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "examples",
+      "sanitizedText": "examples",
+      "navigation": "examples.html"
+    }
+  },
+  {
+    "id": "examples.html#examples-0",
+    "text": "Examples ​\n\nThis page contains various examples of how to use the package.",
+    "metadata": {
+      "title": "Examples ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​",
+      "sanitizedText": "This page contains various examples of how to use the package.",
+      "navigation": "examples.html#examples"
+    }
+  },
+  {
+    "id": "examples.html#basic-example-1",
+    "text": "Basic Example ​\n\nHere's a basic example:",
+    "metadata": {
+      "title": "Basic Example ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Basic Example ​",
+      "sanitizedText": "Here's a basic example:",
+      "navigation": "examples.html#basic-example"
+    }
+  },
+  {
+    "id": "examples.html#advanced-example-2",
+    "text": "Advanced Example ​\n\nFor more advanced usage:",
+    "metadata": {
+      "title": "Advanced Example ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Advanced Example ​",
+      "sanitizedText": "For more advanced usage:",
+      "navigation": "examples.html#advanced-example"
+    }
+  },
+  {
+    "id": "examples.html#root-directory-3",
+    "text": "Root Directory ​\n\nSpecify the root directory for your documentation.",
+    "metadata": {
+      "title": "Root Directory ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Configuration Options ​ > Root Directory ​",
+      "sanitizedText": "Specify the root directory for your documentation.",
+      "navigation": "examples.html#root-directory"
+    }
+  },
+  {
+    "id": "examples.html#credentials-4",
+    "text": "Credentials ​\n\nProvide your Moss project credentials.",
+    "metadata": {
+      "title": "Credentials ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Configuration Options ​ > Credentials ​",
+      "sanitizedText": "Provide your Moss project credentials.",
+      "navigation": "examples.html#credentials"
+    }
+  },
+  {
+    "id": "examples.html#troubleshooting-5",
+    "text": "Troubleshooting ​\n\nIf you encounter issues:",
+    "metadata": {
+      "title": "Troubleshooting ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Troubleshooting ​",
+      "sanitizedText": "If you encounter issues:",
+      "navigation": "examples.html#troubleshooting"
+    }
+  },
+  {
+    "id": "examples.html#troubleshooting-6",
+    "text": "Troubleshooting ​\n\nCheck your environment variables",
+    "metadata": {
+      "title": "Troubleshooting ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Troubleshooting ​",
+      "sanitizedText": "Check your environment variables",
+      "navigation": "examples.html#troubleshooting"
+    }
+  },
+  {
+    "id": "examples.html#troubleshooting-7",
+    "text": "Troubleshooting ​\n\nVerify your credentials",
+    "metadata": {
+      "title": "Troubleshooting ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Troubleshooting ​",
+      "sanitizedText": "Verify your credentials",
+      "navigation": "examples.html#troubleshooting"
+    }
+  },
+  {
+    "id": "examples.html#troubleshooting-8",
+    "text": "Troubleshooting ​\n\nEnsure the docs directory exists",
+    "metadata": {
+      "title": "Troubleshooting ​",
+      "groupId": "examples.html",
+      "type": "text",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Troubleshooting ​",
+      "sanitizedText": "Ensure the docs directory exists",
+      "navigation": "examples.html#troubleshooting"
+    }
+  },
+  {
+    "id": "examples.html#basic-example-9",
+    "text": "Basic Example ​\n\nimport { sync } from 'my-package'\n\nawait sync({\n  root: './docs'\n})",
+    "metadata": {
+      "title": "Basic Example ​",
+      "groupId": "examples.html",
+      "type": "code",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Basic Example ​",
+      "sanitizedText": "import { sync } from 'my-package' await sync({ root: './docs' })",
+      "navigation": "examples.html#basic-example"
+    }
+  },
+  {
+    "id": "examples.html#advanced-example-10",
+    "text": "Advanced Example ​\n\nimport { sync } from 'my-package'\n\nawait sync({\n  root: './docs',\n  creds: {\n    projectId: 'your-id',\n    projectKey: 'your-key',\n    indexName: 'your-index'\n  }\n})",
+    "metadata": {
+      "title": "Advanced Example ​",
+      "groupId": "examples.html",
+      "type": "code",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Advanced Example ​",
+      "sanitizedText": "import { sync } from 'my-package' await sync({ root: './docs', creds: { projectId: 'your-id', projectKey: 'your-key', indexName: 'your-index' } })",
+      "navigation": "examples.html#advanced-example"
+    }
+  },
+  {
+    "id": "examples.html-11",
+    "text": "examples\n\nExamples ​",
+    "metadata": {
+      "title": "examples",
+      "groupId": "examples.html",
+      "type": "header",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "examples",
+      "sanitizedText": "Examples ​",
+      "navigation": "examples.html"
+    }
+  },
+  {
+    "id": "examples.html#examples-12",
+    "text": "Examples ​\n\nBasic Example ​",
+    "metadata": {
+      "title": "Examples ​",
+      "groupId": "examples.html",
+      "type": "header",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​",
+      "sanitizedText": "Basic Example ​",
+      "navigation": "examples.html#examples"
+    }
+  },
+  {
+    "id": "examples.html#basic-example-13",
+    "text": "Basic Example ​\n\nAdvanced Example ​",
+    "metadata": {
+      "title": "Basic Example ​",
+      "groupId": "examples.html",
+      "type": "header",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Basic Example ​",
+      "sanitizedText": "Advanced Example ​",
+      "navigation": "examples.html#basic-example"
+    }
+  },
+  {
+    "id": "examples.html#advanced-example-14",
+    "text": "Advanced Example ​\n\nConfiguration Options ​",
+    "metadata": {
+      "title": "Advanced Example ​",
+      "groupId": "examples.html",
+      "type": "header",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Advanced Example ​",
+      "sanitizedText": "Configuration Options ​",
+      "navigation": "examples.html#advanced-example"
+    }
+  },
+  {
+    "id": "examples.html#configuration-options-15",
+    "text": "Configuration Options ​\n\nRoot Directory ​",
+    "metadata": {
+      "title": "Configuration Options ​",
+      "groupId": "examples.html",
+      "type": "header",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Configuration Options ​",
+      "sanitizedText": "Root Directory ​",
+      "navigation": "examples.html#configuration-options"
+    }
+  },
+  {
+    "id": "examples.html#root-directory-16",
+    "text": "Root Directory ​\n\nCredentials ​",
+    "metadata": {
+      "title": "Root Directory ​",
+      "groupId": "examples.html",
+      "type": "header",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Configuration Options ​ > Root Directory ​",
+      "sanitizedText": "Credentials ​",
+      "navigation": "examples.html#root-directory"
+    }
+  },
+  {
+    "id": "examples.html#credentials-17",
+    "text": "Credentials ​\n\nTroubleshooting ​",
+    "metadata": {
+      "title": "Credentials ​",
+      "groupId": "examples.html",
+      "type": "header",
+      "groupTitle": "examples",
+      "displayBreadcrumb": "Examples ​ > Configuration Options ​ > Credentials ​",
+      "sanitizedText": "Troubleshooting ​",
+      "navigation": "examples.html#credentials"
+    }
+  },
+  {
+    "id": "guide.html",
+    "text": "guide",
+    "metadata": {
+      "title": "guide",
+      "groupId": "guide.html",
+      "type": "page",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "guide",
+      "sanitizedText": "guide",
+      "navigation": "guide.html"
+    }
+  },
+  {
+    "id": "guide.html#guide-0",
+    "text": "Guide ​\n\nThis is a comprehensive guide to using the package.",
+    "metadata": {
+      "title": "Guide ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​",
+      "sanitizedText": "This is a comprehensive guide to using the package.",
+      "navigation": "guide.html#guide"
+    }
+  },
+  {
+    "id": "guide.html#overview-1",
+    "text": "Overview ​\n\nThe package provides a simple way to index your documentation.",
+    "metadata": {
+      "title": "Overview ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Overview ​",
+      "sanitizedText": "The package provides a simple way to index your documentation.",
+      "navigation": "guide.html#overview"
+    }
+  },
+  {
+    "id": "guide.html#prerequisites-2",
+    "text": "Prerequisites ​\n\nBefore you begin, make sure you have:",
+    "metadata": {
+      "title": "Prerequisites ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Prerequisites ​",
+      "sanitizedText": "Before you begin, make sure you have:",
+      "navigation": "guide.html#prerequisites"
+    }
+  },
+  {
+    "id": "guide.html#step-1-installation-3",
+    "text": "Step 1: Installation ​\n\nInstall the package:",
+    "metadata": {
+      "title": "Step 1: Installation ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Step 1: Installation ​",
+      "sanitizedText": "Install the package:",
+      "navigation": "guide.html#step-1-installation"
+    }
+  },
+  {
+    "id": "guide.html#step-2-configuration-4",
+    "text": "Step 2: Configuration ​\n\nCreate a .env file with your credentials.",
+    "metadata": {
+      "title": "Step 2: Configuration ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Step 2: Configuration ​",
+      "sanitizedText": "Create a .env file with your credentials.",
+      "navigation": "guide.html#step-2-configuration"
+    }
+  },
+  {
+    "id": "guide.html#step-3-run-5",
+    "text": "Step 3: Run ​\n\nExecute the sync command.",
+    "metadata": {
+      "title": "Step 3: Run ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Step 3: Run ​",
+      "sanitizedText": "Execute the sync command.",
+      "navigation": "guide.html#step-3-run"
+    }
+  },
+  {
+    "id": "guide.html#custom-configuration-6",
+    "text": "Custom Configuration ​\n\nYou can customize the behavior by passing options.",
+    "metadata": {
+      "title": "Custom Configuration ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Advanced Topics ​ > Custom Configuration ​",
+      "sanitizedText": "You can customize the behavior by passing options.",
+      "navigation": "guide.html#custom-configuration"
+    }
+  },
+  {
+    "id": "guide.html#error-handling-7",
+    "text": "Error Handling ​\n\nThe package includes comprehensive error handling.",
+    "metadata": {
+      "title": "Error Handling ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Advanced Topics ​ > Error Handling ​",
+      "sanitizedText": "The package includes comprehensive error handling.",
+      "navigation": "guide.html#error-handling"
+    }
+  },
+  {
+    "id": "guide.html#features-8",
+    "text": "Features ​\n\nFast indexing",
+    "metadata": {
+      "title": "Features ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Features ​",
+      "sanitizedText": "Fast indexing",
+      "navigation": "guide.html#features"
+    }
+  },
+  {
+    "id": "guide.html#features-9",
+    "text": "Features ​\n\nEasy to use",
+    "metadata": {
+      "title": "Features ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Features ​",
+      "sanitizedText": "Easy to use",
+      "navigation": "guide.html#features"
+    }
+  },
+  {
+    "id": "guide.html#features-10",
+    "text": "Features ​\n\nConfigurable",
+    "metadata": {
+      "title": "Features ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Features ​",
+      "sanitizedText": "Configurable",
+      "navigation": "guide.html#features"
+    }
+  },
+  {
+    "id": "guide.html#prerequisites-11",
+    "text": "Prerequisites ​\n\nNode.js installed",
+    "metadata": {
+      "title": "Prerequisites ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Prerequisites ​",
+      "sanitizedText": "Node.js installed",
+      "navigation": "guide.html#prerequisites"
+    }
+  },
+  {
+    "id": "guide.html#prerequisites-12",
+    "text": "Prerequisites ​\n\nA Moss project set up",
+    "metadata": {
+      "title": "Prerequisites ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Prerequisites ​",
+      "sanitizedText": "A Moss project set up",
+      "navigation": "guide.html#prerequisites"
+    }
+  },
+  {
+    "id": "guide.html#prerequisites-13",
+    "text": "Prerequisites ​\n\nYour documentation ready",
+    "metadata": {
+      "title": "Prerequisites ​",
+      "groupId": "guide.html",
+      "type": "text",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Prerequisites ​",
+      "sanitizedText": "Your documentation ready",
+      "navigation": "guide.html#prerequisites"
+    }
+  },
+  {
+    "id": "guide.html#step-1-installation-14",
+    "text": "Step 1: Installation ​\n\nnpm install my-package",
+    "metadata": {
+      "title": "Step 1: Installation ​",
+      "groupId": "guide.html",
+      "type": "code",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Step 1: Installation ​",
+      "sanitizedText": "npm install my-package",
+      "navigation": "guide.html#step-1-installation"
+    }
+  },
+  {
+    "id": "guide.html-15",
+    "text": "guide\n\nGuide ​",
+    "metadata": {
+      "title": "guide",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "guide",
+      "sanitizedText": "Guide ​",
+      "navigation": "guide.html"
+    }
+  },
+  {
+    "id": "guide.html#guide-16",
+    "text": "Guide ​\n\nOverview ​",
+    "metadata": {
+      "title": "Guide ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​",
+      "sanitizedText": "Overview ​",
+      "navigation": "guide.html#guide"
+    }
+  },
+  {
+    "id": "guide.html#overview-17",
+    "text": "Overview ​\n\nFeatures ​",
+    "metadata": {
+      "title": "Overview ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Overview ​",
+      "sanitizedText": "Features ​",
+      "navigation": "guide.html#overview"
+    }
+  },
+  {
+    "id": "guide.html#features-18",
+    "text": "Features ​\n\nGetting Started ​",
+    "metadata": {
+      "title": "Features ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Features ​",
+      "sanitizedText": "Getting Started ​",
+      "navigation": "guide.html#features"
+    }
+  },
+  {
+    "id": "guide.html#getting-started-19",
+    "text": "Getting Started ​\n\nPrerequisites ​",
+    "metadata": {
+      "title": "Getting Started ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​",
+      "sanitizedText": "Prerequisites ​",
+      "navigation": "guide.html#getting-started"
+    }
+  },
+  {
+    "id": "guide.html#prerequisites-20",
+    "text": "Prerequisites ​\n\nStep 1: Installation ​",
+    "metadata": {
+      "title": "Prerequisites ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Prerequisites ​",
+      "sanitizedText": "Step 1: Installation ​",
+      "navigation": "guide.html#prerequisites"
+    }
+  },
+  {
+    "id": "guide.html#step-1-installation-21",
+    "text": "Step 1: Installation ​\n\nStep 2: Configuration ​",
+    "metadata": {
+      "title": "Step 1: Installation ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Step 1: Installation ​",
+      "sanitizedText": "Step 2: Configuration ​",
+      "navigation": "guide.html#step-1-installation"
+    }
+  },
+  {
+    "id": "guide.html#step-2-configuration-22",
+    "text": "Step 2: Configuration ​\n\nStep 3: Run ​",
+    "metadata": {
+      "title": "Step 2: Configuration ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Step 2: Configuration ​",
+      "sanitizedText": "Step 3: Run ​",
+      "navigation": "guide.html#step-2-configuration"
+    }
+  },
+  {
+    "id": "guide.html#step-3-run-23",
+    "text": "Step 3: Run ​\n\nAdvanced Topics ​",
+    "metadata": {
+      "title": "Step 3: Run ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Getting Started ​ > Step 3: Run ​",
+      "sanitizedText": "Advanced Topics ​",
+      "navigation": "guide.html#step-3-run"
+    }
+  },
+  {
+    "id": "guide.html#advanced-topics-24",
+    "text": "Advanced Topics ​\n\nCustom Configuration ​",
+    "metadata": {
+      "title": "Advanced Topics ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Advanced Topics ​",
+      "sanitizedText": "Custom Configuration ​",
+      "navigation": "guide.html#advanced-topics"
+    }
+  },
+  {
+    "id": "guide.html#custom-configuration-25",
+    "text": "Custom Configuration ​\n\nError Handling ​",
+    "metadata": {
+      "title": "Custom Configuration ​",
+      "groupId": "guide.html",
+      "type": "header",
+      "groupTitle": "guide",
+      "displayBreadcrumb": "Guide ​ > Advanced Topics ​ > Custom Configuration ​",
+      "sanitizedText": "Error Handling ​",
+      "navigation": "guide.html#custom-configuration"
+    }
+  },
+  {
+    "id": "index",
+    "text": "index",
+    "metadata": {
+      "title": "index",
+      "groupId": "index",
+      "type": "page",
+      "groupTitle": "index",
+      "displayBreadcrumb": "index",
+      "sanitizedText": "index",
+      "navigation": "index"
+    }
+  },
+  {
+    "id": "index#getting-started-0",
+    "text": "Getting Started ​\n\nWelcome to the sample documentation!",
+    "metadata": {
+      "title": "Getting Started ​",
+      "groupId": "index",
+      "type": "text",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​",
+      "sanitizedText": "Welcome to the sample documentation!",
+      "navigation": "index#getting-started"
+    }
+  },
+  {
+    "id": "index#getting-started-1",
+    "text": "Getting Started ​\n\nThis is a sample page to demonstrate the search indexer functionality.",
+    "metadata": {
+      "title": "Getting Started ​",
+      "groupId": "index",
+      "type": "text",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​",
+      "sanitizedText": "This is a sample page to demonstrate the search indexer functionality.",
+      "navigation": "index#getting-started"
+    }
+  },
+  {
+    "id": "index#installation-2",
+    "text": "Installation ​\n\nTo get started, you need to install the package:",
+    "metadata": {
+      "title": "Installation ​",
+      "groupId": "index",
+      "type": "text",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​ > Installation ​",
+      "sanitizedText": "To get started, you need to install the package:",
+      "navigation": "index#installation"
+    }
+  },
+  {
+    "id": "index#quick-start-3",
+    "text": "Quick Start ​\n\nHere's a quick example of how to use the package:",
+    "metadata": {
+      "title": "Quick Start ​",
+      "groupId": "index",
+      "type": "text",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​ > Quick Start ​",
+      "sanitizedText": "Here's a quick example of how to use the package:",
+      "navigation": "index#quick-start"
+    }
+  },
+  {
+    "id": "index#next-steps-4",
+    "text": "Next Steps ​\n\nRead the API Reference",
+    "metadata": {
+      "title": "Next Steps ​",
+      "groupId": "index",
+      "type": "text",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​ > Next Steps ​",
+      "sanitizedText": "Read the API Reference",
+      "navigation": "index#next-steps"
+    }
+  },
+  {
+    "id": "index#next-steps-5",
+    "text": "Next Steps ​\n\nCheck out the Examples",
+    "metadata": {
+      "title": "Next Steps ​",
+      "groupId": "index",
+      "type": "text",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​ > Next Steps ​",
+      "sanitizedText": "Check out the Examples",
+      "navigation": "index#next-steps"
+    }
+  },
+  {
+    "id": "index#installation-6",
+    "text": "Installation ​\n\nnpm install my-package",
+    "metadata": {
+      "title": "Installation ​",
+      "groupId": "index",
+      "type": "code",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​ > Installation ​",
+      "sanitizedText": "npm install my-package",
+      "navigation": "index#installation"
+    }
+  },
+  {
+    "id": "index#quick-start-7",
+    "text": "Quick Start ​\n\nimport { myFunction } from 'my-package'\n\nconst result = myFunction('hello')\nconsole.log(result)",
+    "metadata": {
+      "title": "Quick Start ​",
+      "groupId": "index",
+      "type": "code",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​ > Quick Start ​",
+      "sanitizedText": "import { myFunction } from 'my-package' const result = myFunction('hello') console.log(result)",
+      "navigation": "index#quick-start"
+    }
+  },
+  {
+    "id": "index-8",
+    "text": "index\n\nGetting Started ​",
+    "metadata": {
+      "title": "index",
+      "groupId": "index",
+      "type": "header",
+      "groupTitle": "index",
+      "displayBreadcrumb": "index",
+      "sanitizedText": "Getting Started ​",
+      "navigation": "index"
+    }
+  },
+  {
+    "id": "index#getting-started-9",
+    "text": "Getting Started ​\n\nInstallation ​",
+    "metadata": {
+      "title": "Getting Started ​",
+      "groupId": "index",
+      "type": "header",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​",
+      "sanitizedText": "Installation ​",
+      "navigation": "index#getting-started"
+    }
+  },
+  {
+    "id": "index#installation-10",
+    "text": "Installation ​\n\nQuick Start ​",
+    "metadata": {
+      "title": "Installation ​",
+      "groupId": "index",
+      "type": "header",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​ > Installation ​",
+      "sanitizedText": "Quick Start ​",
+      "navigation": "index#installation"
+    }
+  },
+  {
+    "id": "index#quick-start-11",
+    "text": "Quick Start ​\n\nNext Steps ​",
+    "metadata": {
+      "title": "Quick Start ​",
+      "groupId": "index",
+      "type": "header",
+      "groupTitle": "index",
+      "displayBreadcrumb": "Getting Started ​ > Quick Start ​",
+      "sanitizedText": "Next Steps ​",
+      "navigation": "index#quick-start"
+    }
+  }
+]

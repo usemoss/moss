@@ -1,0 +1,86 @@
+name: Publish vercel-sdk
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-sdk-release
+  cancel-in-progress: false
+
+jobs:
+  determine-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Get version from package.json
+        id: compute
+        shell: bash
+        run: |
+          cd packages/vercel-sdk
+          VERSION=$(node -p "require('./package.json').version")
+
+          if [[ $VERSION =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            :
+          else
+            echo "Invalid version in package.json: $VERSION" >&2
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+  build-and-publish:
+    needs: determine-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # for tagging
+
+    env:
+      PKG_DIR: packages/vercel-sdk
+      VERSION: ${{ needs.determine-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
+          cache-dependency-path: ${{ env.PKG_DIR }}/package-lock.json
+
+      - name: Show version to be published
+        run: echo "Publishing version ${{ env.VERSION }}"
+
+      - name: Install dependencies
+        working-directory: ${{ env.PKG_DIR }}
+        run: npm ci
+
+      - name: Build package
+        working-directory: ${{ env.PKG_DIR }}
+        run: npm run build
+
+      - name: Publish to npm
+        working-directory: ${{ env.PKG_DIR }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: npm publish --access public
+
+      - name: Tag release
+        env:
+          VERSION: ${{ env.VERSION }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "vercel-sdk-v${VERSION}"
+          git push origin "vercel-sdk-v${VERSION}"
