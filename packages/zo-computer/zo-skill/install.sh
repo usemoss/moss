@@ -11,7 +11,7 @@ set -euo pipefail
 SKILL_DIR="/home/workspace/Skills/moss-search"
 MOSS_ENV="$HOME/.config/moss/zo.env"
 MCPORTER_CONFIG="$HOME/.mcporter/mcporter.json"
-REPO_URL="https://raw.githubusercontent.com/usemoss/moss/main/packages/zo-computer/zo-skill"
+REPO_URL="https://raw.githubusercontent.com/usemoss/moss/zo-computer-plugin/packages/zo-computer/zo-skill"
 
 # --- Args ---
 if [ $# -lt 2 ]; then
