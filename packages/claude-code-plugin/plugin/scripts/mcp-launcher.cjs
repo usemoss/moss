@@ -33,6 +33,25 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// plugin/scripts/_onnx-shim.cjs
+var require_onnx_shim = __commonJS({
+  "plugin/scripts/_onnx-shim.cjs"(exports2, module2) {
+    "use strict";
+    module2.exports = new Proxy({}, {
+      get(_2, prop) {
+        if (prop === "InferenceSession") {
+          return { create: () => {
+            throw new Error("onnxruntime-node not installed. loadIndex requires: npm i -g onnxruntime-node");
+          } };
+        }
+        return () => {
+          throw new Error("onnxruntime-node not installed");
+        };
+      }
+    });
+  }
+});
+
 // node_modules/sharp/lib/is.js
 var require_is = __commonJS({
   "node_modules/sharp/lib/is.js"(exports2, module2) {
@@ -20651,7 +20670,7 @@ var InferenceSession = class _InferenceSession {
 var InferenceSession2 = InferenceSession;
 
 // node_modules/@huggingface/transformers/dist/transformers.node.mjs
-var __WEBPACK_EXTERNAL_MODULE_onnxruntime_node_6a60201e__ = __toESM(require("onnxruntime-node"), 1);
+var __WEBPACK_EXTERNAL_MODULE_onnxruntime_node_6a60201e__ = __toESM(require_onnx_shim(), 1);
 var __WEBPACK_EXTERNAL_MODULE_sharp__ = __toESM(require_lib(), 1);
 var import_meta = {};
 var __webpack_modules__ = {

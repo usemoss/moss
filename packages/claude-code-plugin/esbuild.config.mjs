@@ -1,4 +1,21 @@
 import { build } from "esbuild";
+import * as fs from "node:fs";
+
+// Shim for onnxruntime-node: the @inferedge/moss SDK imports it at load time
+// but it has native .node/.dylib binaries that can't be bundled. This shim
+// lets the SDK load without crashing — cloud queries work fine, only loadIndex
+// (local inference) will fail gracefully if onnxruntime isn't installed.
+const onnxShimPath = "plugin/scripts/_onnx-shim.cjs";
+fs.writeFileSync(onnxShimPath, `
+module.exports = new Proxy({}, {
+  get(_, prop) {
+    if (prop === 'InferenceSession') {
+      return { create: () => { throw new Error('onnxruntime-node not installed. loadIndex requires: npm i -g onnxruntime-node'); } };
+    }
+    return () => { throw new Error('onnxruntime-node not installed'); };
+  }
+});
+`);
 
 const shared = {
   bundle: true,
@@ -10,16 +27,15 @@ const shared = {
 };
 
 await Promise.all([
-  // MCP launcher — bundle everything including @inferedge/moss.
-  // onnxruntime-node has .node binaries that can't be bundled; keep it external
-  // and copy the native bindings into the plugin output.
+  // MCP launcher — bundle @inferedge/moss + @moss-tools/mcp-server.
+  // onnxruntime-node is aliased to a shim so the SDK loads without native deps.
+  // Cloud queries work. loadIndex (local inference) requires onnxruntime-node installed separately.
   build({
     ...shared,
     entryPoints: ["src/mcp-launcher.ts"],
     outfile: "plugin/scripts/mcp-launcher.cjs",
     banner: { js: "#!/usr/bin/env node" },
-    external: ["onnxruntime-node"],
-    loader: { ".node": "copy" },
+    alias: { "onnxruntime-node": "./" + onnxShimPath },
   }),
 
   // SessionStart hook — no external deps
