@@ -1,7 +1,6 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { MossClient as MossSdkClient } from "@inferedge/moss";
 import { createMossMcpServer, MossClient } from "@moss-tools/mcp-server";
-import { registerPrompts } from "./mcp-prompts.js";
 import { registerExtraTools } from "./mcp-tools-extra.js";
 
 const projectId = process.env.MOSS_PROJECT_ID;
@@ -27,7 +26,6 @@ if (indexName) {
 }
 
 const server = createMossMcpServer(restClient, sdkClient);
-registerPrompts(server, { defaultIndex: indexName });
 registerExtraTools(server, { projectId, projectKey });
 
 const transport = new StdioServerTransport();

@@ -109,61 +109,17 @@ function dedup(state, docIds) {
 }
 
 // src/lib/trigger.ts
-var KNOWLEDGE_PATTERNS = [
-  /\bhow\s+does\b/i,
-  /\bwhere\s+is\b/i,
-  /\bwhy\s+does\b/i,
-  /\bwhy\s+is\b/i,
-  /\bwhat\s+is\s+the\b/i,
-  /\bexplain\b/i,
-  /\bwhat\s+does\b/i,
-  /\bhow\s+to\b/i
-];
-var SEARCH_PATTERNS = [
-  /\bfind\b/i,
-  /\bsearch\b/i,
-  /\blook\s*up\b/i,
-  /\bretrieve\b/i
-];
-var DEBUG_PATTERNS = [
-  /\bbroken\b/i,
-  /\bfailing\b/i,
-  /\berror\b/i,
-  /\bbug\b/i,
-  /\bcrash\b/i,
-  /\bexception\b/i,
-  /\bnot\s+working\b/i
-];
-var ARCHITECTURE_PATTERNS = [
-  /\barchitecture\b/i,
-  /\bdesign\b/i,
-  /\bpattern\b/i,
-  /\bimplementation\b/i,
-  /\bhow\s+.*\s+works?\b/i
-];
-var ALL_TRIGGER_PATTERNS = [
-  ...KNOWLEDGE_PATTERNS,
-  ...SEARCH_PATTERNS,
-  ...DEBUG_PATTERNS,
-  ...ARCHITECTURE_PATTERNS
-];
-var SKIP_PATTERNS = [
+var SKIP = [
   /^(change|rename|replace|update|set|move)\s/i,
   /^(write|create|implement|add|build|make)\s+(a\s+)?(function|class|method|component|test)/i,
   /^fix\s+(the\s+)?typo/i,
   /^(refactor|rewrite)\s+this/i
 ];
 function shouldTrigger(prompt) {
-  const trimmed = prompt.trim();
-  if (trimmed.length < 10 || trimmed.length > 500) return false;
-  for (const pattern of SKIP_PATTERNS) {
-    if (pattern.test(trimmed)) return false;
-  }
-  for (const pattern of ALL_TRIGGER_PATTERNS) {
-    if (pattern.test(trimmed)) return true;
-  }
-  if (trimmed.includes("?")) return true;
-  return false;
+  const t = prompt.trim();
+  if (t.length < 10) return false;
+  for (const r of SKIP) if (r.test(t)) return false;
+  return true;
 }
 
 // src/lib/moss-rest.ts
