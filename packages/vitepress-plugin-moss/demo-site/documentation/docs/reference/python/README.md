@@ -238,8 +238,8 @@ This package is licensed under the [PolyForm Shield License 1.0.0](./LICENSE.txt
 
 - ✅ Free for testing, evaluation, internal use, and modifications.
 - ❌ Not permitted for production or competing commercial use.
-- 📩 For commercial licenses, contact: <contact@usemoss.dev>
+- 📩 For commercial licenses, contact: <contact@moss.dev>
 
 ## 📬 Contact
 
-For support, commercial licensing, or partnership inquiries, contact us: [contact@usemoss.dev](mailto:contact@usemoss.dev)
+For support, commercial licensing, or partnership inquiries, contact us: [contact@moss.dev](mailto:contact@moss.dev)

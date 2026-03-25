@@ -111,4 +111,4 @@ results = await client.query("docs", "production search tips")
 
 ## 📬 Contact
 
-For queries, support, commercial licensing, or partnership inquiries, contact us: [contact@usemoss.dev](mailto:contact@usemoss.dev)
+For queries, support, commercial licensing, or partnership inquiries, contact us: [contact@moss.dev](mailto:contact@moss.dev)
