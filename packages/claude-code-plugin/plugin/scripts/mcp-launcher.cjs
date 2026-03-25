@@ -59979,12 +59979,6 @@ var restClient = new MossClient({
   projectKey: settings.projectKey
 });
 var sdkClient = new R(settings.projectId, settings.projectKey);
-if (settings.indexName) {
-  sdkClient.loadIndex(settings.indexName).catch((err) => {
-    process.stderr.write(`[moss] Index preload warning: ${err.message}
-`);
-  });
-}
 var server = createMossMcpServer(restClient, sdkClient);
 registerExtraTools(server, {
   projectId: settings.projectId,

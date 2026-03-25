@@ -21,14 +21,6 @@ const restClient = new MossClient({
 });
 const sdkClient = new MossSdkClient(settings.projectId, settings.projectKey);
 
-// Preload default index if configured (fire-and-forget).
-// Queries become local (~5ms) after preload completes; cloud (~100-500ms) until then.
-if (settings.indexName) {
-  sdkClient.loadIndex(settings.indexName).catch((err: Error) => {
-    process.stderr.write(`[moss] Index preload warning: ${err.message}\n`);
-  });
-}
-
 const server = createMossMcpServer(restClient, sdkClient);
 registerExtraTools(server, {
   projectId: settings.projectId,
