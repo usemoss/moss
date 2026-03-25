@@ -1,20 +1,31 @@
 import { build } from "esbuild";
 import * as fs from "node:fs";
 
-// Shim for onnxruntime-node: the @inferedge/moss SDK imports it at load time
-// but it has native .node/.dylib binaries that can't be bundled. This shim
-// lets the SDK load without crashing — cloud queries work fine, only loadIndex
-// (local inference) will fail gracefully if onnxruntime isn't installed.
-const onnxShimPath = "plugin/scripts/_onnx-shim.cjs";
-fs.writeFileSync(onnxShimPath, `
+// Shims for native modules that can't be bundled.
+// @inferedge/moss imports onnxruntime-node (ONNX inference) and sharp (image processing)
+// at load time. Both have native .node/.dylib binaries. These shims let the SDK
+// load without crashing — cloud queries work fine. Only loadIndex (local inference)
+// needs onnxruntime-node installed separately.
+const shimDir = "plugin/scripts";
+
+fs.writeFileSync(`${shimDir}/_onnx-shim.cjs`, `
 module.exports = new Proxy({}, {
   get(_, prop) {
     if (prop === 'InferenceSession') {
-      return { create: () => { throw new Error('onnxruntime-node not installed. loadIndex requires: npm i -g onnxruntime-node'); } };
+      return { create: () => { throw new Error('onnxruntime-node not installed. loadIndex requires: npm i onnxruntime-node'); } };
     }
     return () => { throw new Error('onnxruntime-node not installed'); };
   }
 });
+`);
+
+fs.writeFileSync(`${shimDir}/_sharp-shim.cjs`, `
+module.exports = function sharp() { throw new Error('sharp not available in bundled plugin'); };
+module.exports.cache = () => {};
+module.exports.concurrency = () => {};
+module.exports.counters = () => ({});
+module.exports.simd = () => false;
+module.exports.versions = {};
 `);
 
 const shared = {
@@ -35,7 +46,10 @@ await Promise.all([
     entryPoints: ["src/mcp-launcher.ts"],
     outfile: "plugin/scripts/mcp-launcher.cjs",
     banner: { js: "#!/usr/bin/env node" },
-    alias: { "onnxruntime-node": "./" + onnxShimPath },
+    alias: {
+      "onnxruntime-node": `./${shimDir}/_onnx-shim.cjs`,
+      "sharp": `./${shimDir}/_sharp-shim.cjs`,
+    },
   }),
 
   // SessionStart hook — no external deps
