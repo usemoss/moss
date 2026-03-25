@@ -48,15 +48,24 @@ function writeOutput(data) {
 // src/lib/settings.ts
 var fs = __toESM(require("node:fs"), 1);
 var path = __toESM(require("node:path"), 1);
+var os = __toESM(require("node:os"), 1);
+var SETTINGS_FILE = path.join(os.homedir(), ".moss-claude", "settings.json");
 function loadSettingsFile() {
-  const dataDir = process.env.CLAUDE_PLUGIN_DATA;
-  if (!dataDir) return {};
-  const settingsPath = path.join(dataDir, "settings.json");
   try {
-    if (fs.existsSync(settingsPath)) {
-      return JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+    if (fs.existsSync(SETTINGS_FILE)) {
+      return JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"));
     }
   } catch {
+  }
+  const dataDir = process.env.CLAUDE_PLUGIN_DATA;
+  if (dataDir) {
+    try {
+      const p = path.join(dataDir, "settings.json");
+      if (fs.existsSync(p)) {
+        return JSON.parse(fs.readFileSync(p, "utf-8"));
+      }
+    } catch {
+    }
   }
   return {};
 }

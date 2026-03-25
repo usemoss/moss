@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as os from "node:os";
 
 export interface MossSettings {
   projectId: string;
@@ -19,18 +20,27 @@ interface SettingsFile {
   scoreThreshold?: number;
 }
 
-function loadSettingsFile(): SettingsFile {
-  const dataDir = process.env.CLAUDE_PLUGIN_DATA;
-  if (!dataDir) return {};
+const SETTINGS_FILE = path.join(os.homedir(), ".moss-claude", "settings.json");
 
-  const settingsPath = path.join(dataDir, "settings.json");
+function loadSettingsFile(): SettingsFile {
+  // Try ~/.moss-claude/settings.json first
   try {
-    if (fs.existsSync(settingsPath)) {
-      return JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+    if (fs.existsSync(SETTINGS_FILE)) {
+      return JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"));
     }
-  } catch {
-    // Silently ignore malformed settings file
+  } catch { /* ignore */ }
+
+  // Fallback to CLAUDE_PLUGIN_DATA/settings.json
+  const dataDir = process.env.CLAUDE_PLUGIN_DATA;
+  if (dataDir) {
+    try {
+      const p = path.join(dataDir, "settings.json");
+      if (fs.existsSync(p)) {
+        return JSON.parse(fs.readFileSync(p, "utf-8"));
+      }
+    } catch { /* ignore */ }
   }
+
   return {};
 }
 

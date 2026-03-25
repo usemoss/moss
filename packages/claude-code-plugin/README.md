@@ -6,63 +6,74 @@ Moss semantic search plugin for Claude Code. Auto-injects relevant context from 
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - Node.js 18+
-- A Moss account with a project key — sign up at [moss.dev](https://moss.dev)
-
-## Setup
-
-1. Go to [moss.dev](https://moss.dev) and create an account
-2. Create a project and grab your **Project ID** and **Project Key**
-3. Create an index and add your documents (code, docs, runbooks, etc.)
+- A Moss account — sign up at [moss.dev](https://moss.dev)
 
 ## Installation
 
+### 1. Get your Moss credentials
+
+Go to [moss.dev](https://moss.dev), create a project, and grab your **Project ID** and **Project Key**. Create an index and add your documents.
+
+### 2. Configure credentials
+
 ```bash
-# 1. Clone just the plugin (not the entire Moss repo)
+mkdir -p ~/.moss-claude
+cat > ~/.moss-claude/settings.json << 'EOF'
+{
+  "projectId": "your-project-id",
+  "projectKey": "your-project-key",
+  "indexName": "your-index-name"
+}
+EOF
+```
+
+### 3. Install the plugin
+
+```bash
 git clone --filter=blob:none --sparse -b claude-code-plugin https://github.com/usemoss/moss.git claude-moss
 cd claude-moss
 git sparse-checkout set packages/claude-code-plugin
 cd packages/claude-code-plugin
-
-# 2. Install and build
 npm install && npm run build
-
-# 3. Add to Claude Code (run from packages/claude-code-plugin/)
-PLUGIN_DIR=$(pwd)
-
-claude mcp add \
-  -e MOSS_PROJECT_ID=your-project-id \
-  -e MOSS_PROJECT_KEY=your-project-key \
-  -e MOSS_INDEX_NAME=your-index-name \
-  -e NODE_PATH=$PLUGIN_DIR/node_modules \
-  -s user \
-  moss-search -- node $PLUGIN_DIR/plugin/scripts/mcp-launcher.cjs
+claude plugin install ./plugin
 ```
 
-This installs the MCP server (11 tools, index preload) permanently. For auto-search hooks and skills, also run:
+### 4. Start Claude Code
 
 ```bash
-claude --plugin-dir $PLUGIN_DIR/plugin
+claude
 ```
 
-> **Note:** `--plugin-dir` is per-session. To make it permanent, add it as a shell alias:
-> ```bash
-> alias claude='claude --plugin-dir /path/to/packages/claude-code-plugin/plugin'
-> ```
+Everything loads automatically — MCP tools, auto-search hooks, skills. No flags needed.
 
-## Environment Variables
+### Verify
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MOSS_PROJECT_ID` | Yes | From [moss.dev](https://moss.dev) dashboard |
-| `MOSS_PROJECT_KEY` | Yes | From [moss.dev](https://moss.dev) dashboard |
-| `MOSS_INDEX_NAME` | No | Default index for auto-search and preload |
-| `MOSS_AUTO_SEARCH` | No | `true` (default) or `false` to disable |
+```
+/moss-search test query
+```
+
+## Settings
+
+All settings go in `~/.moss-claude/settings.json`:
+
+```json
+{
+  "projectId": "your-project-id",
+  "projectKey": "your-project-key",
+  "indexName": "your-default-index",
+  "autoSearch": true,
+  "topK": 3,
+  "scoreThreshold": 0.3
+}
+```
+
+Environment variables (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `MOSS_INDEX_NAME`, `MOSS_AUTO_SEARCH`) override the settings file if set.
 
 ## What It Does
 
 ### Auto-Context Injection
 
-On every prompt, the plugin checks if it looks like a knowledge-seeking question. If so, it queries your Moss index and injects 1-3 relevant snippets as context before Claude responds. Pure edit commands ("rename this variable") are skipped.
+On every prompt, the plugin queries your Moss index and injects 1-3 relevant snippets as context before Claude responds. Pure edit commands ("rename this variable") are skipped.
 
 ### Conversation Capture
 
@@ -90,12 +101,12 @@ Claude can call these directly when needed:
 
 | Command | Description |
 |---------|-------------|
-| `/moss-search <query>` | Search indexes with query-angle hints for debugging, architecture, review, refactoring |
+| `/moss-search <query>` | Search indexes — adapts queries for debugging, architecture, review, refactoring |
 | `/moss-index [name]` | Incrementally sync codebase files into a Moss index |
 
 ### Index Preload
 
-If `MOSS_INDEX_NAME` is set, the MCP server preloads the index on startup. Queries start on cloud (~200ms) and become local (~5ms) after preload completes.
+If `indexName` is set, the MCP server preloads the index on startup for fast local queries.
 
 ## Architecture
 

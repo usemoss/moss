@@ -3226,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path2) {
-      let input = path2;
+    function removeDotSegments(path3) {
+      let input = path3;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3426,8 +3426,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path2, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path2 && path2 !== "/" ? path2 : void 0;
+        const [path3, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path3 && path3 !== "/" ? path3 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -6789,12 +6789,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs2, exportName) {
+    function addFormats(ajv, list, fs3, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs2[f]);
+        ajv.addFormat(f, fs3[f]);
     }
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -7095,10 +7095,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path2) {
-  if (!path2)
+function getElementAtPath(obj, path3) {
+  if (!path3)
     return obj;
-  return path2.reduce((acc, key) => acc?.[key], obj);
+  return path3.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7418,11 +7418,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path2, issues) {
+function prefixIssues(path3, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path2);
+    iss.path.unshift(path3);
     return iss;
   });
 }
@@ -13488,8 +13488,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path2, errorMaps, issueData } = params;
-  const fullPath = [...path2, ...issueData.path || []];
+  const { data, path: path3, errorMaps, issueData } = params;
+  const fullPath = [...path3, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -13605,11 +13605,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path2, key) {
+  constructor(parent, value, path3, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path2;
+    this._path = path3;
     this._key = key;
   }
   get path() {
@@ -21105,13 +21105,13 @@ var TOOL_DEFS = [
       modelId: external_exports.enum(["moss-minilm", "moss-mediumlm"]).default("moss-minilm").describe("Embedding model to use")
     },
     handler: async (args, { restClient: restClient2 }) => {
-      const { indexName: indexName2, docs, modelId } = args;
+      const { indexName, docs, modelId } = args;
       await restClient2.requestManage("createIndex", {
-        indexName: indexName2,
+        indexName,
         docs,
         modelId
       });
-      return { success: true, indexName: indexName2, docCount: docs.length };
+      return { success: true, indexName, docCount: docs.length };
     }
   },
   {
@@ -21123,8 +21123,8 @@ var TOOL_DEFS = [
       upsert: external_exports.boolean().default(true).describe("Update existing documents with the same ID")
     },
     handler: async (args, { restClient: restClient2 }) => {
-      const { indexName: indexName2, docs, upsert } = args;
-      return await restClient2.requestManage("addDocs", { indexName: indexName2, docs, options: { upsert } });
+      const { indexName, docs, upsert } = args;
+      return await restClient2.requestManage("addDocs", { indexName, docs, options: { upsert } });
     }
   },
   {
@@ -21135,9 +21135,9 @@ var TOOL_DEFS = [
       docIds: external_exports.array(external_exports.string()).describe("IDs of documents to delete")
     },
     handler: async (args, { restClient: restClient2 }) => {
-      const { indexName: indexName2, docIds } = args;
+      const { indexName, docIds } = args;
       return await restClient2.requestManage("deleteDocs", {
-        indexName: indexName2,
+        indexName,
         docIds
       });
     }
@@ -21149,8 +21149,8 @@ var TOOL_DEFS = [
       indexName: external_exports.string().describe("Index to load into memory")
     },
     handler: async (args, { sdkClient: sdkClient2 }) => {
-      const { indexName: indexName2 } = args;
-      const loaded = await sdkClient2.loadIndex(indexName2);
+      const { indexName } = args;
+      const loaded = await sdkClient2.loadIndex(indexName);
       return { success: true, indexName: loaded, mode: "local" };
     }
   },
@@ -21163,8 +21163,8 @@ var TOOL_DEFS = [
       topK: external_exports.number().int().positive().default(10).describe("Number of results to return")
     },
     handler: async (args, { sdkClient: sdkClient2 }) => {
-      const { indexName: indexName2, query, topK } = args;
-      return await sdkClient2.query(indexName2, query, { topK });
+      const { indexName, query, topK } = args;
+      return await sdkClient2.query(indexName, query, { topK });
     }
   },
   {
@@ -21182,8 +21182,8 @@ var TOOL_DEFS = [
       indexName: external_exports.string().describe("Index name to look up")
     },
     handler: async (args, { restClient: restClient2 }) => {
-      const { indexName: indexName2 } = args;
-      return await restClient2.requestManage("getIndex", { indexName: indexName2 });
+      const { indexName } = args;
+      return await restClient2.requestManage("getIndex", { indexName });
     }
   },
   {
@@ -21193,9 +21193,9 @@ var TOOL_DEFS = [
       indexName: external_exports.string().describe("Index to delete")
     },
     handler: async (args, { restClient: restClient2 }) => {
-      const { indexName: indexName2 } = args;
-      await restClient2.requestManage("deleteIndex", { indexName: indexName2 });
-      return { success: true, indexName: indexName2 };
+      const { indexName } = args;
+      await restClient2.requestManage("deleteIndex", { indexName });
+      return { success: true, indexName };
     }
   },
   {
@@ -21206,9 +21206,9 @@ var TOOL_DEFS = [
       docIds: external_exports.array(external_exports.string()).optional().describe("Specific document IDs to retrieve (omit for all)")
     },
     handler: async (args, { restClient: restClient2 }) => {
-      const { indexName: indexName2, docIds } = args;
+      const { indexName, docIds } = args;
       return await restClient2.requestManage("getDocs", {
-        indexName: indexName2,
+        indexName,
         options: docIds ? { docIds } : void 0
       });
     }
@@ -21286,10 +21286,10 @@ var MossClient = class {
   /**
    * POST /query — body auth: projectKey in JSON body (no header auth)
    */
-  async requestQuery(indexName2, query, topK) {
+  async requestQuery(indexName, query, topK) {
     const body = {
       query,
-      indexName: indexName2,
+      indexName,
       projectId: this.projectId,
       projectKey: this.projectKey,
       topK
@@ -21401,20 +21401,20 @@ var DEFAULT_EXTENSIONS = ["ts", "tsx", "js", "jsx", "py", "rs", "go", "java", "m
 var DEFAULT_IGNORE = ["node_modules", "dist", ".git", ".next", "__pycache__", "target", "build", ".venv"];
 var SKIP_FILES = ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", ".min.js", ".min.css", ".bundle.js"];
 var BATCH_SIZE = 100;
-function manifestPath(indexName2) {
+function manifestPath(indexName) {
   const dataDir = process.env.CLAUDE_PLUGIN_DATA || "/tmp/claude-moss";
-  return path.join(dataDir, "manifests", `${indexName2}.json`);
+  return path.join(dataDir, "manifests", `${indexName}.json`);
 }
-function loadManifest(indexName2) {
+function loadManifest(indexName) {
   try {
-    const p = manifestPath(indexName2);
+    const p = manifestPath(indexName);
     if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf-8"));
   } catch {
   }
   return {};
 }
-function saveManifest(indexName2, manifest) {
-  const p = manifestPath(indexName2);
+function saveManifest(indexName, manifest) {
+  const p = manifestPath(indexName);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
 }
@@ -21547,26 +21547,69 @@ function registerExtraTools(server2, clients) {
   );
 }
 
+// src/lib/settings.ts
+var fs2 = __toESM(require("node:fs"), 1);
+var path2 = __toESM(require("node:path"), 1);
+var os = __toESM(require("node:os"), 1);
+var SETTINGS_FILE = path2.join(os.homedir(), ".moss-claude", "settings.json");
+function loadSettingsFile() {
+  try {
+    if (fs2.existsSync(SETTINGS_FILE)) {
+      return JSON.parse(fs2.readFileSync(SETTINGS_FILE, "utf-8"));
+    }
+  } catch {
+  }
+  const dataDir = process.env.CLAUDE_PLUGIN_DATA;
+  if (dataDir) {
+    try {
+      const p = path2.join(dataDir, "settings.json");
+      if (fs2.existsSync(p)) {
+        return JSON.parse(fs2.readFileSync(p, "utf-8"));
+      }
+    } catch {
+    }
+  }
+  return {};
+}
+function loadSettings() {
+  const file = loadSettingsFile();
+  const projectId = process.env.MOSS_PROJECT_ID || file.projectId;
+  const projectKey = process.env.MOSS_PROJECT_KEY || file.projectKey;
+  if (!projectId || !projectKey) return null;
+  return {
+    projectId,
+    projectKey,
+    indexName: process.env.MOSS_INDEX_NAME || file.indexName,
+    autoSearch: process.env.MOSS_AUTO_SEARCH !== "false" && file.autoSearch !== false,
+    topK: file.topK ?? 3,
+    scoreThreshold: file.scoreThreshold ?? 0.3
+  };
+}
+
 // src/mcp-launcher.ts
-var projectId = process.env.MOSS_PROJECT_ID;
-var projectKey = process.env.MOSS_PROJECT_KEY;
-var indexName = process.env.MOSS_INDEX_NAME;
-if (!projectId || !projectKey) {
+var settings = loadSettings();
+if (!settings) {
   process.stderr.write(
-    "Error: MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables are required.\n"
+    "Error: Moss credentials not found.\nSet up ~/.moss-claude/settings.json with projectId and projectKey,\nor set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.\n"
   );
   process.exit(1);
 }
-var restClient = new MossClient({ projectId, projectKey });
-var sdkClient = new import_moss.MossClient(projectId, projectKey);
-if (indexName) {
-  sdkClient.loadIndex(indexName).catch((err) => {
+var restClient = new MossClient({
+  projectId: settings.projectId,
+  projectKey: settings.projectKey
+});
+var sdkClient = new import_moss.MossClient(settings.projectId, settings.projectKey);
+if (settings.indexName) {
+  sdkClient.loadIndex(settings.indexName).catch((err) => {
     process.stderr.write(`[moss] Index preload warning: ${err.message}
 `);
   });
 }
 var server = createMossMcpServer(restClient, sdkClient);
-registerExtraTools(server, { projectId, projectKey });
+registerExtraTools(server, {
+  projectId: settings.projectId,
+  projectKey: settings.projectKey
+});
 var transport = new StdioServerTransport();
 server.connect(transport).catch((err) => {
   process.stderr.write(
