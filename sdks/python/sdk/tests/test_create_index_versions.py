@@ -105,11 +105,11 @@ async def test_create_index_versions_bench():
         if result.success:
             print(f"✅ {result.time_ms:.1f}ms", flush=True)
         else:
-            print(f"❌ failed", flush=True)
+            print("❌ failed", flush=True)
     
     # Print table
     print("\n" + "=" * 110)
-    print(f" CREATE_INDEX BENCHMARK")
+    print(" CREATE_INDEX BENCHMARK")
     print("=" * 110)
     print(f"{'sdk_version':<16} | {'docs':>6} | {'time_taken':>14} | {'status':<15} | notes")
     print("-" * 110)

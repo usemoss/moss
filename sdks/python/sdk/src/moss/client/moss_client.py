@@ -7,9 +7,6 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 import httpx
-
-logger = logging.getLogger(__name__)
-
 from moss_core import (
     CLOUD_API_MANAGE_URL,
     ManageClient,
@@ -24,6 +21,8 @@ from moss_core import (
     QueryResultDocumentInfo,
     SearchResult,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _get_manage_url() -> str:
