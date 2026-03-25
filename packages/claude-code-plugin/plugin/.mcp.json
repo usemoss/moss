@@ -3,10 +3,7 @@
     "moss-search": {
       "type": "stdio",
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp-launcher.cjs"],
-      "env": {
-        "NODE_PATH": "${CLAUDE_PLUGIN_ROOT}/../node_modules"
-      }
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp-launcher.cjs"]
     }
   }
 }

@@ -10,14 +10,16 @@ const shared = {
 };
 
 await Promise.all([
-  // MCP launcher — @inferedge/moss has native ONNX bindings that can't be bundled.
-  // Mark it and its transitive native deps as external; they resolve from node_modules/ at runtime.
+  // MCP launcher — bundle everything including @inferedge/moss.
+  // onnxruntime-node has .node binaries that can't be bundled; keep it external
+  // and copy the native bindings into the plugin output.
   build({
     ...shared,
     entryPoints: ["src/mcp-launcher.ts"],
     outfile: "plugin/scripts/mcp-launcher.cjs",
     banner: { js: "#!/usr/bin/env node" },
-    external: ["@inferedge/moss", "onnxruntime-node"],
+    external: ["onnxruntime-node"],
+    loader: { ".node": "copy" },
   }),
 
   // SessionStart hook — no external deps
