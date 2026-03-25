@@ -17,31 +17,37 @@ Moss semantic search plugin for Claude Code. Auto-injects relevant context from 
 ## Installation
 
 ```bash
-git clone https://github.com/usemoss/moss.git --filter=blob:none --sparse
-cd moss
+# 1. Clone just the plugin (not the entire Moss repo)
+git clone --filter=blob:none --sparse -b claude-code-plugin https://github.com/usemoss/moss.git claude-moss
+cd claude-moss
 git sparse-checkout set packages/claude-code-plugin
 cd packages/claude-code-plugin
-npm install
-npm run build
-```
 
-Then add the MCP server to Claude Code:
+# 2. Install and build
+npm install && npm run build
 
-```bash
+# 3. Add to Claude Code (run from packages/claude-code-plugin/)
+PLUGIN_DIR=$(pwd)
+
 claude mcp add \
   -e MOSS_PROJECT_ID=your-project-id \
   -e MOSS_PROJECT_KEY=your-project-key \
   -e MOSS_INDEX_NAME=your-index-name \
-  -e NODE_PATH=$(pwd)/node_modules \
+  -e NODE_PATH=$PLUGIN_DIR/node_modules \
   -s user \
-  moss-search -- node $(pwd)/plugin/scripts/mcp-launcher.cjs
+  moss-search -- node $PLUGIN_DIR/plugin/scripts/mcp-launcher.cjs
 ```
 
-To also enable auto-search hooks and skills, start sessions with:
+This installs the MCP server (11 tools, index preload) permanently. For auto-search hooks and skills, also run:
 
 ```bash
-claude --plugin-dir /path/to/packages/claude-code-plugin/plugin
+claude --plugin-dir $PLUGIN_DIR/plugin
 ```
+
+> **Note:** `--plugin-dir` is per-session. To make it permanent, add it as a shell alias:
+> ```bash
+> alias claude='claude --plugin-dir /path/to/packages/claude-code-plugin/plugin'
+> ```
 
 ## Environment Variables
 
