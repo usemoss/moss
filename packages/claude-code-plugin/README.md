@@ -29,27 +29,19 @@ EOF
 
 ### 3. Install the plugin
 
-```bash
-git clone --filter=blob:none --sparse -b claude-code-plugin https://github.com/usemoss/moss.git claude-moss
-cd claude-moss
-git sparse-checkout set packages/claude-code-plugin
-cd packages/claude-code-plugin
-npm install && npm run build
-claude plugin install ./plugin
+In Claude Code, run:
+
+```
+/plugin marketplace add usemoss/moss
+/plugin install claude-moss@moss
 ```
 
-### 4. Start Claude Code
-
-```bash
-claude
-```
-
-Everything loads automatically — MCP tools, auto-search hooks, skills. No flags needed.
+That's it. Restart Claude Code and everything loads automatically — MCP tools, auto-search hooks, and skills.
 
 ### Verify
 
 ```
-/moss-search test query
+/claude-moss:moss-search test query
 ```
 
 ## Settings

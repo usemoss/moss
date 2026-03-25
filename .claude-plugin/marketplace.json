@@ -1,0 +1,16 @@
+{
+  "name": "moss",
+  "description": "Moss semantic search plugins for Claude Code",
+  "owner": {
+    "name": "InferEdge Inc.",
+    "url": "https://moss.dev"
+  },
+  "plugins": [
+    {
+      "name": "claude-moss",
+      "source": "./packages/claude-code-plugin/plugin",
+      "description": "Auto-context injection, MCP tools, and skills for Moss semantic search",
+      "version": "0.1.0"
+    }
+  ]
+}
