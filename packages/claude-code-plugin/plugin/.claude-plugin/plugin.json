@@ -1,0 +1,12 @@
+{
+  "name": "claude-moss",
+  "version": "0.1.0",
+  "description": "Moss semantic search for Claude Code — auto context injection, MCP tools, and workflow prompts",
+  "author": {
+    "name": "InferEdge Inc.",
+    "url": "https://moss.dev"
+  },
+  "repository": "https://github.com/usemoss/moss",
+  "license": "BSD-2-Clause",
+  "keywords": ["moss", "semantic-search", "mcp", "claude-code"]
+}

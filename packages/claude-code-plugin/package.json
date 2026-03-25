@@ -1,0 +1,25 @@
+{
+  "name": "@moss-tools/claude-code-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Moss semantic search plugin for Claude Code",
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@moss-tools/mcp-server": "^1.0.0-beta.1",
+    "@inferedge/moss": "^1.0.0-beta.7",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
