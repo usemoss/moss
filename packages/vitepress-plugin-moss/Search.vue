@@ -30,6 +30,7 @@ interface ResultItemVM {
   titleHtml?: string
   navigation: string
   type: 'page' | 'header' | 'text' | 'code'
+  isSynthesized?: boolean
 }
 
 // --------- UI View Model for each group of search hits ---------
@@ -251,6 +252,24 @@ function updateDisplayGroups() {
     else { if (group.children.length < maxMatchPerPage.value) { group.children.push(vm); used.add(navigation) } }
   })
 
+  // Ensure every group has a page-level anchor even if no type=page chunk was returned
+  for (const group of map.values()) {
+    if (!group.headerMatch && group.children.length > 0) {
+      group.headerMatch = {
+        id: group.path,
+        data: null as any,
+        flatIndex: 0,
+        htmlSnippet: '',
+        breadcrumb: '',
+        breadcrumbHtml: '',
+        titleHtml: highlightBreadcrumb(group.title),
+        navigation: group.path,
+        type: 'page',
+        isSynthesized: true
+      }
+    }
+  }
+
   let idx = 0
   const groups = Array.from(map.values())
   const navList: Array<{ path: string }> = []
@@ -430,19 +449,24 @@ onBeforeUnmount(() => { isLocked.value = false; deactivate(); clearSpinnerTimers
               <div
                 v-if="group.headerMatch"
                 class="Moss-Item Moss-PageHeader"
+                :class="{ 'Moss-PageHeader--synthesized': group.headerMatch.isSynthesized }"
                 :aria-selected="selectedIndex === group.headerMatch.flatIndex"
                 @click="handleSelect(group.headerMatch.flatIndex)"
                 @mouseenter="selectedIndex = group.headerMatch.flatIndex"
               >
                 <div class="Moss-IconContainer">
-                  <span v-html="getTypeIcon(group.headerMatch?.type || 'page')"></span>
+                  <span v-html="getTypeIcon('page')"></span>
                 </div>
                 <div class="Moss-Content">
                   <div class="Moss-Title" v-html="group.headerMatch?.titleHtml || group.title"></div>
                 </div>
+                <div class="Moss-PageMeta">
+                  <span v-if="!group.headerMatch.isSynthesized" class="Moss-PageBadge">Page</span>
+                  <span v-if="group.children.length > 0" class="Moss-ChildCount">{{ group.children.length }} result{{ group.children.length > 1 ? 's' : '' }}</span>
+                </div>
               </div>
 
-              <div v-if="group.children.length > 0" class="Moss-Children">
+              <div v-if="group.children.length > 0" class="Moss-Children" :class="{ 'Moss-Children--connected': group.headerMatch }">
                 <div
                   v-for="child in group.children"
                   :key="child.id"
@@ -535,10 +559,20 @@ onBeforeUnmount(() => { isLocked.value = false; deactivate(); clearSpinnerTimers
 .Moss-PageHeader { background: transparent; border-bottom: none; }
 .Moss-PageHeader .Moss-Title { font-weight: 600; font-size: 0.85rem; color: var(--moss-text-primary); }
 .Moss-PageHeader .Moss-IconContainer { color: var(--moss-text-primary); }
+.Moss-PageHeader--synthesized { opacity: 0.75; }
+.Moss-PageHeader--synthesized .Moss-Title { font-weight: 500; }
+.Moss-PageMeta { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+.Moss-PageBadge { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--moss-primary); background: color-mix(in srgb, var(--moss-primary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--moss-primary) 30%, transparent); border-radius: 4px; padding: 1px 5px; }
+.Moss-ChildCount { font-size: 0.72rem; color: var(--moss-text-muted); white-space: nowrap; }
+.Moss-Item[aria-selected="true"] .Moss-PageMeta * { color: rgba(255,255,255,0.85) !important; background: rgba(255,255,255,0.15) !important; border-color: rgba(255,255,255,0.3) !important; }
 
 /* Children */
 .Moss-Children { padding: 0; background: transparent; }
+.Moss-Children--connected { border-left: 2px solid var(--moss-border); margin-left: 20px; border-radius: 0 0 0 6px; padding-bottom: 4px; }
 .Moss-ChildItem { position: relative; padding-top: 6px; padding-bottom: 6px; }
+.Moss-Children--connected .Moss-ChildItem { padding-left: 28px; }
+.Moss-Children--connected .Moss-ChildItem::before { content: ''; position: absolute; left: 0; top: 50%; width: 22px; height: 2px; background: var(--moss-border); transform: translateY(-50%); }
+.Moss-Children--connected .Moss-ChildItem:last-child::after { content: ''; position: absolute; left: -2px; top: 50%; bottom: 0; width: 2px; background: var(--moss-bg-soft); }
 .Moss-Item--header .Moss-IconContainer { color: var(--moss-primary); }
 .Moss-Item--code .Moss-IconContainer { color: #e06c75; }
 .Moss-Item--text .Moss-IconContainer { color: var(--moss-text-muted); }

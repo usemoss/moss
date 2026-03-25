@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "jsx": "preserve",
     "lib": ["ESNext", "DOM"],
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
   "include": ["*.ts", "*.vue", "env.d.ts"]
 }
