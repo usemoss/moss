@@ -1,104 +1,78 @@
 # claude-moss
 
-Moss semantic search plugin for Claude Code. Turns your Moss indexes into persistent project memory — auto-injecting relevant context on every prompt, providing MCP tools for explicit retrieval, and surfacing workflow prompts as slash commands.
-
-## What it does
-
-- **Auto context injection** — On knowledge-seeking prompts ("how does X work?", "why is this broken?"), the plugin queries your Moss index and injects relevant chunks before Claude responds.
-- **10 MCP tools** — Full Moss index and document management via `@moss-tools/mcp-server`.
-- **4 workflow prompts** — `/mcp__moss__investigate_bug`, `/mcp__moss__understand_system`, `/mcp__moss__plan_refactor`, `/mcp__moss__review_with_context`.
-- **Index preload** — If `MOSS_INDEX_NAME` is set, the default index is preloaded on startup for sub-10ms queries.
+Moss semantic search plugin for Claude Code. Auto-injects relevant context from your Moss indexes on every prompt, captures conversations as searchable memory, and provides tools for index management.
 
 ## Prerequisites
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [Moss](https://moss.dev) project credentials (free tier available)
 - Node.js 18+
+- A Moss account with a project key — sign up at [moss.dev](https://moss.dev)
+
+## Setup
+
+1. Go to [moss.dev](https://moss.dev) and create an account
+2. Create a project and grab your **Project ID** and **Project Key**
+3. Create an index and add your documents (code, docs, runbooks, etc.)
 
 ## Installation
 
 ```bash
-# Clone and build
-git clone https://github.com/usemoss/moss.git
-cd moss/packages/claude-code-plugin
+git clone https://github.com/usemoss/moss.git --filter=blob:none --sparse
+cd moss
+git sparse-checkout set packages/claude-code-plugin
+cd packages/claude-code-plugin
 npm install
 npm run build
-
-# Install in Claude Code
-claude plugin add /absolute/path/to/packages/claude-code-plugin/plugin
 ```
 
-## Configuration
+Then add the MCP server to Claude Code:
 
-### Environment variables
+```bash
+claude mcp add \
+  -e MOSS_PROJECT_ID=your-project-id \
+  -e MOSS_PROJECT_KEY=your-project-key \
+  -e MOSS_INDEX_NAME=your-index-name \
+  -e NODE_PATH=$(pwd)/node_modules \
+  -s user \
+  moss-search -- node $(pwd)/plugin/scripts/mcp-launcher.cjs
+```
+
+To also enable auto-search hooks and skills, start sessions with:
+
+```bash
+claude --plugin-dir /path/to/packages/claude-code-plugin/plugin
+```
+
+## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `MOSS_PROJECT_ID` | Yes | Your Moss project ID (from [moss.dev](https://moss.dev)) |
-| `MOSS_PROJECT_KEY` | Yes | Your Moss project key |
+| `MOSS_PROJECT_ID` | Yes | From [moss.dev](https://moss.dev) dashboard |
+| `MOSS_PROJECT_KEY` | Yes | From [moss.dev](https://moss.dev) dashboard |
 | `MOSS_INDEX_NAME` | No | Default index for auto-search and preload |
-| `MOSS_AUTO_SEARCH` | No | `true` (default) or `false` to disable auto-context injection |
+| `MOSS_AUTO_SEARCH` | No | `true` (default) or `false` to disable |
 
-### Settings file (alternative)
+## What It Does
 
-Create `${CLAUDE_PLUGIN_DATA}/settings.json`:
+### Auto-Context Injection
 
-```json
-{
-  "projectId": "your-project-id",
-  "projectKey": "your-project-key",
-  "indexName": "your-default-index",
-  "autoSearch": true,
-  "topK": 3,
-  "scoreThreshold": 0.3
-}
-```
+On every prompt, the plugin checks if it looks like a knowledge-seeking question. If so, it queries your Moss index and injects 1-3 relevant snippets as context before Claude responds. Pure edit commands ("rename this variable") are skipped.
 
-Environment variables take precedence over the settings file.
+### Conversation Capture
 
-## Use cases
+After Claude finishes responding, the plugin captures the conversation and stores it in your Moss index. Your knowledge base grows automatically over time.
 
-### V1 — Built-in
+### MCP Tools (11)
 
-- **Repo memory** — "How does authentication work here?" auto-retrieves relevant code and docs.
-- **Debugging** — "Why does the payment endpoint return 500?" searches for related errors, fixes, runbooks.
-- **Architecture** — "Explain the caching strategy" finds indexed design docs and ADRs.
-- **Explicit search** — Claude uses MCP tools when deeper or targeted retrieval is needed.
-
-### V2 — Enabled by the same mechanism
-
-- **Refactor planning** — Search for similar patterns, prior migrations, blast radius.
-- **PR/review prep** — Find invariants, similar codepaths, known caveats.
-- **Onboarding** — Answer "how does billing work in this repo?" from indexed code + docs.
-- **Cross-repo memory** — Index multiple repos for platform-wide questions.
-
-## Auto-search behavior
-
-The UserPromptSubmit hook is **selective, not always-on**. It triggers on:
-
-- Knowledge-seeking: "how does", "where is", "why does", "explain"
-- Search intent: "find", "search", "look up"
-- Debugging: "broken", "failing", "error", "bug", "crash"
-- Architecture: "architecture", "design", "implementation"
-- Questions (prompts containing `?`)
-
-It skips:
-
-- Pure editing: "rename this variable", "change X to Y"
-- Generic coding: "write a function that", "create a class"
-- Obvious local tasks: "fix the typo on line 42"
-- Very short (<10 chars) or very long (>500 chars) prompts
-
-## MCP tools
-
-Provided by `@moss-tools/mcp-server`:
+Claude can call these directly when needed:
 
 | Tool | Description |
 |------|-------------|
 | `query` | Semantic search over an index |
-| `load_index` | Download index into memory for ~5ms local queries |
+| `load_index` | Load index into memory for ~5ms queries |
+| `sync_project` | Hash-based incremental codebase indexing |
 | `list_indexes` | List all project indexes |
-| `create_index` | Create a new index with documents |
+| `create_index` | Create a new index |
 | `add_docs` | Add documents to an index |
 | `delete_docs` | Delete documents by ID |
 | `get_index` | Get index metadata |
@@ -106,70 +80,32 @@ Provided by `@moss-tools/mcp-server`:
 | `delete_index` | Delete an index |
 | `get_job_status` | Check async job status |
 
-## MCP prompts (slash commands)
+### Skills
 
 | Command | Description |
 |---------|-------------|
-| `/mcp__moss__investigate_bug` | Debug errors by searching for related runbooks, fixes, docs |
-| `/mcp__moss__understand_system` | Map architecture: modules, docs, entrypoints |
-| `/mcp__moss__plan_refactor` | Find patterns, migrations, blast radius |
-| `/mcp__moss__review_with_context` | Retrieve invariants, caveats for code review |
+| `/moss-search <query>` | Search indexes with query-angle hints for debugging, architecture, review, refactoring |
+| `/moss-index [name]` | Incrementally sync codebase files into a Moss index |
 
-## Indexing strategy
+### Index Preload
 
-### What to index
-
-- **Code chunks** — with file path + line range metadata
-- **Docs / ADRs / runbooks** — with title + section metadata
-- **API docs** — generated reference documentation
-- **Optionally** — issue templates, postmortems, migration notes
-
-### Recommended layout
-
-| Index | Contents |
-|-------|----------|
-| `codebase` | Local repo code chunks |
-| `docs` | Markdown docs, ADRs, runbooks |
-| `platform` | Cross-repo knowledge, internal docs |
-
-Set `MOSS_INDEX_NAME` to the most commonly useful one. Use MCP tools to search others explicitly.
-
-### Creating an index
-
-Use the MCP tools or the Moss SDK directly:
-
-```bash
-# Via MCP (in Claude Code)
-# Ask Claude: "Create a Moss index called 'docs' with these documents..."
-
-# Via SDK
-npx tsx -e "
-import { MossClient } from '@inferedge/moss';
-const client = new MossClient('your-id', 'your-key');
-await client.createIndex('docs', [
-  { id: 'readme', text: '...' },
-  { id: 'architecture', text: '...' },
-]);
-"
-```
+If `MOSS_INDEX_NAME` is set, the MCP server preloads the index on startup. Queries start on cloud (~200ms) and become local (~5ms) after preload completes.
 
 ## Architecture
 
 ```
 Claude Code
-  |-- MCP (stdio) --> mcp-launcher.cjs
-  |                     imports @moss-tools/mcp-server (10 tools)
-  |                     registers 4 MCP prompts
-  |                     preloads MOSS_INDEX_NAME on startup
-  |
-  |-- SessionStart --> session-init.cjs
-  |                     prints status line, exits 0
-  |
-  +-- UserPromptSubmit --> auto-search.cjs
-                            selective trigger heuristic
-                            direct cloud fetch to Moss /query
-                            bounded dedup (last 50 doc IDs)
-                            injects additionalContext
+  ├── MCP server (moss-search)
+  │     11 tools + index preload
+  │
+  ├── SessionStart hook
+  │     prints status line
+  │
+  ├── UserPromptSubmit hook
+  │     auto-search → inject context
+  │
+  └── Stop hook
+        capture conversations → Moss
 ```
 
 ## Development
@@ -177,8 +113,8 @@ Claude Code
 ```bash
 cd packages/claude-code-plugin
 npm install
-npm run build      # esbuild: src/ -> plugin/scripts/*.cjs
-npm run typecheck   # tsc --noEmit
+npm run build
+npm run typecheck
 ```
 
 ## License
