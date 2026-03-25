@@ -234,12 +234,4 @@ Pass `QueryOptions` to reuse your own embeddings or to override `top_k` on a per
 
 ## 📄 License
 
-This package is licensed under the [PolyForm Shield License 1.0.0](./LICENSE.txt).
-
-- ✅ Free for testing, evaluation, internal use, and modifications.
-- ❌ Not permitted for production or competing commercial use.
-- 📩 For commercial licenses, contact: <contact@moss.dev>
-
-## 📬 Contact
-
-For support, commercial licensing, or partnership inquiries, contact us: [contact@moss.dev](mailto:contact@moss.dev)
+[BSD 2-Clause License](https://github.com/usemoss/moss/blob/main/sdks/python/sdk/LICENSE)
