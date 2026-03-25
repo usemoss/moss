@@ -54,7 +54,7 @@ class DatasetCache:
 def load_corpus(path: Path) -> List[DocumentInfo]:
     """Loads the entire mini-corpus into memory at once."""
     if not path.exists():
-        sys.exit(f"❌ File not found: {path}")
+        pytest.skip(f"File not found: {path}")
         
     print(f"Loading docs from {path.name}...")
     docs = []
@@ -76,7 +76,7 @@ def load_corpus(path: Path) -> List[DocumentInfo]:
 def load_qrels(path: Path) -> Dict[str, Dict[str, float]]:
     """Loads relevance (Query ID -> Doc ID -> Score)."""
     if not path.exists():
-        sys.exit(f"❌ Qrels file not found: {path}")
+        pytest.skip(f"Qrels file not found: {path}")
 
     # Cache file path
     cache_path = path.parent / f"{path.stem}_cache.json"
@@ -210,7 +210,7 @@ async def run_scenario(client: MossClient, config: ExperimentConfig, queries: Di
         mrr=mrr_sum / count,
         ndcg=ndcg_sum / count,
         avg_latency_ms=statistics.mean(latencies),
-        p95_latency_ms=(statistics.quantiles(latencies, n=100)[94] if len(latencies) >= 1 else float('nan'))
+        p95_latency_ms=(sorted(latencies)[int(len(latencies) * 0.95)] if len(latencies) >= 2 else float('nan'))
     )
 
 async def main():

@@ -34,13 +34,13 @@ pip install moss
 ```
 
 ```python
-from moss import MossClient, QueryOptions
+from moss import MossClient, DocumentInfo, QueryOptions
 
 client = MossClient("your_project_id", "your_project_key")
 
 await client.create_index("support-docs", [
-    {"id": "1", "text": "Refunds are processed within 3-5 business days."},
-    {"id": "2", "text": "You can track your order on the dashboard."},
+    DocumentInfo(id="1", text="Refunds are processed within 3-5 business days."),
+    DocumentInfo(id="2", text="You can track your order on the dashboard."),
 ])
 
 await client.load_index("support-docs")

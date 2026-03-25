@@ -171,13 +171,16 @@ You can pass a metadata filter directly to `query()` after loading an index loca
 results = await client.query(
     "my-docs",
     "running shoes",
-    QueryOptions(top_k=5, alpha=0.6),
-    filter={
-        "$and": [
-            {"field": "category", "condition": {"$eq": "shoes"}},
-            {"field": "price", "condition": {"$lt": "100"}},
-        ]
-    },
+    QueryOptions(
+        top_k=5,
+        alpha=0.6,
+        filter={
+            "$and": [
+                {"field": "category", "condition": {"$eq": "shoes"}},
+                {"field": "price", "condition": {"$lt": "100"}},
+            ]
+        },
+    ),
 )
 ```
 
