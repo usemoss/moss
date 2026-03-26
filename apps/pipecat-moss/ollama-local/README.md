@@ -114,7 +114,11 @@ The default transport is local WebRTC (no API key needed). To use Daily instead:
 
 ## GPU Acceleration
 
-For faster inference with an NVIDIA GPU, uncomment the GPU section in `docker-compose.yml`:
+Ollama automatically detects and uses available GPU hardware. No configuration needed when running natively — just install Ollama and it uses your GPU.
+
+### NVIDIA (CUDA)
+
+When using Docker, uncomment the GPU section in `docker-compose.yml`:
 
 ```yaml
 deploy:
@@ -126,10 +130,36 @@ deploy:
           capabilities: [gpu]
 ```
 
+Requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+
+### AMD (ROCm)
+
+Ollama supports AMD GPUs via ROCm. When running natively, it auto-detects. For Docker:
+
+```bash
+docker run -d --device /dev/kfd --device /dev/dri -p 11434:11434 ollama/ollama:rocm
+```
+
+### Apple Silicon (Metal)
+
+Runs natively with Metal acceleration — no Docker needed. Install Ollama directly:
+
+```bash
+brew install --cask ollama
+```
+
+### CPU-Only Fallback
+
+No GPU? Use a smaller model for faster responses:
+
+```ini
+OLLAMA_MODEL=llama3.2:1b
+```
+
 ## Troubleshooting
 
 - **Bot fails to start:** Check `docker compose logs ollama-init` to see if the model pull succeeded.
-- **Slow responses:** Running on CPU is functional but slower. Use a smaller model (`OLLAMA_MODEL=llama3.2:1b`) or enable GPU passthrough.
+- **Slow responses:** Enable GPU acceleration (see above) or use a smaller model (`OLLAMA_MODEL=llama3.2:1b`).
 - **Model not found:** The `ollama-init` service auto-pulls on first run. If it failed, run `docker compose exec ollama ollama pull llama3.2` manually.
 - **Browser permissions:** Allow microphone access when prompted.
 - **Connection issues:** Try a different browser or check VPN/firewall settings.
