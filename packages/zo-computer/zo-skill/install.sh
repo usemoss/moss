@@ -46,8 +46,8 @@ chmod +x "$SKILL_DIR/scripts/moss.sh"
 echo "Saving credentials..."
 mkdir -p "$(dirname "$MOSS_ENV")"
 cat > "$MOSS_ENV" <<EOF
-MOSS_PROJECT_ID=${PROJECT_ID}
-MOSS_PROJECT_KEY=${PROJECT_KEY}
+MOSS_PROJECT_ID='${PROJECT_ID}'
+MOSS_PROJECT_KEY='${PROJECT_KEY}'
 EOF
 chmod 600 "$MOSS_ENV"
 
