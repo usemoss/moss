@@ -36,9 +36,9 @@ In Claude Code, run:
 /plugin install claude-moss@moss
 ```
 
-### 4. (Optional) Enable local query server
+### 4. Install the local query server runtime
 
-The plugin includes a local query server that loads your index into memory and serves queries over a Unix socket for sub-millisecond latency. It requires `onnxruntime-node` (a native dependency that can't be bundled).
+The plugin runs a local query server that loads your index into memory and serves queries over a Unix socket in <10ms. It requires `onnxruntime-node` (a native dependency that can't be bundled).
 
 Install it in the plugin source directory:
 
@@ -53,9 +53,7 @@ Or install globally:
 npm install -g onnxruntime-node
 ```
 
-The local server starts automatically on session start when `indexName` is set. If `onnxruntime-node` is not found, it exits gracefully and auto-search falls back silently — no action needed.
-
-To disable the local server explicitly, add `"localServer": false` to your settings.
+The local server starts automatically on session start when `indexName` is set. Without `onnxruntime-node`, the server won't start and auto-search will not work.
 
 ### 5. Restart Claude Code
 
@@ -108,7 +106,7 @@ Environment variables (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `MOSS_INDEX_NAME`,
 
 On every prompt, the plugin queries your Moss index and injects 1-3 relevant snippets as context before Claude responds. Pure edit commands ("rename this variable") are skipped.
 
-When the local query server is running, queries resolve in ~1-4ms over a Unix socket. Otherwise, queries go to the Moss cloud API.
+Queries run locally over a Unix socket in <10ms.
 
 ### Local Query Server
 
@@ -117,7 +115,7 @@ A background Node.js process that:
 1. Starts automatically on `SessionStart` as a detached child process
 2. Loads the configured index into memory via the Moss SDK (`loadIndex`)
 3. Listens on `/tmp/moss-claude/query.sock` for query requests
-4. Serves queries in ~1-4ms using local inference (onnxruntime-node)
+4. Serves queries in <10ms using local inference (onnxruntime-node)
 5. Survives across hook invocations and is shared between concurrent sessions
 
 The server requires `onnxruntime-node` installed separately. First run downloads the embedding model and index data (~15-30s), subsequent starts use the cached copy.
@@ -171,7 +169,7 @@ Claude Code
   └── Local Query Server (background process)
         /tmp/moss-claude/query.sock
         loads index via SDK + onnxruntime-node
-        serves queries ~1-4ms
+        serves queries <10ms
 ```
 
 ## Development
