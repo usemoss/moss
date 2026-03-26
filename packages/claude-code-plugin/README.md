@@ -14,7 +14,7 @@ Moss semantic search plugin for Claude Code. Auto-injects relevant context from 
 
 Go to [moss.dev](https://moss.dev), create a project, and grab your **Project ID** and **Project Key**. Create an index and add your documents.
 
-### 2. Configure credentials
+### 2. Configure settings
 
 ```bash
 mkdir -p ~/.moss-claude
@@ -22,10 +22,26 @@ cat > ~/.moss-claude/settings.json << 'EOF'
 {
   "projectId": "your-project-id",
   "projectKey": "your-project-key",
-  "indexName": "your-index-name"
+  "indexName": "your-index-name",
+  "autoSearch": true,
+  "localServer": true,
+  "topK": 3,
+  "scoreThreshold": 0.3
 }
 EOF
 ```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `projectId` | — | Moss project ID (required) |
+| `projectKey` | — | Moss project key (required) |
+| `indexName` | — | Default index for auto-search and local server |
+| `autoSearch` | `true` | Inject relevant context on every prompt |
+| `localServer` | `true` | Start local query server on session start |
+| `topK` | `3` | Number of results to return |
+| `scoreThreshold` | `0.3` | Minimum similarity score (0-1) |
+
+Environment variables (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `MOSS_INDEX_NAME`, `MOSS_AUTO_SEARCH`) override the settings file if set.
 
 ### 3. Install the plugin
 
@@ -71,34 +87,6 @@ Check the local server:
 ls -la /tmp/moss-claude/query.sock    # socket file exists
 cat /tmp/moss-claude/query.pid        # server PID
 ```
-
-## Settings
-
-All settings go in `~/.moss-claude/settings.json`:
-
-```json
-{
-  "projectId": "your-project-id",
-  "projectKey": "your-project-key",
-  "indexName": "your-default-index",
-  "autoSearch": true,
-  "localServer": true,
-  "topK": 3,
-  "scoreThreshold": 0.3
-}
-```
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `projectId` | — | Moss project ID (required) |
-| `projectKey` | — | Moss project key (required) |
-| `indexName` | — | Default index for auto-search and local server |
-| `autoSearch` | `true` | Inject relevant context on every prompt |
-| `localServer` | `true` | Start local query server on session start |
-| `topK` | `3` | Number of results to return |
-| `scoreThreshold` | `0.3` | Minimum similarity score (0-1) |
-
-Environment variables (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `MOSS_INDEX_NAME`, `MOSS_AUTO_SEARCH`) override the settings file if set.
 
 ## What It Does
 
