@@ -69,6 +69,7 @@ else
     '{mcpServers: {moss: ($srv + {env: {MOSS_PROJECT_ID: $id, MOSS_PROJECT_KEY: $key}})}}' \
     > "$MCPORTER_CONFIG"
 fi
+chmod 600 "$MCPORTER_CONFIG"
 
 # --- Verify ---
 echo ""
