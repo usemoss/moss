@@ -24,7 +24,7 @@ Run with Docker::
 
 Or run locally::
 
-    uv run bot.py
+    uv run ollama_bot.py
 """
 
 import os

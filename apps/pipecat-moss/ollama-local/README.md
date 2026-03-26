@@ -38,7 +38,7 @@ Microphone → Daily/WebRTC → Deepgram STT → Moss Retrieval → Ollama LLM �
 2. **Create the Moss index** (one-time, only needs Moss keys):
 
    ```bash
-   uv run create-index.py
+   uv run ollama_create_index.py
    ```
 
 3. **Start the stack:**
@@ -82,7 +82,7 @@ If you prefer running directly on your machine:
 4. Run the bot:
 
    ```bash
-   uv run bot.py
+   uv run ollama_bot.py
    ```
 
 5. Open http://localhost:7860 and click Connect.
@@ -101,7 +101,7 @@ The default transport is local WebRTC (no API key needed). To use Daily instead:
 3. Run with the Daily flag:
 
    ```bash
-   uv run bot.py -t daily
+   uv run ollama_bot.py -t daily
    ```
 
 ## Configuration
