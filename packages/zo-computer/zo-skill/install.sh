@@ -45,10 +45,8 @@ chmod +x "$SKILL_DIR/scripts/moss.sh"
 # --- Store credentials ---
 echo "Saving credentials..."
 mkdir -p "$(dirname "$MOSS_ENV")"
-cat > "$MOSS_ENV" <<EOF
-MOSS_PROJECT_ID='${PROJECT_ID}'
-MOSS_PROJECT_KEY='${PROJECT_KEY}'
-EOF
+printf 'MOSS_PROJECT_ID=%q\nMOSS_PROJECT_KEY=%q\n' \
+  "$PROJECT_ID" "$PROJECT_KEY" > "$MOSS_ENV"
 chmod 600 "$MOSS_ENV"
 
 # --- Configure MCPorter ---
@@ -58,11 +56,11 @@ mkdir -p "$(dirname "$MCPORTER_CONFIG")"
 MOSS_SERVER='{"command": "npx", "args": ["-y", "@moss-tools/mcp-server"]}'
 
 if [ -f "$MCPORTER_CONFIG" ]; then
-  # Merge into existing config
+  # Merge into existing config (write to temp file to avoid truncating on jq failure)
   EXISTING=$(cat "$MCPORTER_CONFIG")
   echo "$EXISTING" | jq --argjson srv "$MOSS_SERVER" --arg id "$PROJECT_ID" --arg key "$PROJECT_KEY" \
     '.mcpServers.moss = ($srv + {env: {MOSS_PROJECT_ID: $id, MOSS_PROJECT_KEY: $key}})' \
-    > "$MCPORTER_CONFIG"
+    > "${MCPORTER_CONFIG}.tmp" && mv "${MCPORTER_CONFIG}.tmp" "$MCPORTER_CONFIG"
 else
   # Create new config
   jq -n --argjson srv "$MOSS_SERVER" --arg id "$PROJECT_ID" --arg key "$PROJECT_KEY" \
