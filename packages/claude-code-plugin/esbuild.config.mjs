@@ -66,6 +66,18 @@ await Promise.all([
     outfile: "plugin/scripts/auto-search.cjs",
   }),
 
+  // Local query server — onnxruntime-node is external (must be installed separately)
+  build({
+    ...shared,
+    entryPoints: ["src/local-server.ts"],
+    outfile: "plugin/scripts/local-server.cjs",
+    banner: { js: "#!/usr/bin/env node" },
+    external: ["onnxruntime-node"],
+    alias: {
+      "sharp": `./${shimDir}/_sharp-shim.cjs`,
+    },
+  }),
+
   // Stop hook — captures conversations into Moss
   build({
     ...shared,
@@ -74,4 +86,4 @@ await Promise.all([
   }),
 ]);
 
-console.log("Build complete: 4 bundles in plugin/scripts/");
+console.log("Build complete: 5 bundles in plugin/scripts/");

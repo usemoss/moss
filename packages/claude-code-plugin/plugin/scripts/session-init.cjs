@@ -22,6 +22,12 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// src/hooks/session-init.ts
+var fs2 = __toESM(require("node:fs"), 1);
+var os2 = __toESM(require("node:os"), 1);
+var path2 = __toESM(require("node:path"), 1);
+var import_node_child_process = require("node:child_process");
+
 // src/lib/settings.ts
 var fs = __toESM(require("node:fs"), 1);
 var path = __toESM(require("node:path"), 1);
@@ -56,12 +62,16 @@ function loadSettings() {
     projectKey,
     indexName: process.env.MOSS_INDEX_NAME || file.indexName,
     autoSearch: process.env.MOSS_AUTO_SEARCH !== "false" && file.autoSearch !== false,
+    localServer: file.localServer !== false,
     topK: file.topK ?? 3,
     scoreThreshold: file.scoreThreshold ?? 0.3
   };
 }
 
 // src/hooks/session-init.ts
+var SOCKET_DIR = "/tmp/moss-claude";
+var PID_PATH = path2.join(SOCKET_DIR, "query.pid");
+var SOCKET_PATH = path2.join(SOCKET_DIR, "query.sock");
 var settings = loadSettings();
 if (!settings) {
   console.log(
@@ -72,4 +82,61 @@ if (!settings) {
 var indexName = settings.indexName || "not set";
 var autoSearch = settings.autoSearch ? "on" : "off";
 console.log(`Moss ready. Index: ${indexName}. Auto-search: ${autoSearch}`);
+if (settings.indexName && settings.localServer) {
+  let alreadyRunning = false;
+  try {
+    if (fs2.existsSync(PID_PATH)) {
+      const pid = parseInt(fs2.readFileSync(PID_PATH, "utf-8").trim(), 10);
+      if (pid > 0) {
+        process.kill(pid, 0);
+        alreadyRunning = true;
+      }
+    }
+  } catch {
+    try {
+      fs2.unlinkSync(PID_PATH);
+    } catch {
+    }
+    try {
+      fs2.unlinkSync(SOCKET_PATH);
+    } catch {
+    }
+  }
+  if (!alreadyRunning) {
+    const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || path2.resolve(path2.dirname(process.argv[1]), "..");
+    const serverScript = path2.join(pluginRoot, "scripts", "local-server.cjs");
+    if (fs2.existsSync(serverScript)) {
+      fs2.mkdirSync(SOCKET_DIR, { recursive: true });
+      const candidatePaths = [
+        path2.join(pluginRoot, "node_modules"),
+        path2.join(pluginRoot, "..", "..", "node_modules"),
+        // Marketplace source (where npm install was run during development)
+        path2.resolve(os2.homedir(), ".claude/plugins/marketplaces/moss/packages/claude-code-plugin/node_modules"),
+        path2.resolve(os2.homedir(), ".claude/plugins/marketplaces/moss/node_modules")
+      ];
+      try {
+        const globalRoot = (0, import_node_child_process.execFileSync)("npm", ["root", "-g"], { encoding: "utf-8" }).trim();
+        if (globalRoot) candidatePaths.push(globalRoot);
+      } catch {
+      }
+      const extraNodePaths = candidatePaths.filter((p) => fs2.existsSync(p));
+      const existingNodePath = process.env.NODE_PATH || "";
+      const nodePath = [...extraNodePaths, existingNodePath].filter(Boolean).join(path2.delimiter);
+      const child = (0, import_node_child_process.spawn)(
+        "node",
+        [serverScript, settings.projectId, settings.projectKey, settings.indexName],
+        {
+          detached: true,
+          stdio: ["ignore", "ignore", "inherit"],
+          env: { ...process.env, NODE_PATH: nodePath }
+        }
+      );
+      child.unref();
+      process.stderr.write(
+        `[moss] Starting local query server (pid: ${child.pid})
+`
+      );
+    }
+  }
+}
 process.exit(0);

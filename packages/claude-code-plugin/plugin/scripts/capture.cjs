@@ -79,6 +79,7 @@ function loadSettings() {
     projectKey,
     indexName: process.env.MOSS_INDEX_NAME || file.indexName,
     autoSearch: process.env.MOSS_AUTO_SEARCH !== "false" && file.autoSearch !== false,
+    localServer: file.localServer !== false,
     topK: file.topK ?? 3,
     scoreThreshold: file.scoreThreshold ?? 0.3
   };

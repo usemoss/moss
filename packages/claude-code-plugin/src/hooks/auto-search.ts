@@ -2,7 +2,7 @@ import { readStdin, writeOutput } from "../lib/stdin.js";
 import { loadSettings } from "../lib/settings.js";
 import { loadState, saveState, dedup } from "../lib/state.js";
 import { shouldTrigger } from "../lib/trigger.js";
-import { cloudQuery } from "../lib/moss-rest.js";
+import { localQuery } from "../lib/local-query.js";
 
 const pass = () => writeOutput({ continue: true });
 
@@ -24,10 +24,8 @@ async function main() {
     return;
   }
 
-  // Query Moss cloud directly
-  const result = await cloudQuery({
-    projectId: settings.projectId,
-    projectKey: settings.projectKey,
+  // Query the local server (index already loaded in memory)
+  const result = await localQuery({
     indexName: settings.indexName,
     query: prompt,
     topK: settings.topK,

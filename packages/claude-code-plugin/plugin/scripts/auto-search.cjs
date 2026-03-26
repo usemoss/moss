@@ -79,6 +79,7 @@ function loadSettings() {
     projectKey,
     indexName: process.env.MOSS_INDEX_NAME || file.indexName,
     autoSearch: process.env.MOSS_AUTO_SEARCH !== "false" && file.autoSearch !== false,
+    localServer: file.localServer !== false,
     topK: file.topK ?? 3,
     scoreThreshold: file.scoreThreshold ?? 0.3
   };
@@ -131,25 +132,56 @@ function shouldTrigger(prompt) {
   return true;
 }
 
-// src/lib/moss-rest.ts
-var BASE_URL = "https://service.usemoss.dev";
-var QUERY_URL = `${BASE_URL}/query`;
-var MANAGE_URL = `${BASE_URL}/v1/manage`;
-async function cloudQuery(opts) {
-  const res = await fetch(QUERY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query: opts.query,
-      indexName: opts.indexName,
-      projectId: opts.projectId,
-      projectKey: opts.projectKey,
-      topK: opts.topK ?? 3
-    }),
-    signal: AbortSignal.timeout(4e3)
+// src/lib/local-query.ts
+var net = __toESM(require("node:net"), 1);
+var fs3 = __toESM(require("node:fs"), 1);
+var SOCKET_PATH = "/tmp/moss-claude/query.sock";
+var TIMEOUT_MS = 1500;
+async function localQuery(opts) {
+  if (!fs3.existsSync(SOCKET_PATH)) {
+    throw new Error("Local query socket not found");
+  }
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection(SOCKET_PATH);
+    const chunks = [];
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        socket.destroy();
+        reject(new Error("Local query timeout"));
+      }
+    }, TIMEOUT_MS);
+    socket.on("connect", () => {
+      const req = JSON.stringify({
+        query: opts.query,
+        indexName: opts.indexName,
+        topK: opts.topK ?? 10
+      });
+      socket.write(req + "\n");
+    });
+    socket.on("data", (chunk) => {
+      chunks.push(chunk);
+    });
+    socket.on("end", () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        const data = Buffer.concat(chunks).toString("utf-8").trim();
+        const result = JSON.parse(data);
+        resolve(result);
+      } catch (err) {
+        reject(new Error("Invalid response from local server"));
+      }
+    });
+    socket.on("error", (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
   });
-  if (!res.ok) throw new Error(`Moss /query: HTTP ${res.status}`);
-  return await res.json();
 }
 
 // src/hooks/auto-search.ts
@@ -166,9 +198,7 @@ async function main() {
     pass();
     return;
   }
-  const result = await cloudQuery({
-    projectId: settings.projectId,
-    projectKey: settings.projectKey,
+  const result = await localQuery({
     indexName: settings.indexName,
     query: prompt,
     topK: settings.topK
