@@ -47,6 +47,7 @@ from pipecat.services.ollama import OLLamaLLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 from pipecat_moss import MossRetrievalService
+from pipecat_moss.moss_index_processor import MossIndexProcessor
 
 # Load environment variables from .env file
 load_dotenv(override=True)
@@ -92,26 +93,42 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         system_prompt="Relevant passages from the Moss knowledge base:\n\n",
     )
 
+    # Patch MossIndexProcessor to use 'user' role instead of 'system'
+    # Ollama ignores system messages that follow user messages
+    _orig_process = MossIndexProcessor.process_frame
+
+    async def _patched_process(self, frame, direction):
+        from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContextFrame
+        if isinstance(frame, OpenAILLMContextFrame):
+            context = frame.context
+            msgs_before = len(context.get_messages())
+            await _orig_process(self, frame, direction)
+            msgs_after = context.get_messages()
+            # Convert any new system messages added by Moss to user role
+            for i in range(msgs_before, len(msgs_after)):
+                if msgs_after[i].get("role") == "system" and "Moss knowledge base" in msgs_after[i].get("content", ""):
+                    msgs_after[i]["role"] = "user"
+        else:
+            await _orig_process(self, frame, direction)
+
+    MossIndexProcessor.process_frame = _patched_process
+
     # Load the Moss index
     await moss_service.load_index(index_name)
     logger.debug(f"Moss retrieval service initialized (index: {index_name})")
 
     # System prompt with semantic retrieval support
-    system_content = """You are a helpful customer support voice assistant.
-Your role is to assist customers with their questions about orders, shipping,
-returns, payments, and general inquiries.
+    system_content = """You are a helpful voice assistant that answers questions about Moss,
+a semantic retrieval and search platform. You have access to knowledge base passages
+about Moss that will be provided alongside user questions.
 
 Guidelines:
 - Be friendly, professional, and concise in your responses
 - Keep responses conversational since this is a voice interface
-- Use any provided knowledge base context to give accurate, helpful answers
-- If you don't have specific information,
-  acknowledge this and offer to connect them with a human agent
-- Ask clarifying questions if the customer's request is unclear
-- Always prioritize customer satisfaction and be empathetic
-
-When relevant knowledge base information is provided,
-use it to give accurate and detailed responses."""
+- Use the provided knowledge base passages to give accurate answers about Moss
+- If knowledge base context is provided, always use it to inform your response
+- If you don't have specific information, say so honestly
+- Keep answers short and to the point for voice"""
 
     # Initialize conversation context and pipeline components
     messages = [
@@ -131,8 +148,8 @@ use it to give accurate and detailed responses."""
             transport.input(),  # Transport user input
             rtvi,  # RTVI processor
             stt,  # Speech-to-text
-            moss_service.query(index_name, top_k=top_k),  # Moss retrieval (before user context so system msg comes first)
             context_aggregator.user(),  # User responses
+            moss_service.query(index_name, top_k=top_k),  # Moss retrieval
             llm,  # LLM (receives enhanced context)
             tts,  # Text-to-speech
             transport.output(),  # Transport bot output
