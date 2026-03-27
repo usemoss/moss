@@ -1,10 +1,11 @@
-from typing import Any, Optional, Type
 import asyncio
 import uuid
+from typing import Any, Optional, Type
 
+from inferedge_moss import DocumentInfo, MossClient, QueryOptions
 from pydantic import BaseModel, Field
+
 from crewai.tools import BaseTool
-from inferedge_moss import MossClient, QueryOptions, DocumentInfo
 
 
 class MossSearchInput(BaseModel):
@@ -167,7 +168,9 @@ class MossListIndexesTool(BaseTool):
     """List all available Moss indexes."""
 
     name: str = "moss_list_indexes"
-    description: str = "List all available indexes in the Moss project with their details."
+    description: str = (
+        "List all available indexes in the Moss project with their details."
+    )
     args_schema: Type[BaseModel] = MossListIndexesInput
 
     project_id: str = Field(description="Moss project ID")
@@ -279,7 +282,9 @@ class MossCreateIndexTool(BaseTool):
     def model_post_init(self, __context: Any) -> None:
         self._client = MossClient(self.project_id, self.project_key)
 
-    def _run(self, index_name: str, texts: list[str], ids: Optional[list[str]] = None) -> str:
+    def _run(
+        self, index_name: str, texts: list[str], ids: Optional[list[str]] = None
+    ) -> str:
         try:
             return asyncio.run(self._arun(index_name, texts, ids))
         except RuntimeError as e:
@@ -289,7 +294,9 @@ class MossCreateIndexTool(BaseTool):
                 ) from e
             raise
 
-    async def _arun(self, index_name: str, texts: list[str], ids: Optional[list[str]] = None) -> str:
+    async def _arun(
+        self, index_name: str, texts: list[str], ids: Optional[list[str]] = None
+    ) -> str:
         docs = [
             DocumentInfo(
                 id=ids[i] if ids and i < len(ids) else str(uuid.uuid4()),
@@ -309,7 +316,9 @@ class MossDeleteIndexTool(BaseTool):
     """Delete a Moss index and all its data."""
 
     name: str = "moss_delete_index"
-    description: str = "Delete a Moss index and all its documents. This action is irreversible."
+    description: str = (
+        "Delete a Moss index and all its documents. This action is irreversible."
+    )
     args_schema: Type[BaseModel] = MossDeleteIndexInput
 
     project_id: str = Field(description="Moss project ID")

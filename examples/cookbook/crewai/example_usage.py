@@ -1,9 +1,11 @@
-import os
-import json
 import asyncio
+import json
+import os
+
 from dotenv import load_dotenv
-from crewai import Agent, Task, Crew, LLM
-from inferedge_moss import MossClient, DocumentInfo
+from inferedge_moss import DocumentInfo, MossClient
+
+from crewai import LLM, Agent, Crew, Task
 from moss_crewai import MossSearchTool, moss_tools
 
 load_dotenv()
@@ -20,7 +22,9 @@ async def setup_index():
     """Create a Moss index with the first 10 FAQ documents."""
     client = MossClient(os.getenv("MOSS_PROJECT_ID"), os.getenv("MOSS_PROJECT_KEY"))
 
-    faqs_path = os.path.join(os.path.dirname(__file__), "..", "..", "python", "faqs.json")
+    faqs_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "python", "faqs.json"
+    )
     with open(faqs_path, "r") as f:
         faqs = json.load(f)
 
@@ -107,13 +111,19 @@ def multi_agent_example():
     )
 
     research_task = Task(
-        description="Research what payment methods are accepted and how customers can manage their accounts (password reset, etc.).",
+        description=(
+            "Research what payment methods are accepted and how customers "
+            "can manage their accounts (password reset, etc.)."
+        ),
         expected_output="A detailed list of findings from the FAQ database.",
         agent=researcher,
     )
 
     writing_task = Task(
-        description="Based on the research findings, write a concise customer-friendly FAQ summary covering payments and account management.",
+        description=(
+            "Based on the research findings, write a concise customer-friendly "
+            "FAQ summary covering payments and account management."
+        ),
         expected_output="A 2-3 paragraph summary suitable for a help page.",
         agent=writer,
     )
@@ -135,4 +145,4 @@ if __name__ == "__main__":
 
     single_agent_example()
 
-    #multi_agent_example()
+    # multi_agent_example()
