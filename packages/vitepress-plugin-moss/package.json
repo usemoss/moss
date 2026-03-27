@@ -40,6 +40,9 @@
   "dependencies": {
     "@inferedge/moss": "^1.0.0-beta.7",
     "@moss-tools/md-indexer": "^1.0.0-beta.3",
+    "@vueuse/core": "^14.2.1",
+    "@vueuse/integrations": "^14.2.1",
+    "focus-trap": "^8.0.1",
     "obug": "^1.0.0"
   },
   "devDependencies": {
