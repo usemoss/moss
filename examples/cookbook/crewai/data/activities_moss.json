@@ -1,0 +1,194 @@
+[
+  {
+    "id": "act-tok-201",
+    "text": "Ueno Park Museum Hopping - Ueno Park is free to enter. Includes many shrines and the lotus-filled Shinobazu Pond. Cost: Free. Type: Outdoor/Culture.",
+    "metadata": {
+      "cost": "Free",
+      "type": "Outdoor/Culture"
+    }
+  },
+  {
+    "id": "act-tok-202",
+    "text": "Yoyogi Park & Meiji Jingu - Largest green space in Tokyo. Meiji Shrine is free. Great for people-watching and forest walks. Cost: Free. Type: Outdoor.",
+    "metadata": {
+      "cost": "Free",
+      "type": "Outdoor"
+    }
+  },
+  {
+    "id": "act-tok-203",
+    "text": "Convenience Store Gourmet - Experience 'Konbini' dining. High-quality meals (Onigiri, Bento) for under 600 yen at 7-Eleven or Lawson. Cost: 500 - 1,000 yen. Type: Dining.",
+    "metadata": {
+      "cost": "500 - 1,000 yen",
+      "type": "Dining"
+    }
+  },
+  {
+    "id": "act-tok-204",
+    "text": "Shibuya Crossing & Hachiko - The world's busiest intersection. Free to experience. Best viewed from the 2nd floor of the Magnet building. Cost: Free. Type: Sightseeing.",
+    "metadata": {
+      "cost": "Free",
+      "type": "Sightseeing"
+    }
+  },
+  {
+    "id": "act-tok-205",
+    "text": "Tsukiji Outer Market Food Tour - Walk through the famous outer market sampling fresh sushi, tamagoyaki, and street food. Self-guided is free, guided tours available. Cost: 2,000 - 5,000 yen. Type: Dining/Tour.",
+    "metadata": {
+      "cost": "2,000 - 5,000 yen",
+      "type": "Dining/Tour"
+    }
+  },
+  {
+    "id": "act-tok-206",
+    "text": "Akihabara Electric Town - Browse anime shops, retro game arcades, and maid cafes in Tokyo's geek culture capital. Window shopping is free. Cost: Free - 3,000 yen. Type: Culture/Shopping.",
+    "metadata": {
+      "cost": "Free - 3,000 yen",
+      "type": "Culture/Shopping"
+    }
+  },
+  {
+    "id": "act-vn-207",
+    "text": "Hanoi Old Quarter Walking Tour - Explore the 36 streets of Hanoi's Old Quarter on foot. Sample egg coffee and bun cha at street stalls. Cost: Free (self-guided). Type: Walking Tour.",
+    "metadata": {
+      "cost": "Free (self-guided)",
+      "type": "Walking Tour"
+    }
+  },
+  {
+    "id": "act-vn-208",
+    "text": "Ha Long Bay Day Cruise - Cruise through limestone karsts and floating villages. Budget day trips available from Hanoi with lunch included. Cost: 30 - 50 USD. Type: Tour/Nature.",
+    "metadata": {
+      "cost": "30 - 50 USD",
+      "type": "Tour/Nature"
+    }
+  },
+  {
+    "id": "act-vn-209",
+    "text": "Da Nang Beach & Marble Mountains - Relax on My Khe Beach (free) then explore the Marble Mountains caves and pagodas. Elevator or stairs to the top. Cost: 40,000 VND entry. Type: Beach/Nature.",
+    "metadata": {
+      "cost": "40,000 VND entry",
+      "type": "Beach/Nature"
+    }
+  },
+  {
+    "id": "act-al-210",
+    "text": "Ksamil Beach Hopping - Visit three stunning white-sand beaches on the Albanian Riviera. Crystal-clear water, no entry fee. Bring your own food to save money. Cost: Free. Type: Beach.",
+    "metadata": {
+      "cost": "Free",
+      "type": "Beach"
+    }
+  },
+  {
+    "id": "act-al-211",
+    "text": "Bunk'Art Museum Tirana - Explore a massive Cold War bunker turned art museum. Fascinating look at Albania's communist past through contemporary art installations. Cost: 500 ALL (about 5 USD). Type: Museum/History.",
+    "metadata": {
+      "cost": "500 ALL (about 5 USD)",
+      "type": "Museum/History"
+    }
+  },
+  {
+    "id": "act-tr-212",
+    "text": "Istanbul Bosphorus Ferry - Take the public ferry across the Bosphorus for a fraction of the cost of tourist boats. Best views of the city skyline and mosques. Cost: 7 TL (about 0.25 USD). Type: Sightseeing.",
+    "metadata": {
+      "cost": "7 TL (about 0.25 USD)",
+      "type": "Sightseeing"
+    }
+  },
+  {
+    "id": "act-tr-213",
+    "text": "Grand Bazaar & Spice Market - Wander through one of the world's oldest covered markets. Over 4,000 shops selling spices, lamps, carpets, and Turkish delight. Cost: Free to browse. Type: Shopping/Culture.",
+    "metadata": {
+      "cost": "Free to browse",
+      "type": "Shopping/Culture"
+    }
+  },
+  {
+    "id": "act-tr-214",
+    "text": "Cappadocia Hot Air Balloon - Sunrise balloon ride over fairy chimneys and cave dwellings. Book in advance for best prices. One of the top experiences in the world. Cost: 150 - 250 USD. Type: Adventure.",
+    "metadata": {
+      "cost": "150 - 250 USD",
+      "type": "Adventure"
+    }
+  },
+  {
+    "id": "act-ro-215",
+    "text": "Brasov Old Town & Black Church - Walk through the medieval old town and visit the Gothic Black Church, the largest in southeastern Europe. Council Square is free to explore. Cost: Free (church entry 15 RON). Type: History/Walking.",
+    "metadata": {
+      "cost": "Free (church entry 15 RON)",
+      "type": "History/Walking"
+    }
+  },
+  {
+    "id": "act-ro-216",
+    "text": "Bran Castle (Dracula's Castle) - Visit the castle associated with the Dracula legend. Surrounded by scenic Transylvanian mountains. Budget tip: take a bus from Brasov. Cost: 50 RON (about 10 USD). Type: History/Sightseeing.",
+    "metadata": {
+      "cost": "50 RON (about 10 USD)",
+      "type": "History/Sightseeing"
+    }
+  },
+  {
+    "id": "act-th-217",
+    "text": "Bangkok Temple Trail - Visit Wat Pho (Reclining Buddha), Wat Arun, and the Grand Palace. Wat Pho includes a free Thai massage school demo. Cost: 200 - 500 THB per temple. Type: Culture/History.",
+    "metadata": {
+      "cost": "200 - 500 THB per temple",
+      "type": "Culture/History"
+    }
+  },
+  {
+    "id": "act-th-218",
+    "text": "Chiang Mai Night Bazaar - Massive night market with street food, handicrafts, and live music. Best pad thai and mango sticky rice in the north. Cost: Free to browse. Type: Shopping/Dining.",
+    "metadata": {
+      "cost": "Free to browse",
+      "type": "Shopping/Dining"
+    }
+  },
+  {
+    "id": "act-th-219",
+    "text": "Phi Phi Islands Day Trip - Speedboat tour to Maya Bay and surrounding islands. Snorkeling, swimming, and beach time included. Book from Phuket or Krabi. Cost: 1,500 - 2,500 THB. Type: Beach/Tour.",
+    "metadata": {
+      "cost": "1,500 - 2,500 THB",
+      "type": "Beach/Tour"
+    }
+  },
+  {
+    "id": "act-ge-220",
+    "text": "Tbilisi Sulfur Baths - Relax in natural hot sulfur baths in the Abanotubani district. Private rooms available. A Tbilisi tradition for centuries. Cost: 600 - 3,000 GEL. Type: Wellness.",
+    "metadata": {
+      "cost": "600 - 3,000 GEL",
+      "type": "Wellness"
+    }
+  },
+  {
+    "id": "act-ge-221",
+    "text": "Mtskheta Day Trip - Visit Georgia's ancient capital, a UNESCO World Heritage site. See Jvari Monastery and Svetitskhoveli Cathedral. 30 mins from Tbilisi by marshrutka. Cost: 1 GEL (marshrutka fare). Type: History/Culture.",
+    "metadata": {
+      "cost": "1 GEL (marshrutka fare)",
+      "type": "History/Culture"
+    }
+  },
+  {
+    "id": "act-pt-222",
+    "text": "Lisbon Tram 28 Ride - Ride the iconic yellow tram through Alfama's narrow streets. Cheaper than a tour and covers all major viewpoints. Use a Viva Viagem card. Cost: 3 EUR with card. Type: Sightseeing.",
+    "metadata": {
+      "cost": "3 EUR with card",
+      "type": "Sightseeing"
+    }
+  },
+  {
+    "id": "act-pt-223",
+    "text": "Porto Wine Tasting in Vila Nova de Gaia - Cross the Dom Luis I bridge and visit port wine cellars. Many offer free or cheap tastings. Best views of Porto from the riverside. Cost: 5 - 15 EUR per tasting. Type: Dining/Culture.",
+    "metadata": {
+      "cost": "5 - 15 EUR per tasting",
+      "type": "Dining/Culture"
+    }
+  },
+  {
+    "id": "act-pt-224",
+    "text": "Sintra Palace Day Trip - Fairytale palaces and gardens 40 mins from Lisbon by train. Visit Pena Palace and the Moorish Castle. Go early to avoid crowds. Cost: 14 EUR palace entry. Type: History/Sightseeing.",
+    "metadata": {
+      "cost": "14 EUR palace entry",
+      "type": "History/Sightseeing"
+    }
+  }
+]

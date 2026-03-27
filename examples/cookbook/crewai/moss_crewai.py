@@ -1,61 +1,63 @@
 import asyncio
 import uuid
-from typing import Any, Optional, Type
-
-from inferedge_moss import DocumentInfo, MossClient, QueryOptions
-from pydantic import BaseModel, Field
+from typing import Any
 
 from crewai.tools import BaseTool
+from inferedge_moss import DocumentInfo, MossClient, MutationOptions, QueryOptions
+from pydantic import BaseModel, Field, PrivateAttr
+
+
+class MossBaseTool(BaseTool):
+    """Base class for all Moss tools. Handles shared client and sync wrapper."""
+
+    _client: Any = PrivateAttr()
+
+    def __init__(self, client: MossClient, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._client = client
+
+    def _run(self, *args: Any, **kwargs: Any) -> str:
+        """Synchronous execution — wraps _arun() for CrewAI's @abstractmethod requirement."""
+        try:
+            return asyncio.run(self._arun(*args, **kwargs))
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                raise RuntimeError(
+                    f"{self.__class__.__name__}._run() cannot be called from a "
+                    "running event loop. Use async mode or call from a standard script."
+                ) from e
+            raise
 
 
 class MossSearchInput(BaseModel):
+    """Input schema for MossSearchTool."""
+
     query: str = Field(description="The search query text")
 
 
-class MossSearchTool(BaseTool):
-    """
-    Semantic search tool powered by Moss.
-    Wraps MossClient to provide sub-10ms semantic search as a CrewAI tool that agents can invoke.
-    """
+class MossSearchTool(MossBaseTool):
+    """Semantic search tool powered by Moss."""
 
     name: str = "moss_search"
     description: str = (
         "Search a knowledge base using Moss semantic search. "
         "Returns the most relevant documents for a given query."
     )
-    args_schema: Type[BaseModel] = MossSearchInput
+    args_schema: type[BaseModel] = MossSearchInput
 
-    project_id: str = Field(description="Moss project ID")
-    project_key: str = Field(description="Moss project key")
     index_name: str = Field(description="Name of the Moss index to search")
     top_k: int = Field(default=5, description="Number of results to return")
     alpha: float = Field(
-        default=0.5,
+        default=0.8,
         description="Hybrid search balance (0=keyword, 1=semantic)",
     )
 
-    _client: Any = None
-    _index_loaded: bool = False
-
-    def model_post_init(self, __context: Any) -> None:
-        self._client = MossClient(self.project_id, self.project_key)
+    _index_loaded: bool = PrivateAttr(default=False)
 
     async def _ensure_loaded(self) -> None:
         if not self._index_loaded:
             await self._client.load_index(self.index_name)
             self._index_loaded = True
-
-    def _run(self, query: str) -> str:
-        """Synchronous search -- wraps the async implementation."""
-        try:
-            return asyncio.run(self._arun(query))
-        except RuntimeError as e:
-            if "cannot be called from a running event loop" in str(e):
-                raise RuntimeError(
-                    "MossSearchTool._run() cannot be called from a running event loop. "
-                    "Use async mode or call from a standard script."
-                ) from e
-            raise
 
     async def _arun(self, query: str) -> str:
         """Async search against Moss index."""
@@ -68,51 +70,40 @@ class MossSearchTool(BaseTool):
         if not results.docs:
             return "No relevant information found."
         return "\n\n".join(
-            f"Result {i+1} (score: {doc.score:.2f}):\n{doc.text}"
+            f"Result {i + 1} (score: {doc.score:.2f}):\n{doc.text}"
             for i, doc in enumerate(results.docs)
         )
 
 
+# --- Document Management ---
+
+
 class MossAddDocsInput(BaseModel):
+    """Input schema for MossAddDocsTool."""
+
     texts: list[str] = Field(description="List of text documents to add")
-    ids: Optional[list[str]] = Field(
+    ids: list[str] | None = Field(
         default=None,
         description="Optional document IDs (auto-generated if omitted)",
     )
+    upsert: bool = Field(
+        default=False,
+        description="If True, update existing documents with the same ID instead of failing",
+    )
 
 
-class MossAddDocsTool(BaseTool):
-    """
-    Tool for adding documents to a Moss index.
-    Wraps MossClient.add_docs() so CrewAI agents can ingest new documents into a Moss search index.
-    """
+class MossAddDocsTool(MossBaseTool):
+    """Add documents to a Moss index."""
 
     name: str = "moss_add_docs"
     description: str = "Add text documents to a Moss semantic search index."
-    args_schema: Type[BaseModel] = MossAddDocsInput
+    args_schema: type[BaseModel] = MossAddDocsInput
 
-    project_id: str = Field(description="Moss project ID")
-    project_key: str = Field(description="Moss project key")
     index_name: str = Field(description="Name of the Moss index")
 
-    _client: Any = None
-
-    def model_post_init(self, __context: Any) -> None:
-        self._client = MossClient(self.project_id, self.project_key)
-
-    def _run(self, texts: list[str], ids: Optional[list[str]] = None) -> str:
-        """Synchronous add docs -- wraps the async implementation."""
-        try:
-            return asyncio.run(self._arun(texts, ids))
-        except RuntimeError as e:
-            if "cannot be called from a running event loop" in str(e):
-                raise RuntimeError(
-                    "MossAddDocsTool._run() cannot be called from a running event loop. "
-                    "Use async mode or call from a standard script."
-                ) from e
-            raise
-
-    async def _arun(self, texts: list[str], ids: Optional[list[str]] = None) -> str:
+    async def _arun(
+        self, texts: list[str], ids: list[str] | None = None, upsert: bool = False
+    ) -> str:
         """Async add documents to Moss index."""
         docs = [
             DocumentInfo(
@@ -121,97 +112,43 @@ class MossAddDocsTool(BaseTool):
             )
             for i, text in enumerate(texts)
         ]
-        await self._client.add_docs(self.index_name, docs)
-        return f"Successfully added {len(docs)} documents."
+        options = MutationOptions(upsert=True) if upsert else None
+        await self._client.add_docs(self.index_name, docs, options)
+        action = "upserted" if upsert else "added"
+        return f"Successfully {action} {len(docs)} documents."
 
 
 class MossDeleteDocsInput(BaseModel):
+    """Input schema for MossDeleteDocsTool."""
+
     doc_ids: list[str] = Field(description="List of document IDs to delete")
 
 
-class MossDeleteDocsTool(BaseTool):
+class MossDeleteDocsTool(MossBaseTool):
     """Delete documents from a Moss index by their IDs."""
 
     name: str = "moss_delete_docs"
     description: str = "Delete specific documents from a Moss index by their IDs."
-    args_schema: Type[BaseModel] = MossDeleteDocsInput
+    args_schema: type[BaseModel] = MossDeleteDocsInput
 
-    project_id: str = Field(description="Moss project ID")
-    project_key: str = Field(description="Moss project key")
     index_name: str = Field(description="Name of the Moss index")
 
-    _client: Any = None
-
-    def model_post_init(self, __context: Any) -> None:
-        self._client = MossClient(self.project_id, self.project_key)
-
-    def _run(self, doc_ids: list[str]) -> str:
-        try:
-            return asyncio.run(self._arun(doc_ids))
-        except RuntimeError as e:
-            if "cannot be called from a running event loop" in str(e):
-                raise RuntimeError(
-                    "MossDeleteDocsTool._run() cannot be called from a running event loop."
-                ) from e
-            raise
-
     async def _arun(self, doc_ids: list[str]) -> str:
+        """Async delete documents from Moss index."""
         await self._client.delete_docs(self.index_name, doc_ids)
         return f"Successfully deleted {len(doc_ids)} documents."
 
 
-class MossListIndexesInput(BaseModel):
-    pass  # No input needed
-
-
-class MossListIndexesTool(BaseTool):
-    """List all available Moss indexes."""
-
-    name: str = "moss_list_indexes"
-    description: str = (
-        "List all available indexes in the Moss project with their details."
-    )
-    args_schema: Type[BaseModel] = MossListIndexesInput
-
-    project_id: str = Field(description="Moss project ID")
-    project_key: str = Field(description="Moss project key")
-
-    _client: Any = None
-
-    def model_post_init(self, __context: Any) -> None:
-        self._client = MossClient(self.project_id, self.project_key)
-
-    def _run(self) -> str:
-        try:
-            return asyncio.run(self._arun())
-        except RuntimeError as e:
-            if "cannot be called from a running event loop" in str(e):
-                raise RuntimeError(
-                    "MossListIndexesTool._run() cannot be called from a running event loop."
-                ) from e
-            raise
-
-    async def _arun(self) -> str:
-        indexes = await self._client.list_indexes()
-        if not indexes:
-            return "No indexes found."
-        lines = []
-        for idx in indexes:
-            name = getattr(idx, "name", "unknown")
-            doc_count = getattr(idx, "doc_count", "?")
-            status = getattr(idx, "status", "?")
-            lines.append(f"- {name} ({doc_count} docs, status: {status})")
-        return "Indexes:\n" + "\n".join(lines)
-
-
 class MossGetDocsInput(BaseModel):
-    doc_ids: Optional[list[str]] = Field(
+    """Input schema for MossGetDocsTool."""
+
+    doc_ids: list[str] | None = Field(
         default=None,
         description="Optional list of document IDs to retrieve. If omitted, returns all documents.",
     )
 
 
-class MossGetDocsTool(BaseTool):
+class MossGetDocsTool(MossBaseTool):
     """Retrieve documents from a Moss index."""
 
     name: str = "moss_get_docs"
@@ -219,28 +156,12 @@ class MossGetDocsTool(BaseTool):
         "Retrieve documents from a Moss index. "
         "Can fetch specific documents by ID or all documents."
     )
-    args_schema: Type[BaseModel] = MossGetDocsInput
+    args_schema: type[BaseModel] = MossGetDocsInput
 
-    project_id: str = Field(description="Moss project ID")
-    project_key: str = Field(description="Moss project key")
     index_name: str = Field(description="Name of the Moss index")
 
-    _client: Any = None
-
-    def model_post_init(self, __context: Any) -> None:
-        self._client = MossClient(self.project_id, self.project_key)
-
-    def _run(self, doc_ids: Optional[list[str]] = None) -> str:
-        try:
-            return asyncio.run(self._arun(doc_ids))
-        except RuntimeError as e:
-            if "cannot be called from a running event loop" in str(e):
-                raise RuntimeError(
-                    "MossGetDocsTool._run() cannot be called from a running event loop."
-                ) from e
-            raise
-
-    async def _arun(self, doc_ids: Optional[list[str]] = None) -> str:
+    async def _arun(self, doc_ids: list[str] | None = None) -> str:
+        """Async retrieve documents from Moss index."""
         from inferedge_moss import GetDocumentsOptions
 
         options = None
@@ -256,47 +177,84 @@ class MossGetDocsTool(BaseTool):
         return f"Retrieved {len(docs)} documents:\n" + "\n".join(lines)
 
 
+# --- Index Management ---
+
+
+class MossGetIndexInput(BaseModel):
+    """Input schema for MossGetIndexTool."""
+
+    index_name: str = Field(description="Name of the index to get info for")
+
+
+class MossGetIndexTool(MossBaseTool):
+    """Get detailed information about a specific Moss index."""
+
+    name: str = "moss_get_index"
+    description: str = "Get information about a specific Moss index, including document count and status."
+    args_schema: type[BaseModel] = MossGetIndexInput
+
+    async def _arun(self, index_name: str) -> str:
+        """Async get info about a specific Moss index."""
+        info = await self._client.get_index(index_name)
+        name = getattr(info, "name", index_name)
+        doc_count = getattr(info, "doc_count", "?")
+        status = getattr(info, "status", "?")
+        return f"Index '{name}': {doc_count} docs, status: {status}"
+
+
+class MossListIndexesInput(BaseModel):
+    """Input schema for MossListIndexesTool."""
+
+    pass  # No input needed
+
+
+class MossListIndexesTool(MossBaseTool):
+    """List all available Moss indexes."""
+
+    name: str = "moss_list_indexes"
+    description: str = (
+        "List all available indexes in the Moss project with their details."
+    )
+    args_schema: type[BaseModel] = MossListIndexesInput
+
+    async def _arun(self) -> str:
+        """Async list all Moss indexes."""
+        indexes = await self._client.list_indexes()
+        if not indexes:
+            return "No indexes found."
+        lines = []
+        for idx in indexes:
+            name = getattr(idx, "name", "unknown")
+            doc_count = getattr(idx, "doc_count", "?")
+            status = getattr(idx, "status", "?")
+            lines.append(f"- {name} ({doc_count} docs, status: {status})")
+        return "Indexes:\n" + "\n".join(lines)
+
+
 class MossCreateIndexInput(BaseModel):
+    """Input schema for MossCreateIndexTool."""
+
     index_name: str = Field(description="Name for the new index")
     texts: list[str] = Field(description="List of text documents to index")
-    ids: Optional[list[str]] = Field(
+    ids: list[str] | None = Field(
         default=None,
         description="Optional document IDs (auto-generated if omitted)",
     )
 
 
-class MossCreateIndexTool(BaseTool):
+class MossCreateIndexTool(MossBaseTool):
     """Create a new Moss index with documents."""
 
     name: str = "moss_create_index"
     description: str = (
         "Create a new Moss semantic search index and populate it with documents."
     )
-    args_schema: Type[BaseModel] = MossCreateIndexInput
-
-    project_id: str = Field(description="Moss project ID")
-    project_key: str = Field(description="Moss project key")
-
-    _client: Any = None
-
-    def model_post_init(self, __context: Any) -> None:
-        self._client = MossClient(self.project_id, self.project_key)
-
-    def _run(
-        self, index_name: str, texts: list[str], ids: Optional[list[str]] = None
-    ) -> str:
-        try:
-            return asyncio.run(self._arun(index_name, texts, ids))
-        except RuntimeError as e:
-            if "cannot be called from a running event loop" in str(e):
-                raise RuntimeError(
-                    "MossCreateIndexTool._run() cannot be called from a running event loop."
-                ) from e
-            raise
+    args_schema: type[BaseModel] = MossCreateIndexInput
 
     async def _arun(
-        self, index_name: str, texts: list[str], ids: Optional[list[str]] = None
+        self, index_name: str, texts: list[str], ids: list[str] | None = None
     ) -> str:
+        """Async create a new Moss index."""
         docs = [
             DocumentInfo(
                 id=ids[i] if ids and i < len(ids) else str(uuid.uuid4()),
@@ -309,61 +267,53 @@ class MossCreateIndexTool(BaseTool):
 
 
 class MossDeleteIndexInput(BaseModel):
+    """Input schema for MossDeleteIndexTool."""
+
     index_name: str = Field(description="Name of the index to delete")
 
 
-class MossDeleteIndexTool(BaseTool):
+class MossDeleteIndexTool(MossBaseTool):
     """Delete a Moss index and all its data."""
 
     name: str = "moss_delete_index"
     description: str = (
         "Delete a Moss index and all its documents. This action is irreversible."
     )
-    args_schema: Type[BaseModel] = MossDeleteIndexInput
-
-    project_id: str = Field(description="Moss project ID")
-    project_key: str = Field(description="Moss project key")
-
-    _client: Any = None
-
-    def model_post_init(self, __context: Any) -> None:
-        self._client = MossClient(self.project_id, self.project_key)
-
-    def _run(self, index_name: str) -> str:
-        try:
-            return asyncio.run(self._arun(index_name))
-        except RuntimeError as e:
-            if "cannot be called from a running event loop" in str(e):
-                raise RuntimeError(
-                    "MossDeleteIndexTool._run() cannot be called from a running event loop."
-                ) from e
-            raise
+    args_schema: type[BaseModel] = MossDeleteIndexInput
 
     async def _arun(self, index_name: str) -> str:
+        """Async delete a Moss index."""
         await self._client.delete_index(index_name)
         return f"Successfully deleted index '{index_name}'."
 
 
+# --- Factory ---
+
+
 def moss_tools(
-    project_id: str,
-    project_key: str,
+    client: MossClient,
     index_name: str,
     top_k: int = 5,
-    alpha: float = 0.5,
+    alpha: float = 0.8,
 ) -> list[BaseTool]:
-    """Create all Moss tools with shared configuration.
+    """Create all Moss tools with a shared MossClient.
 
-    Returns: [search, add_docs, delete_docs, get_docs, list_indexes,
-              create_index, delete_index]
+    Args:
+        client: A shared MossClient instance.
+        index_name: Default index name for document/search tools.
+        top_k: Default number of search results.
+        alpha: Hybrid search balance.
+
+    Returns: [search, add_docs, delete_docs, get_docs, get_index,
+              list_indexes, create_index, delete_index]
     """
-    creds = dict(project_id=project_id, project_key=project_key)
-    index_kwargs = dict(**creds, index_name=index_name)
     return [
-        MossSearchTool(**index_kwargs, top_k=top_k, alpha=alpha),
-        MossAddDocsTool(**index_kwargs),
-        MossDeleteDocsTool(**index_kwargs),
-        MossGetDocsTool(**index_kwargs),
-        MossListIndexesTool(**creds),
-        MossCreateIndexTool(**creds),
-        MossDeleteIndexTool(**creds),
+        MossSearchTool(client=client, index_name=index_name, top_k=top_k, alpha=alpha),
+        MossAddDocsTool(client=client, index_name=index_name),
+        MossDeleteDocsTool(client=client, index_name=index_name),
+        MossGetDocsTool(client=client, index_name=index_name),
+        MossGetIndexTool(client=client),
+        MossListIndexesTool(client=client),
+        MossCreateIndexTool(client=client),
+        MossDeleteIndexTool(client=client),
     ]
