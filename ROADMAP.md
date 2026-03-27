@@ -26,6 +26,7 @@ This is a living document. We update it as priorities shift based on community f
 - [ ] **MCP server** — expose Moss as a Model Context Protocol server so any MCP-compatible AI tool (Claude, Cursor, Windsurf) can do semantic search
 - [ ] **npm/PyPI package rename** — consolidating package names under the Moss brand
 - [ ] **Vercel AI SDK integration** — retrieval provider for the Vercel AI SDK
+- [ ] **Ollama + Moss + Pipecat reference architecture** — an end-to-end local LLM voice agent: Ollama for LLM inference, Moss for retrieval, Pipecat for real-time audio. A single `docker compose up` to run the entire stack.
 
 ## Next Up — Community Contributions Welcome
 
@@ -64,7 +65,6 @@ These are bigger bets we're exploring. They're directional, not committed — co
 ### Local-First AI Stack
 
 - [ ] **vLLM-based local inference + local search** — a fully local pipeline: your model, your embeddings, your search, your hardware. No API calls. This is a natural fit for the privacy-first voice AI use case and can meaningfully cut latency for on-premise deployments.
-- [ ] **Ollama + Moss + Pipecat reference architecture** — an end-to-end fully local voice agent: Ollama for LLM inference, Moss for retrieval, Pipecat for real-time audio. A single `docker compose up` to run the entire stack.
 
 ### Evaluation & Quality
 
