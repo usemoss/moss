@@ -14,4 +14,5 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Copy the application code
 COPY ./ollama_bot.py bot.py
-COPY ./ollama_create_index.py ollama_create_index.py
+COPY ./tada_tts.py tada_tts.py
+COPY ./reference_voice.wav reference_voice.wav
