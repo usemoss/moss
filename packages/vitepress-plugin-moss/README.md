@@ -293,6 +293,23 @@ vitepress-plugin-moss
 
 ---
 
+## Running Tests
+
+```bash
+# Install dependencies
+npm install
+
+# Run unit tests
+npm test
+
+# Run tests with watch mode
+npm test -- --watch
+```
+
+Tests are also run automatically in the CI pipeline.
+
+---
+
 ## License
 
 MIT
