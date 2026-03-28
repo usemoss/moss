@@ -13,5 +13,5 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-dev
 
 # Copy the application code
-COPY ./ollama_bot.py bot.py
-COPY ./ollama_create_index.py ollama_create_index.py
+COPY ./hume_ollama_bot.py bot.py
+COPY ./hume_ollama_create_index.py hume_ollama_create_index.py

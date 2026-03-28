@@ -38,7 +38,7 @@ Microphone → Daily/WebRTC → Deepgram STT → Moss Retrieval → Ollama LLM �
 2. **Create the Moss index** (one-time, only needs Moss keys):
 
    ```bash
-   uv run ollama_create_index.py
+   uv run hume_ollama_create_index.py
    ```
 
 3. **Start the stack:**
@@ -82,7 +82,7 @@ If you prefer running directly on your machine:
 4. Run the bot:
 
    ```bash
-   uv run ollama_bot.py
+   uv run hume_ollama_bot.py
    ```
 
 5. Open http://localhost:7860 and click Connect.
@@ -97,7 +97,7 @@ If you prefer running directly on your machine:
 
 ## Hume AI Voice
 
-This example uses Hume AI's Octave TTS model with voice ID `5bbc32c1-a1f6-44e8-bedb-9870f23619e2`. You can change the voice by updating the `voice_id` in `ollama_bot.py`. Browse available voices at [platform.hume.ai](https://platform.hume.ai).
+This example uses Hume AI's Octave TTS model with voice ID `5bbc32c1-a1f6-44e8-bedb-9870f23619e2`. You can change the voice by updating the `voice_id` in `hume_ollama_bot.py`. Browse available voices at [platform.hume.ai](https://platform.hume.ai).
 
 ## GPU Acceleration
 
