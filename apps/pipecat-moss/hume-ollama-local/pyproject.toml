@@ -1,0 +1,23 @@
+[project]
+name = "pipecat-tada-ollama-local"
+version = "0.1.0"
+description = "Voice AI bot with local LLM (Ollama) + Moss semantic retrieval + TADA MLX TTS"
+requires-python = ">=3.10"
+dependencies = [
+    "pipecat-ai[webrtc,daily,silero,deepgram,openai,runner]",
+    "pipecat-ai-cli",
+    "pipecat-moss>=0.0.1",
+    "mlx-tada>=0.1.1",
+    "mlx-whisper>=0.4.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.404,<2",
+    "ruff>=0.12.11,<1",
+]
+
+[tool.ruff]
+line-length = 100
+[tool.ruff.lint]
+select = ["I"]
