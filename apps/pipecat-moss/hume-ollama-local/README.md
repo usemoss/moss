@@ -38,7 +38,7 @@ Microphone → Daily/WebRTC → Deepgram STT → Moss Retrieval → Ollama LLM �
 2. **Create the Moss index** (one-time, only needs Moss keys):
 
    ```bash
-   uv run create_hume_index.py
+   uv run create_index.py
    ```
 
 3. **Start the stack:**

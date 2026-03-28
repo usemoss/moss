@@ -14,4 +14,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Copy the application code
 COPY ./hume_ollama_bot.py bot.py
-COPY ./create_hume_index.py create_hume_index.py
+COPY ./create_index.py create_index.py
