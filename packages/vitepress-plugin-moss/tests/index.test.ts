@@ -87,7 +87,7 @@ describe('mossIndexerPlugin', () => {
       expect(result).toBeUndefined()
     })
 
-    it('does not shadow other VPN components', () => {
+    it('does not shadow other VP components', () => {
       const plugin = mossIndexerPlugin() as any
       const result = plugin.resolveId('/path/to/VPNavBarHome.vue')
       expect(result).toBeUndefined()
