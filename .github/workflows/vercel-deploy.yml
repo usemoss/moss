@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [deploy]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   deploy-moss-samples:
     runs-on: ubuntu-latest
