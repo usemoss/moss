@@ -92,7 +92,6 @@ These are bigger bets we're exploring. They're directional, not committed — co
 ### Advanced Retrieval
 
 - [ ] **Query expansion** — LLM-powered query rewriting to improve recall on short or ambiguous queries
-- [ ] **Contextual retrieval** — pre-chunking contextualization (à la Anthropic's technique) to make every chunk self-contained and more retrievable
 - [ ] **Sparse-dense fusion (SPLADE)** — learned sparse retrieval to complement BM25 hybrid, improving precision on rare terms
 
 ### Data Connectors
