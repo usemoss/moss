@@ -27,11 +27,8 @@ function setup(searchConfig: unknown) {
       logger: mockLogger
     },
   })
-  // Store logger reference for tests
-  plugin._logger = mockLogger
-  return plugin
+  return { plugin, mockLogger }
 }
-
 describe('mossIndexerPlugin', () => {
   beforeEach(() => {
     vi.clearAllMocks()
