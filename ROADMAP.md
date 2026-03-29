@@ -19,14 +19,17 @@ This is a living document. We update it as priorities shift based on community f
 - [x] VitePress search plugin
 - [x] Docker deployment examples (ECS/K8s patterns)
 - [x] WebAssembly runtime — client-side semantic search in the browser, no server required
+- [x] **Benchmarks directory** — reproducible latency/throughput scripts comparing Moss vs Pinecone, Qdrant, and Chroma on standardized datasets
+- [x] **MCP server** — expose Moss as a Model Context Protocol server so any MCP-compatible AI tool (Claude, Cursor, Windsurf) can do semantic search
+- [x] **npm/PyPI package rename** — consolidating package names under the Moss brand
+- [x] **Vercel AI SDK integration** — retrieval provider for the Vercel AI SDK
+- [x] **Ollama + Moss + Pipecat reference architecture** — an end-to-end local LLM voice agent: Ollama for LLM inference, Moss for retrieval, Pipecat for real-time audio. A single `docker compose up` to run the entire stack.
 
 ## In Progress
 
-- [ ] **Benchmarks directory** — reproducible latency/throughput scripts comparing Moss vs Pinecone, Qdrant, and Chroma on standardized datasets
-- [ ] **MCP server** — expose Moss as a Model Context Protocol server so any MCP-compatible AI tool (Claude, Cursor, Windsurf) can do semantic search
-- [ ] **npm/PyPI package rename** — consolidating package names under the Moss brand
-- [ ] **Vercel AI SDK integration** — retrieval provider for the Vercel AI SDK
-- [ ] **Ollama + Moss + Pipecat reference architecture** — an end-to-end local LLM voice agent: Ollama for LLM inference, Moss for retrieval, Pipecat for real-time audio. A single `docker compose up` to run the entire stack.
+- [ ] **CrewAI integration** — Moss as a retrieval tool for CrewAI agents 
+- [ ] **Haystack integration** — document store / retriever integration
+- [ ] **Reranking support** — plug in cross-encoder rerankers as a post-retrieval step
 
 ## Next Up — Community Contributions Welcome
 
@@ -41,15 +44,12 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 
 ### Framework Integrations
 
-- [ ] **CrewAI** — Moss as a retrieval tool for CrewAI agents ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
-- [ ] **Haystack** — document store / retriever integration
 - [ ] **AutoGen** — retrieval-augmented tool for AutoGen agents
 - [ ] **LlamaIndex** — retriever and query engine integration
 - [ ] **Semantic Kernel** — .NET/Python retrieval plugin
 
 ### Search Quality
 
-- [ ] **Reranking support** — plug in cross-encoder rerankers (Cohere Rerank, bge-reranker, etc.) as a post-retrieval step
 - [ ] **Multi-vector retrieval** — support ColBERT-style late interaction models
 
 ### Data Ingestion
