@@ -297,13 +297,13 @@ vitepress-plugin-moss
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Run unit tests
-npm test
+pnpm test
 
 # Run tests with watch mode
-npm test -- --watch
+pnpm test -- --watch
 ```
 
 Tests are also run automatically in the CI pipeline.
