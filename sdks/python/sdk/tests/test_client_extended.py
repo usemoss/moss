@@ -13,19 +13,6 @@ from moss import __version__, MossClient
 from moss.client.moss_client import _get_manage_url, _get_query_url
 
 
-@pytest.fixture
-def client():
-    with (
-        patch("moss.client.moss_client.ManageClient") as mock_manage,
-        patch("moss.client.moss_client.IndexManager") as mock_mgr,
-    ):
-        c = MossClient("test-project", "test-key")
-        c._manage = mock_manage.return_value
-        c._manager = mock_mgr.return_value
-        c._manager.has_index = MagicMock(return_value=True)
-        yield c
-
-
 class TestUnloadIndex:
     """Tests for unload_index method."""
 
@@ -57,18 +44,6 @@ class TestUnloadIndex:
 
 class TestCloudFallbackErrors:
     """Tests for cloud fallback error handling."""
-
-    @pytest.fixture
-    def unloaded_client(self):
-        with (
-            patch("moss.client.moss_client.ManageClient") as mock_manage,
-            patch("moss.client.moss_client.IndexManager") as mock_mgr,
-        ):
-            c = MossClient("test-project", "test-key")
-            c._manage = mock_manage.return_value
-            c._manager = mock_mgr.return_value
-            c._manager.has_index = MagicMock(return_value=False)
-            yield c
 
     @pytest.mark.asyncio
     async def test_cloud_fallback_http_error(self, unloaded_client):
@@ -341,18 +316,6 @@ class TestQueryOptionsBehavior:
 
 class TestMetadataFilterWarning:
     """Tests for metadata filter warning when index is not loaded."""
-
-    @pytest.fixture
-    def unloaded_client(self):
-        with (
-            patch("moss.client.moss_client.ManageClient") as mock_manage,
-            patch("moss.client.moss_client.IndexManager") as mock_mgr,
-        ):
-            c = MossClient("test-project", "test-key")
-            c._manage = mock_manage.return_value
-            c._manager = mock_mgr.return_value
-            c._manager.has_index = MagicMock(return_value=False)
-            yield c
 
     @pytest.mark.asyncio
     async def test_filter_warning_logged_when_unloaded(self, unloaded_client, caplog):

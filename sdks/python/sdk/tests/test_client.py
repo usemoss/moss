@@ -6,32 +6,21 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from moss.client.moss_client import MossClient
-
-
-# -- Fixtures ----------------------------------------------------------
-
-@pytest.fixture
-def client():
-    with patch("moss.client.moss_client.ManageClient") as mock_manage, \
-         patch("moss.client.moss_client.IndexManager") as mock_mgr:
-        c = MossClient("test-project", "test-key")
-        c._manage = mock_manage.return_value
-        c._manager = mock_mgr.return_value
-        # Default: index is loaded locally (local query path)
-        c._manager.has_index = MagicMock(return_value=True)
-        yield c
+from moss import MossClient
 
 
 @pytest.fixture
 def raw_mocks():
     """Yields (mock_manage_cls, mock_mgr_cls) so tests can inspect constructor args."""
-    with patch("moss.client.moss_client.ManageClient") as mock_manage, \
-         patch("moss.client.moss_client.IndexManager") as mock_mgr:
+    with (
+        patch("moss.client.moss_client.ManageClient") as mock_manage,
+        patch("moss.client.moss_client.IndexManager") as mock_mgr,
+    ):
         yield mock_manage, mock_mgr
 
 
 # -- Constructor -------------------------------------------------------
+
 
 class TestConstructor:
     def test_manage_client_created_with_manage_url(self, raw_mocks):
@@ -56,6 +45,7 @@ class TestConstructor:
 
 
 # -- Model ID Resolution ----------------------------------------------
+
 
 class TestModelIdResolution:
     def test_explicit_model_id(self, client):
@@ -92,6 +82,7 @@ class TestModelIdResolution:
 
 # -- Create Index ------------------------------------------------------
 
+
 class TestCreateIndex:
     @pytest.mark.asyncio
     async def test_delegates_to_manage_client(self, client):
@@ -116,7 +107,9 @@ class TestCreateIndex:
 
     @pytest.mark.asyncio
     async def test_propagates_rust_error(self, client):
-        client._manage.create_index = MagicMock(side_effect=RuntimeError("upload failed"))
+        client._manage.create_index = MagicMock(
+            side_effect=RuntimeError("upload failed")
+        )
 
         with pytest.raises(RuntimeError, match="upload failed"):
             await client.create_index("idx", [MagicMock(embedding=None)])
@@ -144,6 +137,7 @@ class TestCreateIndex:
 
 
 # -- Add Docs ---------------------------------------------------------
+
 
 class TestAddDocs:
     @pytest.mark.asyncio
@@ -196,6 +190,7 @@ class TestAddDocs:
 
 # -- Delete Docs -------------------------------------------------------
 
+
 class TestDeleteDocs:
     @pytest.mark.asyncio
     async def test_delegates_to_manage_client(self, client):
@@ -217,7 +212,9 @@ class TestDeleteDocs:
 
     @pytest.mark.asyncio
     async def test_propagates_rust_error(self, client):
-        client._manage.delete_docs = MagicMock(side_effect=RuntimeError("index not found"))
+        client._manage.delete_docs = MagicMock(
+            side_effect=RuntimeError("index not found")
+        )
 
         with pytest.raises(RuntimeError, match="index not found"):
             await client.delete_docs("idx", ["doc-1"])
@@ -234,6 +231,7 @@ class TestDeleteDocs:
 
 
 # -- Read Operations ---------------------------------------------------
+
 
 class TestReadOps:
     @pytest.mark.asyncio
@@ -295,6 +293,7 @@ class TestReadOps:
 
 # -- Load Index --------------------------------------------------------
 
+
 class TestLoadIndex:
     @pytest.mark.asyncio
     async def test_delegates_to_index_manager(self, client):
@@ -314,14 +313,18 @@ class TestLoadIndex:
         client._manager.load_index = MagicMock(return_value=mock_info)
         client._manager.load_query_model = MagicMock(return_value=None)
 
-        await client.load_index("idx", auto_refresh=True, polling_interval_in_seconds=120)
+        await client.load_index(
+            "idx", auto_refresh=True, polling_interval_in_seconds=120
+        )
 
         client._manager.load_index.assert_called_once_with("idx", True, 120)
         client._manager.load_query_model.assert_called_once_with("idx")
 
     @pytest.mark.asyncio
     async def test_wraps_runtime_error(self, client):
-        client._manager.load_index = MagicMock(side_effect=RuntimeError("download failed"))
+        client._manager.load_index = MagicMock(
+            side_effect=RuntimeError("download failed")
+        )
 
         with pytest.raises(RuntimeError, match="Failed to load index 'idx'"):
             await client.load_index("idx")
@@ -339,6 +342,7 @@ class TestLoadIndex:
 
 # -- Query (local path) ------------------------------------------------
 
+
 class TestQueryLocal:
     @pytest.mark.asyncio
     async def test_query_with_custom_embedding(self, client):
@@ -355,7 +359,12 @@ class TestQueryLocal:
 
         assert result == mock_result
         client._manager.query.assert_called_once_with(
-            "idx", "search text", [0.1, 0.2, 0.3], 3, 0.9, None,
+            "idx",
+            "search text",
+            [0.1, 0.2, 0.3],
+            3,
+            0.9,
+            None,
         )
 
     @pytest.mark.asyncio
@@ -376,7 +385,9 @@ class TestQueryLocal:
     @pytest.mark.asyncio
     async def test_query_raises_for_custom_model_without_embedding(self, client):
         client._manager.query_text = MagicMock(
-            side_effect=RuntimeError("Index model 'custom' requires explicit query embeddings.")
+            side_effect=RuntimeError(
+                "Index model 'custom' requires explicit query embeddings."
+            )
         )
 
         opts = MagicMock()
@@ -390,7 +401,9 @@ class TestQueryLocal:
     @pytest.mark.asyncio
     async def test_query_no_options_uses_defaults(self, client):
         client._manager.query_text = MagicMock(
-            side_effect=RuntimeError("Index model 'custom' requires explicit query embeddings.")
+            side_effect=RuntimeError(
+                "Index model 'custom' requires explicit query embeddings."
+            )
         )
 
         with pytest.raises(ValueError, match="custom embeddings"):
@@ -412,7 +425,12 @@ class TestQueryLocal:
 
         assert result == mock_result
         client._manager.query.assert_called_once_with(
-            "idx", "q", [0.1], 5, 0.8, metadata_filter,
+            "idx",
+            "q",
+            [0.1],
+            5,
+            0.8,
+            metadata_filter,
         )
 
     @pytest.mark.asyncio
@@ -429,7 +447,12 @@ class TestQueryLocal:
         await client.query("idx", "q", opts)
 
         client._manager.query.assert_called_once_with(
-            "idx", "q", [0.1], 5, 0.8, None,
+            "idx",
+            "q",
+            [0.1],
+            5,
+            0.8,
+            None,
         )
 
     @pytest.mark.asyncio
@@ -442,15 +465,22 @@ class TestQueryLocal:
         opts.alpha = 0.8
         opts.embedding = [0.5]
 
-        metadata_filter = {"$and": [
-            {"field": "city", "condition": {"$eq": "NYC"}},
-            {"field": "price", "condition": {"$lt": "50"}},
-        ]}
+        metadata_filter = {
+            "$and": [
+                {"field": "city", "condition": {"$eq": "NYC"}},
+                {"field": "price", "condition": {"$lt": "50"}},
+            ]
+        }
         opts.filter = metadata_filter
         await client.query("idx", "q", opts)
 
         client._manager.query.assert_called_once_with(
-            "idx", "q", [0.5], 10, 0.8, metadata_filter,
+            "idx",
+            "q",
+            [0.5],
+            10,
+            0.8,
+            metadata_filter,
         )
 
     @pytest.mark.asyncio
@@ -461,10 +491,13 @@ class TestQueryLocal:
         result = await client.query("idx", "search")
 
         assert result == mock_result
-        client._manager.query_text.assert_called_once_with("idx", "search", 5, 0.8, None)
+        client._manager.query_text.assert_called_once_with(
+            "idx", "search", 5, 0.8, None
+        )
 
 
 # -- Query (cloud fallback) --------------------------------------------
+
 
 class TestQueryCloudFallback:
     @pytest.mark.asyncio
@@ -483,7 +516,9 @@ class TestQueryCloudFallback:
         with patch("moss.client.moss_client.httpx.AsyncClient") as mock_httpx:
             mock_client_instance = AsyncMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
-            mock_httpx.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
+            mock_httpx.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
             mock_httpx.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await client.query("idx", "test")
@@ -503,7 +538,9 @@ class TestQueryCloudFallback:
         with patch("moss.client.moss_client.httpx.AsyncClient") as mock_httpx:
             mock_client_instance = AsyncMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
-            mock_httpx.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
+            mock_httpx.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
             mock_httpx.return_value.__aexit__ = AsyncMock(return_value=False)
 
             await client.query("idx", "q")
@@ -529,4 +566,3 @@ class TestQueryCloudFallback:
 
         assert result == mock_result
         client._manager.query.assert_called_once()
-

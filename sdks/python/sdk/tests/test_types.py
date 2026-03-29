@@ -10,20 +10,6 @@ import pytest
 class TestQueryOptionsUsage:
     """Tests for QueryOptions usage patterns in the client."""
 
-    @pytest.fixture
-    def client(self):
-        with (
-            patch("moss.client.moss_client.ManageClient") as mock_manage,
-            patch("moss.client.moss_client.IndexManager") as mock_mgr,
-        ):
-            from moss import MossClient
-
-            c = MossClient("test-project", "test-key")
-            c._manage = mock_manage.return_value
-            c._manager = mock_mgr.return_value
-            c._manager.has_index = MagicMock(return_value=True)
-            yield c
-
     @pytest.mark.asyncio
     async def test_query_with_filter_option(self, client):
         mock_result = MagicMock()
