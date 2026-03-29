@@ -18,6 +18,14 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_MOSS_SAMPLES_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
       - name: Pull Vercel Environment
@@ -50,6 +58,14 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_MOSS_VITEPRESS_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
       - name: Pull Vercel Environment
