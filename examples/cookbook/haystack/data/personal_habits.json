@@ -1,0 +1,77 @@
+[
+  {
+    "id": "habit-001",
+    "text": "I wake up at 6:30 AM on weekdays and 8:00 AM on weekends. I set two alarms 5 minutes apart.",
+    "metadata": {"category": "routine", "time": "morning"}
+  },
+  {
+    "id": "habit-002",
+    "text": "My morning routine: wake up, drink a glass of warm lemon water, 20 minutes of yoga, then shower. Takes about 45 minutes total.",
+    "metadata": {"category": "routine", "time": "morning"}
+  },
+  {
+    "id": "habit-003",
+    "text": "I do intermittent fasting 16:8. My eating window is 12 PM to 8 PM. I skip breakfast and have black coffee instead.",
+    "metadata": {"category": "diet", "time": "daily"}
+  },
+  {
+    "id": "habit-004",
+    "text": "I go to the gym Monday, Wednesday, and Friday. Upper body on Monday, legs on Wednesday, full body on Friday. Each session is 45-60 minutes.",
+    "metadata": {"category": "fitness", "time": "weekly"}
+  },
+  {
+    "id": "habit-005",
+    "text": "I run 5K every Tuesday and Thursday morning at 7 AM in the park near my house. My current best time is 24 minutes.",
+    "metadata": {"category": "fitness", "time": "weekly"}
+  },
+  {
+    "id": "habit-006",
+    "text": "I read for 30 minutes before bed every night. Currently reading non-fiction books about psychology and habits.",
+    "metadata": {"category": "routine", "time": "evening"}
+  },
+  {
+    "id": "habit-007",
+    "text": "I meditate for 10 minutes every morning using the Headspace app. I prefer guided meditation focused on focus and clarity.",
+    "metadata": {"category": "wellness", "time": "morning"}
+  },
+  {
+    "id": "habit-008",
+    "text": "I meal prep every Sunday for the week. Usually cook chicken, rice, and roasted vegetables. Takes about 2 hours.",
+    "metadata": {"category": "diet", "time": "weekly"}
+  },
+  {
+    "id": "habit-009",
+    "text": "I drink at least 3 liters of water daily. I use a marked water bottle to track intake throughout the day.",
+    "metadata": {"category": "health", "time": "daily"}
+  },
+  {
+    "id": "habit-010",
+    "text": "My sleep schedule is 10:30 PM to 6:30 AM. I use night mode on all devices after 9 PM and avoid screens 30 minutes before bed.",
+    "metadata": {"category": "routine", "time": "evening"}
+  },
+  {
+    "id": "habit-011",
+    "text": "I take a 15-minute walk after lunch every day. It helps with digestion and gives me a mental break from work.",
+    "metadata": {"category": "wellness", "time": "afternoon"}
+  },
+  {
+    "id": "habit-012",
+    "text": "I do a weekly review every Sunday evening. I plan the upcoming week, review goals, and journal about what went well and what to improve.",
+    "metadata": {"category": "productivity", "time": "weekly"}
+  },
+  {
+    "id": "habit-013",
+    "text": "I limit coffee to 2 cups per day, both before noon. I switched from regular milk to oat milk six months ago.",
+    "metadata": {"category": "diet", "time": "daily"}
+  },
+  {
+    "id": "habit-014",
+    "text": "I practice cold showers every morning for the last 3 months. Started with 30 seconds, now up to 2 minutes. Great for alertness.",
+    "metadata": {"category": "wellness", "time": "morning"}
+  },
+  {
+    "id": "habit-015",
+    "text": "I use the Pomodoro technique for work: 25 minutes focused work, 5 minute break. I do 8 pomodoros on a productive day.",
+    "metadata": {"category": "productivity", "time": "daily"}
+  }
+]

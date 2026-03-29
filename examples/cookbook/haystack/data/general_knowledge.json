@@ -1,0 +1,77 @@
+[
+  {
+    "id": "gen-001",
+    "text": "The Pomodoro Technique was invented by Francesco Cirillo in the late 1980s. It uses a timer to break work into 25-minute intervals separated by short breaks. Named after a tomato-shaped kitchen timer.",
+    "metadata": {"category": "productivity", "topic": "techniques"}
+  },
+  {
+    "id": "gen-002",
+    "text": "Intermittent fasting 16:8 means fasting for 16 hours and eating within an 8-hour window. Studies show it can improve insulin sensitivity, reduce inflammation, and support weight management.",
+    "metadata": {"category": "health", "topic": "nutrition"}
+  },
+  {
+    "id": "gen-003",
+    "text": "A good 5K time for a beginner runner is 30-35 minutes. Intermediate runners aim for 22-25 minutes. Elite runners complete it under 17 minutes. Consistent training can improve times by 1-2 minutes per month.",
+    "metadata": {"category": "fitness", "topic": "running"}
+  },
+  {
+    "id": "gen-004",
+    "text": "Cold exposure therapy benefits include improved circulation, reduced inflammation, enhanced immune function, and increased mental resilience. Start with 30 seconds and gradually increase to 2-5 minutes.",
+    "metadata": {"category": "wellness", "topic": "recovery"}
+  },
+  {
+    "id": "gen-005",
+    "text": "To build a consistent meditation habit, start with just 5 minutes daily. Guided apps like Headspace, Calm, or Insight Timer can help. Morning meditation pairs well with a morning routine for consistency.",
+    "metadata": {"category": "wellness", "topic": "meditation"}
+  },
+  {
+    "id": "gen-006",
+    "text": "The ideal daily water intake is approximately 3.7 liters for men and 2.7 liters for women, including water from food. Active people and those in hot climates need more. Signs of dehydration include dark urine and fatigue.",
+    "metadata": {"category": "health", "topic": "hydration"}
+  },
+  {
+    "id": "gen-007",
+    "text": "Meal prepping saves an average of 5-7 hours per week on cooking. Best containers are glass with snap-lock lids. Most prepped meals stay fresh for 4-5 days in the fridge. Chicken, rice, and vegetables are the most popular combo.",
+    "metadata": {"category": "nutrition", "topic": "meal-prep"}
+  },
+  {
+    "id": "gen-008",
+    "text": "The best time to exercise for muscle growth is between 2-6 PM when body temperature peaks and testosterone levels are higher. Morning exercise is better for fat burning and establishing consistency.",
+    "metadata": {"category": "fitness", "topic": "timing"}
+  },
+  {
+    "id": "gen-009",
+    "text": "Sleep hygiene tips: keep your room at 65-68F (18-20C), avoid screens 1 hour before bed, maintain a consistent schedule, and limit caffeine after noon. 7-9 hours of sleep is optimal for adults.",
+    "metadata": {"category": "health", "topic": "sleep"}
+  },
+  {
+    "id": "gen-010",
+    "text": "Walking after meals for 15-30 minutes can lower blood sugar by up to 30%. It also improves digestion and reduces bloating. Even a slow-paced walk is effective.",
+    "metadata": {"category": "health", "topic": "walking"}
+  },
+  {
+    "id": "gen-011",
+    "text": "The weekly review is a core practice from Getting Things Done (GTD) by David Allen. It involves reviewing all projects, clearing inboxes, and planning the next week. Best done on Sunday evenings.",
+    "metadata": {"category": "productivity", "topic": "planning"}
+  },
+  {
+    "id": "gen-012",
+    "text": "Yoga for beginners: start with 15-20 minutes of basic poses — downward dog, warrior I and II, child's pose, and cat-cow. Consistency matters more than duration. Morning yoga improves flexibility and reduces stress.",
+    "metadata": {"category": "fitness", "topic": "yoga"}
+  },
+  {
+    "id": "gen-013",
+    "text": "Oat milk has become the most popular plant-based milk alternative. It's naturally sweet, froths well for coffee, and has more fiber than almond milk. However, it's higher in calories and carbs than almond milk.",
+    "metadata": {"category": "nutrition", "topic": "alternatives"}
+  },
+  {
+    "id": "gen-014",
+    "text": "Reading before bed improves sleep quality and reduces stress by 68% according to a University of Sussex study. Physical books are better than screens. Even 6 minutes of reading can lower heart rate and ease tension.",
+    "metadata": {"category": "wellness", "topic": "reading"}
+  },
+  {
+    "id": "gen-015",
+    "text": "The two-alarm technique: set alarms 5 minutes apart. The first alarm starts your wake-up process, the second confirms it. Place the second alarm across the room to force getting out of bed.",
+    "metadata": {"category": "productivity", "topic": "wake-up"}
+  }
+]
