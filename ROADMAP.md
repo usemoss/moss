@@ -41,7 +41,6 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 - [ ] **Go bindings** — for backend services and CLI tools ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Elixir bindings** — for Phoenix/LiveView apps ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Rust bindings** — for performance-critical pipelines ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
-- [ ] **Java/Kotlin bindings** — for Android apps and Spring Boot backend services ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 
 ### Framework Integrations
 
@@ -50,7 +49,7 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 - [ ] **Semantic Kernel** — .NET/Python retrieval plugin
 - [ ] **LangGraph** — retrieval node for stateful multi-agent workflows
 - [ ] **Google ADK** — Moss as a retrieval tool for Google's Agent Development Kit
-- [ ] **OpenAI Agents SDK** — Moss as a hosted tool for the OpenAI agents framework
+- [ ] **OpenAI Agents SDK** — Moss as a tool for the OpenAI agents framework
 - [ ] **Smolagents** — lightweight retrieval tool for Hugging Face's agent framework
 
 ### Voice AI Ecosystem
@@ -58,11 +57,9 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 - [ ] **Vapi integration** — Moss retrieval tool for Vapi voice agents
 - [ ] **Daily.co integration** — real-time audio pipeline with semantic context injection
 - [ ] **Twilio integration** — retrieval for phone-based AI agents (IVR, call center bots)
-- [ ] **Deepgram + Moss pipeline** — reference architecture: STT → Moss retrieval → LLM → TTS in under 300ms
 
 ### Developer Tools
 
-- [ ] **Moss CLI** — manage indexes, run queries, import data, and inspect results from the terminal (`moss index create`, `moss query`, `moss import`)
 - [ ] **VS Code extension** — semantic search over your codebase directly from the editor sidebar
 
 ### Search Quality
