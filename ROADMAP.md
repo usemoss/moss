@@ -27,7 +27,7 @@ This is a living document. We update it as priorities shift based on community f
 
 ## In Progress
 
-- [ ] **CrewAI integration** — Moss as a retrieval tool for CrewAI agents 
+- [ ] **CrewAI integration** — Moss as a retrieval tool for CrewAI agents
 - [ ] **Haystack integration** — document store / retriever integration
 - [ ] **Reranking support** — plug in cross-encoder rerankers as a post-retrieval step
 
@@ -41,12 +41,29 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 - [ ] **Go bindings** — for backend services and CLI tools ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Elixir bindings** — for Phoenix/LiveView apps ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Rust bindings** — for performance-critical pipelines ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
+- [ ] **Java/Kotlin bindings** — for Android apps and Spring Boot backend services ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 
 ### Framework Integrations
 
 - [ ] **AutoGen** — retrieval-augmented tool for AutoGen agents
 - [ ] **LlamaIndex** — retriever and query engine integration
 - [ ] **Semantic Kernel** — .NET/Python retrieval plugin
+- [ ] **LangGraph** — retrieval node for stateful multi-agent workflows
+- [ ] **Google ADK** — Moss as a retrieval tool for Google's Agent Development Kit
+- [ ] **OpenAI Agents SDK** — Moss as a hosted tool for the OpenAI agents framework
+- [ ] **Smolagents** — lightweight retrieval tool for Hugging Face's agent framework
+
+### Voice AI Ecosystem
+
+- [ ] **Vapi integration** — Moss retrieval tool for Vapi voice agents
+- [ ] **Daily.co integration** — real-time audio pipeline with semantic context injection
+- [ ] **Twilio integration** — retrieval for phone-based AI agents (IVR, call center bots)
+- [ ] **Deepgram + Moss pipeline** — reference architecture: STT → Moss retrieval → LLM → TTS in under 300ms
+
+### Developer Tools
+
+- [ ] **Moss CLI** — manage indexes, run queries, import data, and inspect results from the terminal (`moss index create`, `moss query`, `moss import`)
+- [ ] **VS Code extension** — semantic search over your codebase directly from the editor sidebar
 
 ### Search Quality
 
@@ -74,6 +91,21 @@ These are bigger bets we're exploring. They're directional, not committed — co
 ### Browser & Edge
 
 - [ ] **Edge runtime support** — run Moss in Cloudflare Workers, Deno Deploy, and Vercel Edge Functions
+
+### Advanced Retrieval
+
+- [ ] **Query expansion** — LLM-powered query rewriting to improve recall on short or ambiguous queries
+- [ ] **Contextual retrieval** — pre-chunking contextualization (à la Anthropic's technique) to make every chunk self-contained and more retrievable
+- [ ] **Sparse-dense fusion (SPLADE)** — learned sparse retrieval to complement BM25 hybrid, improving precision on rare terms
+
+### Data Connectors
+
+Connect knowledge sources to Moss without writing custom ETL.
+
+- [ ] **GitHub connector** — index code, issues, PRs, and docs from repositories
+- [ ] **Notion connector** — sync and index Notion workspace pages
+- [ ] **Confluence connector** — enterprise knowledge base indexing
+- [ ] **S3/GCS sync** — auto-index documents from cloud storage buckets on upload
 
 ---
 
