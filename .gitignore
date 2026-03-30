@@ -19,3 +19,4 @@ venv/
 *CLAUDE.md
 
 *.egg-info
+.moss-cache
