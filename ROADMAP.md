@@ -21,7 +21,6 @@ This is a living document. We update it as priorities shift based on community f
 - [x] WebAssembly runtime — client-side semantic search in the browser, no server required
 - [x] **Benchmarks directory** — reproducible latency/throughput scripts comparing Moss vs Pinecone, Qdrant, and Chroma on standardized datasets
 - [x] **MCP server** — expose Moss as a Model Context Protocol server so any MCP-compatible AI tool (Claude, Cursor, Windsurf) can do semantic search
-- [x] **npm/PyPI package rename** — consolidating package names under the Moss brand
 - [x] **Vercel AI SDK integration** — retrieval provider for the Vercel AI SDK
 - [x] **Ollama + Moss + Pipecat reference architecture** — an end-to-end local LLM voice agent: Ollama for LLM inference, Moss for retrieval, Pipecat for real-time audio. A single `docker compose up` to run the entire stack.
 
