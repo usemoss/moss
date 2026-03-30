@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/your-username/moss-for-tig#readme",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=18.18.0"
   },
   "scripts": {
     "start": "tsx sample.ts",
