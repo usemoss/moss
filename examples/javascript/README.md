@@ -56,5 +56,5 @@ npx tsx custom_embedding_sample.ts
 
 ## Requirements
 
-- Node.js (version 16 or higher)
+- Node.js (version 22 or higher)
 - Valid Moss project credentials
