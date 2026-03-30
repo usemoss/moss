@@ -1,6 +1,21 @@
 from __future__ import annotations
 
-from typing import ClassVar, Dict, List, Optional, Sequence
+from typing import Any, ClassVar, Dict, List, Optional, Sequence
+
+
+class RerankOptions:
+    """Configuration for reranking passed to query()."""
+
+    provider: str
+    top_n: Optional[int]
+    init_kwargs: Dict[str, Any]
+
+    def __init__(
+        self,
+        provider: str,
+        top_n: Optional[int] = None,
+        **kwargs: Any,
+    ) -> None: ...
 
 
 class MossClient:
@@ -58,6 +73,8 @@ class MossClient:
         name: str,
         query: str,
         options: Optional[QueryOptions] = None,
+        *,
+        rerank: Optional[RerankOptions] = None,
     ) -> SearchResult: ...
 
 
@@ -230,6 +247,7 @@ __version__: str
 
 __all__ = [
     "MossClient",
+    "RerankOptions",
     "DocumentInfo",
     "GetDocumentsOptions",
     "IndexInfo",

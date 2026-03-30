@@ -36,6 +36,7 @@ from moss_core import (
     SearchResult,
 )
 
+from .client.models import RerankOptions
 from .client.moss_client import MossClient
 
 __version__ = "1.0.0b19"
@@ -59,4 +60,6 @@ __all__ = [
     "JobPhase",
     "JobProgress",
     "JobStatusResponse",
+    # Reranking
+    "RerankOptions",
 ]
