@@ -20,7 +20,8 @@ import asyncio
 import os
 
 from elevenlabs import ElevenLabs
-from elevenlabs.conversational_ai.conversation import ClientTools, Conversation, DefaultAudioInterface
+from elevenlabs.conversational_ai.conversation import ClientTools, Conversation
+from elevenlabs.conversational_ai.default_audio_interface import DefaultAudioInterface
 from elevenlabs_moss import MossClientTool
 
 async def main():
@@ -33,8 +34,7 @@ async def main():
     await moss_tool.load_index()
 
     # Register with ElevenLabs ClientTools
-    loop = asyncio.get_running_loop()
-    client_tools = ClientTools(loop=loop)
+    client_tools = ClientTools()
     moss_tool.register(client_tools)
 
     # Start the conversation

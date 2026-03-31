@@ -132,9 +132,9 @@ class MossClientTool:
 
         try:
             return await self.search(query)
-        except Exception as exc:
+        except Exception:
             logger.exception("Moss search failed for query '%s'", query)
-            return f"Search unavailable: {exc}"
+            return "Search unavailable. Please try again later."
 
     def _format_results(self, documents: Sequence[Any]) -> str:
         """Format Moss search results into a numbered string."""

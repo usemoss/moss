@@ -89,12 +89,15 @@ async def main():
         # Offload the blocking wait to a thread so the event loop stays free
         # for async Moss tool callbacks
         await asyncio.to_thread(conversation.wait_for_session_end)
-    except KeyboardInterrupt:
-        logger.info("Ending conversation...")
+    except asyncio.CancelledError:
+        pass
+    finally:
         conversation.end_session()
-
-    logger.info("Conversation ended.")
+        logger.info("Conversation ended.")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

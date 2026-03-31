@@ -3,7 +3,9 @@ import os
 
 from dotenv import load_dotenv
 from inferedge_moss import DocumentInfo, MossClient
-from loguru import logger
+import logging
+
+logger = logging.getLogger("create_index")
 
 load_dotenv()
 
@@ -80,7 +82,7 @@ async def upload_documents():
             docs=documents,
             model_id="moss-minilm",
         )
-        logger.success("Index created successfully.")
+        logger.info("Index created successfully.")
 
     except Exception as e:
         logger.error("An error occurred: {0}", str(e))
