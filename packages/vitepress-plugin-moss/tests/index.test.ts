@@ -11,7 +11,7 @@ vi.mock('obug', () => ({ createDebug: () => () => {} }))
 vi.mock('node:fs', () => ({ default: { existsSync: mockFsExistsSync } }))
 vi.mock('@moss-tools/md-indexer', () => ({ sync: mockSync }))
 
-import { mossIndexerPlugin } from '../index.js'
+import { mossIndexerPlugin } from '../index.ts'
 
 function setup(searchConfig: unknown) {
   const mockLogger = { error: vi.fn() }
@@ -31,7 +31,7 @@ function setup(searchConfig: unknown) {
 }
 describe('mossIndexerPlugin', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    vi.restoreAllMocks()
     mockFsExistsSync.mockReturnValue(true)
   })
 
@@ -102,7 +102,7 @@ describe('mossIndexerPlugin', () => {
 
   describe('load - config loading', () => {
     it('returns config JSON when provider is moss', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'p', projectKey: 'k', indexName: 'i' },
       })
@@ -113,37 +113,37 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('returns empty export when provider is not moss', () => {
-      const plugin = setup({ provider: 'local' })
+      const { plugin } = setup({ provider: 'local' })
       const result = plugin.load('\0virtual:moss-config')
       expect(result).toBe('export default () => ({})')
     })
 
     it('returns empty export when search config is undefined', () => {
-      const plugin = setup(undefined)
+      const { plugin } = setup(undefined)
       const result = plugin.load('\0virtual:moss-config')
       expect(result).toBe('export default () => ({})')
     })
 
     it('returns empty export when search config is null', () => {
-      const plugin = setup(null)
+      const { plugin } = setup(null)
       const result = plugin.load('\0virtual:moss-config')
       expect(result).toBe('export default () => ({})')
     })
 
     it('returns empty export when search config is empty object', () => {
-      const plugin = setup({})
+      const { plugin } = setup({})
       const result = plugin.load('\0virtual:moss-config')
       expect(result).toBe('export default () => ({})')
     })
 
     it('returns config with empty options when options not provided', () => {
-      const plugin = setup({ provider: 'moss' })
+      const { plugin } = setup({ provider: 'moss' })
       const result = plugin.load('\0virtual:moss-config')
       expect(result).toBe('export default () => ({})')
     })
 
     it('escapes less than sign in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test<script>' },
       })
@@ -152,7 +152,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes greater than sign in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { indexName: 'test>value' },
       })
@@ -161,7 +161,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes forward slash in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectKey: 'test/path' },
       })
@@ -170,7 +170,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes backslash in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\\value' },
       })
@@ -180,7 +180,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes newline in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\nvalue' },
       })
@@ -190,7 +190,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes carriage return in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\rvalue' },
       })
@@ -200,7 +200,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes tab in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\tvalue' },
       })
@@ -210,7 +210,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes null character in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\u0000value' },
       })
@@ -219,7 +219,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes backspace in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\bvalue' },
       })
@@ -228,7 +228,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes form feed in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\fvalue' },
       })
@@ -238,7 +238,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes line separator in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\u2028value' },
       })
@@ -247,7 +247,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes paragraph separator in config values', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test\u2029value' },
       })
@@ -256,7 +256,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('leaves safe characters unchanged', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test_abc_123_ABC' },
       })
@@ -265,7 +265,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('escapes multiple unsafe characters', () => {
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: '<script>alert("xss")</script>' },
       })
@@ -274,7 +274,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('returns undefined for unrelated module id', () => {
-      const plugin = setup({ provider: 'moss' })
+      const { plugin } = setup({ provider: 'moss' })
       const result = plugin.load('some-other-module')
       expect(result).toBeUndefined()
     })
@@ -289,7 +289,7 @@ describe('mossIndexerPlugin', () => {
   describe('buildEnd - index sync', () => {
     it('syncs index when all credentials are provided', async () => {
       mockSync.mockResolvedValue(undefined)
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', projectKey: 'test-key', indexName: 'test-index' },
       })
@@ -307,7 +307,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('does not sync when provider is not moss', async () => {
-      const plugin = setup({ provider: 'local' })
+      const { plugin } = setup({ provider: 'local' })
       
       await plugin.buildEnd()
       
@@ -315,7 +315,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('does not sync when search config is undefined', async () => {
-      const plugin = setup(undefined)
+      const { plugin } = setup(undefined)
       
       await plugin.buildEnd()
       
@@ -323,7 +323,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('logs error and continues when projectId is missing', async () => {
-      const plugin = setup({
+      const { plugin, mockLogger } = setup({
         provider: 'moss',
         options: { projectKey: 'test-key', indexName: 'test-index' },
       }) as any
@@ -331,44 +331,44 @@ describe('mossIndexerPlugin', () => {
       await plugin.buildEnd()
       
       expect(mockSync).not.toHaveBeenCalled()
-      expect(plugin._logger.error).toHaveBeenCalled()
-      const errorCall = (plugin._logger.error as any).mock.calls[0][0]
+      expect(mockLogger.error).toHaveBeenCalled()
+      const errorCall = mockLogger.error.mock.calls[0][0]
       expect(errorCall).toContain('Missing Moss configuration')
       expect(errorCall).toContain('projectId')
     })
 
     it('logs error and continues when projectKey is missing', async () => {
-      const plugin = setup({
+      const { plugin, mockLogger } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', indexName: 'test-index' },
       }) as any
-      
+       
       await plugin.buildEnd()
-      
+       
       expect(mockSync).not.toHaveBeenCalled()
-      expect(plugin._logger.error).toHaveBeenCalled()
-      const errorCall = (plugin._logger.error as any).mock.calls[0][0]
+      expect(mockLogger.error).toHaveBeenCalled()
+      const errorCall = mockLogger.error.mock.calls[0][0]
       expect(errorCall).toContain('Missing Moss configuration')
       expect(errorCall).toContain('projectKey')
     })
 
     it('logs error and continues when indexName is missing', async () => {
-      const plugin = setup({
+      const { plugin, mockLogger } = setup({
         provider: 'moss',
-        options: { projectId: 'test-id', projectKey: 'test-key' },
+        options: { projectId: 'test-id' },
       }) as any
       
       await plugin.buildEnd()
       
       expect(mockSync).not.toHaveBeenCalled()
-      expect(plugin._logger.error).toHaveBeenCalled()
-      const errorCall = (plugin._logger.error as any).mock.calls[0][0]
+      expect(mockLogger.error).toHaveBeenCalled()
+      const errorCall = mockLogger.error.mock.calls[0][0]
       expect(errorCall).toContain('Missing Moss configuration')
       expect(errorCall).toContain('indexName')
     })
 
     it('logs error and continues when all credentials are missing', async () => {
-      const plugin = setup({
+      const { plugin, mockLogger } = setup({
         provider: 'moss',
         options: {},
       }) as any
@@ -376,12 +376,12 @@ describe('mossIndexerPlugin', () => {
       await plugin.buildEnd()
       
       expect(mockSync).not.toHaveBeenCalled()
-      expect(plugin._logger.error).toHaveBeenCalled()
+      expect(mockLogger.error).toHaveBeenCalled()
     })
 
     it('logs error and continues when sync fails', async () => {
       mockSync.mockRejectedValue(new Error('Network error'))
-      const plugin = setup({
+      const { plugin, mockLogger } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', projectKey: 'test-key', indexName: 'test-index' },
       }) as any
@@ -389,15 +389,15 @@ describe('mossIndexerPlugin', () => {
       await plugin.buildEnd()
       
       expect(mockSync).toHaveBeenCalled()
-      expect(plugin._logger.error).toHaveBeenCalled()
-      const errorCall = (plugin._logger.error as any).mock.calls[0][0]
+      expect(mockLogger.error).toHaveBeenCalled()
+      const errorCall = mockLogger.error.mock.calls[0][0]
       expect(errorCall).toContain('Moss index sync failed')
       expect(errorCall).toContain('Network error')
     })
 
     it('allows build to continue after sync failure', async () => {
       mockSync.mockRejectedValue(new Error('Test error'))
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', projectKey: 'test-key', indexName: 'test-index' },
       }) as any
@@ -409,7 +409,7 @@ describe('mossIndexerPlugin', () => {
   describe('closeBundle', () => {
     it('delegates to buildEnd', async () => {
       mockSync.mockResolvedValue(undefined)
-      const plugin = setup({
+      const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', projectKey: 'test-key', indexName: 'test-index' },
       })
