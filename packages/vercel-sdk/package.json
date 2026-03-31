@@ -1,0 +1,47 @@
+{
+  "name": "@moss-tools/vercel-sdk",
+  "version": "0.1.0",
+  "description": "Vercel AI SDK tools for MOSS semantic search",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "ai-sdk",
+    "vercel-ai",
+    "moss",
+    "semantic-search",
+    "inferedge"
+  ],
+  "author": "InferEdge Inc.",
+  "license": "BSD-2-Clause",
+  "peerDependencies": {
+    "@inferedge/moss": "^1.0.0-beta.7",
+    "ai": "^6.0.0",
+    "zod": "^3.25.76 || ^4.1.8"
+  },
+  "devDependencies": {
+    "@inferedge/moss": "1.0.0-beta.7",
+    "ai": "6.0.97",
+    "zod": "3.25.76",
+    "@types/node": "22.13.14",
+    "tsup": "8.4.0",
+    "typescript": "5.8.2",
+    "vitest": "3.1.1"
+  }
+}

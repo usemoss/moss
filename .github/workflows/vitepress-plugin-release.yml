@@ -1,0 +1,97 @@
+name: Publish vitepress-plugin-moss
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: vitepress-plugin-moss-release
+  cancel-in-progress: false
+
+jobs:
+  determine-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      major_minor: ${{ steps.compute.outputs.major_minor }}
+      patch: ${{ steps.compute.outputs.patch }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Get version from package.json
+        id: compute
+        shell: bash
+        run: |
+          cd packages/vitepress-plugin-moss
+          VERSION=$(node -p "require('./package.json').version")
+
+          if [[ $VERSION =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH="${BASH_REMATCH[3]}"
+            MM="${MAJOR}.${MINOR}"
+          else
+            echo "Invalid version in package.json: $VERSION" >&2
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "major_minor=${MM}" >> $GITHUB_OUTPUT
+          echo "patch=${PATCH}" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+  build-and-publish:
+    needs: determine-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # for tagging
+
+    env:
+      PKG_DIR: packages/vitepress-plugin-moss
+      VERSION: ${{ needs.determine-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
+          cache-dependency-path: ${{ env.PKG_DIR }}/pnpm-lock.yaml
+
+      - name: Show version to be published
+        run: echo "Publishing version ${{ env.VERSION }}"
+
+      - name: Install dependencies
+        working-directory: ${{ env.PKG_DIR }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        working-directory: ${{ env.PKG_DIR }}
+        run: pnpm build
+
+      - name: Publish to npm
+        working-directory: ${{ env.PKG_DIR }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: pnpm publish --no-git-checks --access public
+
+      - name: Tag release
+        env:
+          VERSION: ${{ env.VERSION }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "vitepress-plugin-moss-v${VERSION}"
+          git push origin "vitepress-plugin-moss-v${VERSION}"

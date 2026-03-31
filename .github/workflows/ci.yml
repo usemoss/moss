@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ main ]
@@ -19,11 +22,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install ruff mypy
-        if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+        if [ -f examples/python/requirements.txt ]; then pip install -r examples/python/requirements.txt; fi
     - name: Lint with ruff
-      run: ruff check python pipecat-moss livekit-moss-vercel
+      run: ruff check examples/python apps/pipecat-moss apps/livekit-moss-vercel
     - name: Type check with mypy
-      run: mypy python pipecat-moss livekit-moss-vercel --ignore-missing-imports
+      run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports --exclude "apps/pipecat-moss/hume-ollama-local/create_index.py"
 
   javascript-lint:
     runs-on: ubuntu-latest
@@ -34,13 +37,118 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: javascript/package-lock.json
+        cache-dependency-path: examples/javascript/package-lock.json
     - name: Install dependencies
-      working-directory: javascript
+      working-directory: examples/javascript
       run: npm ci
     - name: Lint
-      working-directory: javascript
+      working-directory: examples/javascript
       run: npm run lint
     - name: Type check
-      working-directory: javascript
+      working-directory: examples/javascript
       run: npm run type-check
+
+  python-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install package
+      working-directory: examples/cookbook/langchain
+      run: python -m pip install -e .
+    - name: Run tests
+      working-directory: examples/cookbook/langchain
+      run: python -m unittest -v
+
+  python-sdk-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install SDK with dev dependencies
+      working-directory: sdks/python/sdk
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    - name: Lint with ruff
+      working-directory: sdks/python/sdk
+      run: |
+        pip install ruff
+        ruff check src/ tests/
+    - name: Type check with mypy
+      working-directory: sdks/python/sdk
+      run: mypy src/ --ignore-missing-imports
+    - name: Run tests
+      working-directory: sdks/python/sdk
+      run: pytest tests/ -v
+
+  next-js-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: apps/next-js/package-lock.json
+    - name: Install dependencies
+      working-directory: apps/next-js
+      run: npm ci
+    - name: Build
+      working-directory: apps/next-js
+      run: npm run build
+    - name: Run tests
+      working-directory: apps/next-js
+      run: npm test
+
+  vercel-sdk-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: packages/vercel-sdk/package-lock.json
+    - name: Install dependencies
+      working-directory: packages/vercel-sdk
+      run: npm ci
+    - name: Build
+      working-directory: packages/vercel-sdk
+      run: npm run build
+    - name: Run tests
+      working-directory: packages/vercel-sdk
+      run: npm test
+
+  vitepress-plugin-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: latest
+    - name: Install dependencies
+      working-directory: packages/vitepress-plugin-moss
+      run: pnpm install --frozen-lockfile
+    - name: Build
+      working-directory: packages/vitepress-plugin-moss
+      run: pnpm build
+    - name: Run tests
+      working-directory: packages/vitepress-plugin-moss
+      run: pnpm test

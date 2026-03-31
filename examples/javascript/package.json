@@ -1,0 +1,66 @@
+{
+  "name": "moss-example",
+  "version": "1.0.0",
+  "description": "Complete examples and demonstrations for the Moss JavaScript SDK - Semantic search and document indexing made simple",
+  "license": "ISC",
+  "author": "Your Name <email@example.com>",
+  "type": "commonjs",
+  "main": "sample.ts",
+  "keywords": [
+    "moss",
+    "semantic-search",
+    "document-indexing",
+    "machine-learning",
+    "search-engine",
+    "typescript",
+    "faq-search",
+    "knowledge-base",
+    "embedding"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/moss-for-tig.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/moss-for-tig/issues"
+  },
+  "homepage": "https://github.com/your-username/moss-for-tig#readme",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "scripts": {
+    "start": "tsx sample.ts",
+    "faq": "tsx faqSample.ts",
+    "dev": "tsx --watch sample.ts",
+    "type-check": "tsc --noEmit",
+    "lint": "ESLINT_USE_FLAT_CONFIG=true eslint .",
+    "format": "prettier --write .",
+    "cached-load": "tsx cached_load_sample.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@inferedge/moss": "^1.0.0-beta.8",
+    "dotenv": "^17.2.3",
+    "openai": "^6.17.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.57.1",
+    "globals": "^17.1.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.54.0"
+  },
+  "overrides": {
+    "minimatch": "^9.0.7"
+  },
+  "files": [
+    "*.ts",
+    "*.json",
+    "README.md",
+    "LICENSE"
+  ]
+}

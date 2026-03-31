@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Usage Questions and Troubleshooting
+    url: https://moss.link/discord
+    about: Use GitHub Issues for bugs and feature proposals. Use Discord for setup help, troubleshooting, and general usage questions.

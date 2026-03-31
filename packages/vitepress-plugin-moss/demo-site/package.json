@@ -1,0 +1,30 @@
+{
+  "name": "moss-test-site",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "documentation:dev": "vitepress dev documentation",
+    "index:docs": "node --experimental-strip-types scripts/index-docs.ts",
+    "predocs:build": "pnpm -C .. install --no-frozen-lockfile && pnpm -C .. run build",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "documentation:build": "pnpm -C .. install --no-frozen-lockfile && pnpm -C .. run build && vitepress build documentation",
+    "documentation:preview": "vitepress preview documentation"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-moss": "link:.."
+  },
+  "devDependencies": {
+    "dotenv": "^17.3.1"
+  }
+}

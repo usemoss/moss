@@ -17,3 +17,6 @@ venv/
 # Claude
 *.claude/
 *CLAUDE.md
+
+*.egg-info
+.moss-cache

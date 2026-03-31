@@ -5,5 +5,8 @@
   "scripts": {
     "type-check": "npm run type-check --prefix javascript && npm run type-check --prefix next-js",
     "lint": "npm run lint --prefix javascript && npm run lint --prefix next-js"
+  },
+  "dependencies": {
+    "vitepress": "^1.6.4"
   }
 }
