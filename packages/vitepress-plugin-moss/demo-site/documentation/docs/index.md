@@ -3,8 +3,8 @@ layout: home
 search: false
 
 hero:
-  name: "Moss"
-  text: "Real-time semantic search"
+  name: "Moss Client SDKs"
+  text: ""
   tagline: "Sub-10 ms retrieval for conversational AI, voice assistants, and multimodal agents. On-device, in-browser, or in the cloud."
   actions:
     - theme: brand
