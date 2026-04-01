@@ -85,7 +85,7 @@ async def upload_documents():
         logger.info("Index created successfully.")
 
     except Exception as e:
-        logger.error("An error occurred: {0}", str(e))
+        logger.error("An error occurred: %s", e)
         raise
 
 
