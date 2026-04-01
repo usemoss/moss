@@ -28,7 +28,7 @@ async def main():
 
     if not project_id or not project_key:
         print("Error: MOSS_PROJECT_ID and MOSS_PROJECT_KEY must be set.")
-        print("Copy .env.template to .env and fill in your credentials.")
+        print("Create a .env file in this directory and set MOSS_PROJECT_ID and MOSS_PROJECT_KEY.")
         return
 
     async with MossClassifyClient(project_id=project_id, project_key=project_key) as client:
