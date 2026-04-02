@@ -40,6 +40,7 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 - [ ] **Go bindings** — for backend services and CLI tools ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Elixir bindings** — for Phoenix/LiveView apps ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Rust bindings** — for performance-critical pipelines ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
+- [ ] **Kotlin bindings** — for Android apps and Spring Boot backend services ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 
 ### Framework Integrations
 
@@ -59,6 +60,7 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 
 ### Developer Tools
 
+- [ ] **Moss CLI** — manage indexes, run queries, import data, and inspect results from the terminal (`moss index create`, `moss query`, `moss import`)
 - [ ] **VS Code extension** — semantic search over your codebase directly from the editor sidebar
 
 ### Search Quality
@@ -92,6 +94,7 @@ These are bigger bets we're exploring. They're directional, not committed — co
 
 - [ ] **Query expansion** — LLM-powered query rewriting to improve recall on short or ambiguous queries
 - [ ] **Sparse-dense fusion (SPLADE)** — learned sparse retrieval to complement BM25 hybrid, improving precision on rare terms
+- [ ] **Contextual retrieval** — pre-chunking contextualization to make every chunk self-contained and more retrievable
 
 ### Data Connectors
 
