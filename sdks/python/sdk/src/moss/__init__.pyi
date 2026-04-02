@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import ClassVar, Dict, List, Optional, Sequence
+from typing import ClassVar, Dict, List, Optional, Sequence, Union
 
 
 class MossClient:
@@ -10,12 +10,19 @@ class MossClient:
 
     def __init__(self, project_id: str, project_key: str) -> None: ...
 
+    @classmethod
+    def local(
+        cls,
+        storage_path: str = ...,
+        ttl_hours: int = ...,
+    ) -> "MossClient": ...
+
     async def create_index(
         self,
         name: str,
         docs: List[DocumentInfo],
         model_id: Optional[str] = ...,
-    ) -> MutationResult: ...
+    ) -> Union[MutationResult, IndexInfo]: ...
 
     async def add_docs(
         self,
@@ -59,6 +66,8 @@ class MossClient:
         query: str,
         options: Optional[QueryOptions] = None,
     ) -> SearchResult: ...
+
+    async def cleanup(self) -> int: ...
 
 
 class MutationResult:

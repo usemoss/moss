@@ -14,6 +14,8 @@ from moss import MossClient
 import pytest
 from dotenv import load_dotenv
 
+import tempfile
+
 # Load .env from project root.
 project_env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(project_env_path)
@@ -81,4 +83,16 @@ def unloaded_client():
         c._manage = mock_manage.return_value
         c._manager = mock_mgr.return_value
         c._manager.has_index = MagicMock(return_value=False)
+        yield c
+
+
+@pytest.fixture
+def local_client(tmp_path):
+    """Create a local-mode MossClient with a mocked IndexManager."""
+    with patch("moss.client.moss_client.IndexManager") as mock_mgr_cls:
+        mock_manager = mock_mgr_cls.local.return_value
+        mock_manager.has_index = MagicMock(return_value=True)
+        c = MossClient.local(storage_path=str(tmp_path), ttl_hours=24)
+        c._manager = mock_manager
+        c._cleanup_done = True  # skip cleanup in unit tests
         yield c
