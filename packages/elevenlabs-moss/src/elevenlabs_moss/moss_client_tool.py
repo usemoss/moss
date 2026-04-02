@@ -92,7 +92,9 @@ class MossClientTool:
             or a short message if no results are found.
         """
         if not self._index_loaded:
-            await self.load_index()
+            raise RuntimeError(
+                f"Index '{self._index_name}' not loaded. Call await load_index() first."
+            )
 
         result = await self._client.query(
             self._index_name,
@@ -104,9 +106,6 @@ class MossClientTool:
             len(result.docs),
             result.time_taken_ms,
         )
-
-        if not result.docs:
-            return "No relevant results found."
 
         return self._format_results(result.docs)
 
