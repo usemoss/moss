@@ -3,7 +3,7 @@
 
 // ---------- Imports ----------
 import { config as loadEnv } from "dotenv";
-import { MossClient } from "@inferedge/moss";
+import { MossClient } from "@moss-dev/moss";
 import OpenAI from "openai";
 
 loadEnv();

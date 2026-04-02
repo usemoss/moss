@@ -23,7 +23,7 @@
  * ```
  */
 
-import { MossClient } from "@inferedge/moss";
+import { MossClient } from "@moss-dev/moss";
 import { performance } from "node:perf_hooks";
 import { config } from "dotenv";
 
