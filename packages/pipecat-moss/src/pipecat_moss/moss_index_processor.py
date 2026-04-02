@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from inferedge_moss import MossClient, SearchResult
+from inferedge_moss import MossClient, QueryOptions, SearchResult
 from loguru import logger
 from pipecat.frames.frames import (
     ErrorFrame,
@@ -59,8 +59,7 @@ class MossIndexProcessor(FrameProcessor):
         result = await self._client.query(
             self._index_name,
             query,
-            top_k=self._top_k,
-            alpha=self._alpha,
+            options=QueryOptions(top_k=self._top_k, alpha=self._alpha),
         )
 
         # Emit retrieval latency metrics

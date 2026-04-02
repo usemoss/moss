@@ -1,29 +1,33 @@
-# Getting Started
+# Getting started
 
-Moss is a high-performance runtime for real-time semantic search. It delivers sub-10 ms lookups, instant index updates, and zero infra overhead. Moss runs where your agent lives - cloud, in-browser, or on-device - so search feels native and users never wait. You connect your data once; Moss handles indexing, packaging, distribution and updates.
+Moss is a high-performance runtime for real-time semantic search. It delivers sub-10 ms lookups, instant index updates, and zero infrastructure overhead. Moss runs where your agent lives — cloud, in-browser, or on-device — so search feels native and users never wait.
 
-**📦 [View Samples Repository on GitHub](https://github.com/usemoss/moss-samples)**
+**[View samples on GitHub](https://github.com/usemoss/moss-samples)** | **[Join our Discord](https://discord.gg/eMXExuafBR)**
 
-**Join our [discord server](https://discord.gg/eMXExuafBR) to get onboarded!**
+---
 
-## Using Moss Portal
+## Create an account
 
-Visit [Moss](https://usemoss.dev/) to create an account, confirm your email, and sign in.
+Visit [Moss Portal](https://usemoss.dev/) to create an account, confirm your email, and sign in.
 
 Inside the default project you will see two plans:
 
-- **Free Tier ($0)** offers 1 project, 3 indexes, and 1,000 items per index with community support;
-- **Developer Workspace ($2000/month + usage)** adds unlimited projects/indexes plus 100 GB storage, 100 GB ingestion, 1 TB egress, and priority support.
+| Plan | Includes |
+| --- | --- |
+| **Free** | 1 project, 3 indexes, 1,000 items per index, community support |
+| **Developer Workspace** | Unlimited projects and indexes, 100 GB storage, 100 GB ingestion, 1 TB egress, priority support |
 
 Enter valid card details to start the free trial, then select **Create Index** to provision a new index.
 
 > ![Moss Portal walkthrough](https://github.com/user-attachments/assets/c3db9d2d-0df5-4cec-99fd-7d49d0a30844)
 
+---
+
 ## 1. Install the SDK
 
 ::: code-group
 
-```bash [JS/TS]
+```bash [JavaScript]
 npm install @inferedge/moss
 ```
 
@@ -37,32 +41,30 @@ pip install inferedge-moss
 
 Grab your **Project ID** and **Project Key** from the Moss console. Store them as environment variables so both clients can reuse them.
 
-### Create a .env file
-
-Create a `.env` file in your project root directory and add your credentials:
-
 ```bash
+# .env
 MOSS_PROJECT_ID="your-project-id"
 MOSS_PROJECT_KEY="your-project-key"
 ```
 
-Alternatively, you can export them in your terminal session:
+Or export them in your shell:
 
 ```bash
 export MOSS_PROJECT_ID="your-project-id"
 export MOSS_PROJECT_KEY="your-project-key"
 ```
 
-## 3. Create an index and run a query
-
-Launch your first Moss index and query in minutes. Whether you are building a browser app or a Python service, the code below gets you from credentials to live search results.
+## 3. Create an index and query
 
 ::: code-group
 
 ```ts [JavaScript]
 import { MossClient, DocumentInfo } from '@inferedge/moss'
 
-const client = new MossClient(process.env.MOSS_PROJECT_ID!, process.env.MOSS_PROJECT_KEY!)
+const client = new MossClient(
+  process.env.MOSS_PROJECT_ID!,
+  process.env.MOSS_PROJECT_KEY!
+)
 
 await client.createIndex(
   'support-faqs',
@@ -73,7 +75,7 @@ await client.createIndex(
   'moss-minilm'
 )
 
-await client.loadIndex("support-faqs")
+await client.loadIndex('support-faqs')
 const response = await client.query('support-faqs', 'How do I track my order?')
 console.log(response.docs[0])
 ```
@@ -108,30 +110,43 @@ asyncio.run(main())
 - **Choose a model** — start with `moss-minilm` for balanced performance, or switch to a larger embedding model for higher recall.
 - **Batch updates** — use `addDocs` / `add_docs` to append new knowledge as your content changes.
 
-## Explore Sample Code
+---
 
-The [samples repository](https://github.com/usemoss/moss-samples) contains working examples that show how to authenticate, batch context, and stream replies without extra boilerplate. Adapt the scripts by swapping the FAQ JSON files with your data, or plugging Moss calls into an existing app.
+## Sample code
 
-### Python SDK Samples
+The [samples repository](https://github.com/usemoss/moss-samples) contains working examples covering authentication, batch context, and streaming replies.
 
-- [`python/comprehensive_sample.py`](https://github.com/usemoss/moss-samples/blob/main/python/comprehensive_sample.py): end-to-end flow with session creation, context building, and streaming responses.
-- [`python/load_and_query_sample.py`](https://github.com/usemoss/moss-samples/blob/main/python/load_and_query_sample.py): how to ingest domain knowledge before querying Moss.
+### Python samples
 
-- Install deps with `pip install -r python/requirements.txt`, then run any script via `python path/to/sample.py`.
+| Sample | Description |
+| --- | --- |
+| [`comprehensive_sample.py`](https://github.com/usemoss/moss-samples/blob/main/python/comprehensive_sample.py) | End-to-end flow with session creation, context building, and streaming |
+| [`load_and_query_sample.py`](https://github.com/usemoss/moss-samples/blob/main/python/load_and_query_sample.py) | Ingest domain knowledge before querying |
+
+```bash
+pip install -r python/requirements.txt
+python python/comprehensive_sample.py
+```
 
 > ![Moss Python walkthrough](https://github.com/user-attachments/assets/d826023d-92d6-49ac-8e5e-81cf04d409c5)
 
-### JavaScript SDK Samples
+### JavaScript samples
 
-- [`javascript/comprehensive_sample.ts`](https://github.com/usemoss/moss-samples/blob/main/javascript/comprehensive_sample.ts): TypeScript version of the full workflow, ready for Node.
-- [`javascript/load_and_query_sample.ts`](https://github.com/usemoss/moss-samples/blob/main/javascript/load_and_query_sample.ts): demonstrates indexing FAQs and issuing targeted prompts.
+| Sample | Description |
+| --- | --- |
+| [`comprehensive_sample.ts`](https://github.com/usemoss/moss-samples/blob/main/javascript/comprehensive_sample.ts) | Full workflow in TypeScript, ready for Node |
+| [`load_and_query_sample.ts`](https://github.com/usemoss/moss-samples/blob/main/javascript/load_and_query_sample.ts) | Index FAQs and issue targeted queries |
 
-- Install deps with `npm install` inside `javascript/`, then execute via `npm run start -- path/to/sample.ts`.
+```bash
+cd javascript && npm install
+npm run start -- comprehensive_sample.ts
+```
 
-## Next Steps
+---
 
-- Dive deeper into the [JavaScript SDK](/reference/js/README.md) and [Python SDK](/reference/python/README.md) guides.
-- Explore the API references for [JavaScript](/reference/js/globals.md) and [Python](/reference/python/globals.md) for every method and data type.
-- Check out our [Launch YC Post!](https://www.ycombinator.com/launches/Oiq-moss-real-time-semantic-search-for-conversational-ai)
+## Next steps
 
-If you spot gaps or want another language example, open an issue or PR in the [samples repository](https://github.com/usemoss/moss-samples). We track feedback closely.
+- Dive deeper into the [JavaScript SDK](/reference/js/README.md) and [Python SDK](/reference/python/README.md) references.
+- Check out the [Moss YC Launch Post](https://www.ycombinator.com/launches/Oiq-moss-real-time-semantic-search-for-conversational-ai).
+
+If you spot gaps or want another language example, open an issue or PR in the [samples repository](https://github.com/usemoss/moss-samples).

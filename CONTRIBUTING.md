@@ -26,6 +26,24 @@ In short, when you submit code changes, your submissions are understood to be un
 
 We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/usemoss/moss/issues/new); it's that easy!
 
+## Python SDK Development
+
+The Python SDK source lives in [`sdks/python/sdk/`](sdks/python/sdk/). Set up a development environment:
+
+```bash
+cd sdks/python/sdk
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+Run the tests (cloud/E2E tests auto-skip without credentials):
+
+```bash
+pytest tests/
+```
+
+Code style is enforced via `black`, `isort`, and `mypy` (see `pyproject.toml` for configuration).
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the BSD 2-Clause License.

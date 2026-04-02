@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/your-username/moss-for-tig#readme",
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.18.0"
   },
   "scripts": {
     "start": "tsx sample.ts",
@@ -35,10 +35,11 @@
     "type-check": "tsc --noEmit",
     "lint": "ESLINT_USE_FLAT_CONFIG=true eslint .",
     "format": "prettier --write .",
+    "cached-load": "tsx cached_load_sample.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@inferedge/moss": "^1.0.0-beta.7",
+    "@inferedge/moss": "^1.0.0-beta.8",
     "dotenv": "^17.2.3",
     "openai": "^6.17.0"
   },

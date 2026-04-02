@@ -1,39 +1,69 @@
-# MOSS Core
+# Moss Python SDK
 
-`inferedge-moss-core` is the high-performance Rust-based core library that powers the MOSS semantic search SDK.
+Source for the [`moss`](https://pypi.org/project/inferedge-moss/) Python package.
 
-## Overview
+## Architecture
 
-This package is designed to be used as a dependency by higher-level SDKs.
-
-**Note**: For most use cases, you should use [`inferedge-moss`](https://pypi.org/project/inferedge-moss/) instead, which provides a complete Python SDK with cloud integration and a user-friendly API.
-
-## Installation
-
-```bash
-pip install inferedge-moss-core
+```
+                    ┌──────────────────────────────────┐
+                    │      Your application code       │
+                    └──────────────┬───────────────────┘
+                                   │
+                    ┌──────────────▼───────────────────┐
+                    │  moss  (pure Python)             │  ← sdk/
+                    │  MossClient — async API for      │
+                    │  indexing, querying, management  │
+                    └──────────────┬───────────────────┘
+                                   │
+                    ┌──────────────▼───────────────────┐
+                    │  moss-core  (Rust/PyO3)          │  ← bindings/
+                    │  IndexManager, ManageClient,     │
+                    │  hybrid search, data models      │
+                    └──────────────────────────────────┘
 ```
 
-## Usage
+| Directory | Package | Description |
+|-----------|---------|-------------|
+| [`sdk/`](./sdk/) | `moss` | Pure Python SDK. Fully open-source — install, build, modify, contribute. |
+| [`bindings/`](./bindings/) | `inferedge-moss-core` | Native Rust/PyO3 bindings for the Moss engine. Source available for reference and debugging. Pre-built wheels on [PyPI](https://pypi.org/project/inferedge-moss-core/). Feature requests and bugs → [open an issue](https://github.com/usemoss/moss/issues). |
 
-This is a low-level library. For typical usage, install the main SDK:
+## Quick start
 
 ```bash
-pip install inferedge-moss
+pip install moss
 ```
 
-## Related Packages
+```python
+from moss import MossClient, DocumentInfo, QueryOptions
 
-- [`inferedge-moss`](https://pypi.org/project/inferedge-moss/) - Complete Python SDK with cloud integration
-- [`@inferedge/moss`](https://www.npmjs.com/package/@inferedge/moss) - JavaScript/TypeScript SDK
+client = MossClient("your_project_id", "your_project_key")
 
-## 📄 License
+await client.create_index("support-docs", [
+    DocumentInfo(id="1", text="Refunds are processed within 3-5 business days."),
+    DocumentInfo(id="2", text="You can track your order on the dashboard."),
+])
 
-This package is licensed under the [BSD 2-Clause "Simplified" License](./LICENSE).
+await client.load_index("support-docs")
+results = await client.query("support-docs", "how long do refunds take?", QueryOptions(top_k=3))
 
-- ✅ Permissive open-source license allowing use, modification, and distribution.
-- ⚖️ Requires preservation of copyright and license notices.
+for doc in results.docs:
+    print(f"[{doc.score:.3f}] {doc.text}")
+```
 
-## 📬 Contact
+See [`sdk/README.md`](./sdk/README.md) for the full API reference.
 
-For support, commercial licensing, or partnership inquiries, contact us: [contact@moss.dev](mailto:contact@moss.dev)
+## Contributing
+
+**SDK (`sdk/`)** — open for contributions:
+
+```bash
+cd sdk
+pip install -e ".[dev]"
+pytest tests/                # cloud tests auto-skip without credentials
+```
+
+**Bindings (`bindings/`)** — source is published for reference. To request changes or report bugs, [open an issue](https://github.com/usemoss/moss/issues).
+
+## License
+
+[BSD 2-Clause License](./sdk/LICENSE)

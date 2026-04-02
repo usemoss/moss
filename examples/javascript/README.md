@@ -38,6 +38,14 @@ Run the simple example to load an existing index and perform queries:
 npx tsx load_and_query_sample.ts
 ```
 
+### Cached Index Loading Sample
+
+Load an existing index with local filesystem caching. First run downloads from the cloud and saves to disk; subsequent runs load instantly from the cache:
+
+```bash
+npx tsx cached_load_sample.ts
+```
+
 ### Custom Embedding Sample
 
 Provision a fresh index (using the name supplied via `MOSS_INDEX_NAME`), push documents with manually generated OpenAI embeddings, and issue sample queries:
@@ -48,5 +56,5 @@ npx tsx custom_embedding_sample.ts
 
 ## Requirements
 
-- Node.js (version 16 or higher)
+- Node.js (version 18.18 or higher)
 - Valid Moss project credentials

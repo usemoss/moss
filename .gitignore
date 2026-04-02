@@ -5,6 +5,7 @@ __pycache__
 node_modules/
 .env
 .env.*
+!.env.template
 .env.local
 dist/
 .next/
@@ -17,4 +18,6 @@ venv/
 # Claude
 *.claude/
 *CLAUDE.md
-.agent
+
+*.egg-info
+.moss-cache

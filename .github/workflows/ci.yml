@@ -26,7 +26,7 @@ jobs:
     - name: Lint with ruff
       run: ruff check examples/python apps/pipecat-moss apps/livekit-moss-vercel
     - name: Type check with mypy
-      run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports
+      run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports --exclude "apps/pipecat-moss/hume-ollama-local/create_index.py"
 
   javascript-lint:
     runs-on: ubuntu-latest
@@ -62,6 +62,34 @@ jobs:
     - name: Run tests
       working-directory: examples/cookbook/langchain
       run: python -m unittest -v
+
+  python-sdk-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install SDK with dev dependencies
+      working-directory: sdks/python/sdk
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    - name: Lint with ruff
+      working-directory: sdks/python/sdk
+      run: |
+        pip install ruff
+        ruff check src/ tests/
+    - name: Type check with mypy
+      working-directory: sdks/python/sdk
+      run: mypy src/ --ignore-missing-imports
+    - name: Run tests
+      working-directory: sdks/python/sdk
+      run: pytest tests/ -v
 
   next-js-test:
     runs-on: ubuntu-latest

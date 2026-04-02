@@ -137,7 +137,7 @@ export function mossIndexerPlugin(): Plugin {
 
         await uploadDocuments(filtered, { ...creds, modelName: 'moss-minilm' })
 
-        debug('✅ Moss index sync completed.')
+        debug('Moss index sync completed.')
       } catch (error) {
         const err = error as Error
         siteConfig.logger.error(
