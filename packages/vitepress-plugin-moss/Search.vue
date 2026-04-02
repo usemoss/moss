@@ -4,8 +4,8 @@ import { useData, useRouter } from 'vitepress'
 import { onKeyStroke, useScrollLock, useInfiniteScroll } from '@vueuse/core'
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap'
 import type { SearchResult, QueryResultDocumentInfo } from '@inferedge/moss'
-import mossLogo from './InferEdgeLogo_Dark_Icon.png'
 import SearchButton from './SearchButton.vue'
+import mossLogo from './InferEdgeLogo_Dark_Icon.png'
 
 // --------- Metadata structure for Search Results ---------
 interface MossMetadata {
@@ -88,8 +88,8 @@ function getTime() { return performance?.now?.() ?? Date.now() }
 function logProfile() {
   if (!ENABLE_PROFILING || !currentProfile) return
   const p = currentProfile
-  console.group(`🔍 [Moss Performance] "${p.query}"`)
-  console.log(`⏱️  Total: ${p.totalTime.toFixed(2)}ms`)
+  console.group(`[Moss Performance] "${p.query}"`)
+  console.log(`Total: ${p.totalTime.toFixed(2)}ms`)
   console.log(`  ├─ Search API: ${(p.searchEndTime - p.searchStartTime).toFixed(2)}ms`)
   console.log(`  ├─ Processing: ${(p.processingEndTime - p.processingStartTime).toFixed(2)}ms`)
   console.log(`  │  ├─ escapeHtml: ${p.escapeHtmlTime.toFixed(2)}ms (${escapeHtmlCallCount} calls)`)
@@ -499,7 +499,7 @@ onBeforeUnmount(() => { isLocked.value = false; deactivate(); clearSpinnerTimers
           <div class="Moss-Logo">
             <span>Search by</span>
             <div class="MossBrand-Container">
-              <img :src="mossLogo" alt="Moss" class="MossBrand-Logo" />
+              <img :src="mossLogo" class="MossBrand-Logo" alt="Moss" width="16" height="16" />
               <span class="MossBrand-Text">Moss</span>
             </div>
           </div>
@@ -511,89 +511,490 @@ onBeforeUnmount(() => { isLocked.value = false; deactivate(); clearSpinnerTimers
 </template>
 
 <style scoped>
+/* --- Search wrapper (nav bar) --- */
 .moss-search-wrapper { display: flex; align-items: center; }
 @media (min-width: 768px) { .moss-search-wrapper { flex-grow: 1; padding-left: 24px; } }
 @media (min-width: 960px) { .moss-search-wrapper { padding-left: 32px; } }
 
-/* --- Core Variables --- */
+/* --- Design Tokens: Light Mode --- */
 .Moss-Container {
-  --moss-modal-bg: var(--vp-c-bg);
-  --moss-modal-width: 750px;
-  --moss-primary: var(--vp-c-brand-1);
-  --moss-text-primary: var(--vp-c-text-1);
-  --moss-text-muted: var(--vp-c-text-2);
-  --moss-border: var(--vp-c-divider);
-  --moss-bg-soft: var(--vp-c-bg-soft);
-  --moss-selection-bg: var(--vp-c-brand-1);
-  --moss-key-bg: var(--vp-c-bg-alt);
-  --moss-key-border: var(--vp-c-divider);
+  --moss-modal-bg: #fff;
+  --moss-modal-width: 680px;
+  --moss-surface: #fafaf8;
+  --moss-accent: #1a1a1a;
+  --moss-accent-light: #333;
+  --moss-title: #0a0a0a;
+  --moss-text: #555;
+  --moss-muted: #888;
+  --moss-border: #e5e5e0;
+  --moss-border-light: #d0d0c8;
+  --moss-key-bg: #f5f5f2;
+  --moss-key-border: #e0e0db;
+  --moss-danger: #b52828;
 }
-.dark .Moss-Container { --moss-bg-soft: #1e1e20; }
+
+/* --- Design Tokens: Dark Mode --- */
+:global(.dark) .Moss-Container {
+  --moss-modal-bg: #141412;
+  --moss-surface: #1a1a18;
+  --moss-accent: #f0f0ee;
+  --moss-accent-light: #e0e0dc;
+  --moss-title: #f0f0ee;
+  --moss-text: #888;
+  --moss-muted: #555;
+  --moss-border: #222220;
+  --moss-border-light: #2a2a28;
+  --moss-key-bg: #1e1e1c;
+  --moss-key-border: #2a2a28;
+  --moss-danger: #f87171;
+}
 
 /* --- Layout --- */
-.Moss-Container { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-start; padding-top: 10vh; justify-content: center; font-family: var(--vp-font-family-base, sans-serif); font-size: 15px; }
-.Moss-Backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
-.Moss-Modal { position: relative; width: 100%; max-width: var(--moss-modal-width); background: var(--moss-modal-bg); border-radius: 12px; display: flex; flex-direction: column; max-height: 70vh; overflow: hidden; box-shadow: 0 20px 60px -10px rgba(0,0,0,0.4); border: 1px solid var(--moss-border); overscroll-behavior: contain; }
+.Moss-Container {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 8vh;
+  justify-content: center;
+  font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-/* --- Header --- */
-.Moss-Header { padding: 12px 12px 0; }
-.Moss-Form { display: flex; align-items: center; padding: 0 12px; height: 50px; }
-.Moss-Input { flex: 1; background: transparent; border: none; outline: none; color: var(--moss-text-primary); font-size: 1.1em; margin-left: 12px; height: 100%; }
-.Moss-SearchIcon, .Moss-Spinner { color: var(--moss-text-muted); flex-shrink: 0; }
-.Moss-Spinner { animation: moss-spin 1s linear infinite; }
-@keyframes moss-spin { to { transform: rotate(360deg); } }
-.Moss-Cancel { background: var(--moss-key-bg); border: 1px solid var(--moss-key-border); border-radius: 4px; padding: 2px 6px; font-family: inherit; font-size: 0.8em; color: var(--moss-text-muted); cursor: pointer; box-shadow: 0 1px 0 var(--moss-key-border); }
-.Moss-Reset { background: transparent; border: none; color: var(--moss-text-muted); cursor: pointer; padding: 0; display: flex; }
+.Moss-Backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: moss-fade-in 0.15s ease-out;
+}
+
+.Moss-Modal {
+  position: relative;
+  width: calc(100% - 32px);
+  max-width: var(--moss-modal-width);
+  background: var(--moss-modal-bg);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  max-height: 72vh;
+  overflow: hidden;
+  border: 1px solid var(--moss-border);
+  overscroll-behavior: contain;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.08),
+    0 32px 64px -12px rgba(0, 0, 0, 0.14);
+  animation: moss-modal-in 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes moss-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes moss-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --- Header / Search Input --- */
+.Moss-Header {
+  padding: 4px 4px 0;
+}
+
+.Moss-Form {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 56px;
+  border-bottom: 1px solid var(--moss-border);
+}
+
+.Moss-MagnifierLabel {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.Moss-Input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--moss-title);
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: 400;
+  margin-left: 14px;
+  height: 100%;
+  letter-spacing: -0.011em;
+}
+
+.Moss-Input::placeholder {
+  color: var(--moss-muted);
+}
+
+.Moss-SearchIcon,
+.Moss-Spinner {
+  color: var(--moss-muted);
+  flex-shrink: 0;
+}
+
+.Moss-Spinner {
+  animation: moss-spin 0.8s linear infinite;
+}
+
+@keyframes moss-spin {
+  to { transform: rotate(360deg); }
+}
+
+.Moss-Controls {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.Moss-Cancel {
+  background: var(--moss-key-bg);
+  border: 1px solid var(--moss-key-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--moss-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.Moss-Cancel:hover {
+  color: var(--moss-title);
+  border-color: var(--moss-border-light);
+}
+
+.Moss-Reset {
+  background: transparent;
+  border: none;
+  color: var(--moss-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.Moss-Reset:hover {
+  color: var(--moss-title);
+  background: var(--moss-surface);
+}
 
 /* --- Results Area --- */
-.Moss-Dropdown { flex: 1; overflow-y: auto; padding: 0 12px 12px; scroll-behavior: smooth; overscroll-behavior: contain; will-change: scroll-position; }
-.Moss-State { display: flex; align-items: center; justify-content: center; padding: 40px 24px; color: var(--moss-text-muted); font-size: 14px; }
-.Moss-State.error { color: var(--vp-c-danger-1, #f43f5e); }
-.q-text { font-style: italic; }
-.Moss-Group { margin-bottom: 12px; background: var(--moss-bg-soft); border-radius: 8px; overflow: hidden; border: 1px solid var(--moss-border); content-visibility: auto; contain-intrinsic-size: 50px; }
-.Moss-Item { display: flex; align-items: center; padding: 12px; cursor: pointer; transition: all 0.1s; border-left: 4px solid transparent; }
-.Moss-Item[aria-selected="true"] { background: var(--moss-selection-bg); }
-.Moss-Item[aria-selected="true"] * { color: #fff !important; }
+.Moss-Dropdown {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px 12px;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  will-change: scroll-position;
+}
 
-/* Page Header */
-.Moss-PageHeader { background: transparent; border-bottom: none; }
-.Moss-PageHeader .Moss-Title { font-weight: 600; font-size: 0.85rem; color: var(--moss-text-primary); }
-.Moss-PageHeader .Moss-IconContainer { color: var(--moss-text-primary); }
-.Moss-PageHeader--synthesized { opacity: 0.75; }
-.Moss-PageHeader--synthesized .Moss-Title { font-weight: 500; }
-.Moss-PageMeta { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
-.Moss-PageBadge { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--moss-primary); background: color-mix(in srgb, var(--moss-primary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--moss-primary) 30%, transparent); border-radius: 4px; padding: 1px 5px; }
-.Moss-ChildCount { font-size: 0.72rem; color: var(--moss-text-muted); white-space: nowrap; }
-.Moss-Item[aria-selected="true"] .Moss-PageMeta * { color: rgba(255,255,255,0.85) !important; background: rgba(255,255,255,0.15) !important; border-color: rgba(255,255,255,0.3) !important; }
+.Moss-State {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--moss-muted);
+  font-size: 13.5px;
+  gap: 4px;
+}
 
-/* Children */
-.Moss-Children { padding: 0; background: transparent; }
-.Moss-Children--connected { border-left: 2px solid var(--moss-border); margin-left: 20px; border-radius: 0 0 0 6px; padding-bottom: 4px; }
-.Moss-ChildItem { position: relative; padding-top: 6px; padding-bottom: 6px; }
-.Moss-Children--connected .Moss-ChildItem { padding-left: 28px; }
-.Moss-Children--connected .Moss-ChildItem::before { content: ''; position: absolute; left: 0; top: 50%; width: 22px; height: 2px; background: var(--moss-border); transform: translateY(-50%); }
-.Moss-Children--connected .Moss-ChildItem:last-child::after { content: ''; position: absolute; left: -2px; top: 50%; bottom: 0; width: 2px; background: var(--moss-bg-soft); }
-.Moss-Item--header .Moss-IconContainer { color: var(--moss-primary); }
-.Moss-Item--code .Moss-IconContainer { color: #e06c75; }
-.Moss-Item--text .Moss-IconContainer { color: var(--moss-text-muted); }
-.Moss-Item--page .Moss-IconContainer { color: var(--moss-text-primary); }
+.Moss-State.error {
+  color: var(--moss-danger);
+}
+
+.q-text {
+  font-style: italic;
+  color: var(--moss-text);
+}
+
+/* --- Result Groups --- */
+.Moss-Group {
+  margin-bottom: 6px;
+  background: var(--moss-surface);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--moss-border);
+  content-visibility: auto;
+  contain-intrinsic-size: 50px;
+}
+
+.Moss-Item {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  border-left: 3px solid transparent;
+}
+
+.Moss-Item:hover {
+  background: color-mix(in srgb, var(--moss-accent) 5%, var(--moss-surface));
+}
+
+.Moss-Item[aria-selected="true"] {
+  background: var(--moss-accent);
+  border-left-color: var(--moss-accent);
+}
+
+.Moss-Item[aria-selected="true"] * {
+  color: #fff !important;
+}
+
+/* --- Page Header Items --- */
+.Moss-PageHeader {
+  background: transparent;
+  border-bottom: none;
+}
+
+.Moss-PageHeader .Moss-Title {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--moss-title);
+  letter-spacing: -0.01em;
+}
+
+.Moss-PageHeader .Moss-IconContainer {
+  color: var(--moss-title);
+}
+
+.Moss-PageHeader--synthesized {
+  opacity: 0.72;
+}
+
+.Moss-PageHeader--synthesized .Moss-Title {
+  font-weight: 500;
+}
+
+.Moss-PageMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.Moss-PageBadge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--moss-accent);
+  background: color-mix(in srgb, var(--moss-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--moss-accent) 25%, transparent);
+  border-radius: 5px;
+  padding: 2px 6px;
+  line-height: 1.4;
+}
+
+.Moss-ChildCount {
+  font-size: 11px;
+  color: var(--moss-muted);
+  white-space: nowrap;
+}
+
+.Moss-Item[aria-selected="true"] .Moss-PageMeta * {
+  color: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* --- Child Items & Tree --- */
+.Moss-Children {
+  padding: 0;
+  background: transparent;
+}
+
+.Moss-Children--connected {
+  border-left: 1.5px solid var(--moss-border);
+  margin-left: 22px;
+  border-radius: 0 0 0 6px;
+  padding-bottom: 4px;
+}
+
+.Moss-ChildItem {
+  position: relative;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.Moss-Children--connected .Moss-ChildItem {
+  padding-left: 28px;
+}
+
+.Moss-Children--connected .Moss-ChildItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 20px;
+  height: 1.5px;
+  background: var(--moss-border);
+  transform: translateY(-50%);
+}
+
+.Moss-Children--connected .Moss-ChildItem:last-child::after {
+  content: '';
+  position: absolute;
+  left: -1.5px;
+  top: 50%;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--moss-surface);
+}
+
+/* --- Icon Colors by Type --- */
+.Moss-Item--header .Moss-IconContainer { color: var(--moss-accent); }
+.Moss-Item--code .Moss-IconContainer { color: #888; }
+.Moss-Item--text .Moss-IconContainer { color: var(--moss-muted); }
+.Moss-Item--page .Moss-IconContainer { color: var(--moss-title); }
 .Moss-Item[aria-selected="true"] .Moss-IconContainer { color: #fff !important; }
 
-.Moss-IconContainer { width: 24px; margin-right: 12px; display: flex; justify-content: center; align-items: center; }
-.Moss-IconContainer.mini { width: 24px; margin-right: 8px; opacity: 0.6; }
-.Moss-Breadcrumb { font-weight: 600; font-size: 0.85rem; margin-bottom: 2px; color: var(--moss-text-primary); }
-.Moss-Text { font-size: 0.8rem; color: var(--moss-text-muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; }
+:global(.dark) .Moss-Item--code .Moss-IconContainer { color: #999; }
 
-/* Highlighting */
-:deep(.Moss-Match) { color: var(--moss-primary); font-weight: 700; background: none; padding: 0; text-decoration: underline; text-decoration-color: var(--moss-primary); text-decoration-thickness: 2px; text-underline-offset: 2px; }
-.Moss-Item[aria-selected="true"] :deep(.Moss-Match) { color: #fff; text-decoration-color: #fff; }
+.Moss-IconContainer {
+  width: 24px;
+  margin-right: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.Moss-IconContainer.mini {
+  width: 22px;
+  margin-right: 10px;
+  opacity: 0.55;
+}
+
+.Moss-Content {
+  min-width: 0;
+  flex: 1;
+}
+
+.Moss-Breadcrumb {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+  color: var(--moss-title);
+  letter-spacing: -0.01em;
+}
+
+.Moss-Text {
+  font-size: 12.5px;
+  color: var(--moss-text);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 1px;
+}
+
+/* --- Match Highlighting --- */
+:deep(.Moss-Match) {
+  color: var(--moss-accent);
+  font-weight: 700;
+  background: none;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--moss-accent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.Moss-Item[aria-selected="true"] :deep(.Moss-Match) {
+  color: #fff;
+  text-decoration-color: rgba(255, 255, 255, 0.7);
+}
 
 /* --- Footer --- */
-.Moss-Footer { padding: 0 16px; height: 44px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--moss-border); background: var(--moss-modal-bg); color: var(--moss-text-muted); font-size: 0.8em; }
-.Moss-Commands { display: flex; gap: 12px; list-style: none; margin: 0; padding: 0; }
-.Moss-Key { background: var(--moss-key-bg); border: 1px solid var(--moss-key-border); border-radius: 4px; padding: 2px 5px; font-family: inherit; font-size: 0.9em; min-width: 18px; text-align: center; margin-right: 4px; box-shadow: 0 1px 0 var(--moss-key-border); }
-.Moss-Logo { display: flex; align-items: center; }
-.MossBrand-Container { display: flex; align-items: center; gap: 4px; margin-left: 6px; }
-.MossBrand-Logo { height: 14px; }
-.MossBrand-Text { font-weight: 700; color: var(--moss-primary); }
+.Moss-Footer {
+  padding: 0 16px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--moss-border);
+  background: var(--moss-modal-bg);
+  color: var(--moss-muted);
+  font-size: 12px;
+}
+
+.Moss-Commands {
+  display: flex;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.Moss-Commands li {
+  display: flex;
+  align-items: center;
+}
+
+.Moss-Key {
+  background: var(--moss-key-bg);
+  border: 1px solid var(--moss-key-border);
+  border-radius: 5px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  min-width: 20px;
+  text-align: center;
+  margin-right: 5px;
+  color: var(--moss-muted);
+  line-height: 1.4;
+}
+
+.Moss-Label {
+  color: var(--moss-muted);
+}
+
+.Moss-Logo {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--moss-muted);
+  font-size: 12px;
+}
+
+.MossBrand-Container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 5px;
+}
+
+.MossBrand-Logo {
+  color: var(--moss-title);
+  flex-shrink: 0;
+}
+
+.MossBrand-Text {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--moss-title);
+  letter-spacing: -0.02em;
+}
 </style>

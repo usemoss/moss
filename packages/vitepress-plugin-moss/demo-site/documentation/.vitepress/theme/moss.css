@@ -1,0 +1,520 @@
+/* ============================================================
+   Moss Design System for VitePress
+   Aesthetic: moss.dev (dark, monochrome, premium)
+   Framework: Mintlify-inspired layout & polish
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --vp-font-family-base: 'Inter', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --vp-font-family-mono: 'Geist Mono', 'SF Mono', 'Fira Code', ui-monospace,
+    'Menlo', 'Monaco', 'Consolas', monospace;
+}
+
+/* ============================================================
+   LIGHT MODE — warm off-white, charcoal text, neutral accents
+   ============================================================ */
+:root {
+  --vp-c-brand-1: #1a1a1a;
+  --vp-c-brand-2: #333;
+  --vp-c-brand-3: #0a0a0a;
+  --vp-c-brand-soft: rgba(10, 10, 10, 0.08);
+
+  --vp-c-bg: #fafaf8;
+  --vp-c-bg-alt: #f3f3f0;
+  --vp-c-bg-elv: #fff;
+  --vp-c-bg-soft: #f0f0ec;
+
+  --vp-c-text-1: #0a0a0a;
+  --vp-c-text-2: #555;
+  --vp-c-text-3: #888;
+
+  --vp-c-divider: #e5e5e0;
+  --vp-c-border: #d8d8d2;
+  --vp-c-gutter: #e5e5e0;
+
+  --vp-c-default-1: #ddddd8;
+  --vp-c-default-2: #e4e4df;
+  --vp-c-default-3: #ebebE6;
+  --vp-c-default-soft: rgba(10, 10, 10, 0.05);
+
+  --vp-c-tip-1: #1a1a1a;
+  --vp-c-tip-2: #333;
+  --vp-c-tip-3: #555;
+  --vp-c-tip-soft: rgba(10, 10, 10, 0.06);
+
+  --vp-c-note-1: #1a1a1a;
+  --vp-c-note-2: #333;
+  --vp-c-note-3: #555;
+  --vp-c-note-soft: rgba(10, 10, 10, 0.06);
+
+  --vp-c-warning-1: #8a5d00;
+  --vp-c-warning-2: #a06d00;
+  --vp-c-warning-3: #b58000;
+  --vp-c-warning-soft: rgba(138, 93, 0, 0.1);
+
+  --vp-c-danger-1: #b52828;
+  --vp-c-danger-2: #cc3c3c;
+  --vp-c-danger-3: #dd5050;
+  --vp-c-danger-soft: rgba(181, 40, 40, 0.1);
+
+  --vp-home-hero-name-color: #0a0a0a;
+  --vp-home-hero-name-background: transparent;
+
+  --vp-home-hero-image-background-image: none;
+  --vp-home-hero-image-filter: none;
+
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #fafaf8;
+  --vp-button-brand-bg: #1a1a1a;
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-hover-text: #fafaf8;
+  --vp-button-brand-hover-bg: #333;
+  --vp-button-brand-active-border: transparent;
+  --vp-button-brand-active-text: #fafaf8;
+  --vp-button-brand-active-bg: #0a0a0a;
+
+  --vp-button-alt-border: #e5e5e0;
+  --vp-button-alt-text: #0a0a0a;
+  --vp-button-alt-bg: #f0f0ec;
+  --vp-button-alt-hover-border: #d0d0c8;
+  --vp-button-alt-hover-text: #0a0a0a;
+  --vp-button-alt-hover-bg: #e8e8e3;
+  --vp-button-alt-active-border: transparent;
+  --vp-button-alt-active-text: #0a0a0a;
+  --vp-button-alt-active-bg: #ddddd8;
+
+  --vp-nav-bg-color: rgba(250, 250, 248, 0.8);
+  --vp-sidebar-bg-color: #fafaf8;
+  --vp-local-nav-bg-color: rgba(250, 250, 248, 0.8);
+
+  --vp-code-color: #1a1a1a;
+  --vp-code-bg: rgba(10, 10, 10, 0.06);
+  --vp-code-block-bg: #f5f5f2;
+  --vp-code-block-color: #1a1a1a;
+  --vp-code-block-divider-color: #e5e5e0;
+  --vp-code-tab-active-bar-color: #1a1a1a;
+
+  --vp-custom-block-tip-border: #d0d0c8;
+  --vp-custom-block-tip-text: #555;
+  --vp-custom-block-tip-bg: rgba(10, 10, 10, 0.03);
+
+  --vp-custom-block-info-border: #d0d0c8;
+  --vp-custom-block-info-bg: rgba(10, 10, 10, 0.03);
+
+  --vp-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --vp-shadow-2: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --vp-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* ============================================================
+   DARK MODE — near-black, warm gray text, monochrome
+   ============================================================ */
+.dark {
+  --vp-c-brand-1: #e8e8e4;
+  --vp-c-brand-2: #ccccc6;
+  --vp-c-brand-3: #b0b0a8;
+  --vp-c-brand-soft: rgba(240, 240, 238, 0.08);
+
+  --vp-c-bg: #0a0a0a;
+  --vp-c-bg-alt: #111110;
+  --vp-c-bg-elv: #181816;
+  --vp-c-bg-soft: #181816;
+
+  --vp-c-text-1: #f0f0ee;
+  --vp-c-text-2: #888;
+  --vp-c-text-3: #555;
+
+  --vp-c-divider: #222220;
+  --vp-c-border: #2a2a28;
+  --vp-c-gutter: #1a1a18;
+
+  --vp-c-default-1: #444440;
+  --vp-c-default-2: #333330;
+  --vp-c-default-3: #2a2a28;
+  --vp-c-default-soft: rgba(240, 240, 238, 0.06);
+
+  --vp-c-tip-1: #e8e8e4;
+  --vp-c-tip-2: #ccccc6;
+  --vp-c-tip-3: #b0b0a8;
+  --vp-c-tip-soft: rgba(240, 240, 238, 0.06);
+
+  --vp-c-note-1: #e8e8e4;
+  --vp-c-note-2: #ccccc6;
+  --vp-c-note-3: #b0b0a8;
+  --vp-c-note-soft: rgba(240, 240, 238, 0.06);
+
+  --vp-c-warning-1: #f0b429;
+  --vp-c-warning-2: #d49c1f;
+  --vp-c-warning-3: #b88415;
+  --vp-c-warning-soft: rgba(240, 180, 41, 0.12);
+
+  --vp-c-danger-1: #f87171;
+  --vp-c-danger-2: #dc5656;
+  --vp-c-danger-3: #c04040;
+  --vp-c-danger-soft: rgba(248, 113, 113, 0.12);
+
+  --vp-home-hero-name-color: #f0f0ee;
+  --vp-home-hero-name-background: transparent;
+
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #0a0a0a;
+  --vp-button-brand-bg: #f0f0ee;
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-hover-text: #0a0a0a;
+  --vp-button-brand-hover-bg: #e0e0dc;
+  --vp-button-brand-active-border: transparent;
+  --vp-button-brand-active-text: #0a0a0a;
+  --vp-button-brand-active-bg: #d0d0c8;
+
+  --vp-button-alt-border: #2a2a28;
+  --vp-button-alt-text: #f0f0ee;
+  --vp-button-alt-bg: #1a1a18;
+  --vp-button-alt-hover-border: #333330;
+  --vp-button-alt-hover-text: #f0f0ee;
+  --vp-button-alt-hover-bg: #222220;
+  --vp-button-alt-active-border: transparent;
+  --vp-button-alt-active-text: #f0f0ee;
+  --vp-button-alt-active-bg: #2a2a28;
+
+  --vp-nav-bg-color: rgba(10, 10, 10, 0.8);
+  --vp-sidebar-bg-color: #0a0a0a;
+  --vp-local-nav-bg-color: rgba(10, 10, 10, 0.8);
+
+  --vp-code-color: #e0e0dc;
+  --vp-code-bg: rgba(240, 240, 238, 0.06);
+  --vp-code-block-bg: #141412;
+  --vp-code-block-color: #d0d0c8;
+  --vp-code-block-divider-color: #2a2a28;
+  --vp-code-tab-active-bar-color: #f0f0ee;
+
+  --vp-custom-block-tip-border: #2a2a28;
+  --vp-custom-block-tip-text: #888;
+  --vp-custom-block-tip-bg: rgba(240, 240, 238, 0.03);
+
+  --vp-custom-block-info-border: #2a2a28;
+  --vp-custom-block-info-bg: rgba(240, 240, 238, 0.03);
+
+  --vp-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --vp-shadow-2: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --vp-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   GLOBAL REFINEMENTS
+   ============================================================ */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* ============================================================
+   NAVIGATION — frosted glass, Mintlify-clean
+   ============================================================ */
+.VPNav .VPNavBar {
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.VPNavBar .title {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.VPNavBar .VPNavBarMenuLink {
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   SIDEBAR — Mintlify-style clean groups
+   ============================================================ */
+.VPSidebar {
+  font-size: 13.5px;
+}
+
+.VPSidebarItem .text {
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.VPSidebarItem.is-active > .item > .link > .text {
+  color: var(--vp-c-text-1) !important;
+  font-weight: 700;
+}
+
+.VPSidebarItem.level-0 .text {
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vp-c-text-3);
+}
+
+/* ============================================================
+   HERO — bold, stark, moss.dev style
+   ============================================================ */
+.VPHero .name {
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.VPHero .text {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--vp-c-text-1);
+  line-height: 1.15;
+}
+
+.VPHero .tagline {
+  color: var(--vp-c-text-2);
+  font-weight: 400;
+  line-height: 1.7;
+  max-width: 560px;
+  font-size: 18px;
+}
+
+.VPHero .actions .action {
+  margin-right: 8px;
+}
+
+/* ============================================================
+   BUTTONS — Mintlify pill style
+   ============================================================ */
+.VPButton {
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  transition: all 0.15s ease !important;
+  font-size: 14px !important;
+  padding: 8px 20px !important;
+}
+
+.VPButton.brand:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--vp-shadow-2);
+}
+
+.VPButton.alt {
+  border: 1px solid var(--vp-c-divider) !important;
+}
+
+/* ============================================================
+   FEATURE CARDS — Mintlify style with subtle borders
+   ============================================================ */
+.VPFeature {
+  border: 1px solid var(--vp-c-divider) !important;
+  background: var(--vp-c-bg-elv) !important;
+  border-radius: 12px !important;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.VPFeature:hover {
+  border-color: var(--vp-c-border) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--vp-shadow-2) !important;
+}
+
+.VPFeature .title {
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  font-size: 16px;
+}
+
+.VPFeature .details {
+  color: var(--vp-c-text-2);
+  line-height: 1.65;
+  font-size: 14px;
+}
+
+/* ============================================================
+   CONTENT — refined typography, Mintlify spacing
+   ============================================================ */
+.vp-doc {
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.vp-doc h1 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.vp-doc h2 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc h3 {
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.vp-doc a {
+  color: var(--vp-c-text-1);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--vp-c-divider);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 0.15s ease;
+}
+
+.vp-doc a:hover {
+  text-decoration-color: var(--vp-c-text-1);
+}
+
+.vp-doc p {
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc li {
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc strong {
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+/* ============================================================
+   CODE — dark blocks, Mintlify polish
+   ============================================================ */
+.vp-doc div[class*='language-'] {
+  border-radius: 10px;
+  border: 1px solid var(--vp-c-divider);
+  box-shadow: none;
+}
+
+.vp-doc :not(pre) > code {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: 500;
+  font-size: 0.875em;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-code-bg);
+}
+
+/* ============================================================
+   CUSTOM BLOCKS — Mintlify callout style
+   ============================================================ */
+.vp-doc .custom-block {
+  border-radius: 10px;
+  border: 1px solid var(--vp-c-divider);
+  padding: 16px 20px;
+}
+
+.vp-doc .custom-block .custom-block-title {
+  font-weight: 650;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   OUTLINE (Table of Contents) — refined
+   ============================================================ */
+.VPDocAsideOutline .outline-link {
+  font-size: 13px;
+  font-weight: 450;
+  transition: color 0.15s ease;
+}
+
+.VPDocAsideOutline .outline-link.active {
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+/* ============================================================
+   DOC FOOTER — clean separator
+   ============================================================ */
+.VPDocFooter {
+  margin-top: 48px;
+}
+
+.VPDocFooter .prev-next .pager-link {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  padding: 14px 18px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.VPDocFooter .prev-next .pager-link:hover {
+  border-color: var(--vp-c-border);
+  transform: translateY(-1px);
+}
+
+.VPDocFooter .prev-next .pager-link .title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   SCROLLBAR — minimal, warm
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vp-c-divider);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vp-c-text-3);
+}
+
+/* ============================================================
+   SELECTION
+   ============================================================ */
+::selection {
+  background: rgba(10, 10, 10, 0.12);
+  color: var(--vp-c-text-1);
+}
+
+.dark ::selection {
+  background: rgba(240, 240, 238, 0.15);
+}
+
+/* ============================================================
+   TABLES — Mintlify-clean
+   ============================================================ */
+.vp-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--vp-c-divider);
+  display: table;
+}
+
+.vp-doc th {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+  background: var(--vp-c-bg-soft);
+}
+
+.vp-doc td {
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
