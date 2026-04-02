@@ -17,3 +17,4 @@ venv/
 # Claude
 *.claude/
 *CLAUDE.md
+.agent
