@@ -19,11 +19,20 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  outline: none !important;
 }
 
 button, a, .clickable {
   cursor: pointer !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+.clickable:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 html {
