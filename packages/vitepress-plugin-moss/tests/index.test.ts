@@ -31,8 +31,8 @@ function setup(searchConfig: unknown) {
 }
 describe('mossIndexerPlugin', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
     mockFsExistsSync.mockReturnValue(true)
+    mockSync.mockClear()
   })
 
   describe('resolveId - virtual module', () => {
