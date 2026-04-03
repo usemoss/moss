@@ -31,7 +31,14 @@ def verify_vapi_signature(raw_body: bytes, signature_header: str, secret: str) -
     Returns:
         True if the signature is valid.
     """
-    expected = "sha256=" + hmac.new(
-        secret.encode(), raw_body, hashlib.sha256
-    ).hexdigest()
-    return hmac.compare_digest(expected, signature_header)
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+
+    normalized = signature_header.strip()
+    if "=" in normalized:
+        algorithm, _, provided = normalized.partition("=")
+        if algorithm.strip().lower() != "sha256":
+            return False
+    else:
+        provided = normalized
+
+    return hmac.compare_digest(expected, provided.strip().lower())
