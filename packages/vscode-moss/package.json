@@ -1,0 +1,63 @@
+{
+  "name": "vscode-moss",
+  "displayName": "Moss",
+  "description": "Semantic codebase search powered by Moss (development / Phase 1 spike).",
+  "version": "0.0.1",
+  "publisher": "inferedge",
+  "license": "BSD-2-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/usemoss/moss.git",
+    "directory": "packages/vscode-moss"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "type": "module",
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onCommand:moss.spikeConnectivity"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "moss.spikeConnectivity",
+        "title": "Moss: Run Phase 1 connectivity spike"
+      }
+    ],
+    "configuration": {
+      "title": "Moss",
+      "properties": {
+        "moss.projectId": {
+          "type": "string",
+          "default": "",
+          "description": "Moss project ID (optional if MOSS_PROJECT_ID is set in the environment)."
+        },
+        "moss.projectKey": {
+          "type": "string",
+          "default": "",
+          "description": "Moss project key (optional if MOSS_PROJECT_KEY is set in the environment)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "@inferedge-rest/moss": "^1.0.0-beta.3",
+    "@inferedge/moss": "^1.0.0-beta.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.2",
+    "typescript": "^5.7.2"
+  }
+}

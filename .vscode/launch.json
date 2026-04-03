@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "vscode-moss: Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/vscode-moss"],
+      "outFiles": ["${workspaceFolder}/packages/vscode-moss/out/**/*.js"],
+      "preLaunchTask": "vscode-moss: watch",
+      "env": {
+        "MOSS_PROJECT_ID": "0254fba9-3a96-4914-ac00-943f7893035c",
+        "MOSS_PROJECT_KEY": "moss_UxG3voqCV632Auc8kU7RSUrUb0ppJxfg"
+      }
+    }
+  ]
+}

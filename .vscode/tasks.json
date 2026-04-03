@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "vscode-moss: watch",
+      "type": "npm",
+      "script": "watch",
+      "options": {
+        "cwd": "${workspaceFolder}/packages/vscode-moss"
+      },
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent"
+      },
+      "group": "build"
+    },
+    {
+      "label": "vscode-moss: compile",
+      "type": "npm",
+      "script": "compile",
+      "options": {
+        "cwd": "${workspaceFolder}/packages/vscode-moss"
+      },
+      "problemMatcher": "$tsc",
+      "group": "build"
+    }
+  ]
+}
