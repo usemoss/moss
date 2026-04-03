@@ -6,7 +6,6 @@ import logging
 from typing import Optional
 
 import typer
-from rich.console import Console
 
 from .commands.doc import doc_app
 from .commands.index import index_app
@@ -15,8 +14,6 @@ from .commands.job import job_app
 from .commands.search import query_command
 from .commands.version import version_command
 from .output import print_error
-
-console = Console()
 
 app = typer.Typer(
     name="moss",

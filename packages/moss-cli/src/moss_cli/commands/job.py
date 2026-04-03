@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 
 import typer
-from rich.console import Console
 
 from moss import MossClient
 
@@ -13,7 +12,6 @@ from .. import output
 from ..config import resolve_credentials
 from ..job_waiter import wait_for_job
 
-console = Console()
 job_app = typer.Typer(name="job", help="Track background jobs")
 
 
