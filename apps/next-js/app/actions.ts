@@ -1,18 +1,16 @@
 'use server'
 
-let MossClient: any = null;
-let importError: Error | null = null;
-let loadAttempted = false;
+// Module-level singleton — survives across requests in the same server process
+let client: any = null;
+let indexLoadPromise: Promise<unknown> | null = null;
+let loadError: Error | null = null;
 
-// Lazy load the Moss client to handle missing system dependencies gracefully
-async function loadMossClient() {
-  // Return cached result if already attempted
-  if (loadAttempted) {
-    if (importError) throw importError;
-    return MossClient;
-  }
+async function getClient() {
+  // If we've already tried and failed, throw the cached error
+  if (loadError) throw loadError;
 
-  loadAttempted = true;
+  // If client is already initialized, return it
+  if (client) return client;
 
   try {
     // Only attempt to load if we have credentials
@@ -20,30 +18,19 @@ async function loadMossClient() {
       throw new Error("Moss credentials not configured. Please set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.");
     }
 
-    // Use require() for server-side code to avoid bundler issues with dynamic imports
-    // eslint-disable-next-line global-require
-    const module = require("@inferedge/moss");
+    // Lazy load the module only when actually needed
+    // Using direct import which should be marked as external by serverExternalPackages
+    const mossModule = await import("@inferedge/moss");
+    const MossClientClass = mossModule.MossClient;
 
-    MossClient = module.MossClient;
-    return MossClient;
+    client = new MossClientClass(process.env.MOSS_PROJECT_ID, process.env.MOSS_PROJECT_KEY);
+    return client;
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
     console.error("Moss SDK initialization failed:", errorMsg);
-    importError = error as Error;
-    throw importError;
+    loadError = error;
+    throw error;
   }
-}
-
-// Module-level singleton — survives across requests in the same server process
-let client: any = null;
-let indexLoadPromise: Promise<unknown> | null = null;
-
-async function getClient() {
-  if (!client) {
-    const MossClientClass = await loadMossClient();
-    client = new MossClientClass(process.env.MOSS_PROJECT_ID, process.env.MOSS_PROJECT_KEY);
-  }
-  return client;
 }
 
 export type DocInput = {
