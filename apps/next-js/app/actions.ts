@@ -27,6 +27,8 @@ async function getClient() {
     const wasmDir = path.join(process.cwd(), "node_modules/onnxruntime-web/dist/");
     if (env.backends?.onnx?.wasm) {
       env.backends.onnx.wasm.wasmPaths = wasmDir;
+    } else {
+      console.warn("Could not configure ONNX WASM paths: env.backends.onnx.wasm not available");
     }
 
     const mossModule = await import("@inferedge/moss");
