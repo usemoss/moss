@@ -21,11 +21,14 @@ async function getClient() {
     // Configure HuggingFace transformers for Vercel serverless:
     // 1. Cache to /tmp (Vercel fs is read-only except /tmp)
     // 2. Point WASM paths to local files (Node.js can't fetch from https:// URLs)
-    const path = await import("path");
     const { env } = await import("@huggingface/transformers");
     env.cacheDir = "/tmp/transformers-cache";
-    const ortDir = path.dirname(require.resolve("onnxruntime-web/package.json"));
-    env.backends.onnx.wasm.wasmPaths = path.join(ortDir, "dist") + "/";
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const ortPkg = require.resolve("onnxruntime-web");
+    const ortDist = ortPkg.substring(0, ortPkg.lastIndexOf("node_modules/onnxruntime-web/") + "node_modules/onnxruntime-web/".length) + "dist/";
+    if (env.backends?.onnx?.wasm) {
+      env.backends.onnx.wasm.wasmPaths = ortDist;
+    }
 
     const mossModule = await import("@inferedge/moss");
     const MossClientClass = mossModule.MossClient;
