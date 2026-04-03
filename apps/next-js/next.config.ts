@@ -7,11 +7,6 @@ const nextConfig: NextConfig = {
     "onnxruntime-web",
     "sharp",
   ],
-  turbopack: {
-    resolveAlias: {
-      "onnxruntime-node": "onnxruntime-web",
-    },
-  },
 };
 
 export default nextConfig;

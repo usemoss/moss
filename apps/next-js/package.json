@@ -19,6 +19,9 @@
     "react-dom": "19.2.3",
     "styled-jsx": "^5.1.6"
   },
+  "overrides": {
+    "onnxruntime-node": "npm:onnxruntime-web@1.22.0-dev.20250409-89f8206ba4"
+  },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
