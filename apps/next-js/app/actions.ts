@@ -20,26 +20,15 @@ async function loadMossClient() {
       throw new Error("Moss credentials not configured. Please set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.");
     }
 
-    // Construct module name to prevent static analysis by bundlers
-    const moduleName = ["@", "inferedge", "/", "moss"].join("");
-
-    // Use dynamic import with proper error handling for missing native dependencies
-    const module = await import(moduleName).catch((error: any) => {
-      const errorMsg = error?.message || String(error);
-      if (
-        error?.code === 'MODULE_NOT_FOUND' ||
-        errorMsg.includes('libonnxruntime') ||
-        errorMsg.includes('Cannot find module')
-      ) {
-        console.error("Moss SDK initialization failed:", errorMsg);
-        throw new Error(`Moss SDK not available: ${errorMsg}`);
-      }
-      throw error;
-    });
+    // Use require() for server-side code to avoid bundler issues with dynamic imports
+    // eslint-disable-next-line global-require
+    const module = require("@inferedge/moss");
 
     MossClient = module.MossClient;
     return MossClient;
-  } catch (error) {
+  } catch (error: any) {
+    const errorMsg = error?.message || String(error);
+    console.error("Moss SDK initialization failed:", errorMsg);
     importError = error as Error;
     throw importError;
   }
