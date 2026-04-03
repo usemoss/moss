@@ -1,8 +1,5 @@
 'use server'
 
-// Point HuggingFace transformers cache to /tmp (Vercel serverless fs is read-only)
-process.env.TRANSFORMERS_CACHE = '/tmp/transformers-cache';
-
 // Module-level singleton — survives across requests in the same server process
 let client: any = null;
 let indexLoadPromise: Promise<unknown> | null = null;
@@ -21,8 +18,10 @@ async function getClient() {
       throw new Error("Moss credentials not configured. Please set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.");
     }
 
-    // Lazy load the module only when actually needed
-    // Using direct import which should be marked as external by serverExternalPackages
+    // Point HuggingFace transformers cache to /tmp (Vercel fs is read-only)
+    const { env } = await import("@huggingface/transformers");
+    env.cacheDir = "/tmp/transformers-cache";
+
     const mossModule = await import("@inferedge/moss");
     const MossClientClass = mossModule.MossClient;
 
