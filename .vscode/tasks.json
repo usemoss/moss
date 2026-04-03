@@ -8,7 +8,7 @@
       "options": {
         "cwd": "${workspaceFolder}/packages/vscode-moss"
       },
-      "problemMatcher": "$tsc-watch",
+      "problemMatcher": [],
       "isBackground": true,
       "presentation": {
         "reveal": "silent"
@@ -22,8 +22,11 @@
       "options": {
         "cwd": "${workspaceFolder}/packages/vscode-moss"
       },
-      "problemMatcher": "$tsc",
-      "group": "build"
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     }
   ]
 }

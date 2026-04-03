@@ -3,6 +3,7 @@
 src/**
 **/*.map
 **/*.ts
+esbuild.config.mjs
 !out/**/*.js
 tsconfig.json
 .gitignore

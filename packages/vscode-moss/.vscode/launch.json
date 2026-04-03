@@ -7,7 +7,7 @@
       "request": "launch",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
-      "preLaunchTask": "npm: watch",
+      "preLaunchTask": "npm: compile",
       "env": {
         "MOSS_PROJECT_ID": "",
         "MOSS_PROJECT_KEY": ""

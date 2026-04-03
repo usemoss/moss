@@ -31,17 +31,25 @@ Open **`packages/vscode-moss`** as the workspace folder and use **Run Extension 
 
 ### Build
 
+- **`npm run check`** — TypeScript (`tsc --noEmit`).
+- **`npm run compile`** — bundles `src/extension.ts` → `out/extension.js` with **esbuild** (Moss packages stay **external** and load from `node_modules`).
+- **`npm run watch`** — esbuild watch (no typecheck loop; run **`check`** in another terminal or before commit).
+
 ```bash
 npm install
-npm run compile
-npm run watch   # during development
+npm run check && npm run compile
+npm run watch   # optional during development
 ```
 
 ### Package VSIX
 
 ```bash
-npm run compile
+npm run check && npm run compile
 npx vsce package
 ```
+
+The VSIX is still **large** (~100MB+) because **`@inferedge/moss`** pulls **`@huggingface/transformers`** and related assets for local embeddings. Bundling only shrinks **our** entry file; trimming install size further would need a different query architecture or upstream packaging changes.
+
+**Marketplace:** `package.json` includes **`icon`** (`media/icon.png`, from the repo Moss logo) and **`galleryBanner`** for the listing.
 
 See [PHASE1_SPIKE.md](./PHASE1_SPIKE.md) for `loadIndex` troubleshooting and default **`moss.queryMode`** guidance.

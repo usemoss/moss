@@ -3,22 +3,29 @@
   "tasks": [
     {
       "type": "npm",
-      "script": "watch",
-      "problemMatcher": "$tsc-watch",
-      "isBackground": true,
-      "presentation": { "reveal": "silent" },
+      "script": "compile",
+      "problemMatcher": [],
       "group": {
         "kind": "build",
         "isDefault": true
       },
+      "label": "npm: compile"
+    },
+    {
+      "type": "npm",
+      "script": "watch",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": { "reveal": "silent" },
+      "group": "build",
       "label": "npm: watch"
     },
     {
       "type": "npm",
-      "script": "compile",
+      "script": "check",
       "problemMatcher": "$tsc",
       "group": "build",
-      "label": "npm: compile"
+      "label": "npm: check"
     }
   ]
 }

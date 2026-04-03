@@ -16,6 +16,11 @@
   "categories": [
     "Other"
   ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#2B1843",
+    "theme": "dark"
+  },
   "type": "module",
   "main": "./out/extension.js",
   "activationEvents": [
@@ -45,10 +50,11 @@
     }
   },
   "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "check": "tsc --noEmit -p ./",
+    "compile": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
     "package": "vsce package",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run check && npm run compile"
   },
   "dependencies": {
     "@inferedge-rest/moss": "^1.0.0-beta.3",
@@ -58,6 +64,7 @@
     "@types/node": "^22.10.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.2.2",
+    "esbuild": "^0.27.2",
     "typescript": "^5.7.2"
   }
 }
