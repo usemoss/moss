@@ -74,3 +74,17 @@ EMBEDDING_DIMENSION=768
 - **Warmup**: 3 rounds (excluded from measurements)
 - **Measured**: 50 rounds x 15 queries = 750 measurements per system
 - **top_k**: 5
+
+## Pre-built 100k test index
+
+To reproduce our benchmarks against the same 100,000 documents we used,
+set these credentials in your `.env`:
+
+```
+MOSS_PROJECT_ID=398e0fcf-3ffd-413f-b93c-2d726fa714b5
+MOSS_PROJECT_KEY=moss_bvetgOAqmdC8y2De9SXX6MVEqdvByK49
+MOSS_INDEX_NAME=bench-builtin-100000-1_0_0b17
+```
+
+This index is pre-loaded with the full 100k FAQ document set so you can
+skip ingestion and jump straight to querying.
