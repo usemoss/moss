@@ -1,0 +1,7 @@
+[
+  { "id": "SKU-001", "name": "Wireless Noise-Cancelling Headphones", "price": 199.99, "stock": 34, "specs": "Bluetooth 5.2, 30hr battery, foldable", "category": "Electronics" },
+  { "id": "SKU-002", "name": "Ergonomic Office Chair", "price": 349.99, "stock": 0, "specs": "Lumbar support, adjustable armrests, mesh back", "category": "Furniture" },
+  { "id": "SKU-003", "name": "Stainless Steel Water Bottle", "price": 29.99, "stock": 120, "specs": "750ml, double-wall insulated, BPA-free", "category": "Kitchen" },
+  { "id": "SKU-004", "name": "Mechanical Keyboard", "price": 129.99, "stock": 15, "specs": "TKL layout, Cherry MX Red switches, RGB backlight", "category": "Electronics" },
+  { "id": "SKU-005", "name": "Yoga Mat", "price": 49.99, "stock": 60, "specs": "6mm thick, non-slip, eco-friendly TPE", "category": "Fitness" }
+]
