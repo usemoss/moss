@@ -1,5 +1,8 @@
 'use server'
 
+// Point HuggingFace transformers cache to /tmp (Vercel serverless fs is read-only)
+process.env.TRANSFORMERS_CACHE = '/tmp/transformers-cache';
+
 // Module-level singleton — survives across requests in the same server process
 let client: any = null;
 let indexLoadPromise: Promise<unknown> | null = null;
