@@ -2,11 +2,17 @@
 
 let MossClient: any = null;
 let importError: Error | null = null;
+let loadAttempted = false;
 
 // Lazy load the Moss client to handle missing system dependencies gracefully
 async function loadMossClient() {
-  if (MossClient) return MossClient;
-  if (importError) throw importError;
+  // Return cached result if already attempted
+  if (loadAttempted) {
+    if (importError) throw importError;
+    return MossClient;
+  }
+
+  loadAttempted = true;
 
   try {
     // Only attempt to load if we have credentials
@@ -14,11 +20,26 @@ async function loadMossClient() {
       throw new Error("Moss credentials not configured. Please set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.");
     }
 
-    const module = await import("@inferedge/moss");
+    // Construct module name to prevent static analysis by bundlers
+    const moduleName = ["@", "inferedge", "/", "moss"].join("");
+
+    // Use dynamic import with proper error handling for missing native dependencies
+    const module = await import(moduleName).catch((error: any) => {
+      const errorMsg = error?.message || String(error);
+      if (
+        error?.code === 'MODULE_NOT_FOUND' ||
+        errorMsg.includes('libonnxruntime') ||
+        errorMsg.includes('Cannot find module')
+      ) {
+        console.error("Moss SDK initialization failed:", errorMsg);
+        throw new Error(`Moss SDK not available: ${errorMsg}`);
+      }
+      throw error;
+    });
+
     MossClient = module.MossClient;
     return MossClient;
   } catch (error) {
-    console.error("Failed to load Moss SDK:", (error as Error).message);
     importError = error as Error;
     throw importError;
   }
