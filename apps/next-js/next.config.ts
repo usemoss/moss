@@ -9,12 +9,10 @@ const nextConfig: NextConfig = {
     "onnxruntime-web",
     "sharp",
   ],
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
+  turbopack: {
+    resolveAlias: {
       "onnxruntime-node": "onnxruntime-web",
-    };
-    return config;
+    },
   },
 };
 
