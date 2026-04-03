@@ -1,19 +1,36 @@
 'use server'
 
-import { MossClient } from "@inferedge/moss";
+let MossClient: any = null;
+let importError: Error | null = null;
+
+// Lazy load the Moss client to handle missing system dependencies gracefully
+async function loadMossClient() {
+  if (MossClient) return MossClient;
+  if (importError) throw importError;
+
+  try {
+    const module = await import("@inferedge/moss");
+    MossClient = module.MossClient;
+    return MossClient;
+  } catch (error) {
+    importError = error as Error;
+    throw importError;
+  }
+}
 
 // Module-level singleton — survives across requests in the same server process
-let client: MossClient | null = null;
+let client: any = null;
 let indexLoadPromise: Promise<unknown> | null = null;
 
-function getClient() {
+async function getClient() {
   const projectId = process.env.MOSS_PROJECT_ID;
   const projectKey = process.env.MOSS_PROJECT_KEY;
   if (!projectId || !projectKey) {
     throw new Error("Missing MOSS_PROJECT_ID or MOSS_PROJECT_KEY.");
   }
   if (!client) {
-    client = new MossClient(projectId, projectKey);
+    const MossClientClass = await loadMossClient();
+    client = new MossClientClass(projectId, projectKey);
   }
   return client;
 }
@@ -26,7 +43,8 @@ export type DocInput = {
 
 export async function deleteIndex(indexName: string) {
   try {
-    await getClient().deleteIndex(indexName);
+    const c = await getClient();
+    await c.deleteIndex(indexName);
     indexLoadPromise = null;
     return { success: true as const };
   } catch (error) {
@@ -44,7 +62,8 @@ export async function createMossIndex(indexName: string, docs: DocInput[]) {
     // Delete existing index first to avoid conflicts
     await deleteIndex(indexName);
 
-    const result = await getClient().createIndex(indexName, docs, { modelId: 'moss-minilm' });
+    const c = await getClient();
+    const result = await c.createIndex(indexName, docs, { modelId: 'moss-minilm' });
     // Reset cached load promise so next search reloads the freshly built index
     indexLoadPromise = null;
     return {
@@ -61,7 +80,8 @@ export async function createMossIndex(indexName: string, docs: DocInput[]) {
 export async function addMossDocs(indexName: string, docs: DocInput[]) {
   const start = Date.now();
   try {
-    const result = await getClient().addDocs(indexName, docs);
+    const c = await getClient();
+    const result = await c.addDocs(indexName, docs);
     return {
       success: true as const,
       jobId: result.jobId,
@@ -77,7 +97,8 @@ export async function loadMossIndex(indexName: string) {
   const start = Date.now();
   try {
     // Reset cached promise so we always reload a freshly built index
-    indexLoadPromise = getClient().loadIndex(indexName);
+    const c = await getClient();
+    indexLoadPromise = c.loadIndex(indexName);
     await indexLoadPromise;
     return { success: true as const, timeTaken: Date.now() - start };
   } catch (error) {
@@ -94,16 +115,17 @@ export async function searchMoss(query: string, indexName?: string) {
   }
 
   try {
+    const c = await getClient();
     // If index wasn't loaded via the pipeline, fall back to loading it now
     if (!indexLoadPromise) {
-      indexLoadPromise = getClient().loadIndex(targetIndex);
+      indexLoadPromise = c.loadIndex(targetIndex);
     }
     await indexLoadPromise;
 
-    const results = await getClient().query(targetIndex, query, { topK: 5 });
+    const results = await c.query(targetIndex, query, { topK: 5 });
     return {
       success: true as const,
-      docs: results.docs.map(doc => ({
+      docs: results.docs.map((doc: any) => ({
         id: doc.id,
         text: doc.text,
         score: doc.score,
