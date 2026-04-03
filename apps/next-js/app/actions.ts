@@ -2,6 +2,7 @@
 
 let MossClient: any = null;
 let importError: Error | null = null;
+const DEMO_MODE = !process.env.MOSS_PROJECT_ID || !process.env.MOSS_PROJECT_KEY;
 
 // Lazy load the Moss client to handle missing system dependencies gracefully
 async function loadMossClient() {
@@ -13,6 +14,7 @@ async function loadMossClient() {
     MossClient = module.MossClient;
     return MossClient;
   } catch (error) {
+    console.warn("Failed to load Moss SDK:", (error as Error).message);
     importError = error as Error;
     throw importError;
   }
@@ -23,14 +25,13 @@ let client: any = null;
 let indexLoadPromise: Promise<unknown> | null = null;
 
 async function getClient() {
-  const projectId = process.env.MOSS_PROJECT_ID;
-  const projectKey = process.env.MOSS_PROJECT_KEY;
-  if (!projectId || !projectKey) {
-    throw new Error("Missing MOSS_PROJECT_ID or MOSS_PROJECT_KEY.");
+  if (DEMO_MODE) {
+    throw new Error("Moss credentials not configured. Please set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.");
   }
+
   if (!client) {
     const MossClientClass = await loadMossClient();
-    client = new MossClientClass(projectId, projectKey);
+    client = new MossClientClass(process.env.MOSS_PROJECT_ID, process.env.MOSS_PROJECT_KEY);
   }
   return client;
 }
