@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd apps/next-js && npm run build",
+  "installCommand": "npm ci --legacy-peer-deps",
+  "regions": ["iad1"]
+}
