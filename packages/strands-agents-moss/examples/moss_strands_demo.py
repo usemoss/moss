@@ -28,8 +28,7 @@ async def main():
     )
 
     # 3. Ask a question — the agent will call moss_search automatically
-    response = agent("What is your refund policy?")
-    print(response)
+    agent("What is your refund policy?")
 
 
 if __name__ == "__main__":
