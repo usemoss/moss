@@ -10,7 +10,7 @@ from inferedge_moss import (
     SearchResult,
 )
 
-from .moss_search_tool import MossSearchTool, create_moss_search_tool
+from .moss_search_tool import MossSearchTool
 
 __all__ = [
     "DocumentInfo",
@@ -19,5 +19,4 @@ __all__ = [
     "MossClient",
     "MossSearchTool",
     "SearchResult",
-    "create_moss_search_tool",
 ]

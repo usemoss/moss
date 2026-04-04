@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Sequence
 from typing import Any
@@ -15,7 +16,7 @@ from typing import Any
 from inferedge_moss import MossClient, QueryOptions
 from strands import tool
 
-__all__ = ["MossSearchTool", "create_moss_search_tool"]
+__all__ = ["MossSearchTool"]
 
 logger = logging.getLogger("strands_agents_moss")
 
@@ -79,6 +80,7 @@ class MossSearchTool:
         self._alpha = alpha
         self._result_prefix = result_prefix
         self._index_loaded = False
+        self._load_lock = asyncio.Lock()
         self._tool_fn = self._build_tool()
 
     async def load_index(self) -> None:
@@ -86,11 +88,17 @@ class MossSearchTool:
 
         Call this before creating the Strands Agent so that the first
         tool invocation does not incur index-loading latency.
+
+        This method is safe to call concurrently; only the first call
+        will actually load the index.
         """
-        logger.info("Loading Moss index '%s'", self._index_name)
-        await self._client.load_index(self._index_name)
-        self._index_loaded = True
-        logger.info("Moss index '%s' ready", self._index_name)
+        async with self._load_lock:
+            if self._index_loaded:
+                return
+            logger.info("Loading Moss index '%s'", self._index_name)
+            await self._client.load_index(self._index_name)
+            self._index_loaded = True
+            logger.info("Moss index '%s' ready", self._index_name)
 
     @property
     def tool(self) -> Any:
@@ -129,29 +137,17 @@ class MossSearchTool:
         return self._format_results(result.docs)
 
     def _build_tool(self) -> Any:
-        """Create the Strands @tool-decorated function bound to this instance."""
+        """Create the Strands @tool-decorated async function bound to this instance."""
         instance = self
 
         @tool(name=instance._tool_name, description=instance._tool_description)
-        def moss_search(query: str) -> str:
+        async def moss_search(query: str) -> str:
             """Search the knowledge base.
 
             Args:
                 query: The search query to find relevant documents.
             """
-            import asyncio
-
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-
-            if loop and loop.is_running():
-                import concurrent.futures
-
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    return loop.run_in_executor(pool, lambda: asyncio.run(instance.search(query)))
-            return asyncio.run(instance.search(query))
+            return await instance.search(query)
 
         return moss_search
 
@@ -172,84 +168,3 @@ class MossSearchTool:
             text = getattr(doc, "text", "") or ""
             lines.append(f"{idx}. {text}{suffix}")
         return "\n".join(lines).strip()
-
-
-def create_moss_search_tool(
-    *,
-    project_id: str | None = None,
-    project_key: str | None = None,
-    index_name: str,
-    top_k: int = 5,
-    alpha: float = 0.8,
-) -> Any:
-    """Convenience factory that returns a Strands tool function directly.
-
-    This is a simpler alternative to :class:`MossSearchTool` when you
-    don't need fine-grained control over the tool name or description.
-
-    .. note::
-        The returned tool will lazily load the index on the first query.
-        For lower first-call latency, use :class:`MossSearchTool` with
-        an explicit ``await load_index()`` call instead.
-
-    Args:
-        project_id: Moss project ID. Falls back to ``MOSS_PROJECT_ID`` env var.
-        project_key: Moss project key. Falls back to ``MOSS_PROJECT_KEY`` env var.
-        index_name: Name of the Moss index to query.
-        top_k: Number of results to retrieve per query.
-        alpha: Blend between semantic (1.0) and keyword (0.0) scoring.
-
-    Returns:
-        A Strands-compatible tool function.
-    """
-    client = MossClient(project_id=project_id, project_key=project_key)
-    _index_loaded = False
-
-    @tool
-    def moss_search(query: str) -> str:
-        """Search the knowledge base using Moss semantic search.
-
-        Returns the most relevant documents for the given query.
-
-        Args:
-            query: The search query to find relevant documents.
-        """
-        import asyncio
-
-        nonlocal _index_loaded
-
-        async def _run() -> str:
-            nonlocal _index_loaded
-            if not _index_loaded:
-                await client.load_index(index_name)
-                _index_loaded = True
-
-            result = await client.query(
-                index_name,
-                query,
-                options=QueryOptions(top_k=top_k, alpha=alpha),
-            )
-            if not result.docs:
-                return "No relevant results found."
-
-            lines = ["Relevant knowledge base results:\n"]
-            for idx, doc in enumerate(result.docs, start=1):
-                text = getattr(doc, "text", "") or ""
-                score = getattr(doc, "score", None)
-                score_str = f" (score={score:.3f})" if score is not None else ""
-                lines.append(f"{idx}. {text}{score_str}")
-            return "\n".join(lines)
-
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop and loop.is_running():
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return loop.run_in_executor(pool, lambda: asyncio.run(_run()))
-        return asyncio.run(_run())
-
-    return moss_search

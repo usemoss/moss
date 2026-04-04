@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from strands_agents_moss import MossSearchTool, create_moss_search_tool
+from strands_agents_moss import MossSearchTool
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -73,7 +73,6 @@ class TestMossSearchToolInit:
         )
         t = tool.tool
         assert t is not None
-        # Strands @tool decorator wraps functions into DecoratedFunctionTool
         assert hasattr(t, "tool_name") or callable(t)
 
 
@@ -90,6 +89,17 @@ class TestMossSearchToolLoadIndex:
             await tool.load_index()
             mock_load.assert_called_once_with("idx")
             assert tool._index_loaded is True
+
+    @pytest.mark.asyncio
+    async def test_load_index_only_loads_once(self):
+        """Verify concurrent load_index calls only trigger one actual load."""
+        tool = MossSearchTool(
+            project_id="pid", project_key="pkey", index_name="idx"
+        )
+        with patch.object(tool._client, "load_index", new_callable=AsyncMock) as mock_load:
+            await tool.load_index()
+            await tool.load_index()
+            mock_load.assert_called_once()
 
 
 class TestMossSearchToolSearch:
@@ -155,30 +165,79 @@ class TestMossSearchToolSearch:
 
 
 # ---------------------------------------------------------------------------
-# create_moss_search_tool – unit tests
+# Tool invocation – tests that actually call the Strands tool
 # ---------------------------------------------------------------------------
 
 
-class TestCreateMossSearchTool:
-    """Tests for the convenience factory function."""
+def _make_tool_use(query: str, tool_use_id: str = "test-123") -> dict:
+    """Create a Strands ToolUse dict for invoking a tool via .stream()."""
+    return {
+        "toolUseId": tool_use_id,
+        "name": "moss_search",
+        "input": {"query": query},
+    }
 
-    def test_returns_callable(self):
-        """Verify factory returns a valid Strands tool."""
-        tool = create_moss_search_tool(
+
+async def _invoke_tool(tool_fn, query: str) -> str:
+    """Invoke a Strands tool via .stream() and return the result text."""
+    tool_use = _make_tool_use(query)
+    result_text = ""
+    async for chunk in tool_fn.stream(tool_use, {}):
+        if chunk.get("type") == "tool_result":
+            content = chunk["tool_result"].get("content", [])
+            for part in content:
+                if "text" in part:
+                    result_text += part["text"]
+    return result_text
+
+
+class TestToolInvocation:
+    """Tests that invoke the Strands tool function directly."""
+
+    @pytest.mark.asyncio
+    async def test_tool_invocation_returns_string(self):
+        """Verify invoking the tool returns a formatted string, not a Future."""
+        moss = MossSearchTool(
             project_id="pid", project_key="pkey", index_name="idx"
         )
-        assert tool is not None
-        assert hasattr(tool, "tool_name") or callable(tool)
+        moss._index_loaded = True
 
-    def test_factory_creates_different_instances(self):
-        """Verify each factory call produces a distinct tool."""
-        t1 = create_moss_search_tool(
-            project_id="pid", project_key="pkey", index_name="idx1"
+        docs = [_make_mock_doc("Tool result", 0.88, "d1")]
+        mock_result = _make_mock_search_result(docs)
+
+        with patch.object(moss._client, "query", new_callable=AsyncMock, return_value=mock_result):
+            output = await _invoke_tool(moss.tool, "test")
+            assert isinstance(output, str)
+            assert "Tool result" in output
+            assert "score=0.880" in output
+
+    @pytest.mark.asyncio
+    async def test_tool_invocation_error_when_not_loaded(self):
+        """Verify tool invocation returns an error result when index not loaded."""
+        moss = MossSearchTool(
+            project_id="pid", project_key="pkey", index_name="idx"
         )
-        t2 = create_moss_search_tool(
-            project_id="pid", project_key="pkey", index_name="idx2"
+
+        tool_use = _make_tool_use("test")
+        async for chunk in moss.tool.stream(tool_use, {}):
+            if chunk.get("type") == "tool_result":
+                assert chunk["tool_result"]["status"] == "error"
+                error_text = chunk["tool_result"]["content"][0]["text"]
+                assert "not loaded" in error_text
+
+    @pytest.mark.asyncio
+    async def test_tool_invocation_empty_results(self):
+        """Verify tool invocation with no matching docs."""
+        moss = MossSearchTool(
+            project_id="pid", project_key="pkey", index_name="idx"
         )
-        assert t1 is not t2
+        moss._index_loaded = True
+
+        mock_result = _make_mock_search_result([])
+        with patch.object(moss._client, "query", new_callable=AsyncMock, return_value=mock_result):
+            output = await _invoke_tool(moss.tool, "nothing")
+            assert isinstance(output, str)
+            assert "No relevant results found" in output
 
 
 # ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ pip install strands-agents-moss
 
 - Moss project ID and project key (get them from [Moss Portal](https://portal.usemoss.dev))
 - Python 3.10+
+- **Model provider credentials** — Strands Agents defaults to [Amazon Bedrock](https://aws.amazon.com/bedrock/) as the LLM provider. Make sure your AWS credentials are configured (e.g. `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`). To use a different provider, see [Choosing a model provider](#choosing-a-model-provider) below.
 
 ## Quick Start
 
@@ -38,21 +39,21 @@ async def main():
 asyncio.run(main())
 ```
 
-### Convenience Factory
+## Choosing a Model Provider
 
-For simpler use cases where you don't need to customize the tool name or description, use the factory function. The index is loaded lazily on the first query.
+Strands Agents defaults to **Amazon Bedrock**. If you don't have AWS credentials or prefer a different provider, pass a `model` argument to `Agent`:
 
 ```python
-from strands import Agent
-from strands_agents_moss import create_moss_search_tool
+# OpenAI
+from strands.models.openai import OpenAIModel
+agent = Agent(model=OpenAIModel("gpt-4o"), tools=[moss.tool])
 
-search_tool = create_moss_search_tool(
-    index_name="my-index",
-)
-
-agent = Agent(tools=[search_tool])
-agent("What are your shipping options?")
+# Anthropic
+from strands.models.anthropic import AnthropicModel
+agent = Agent(model=AnthropicModel("claude-sonnet-4-20250514"), tools=[moss.tool])
 ```
+
+See the [Strands model providers docs](https://strandsagents.com/latest/user-guide/concepts/model-providers/overview/) for all supported providers.
 
 ## Configuration Options
 
@@ -76,16 +77,6 @@ agent("What are your shipping options?")
 | `load_index()` | Async. Pre-load the Moss index for fast first queries |
 | `search(query)` | Async. Query Moss and return formatted results as a string |
 | `tool` | Property. Returns the Strands-compatible tool to pass to `Agent(tools=[...])` |
-
-### create_moss_search_tool()
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `project_id` | `MOSS_PROJECT_ID` env var | Moss project ID |
-| `project_key` | `MOSS_PROJECT_KEY` env var | Moss project key |
-| `index_name` | (required) | Name of the Moss index to query |
-| `top_k` | `5` | Number of results to retrieve |
-| `alpha` | `0.8` | Semantic/keyword blend |
 
 ## Multi-Agent Example
 
