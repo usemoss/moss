@@ -23,28 +23,135 @@
   },
   "type": "module",
   "main": "./out/extension.js",
-  "activationEvents": [
-    "onCommand:moss.spikeConnectivity"
-  ],
+  "activationEvents": [],
   "contributes": {
     "commands": [
+      {
+        "command": "moss.indexWorkspace",
+        "title": "Moss: Index Workspace"
+      },
+      {
+        "command": "moss.search",
+        "title": "Moss: Search"
+      },
+      {
+        "command": "moss.configureCredentials",
+        "title": "Moss: Configure credentials"
+      },
+      {
+        "command": "moss.setApiKey",
+        "title": "Moss: Set API Key"
+      },
       {
         "command": "moss.spikeConnectivity",
         "title": "Moss: Run Phase 1 connectivity spike"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mossContainer",
+          "title": "Moss",
+          "icon": "media/moss-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mossContainer": [
+        {
+          "type": "webview",
+          "id": "moss.searchView",
+          "name": "Search"
+        }
+      ]
+    },
     "configuration": {
       "title": "Moss",
       "properties": {
         "moss.projectId": {
           "type": "string",
           "default": "",
-          "description": "Moss project ID (optional if MOSS_PROJECT_ID is set in the environment)."
+          "description": "Moss project ID (required). Also accepted via MOSS_PROJECT_ID environment variable."
         },
         "moss.projectKey": {
           "type": "string",
           "default": "",
-          "description": "Moss project key (optional if MOSS_PROJECT_KEY is set in the environment)."
+          "description": "Moss project key. Prefer 'Moss: Configure credentials' or 'Moss: Set API Key' for secure storage. Also accepted via MOSS_PROJECT_KEY environment variable."
+        },
+        "moss.indexName": {
+          "type": "string",
+          "default": "",
+          "description": "Moss index name for this workspace. Leave empty to auto-generate from the workspace name.",
+          "scope": "resource"
+        },
+        "moss.modelId": {
+          "type": "string",
+          "default": "moss-minilm",
+          "description": "Embedding model ID used when creating a Moss index."
+        },
+        "moss.includeGlob": {
+          "type": [
+            "string",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "default": "**/*",
+          "description": "Glob pattern(s) for files to include when indexing the workspace.",
+          "scope": "resource"
+        },
+        "moss.excludeGlob": {
+          "type": [
+            "string",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/out/**",
+            "**/.next/**",
+            "**/build/**"
+          ],
+          "description": "Glob pattern(s) for files to exclude when indexing (merged with built-in defaults).",
+          "scope": "resource"
+        },
+        "moss.maxFileSizeBytes": {
+          "type": "number",
+          "default": 1048576,
+          "description": "Maximum file size in bytes to index (default 1 MB). Larger files are skipped."
+        },
+        "moss.topK": {
+          "type": "number",
+          "default": 10,
+          "description": "Number of results to return for each search query."
+        },
+        "moss.queryMode": {
+          "type": "string",
+          "enum": [
+            "local",
+            "cloud"
+          ],
+          "default": "local",
+          "description": "Query mode: 'local' downloads the index for fast in-process search; 'cloud' queries the Moss API directly.",
+          "enumDescriptions": [
+            "Download index and query in-process (fast, recommended)",
+            "Query the Moss cloud API (higher latency, no local cache)"
+          ]
+        },
+        "moss.chunkMaxLines": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum number of lines per chunk when indexing files."
+        },
+        "moss.chunkOverlapLines": {
+          "type": "number",
+          "default": 12,
+          "description": "Number of overlapping lines between consecutive chunks."
         }
       }
     }

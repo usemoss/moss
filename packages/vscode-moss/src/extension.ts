@@ -1,10 +1,142 @@
 import * as vscode from "vscode";
-import { MossRestClient } from "@inferedge-rest/moss";
-import { MossClient } from "@inferedge/moss";
+import {
+  MOSS_SECRET_KEY_PROJECT_KEY,
+  resolveCredentials,
+} from "./config.js";
+import { createRestClient, createSdkClient } from "./mossClients.js";
+import { MossSearchViewProvider } from "./searchViewProvider.js";
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ── Activation ───────────────────────────────────────────────────────
+
+export function activate(context: vscode.ExtensionContext): void {
+  const log = vscode.window.createOutputChannel("Moss");
+
+  // Sidebar search view
+  const searchProvider = new MossSearchViewProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      MossSearchViewProvider.viewId,
+      searchProvider
+    )
+  );
+
+  // moss.indexWorkspace (placeholder — implementation in Phase 5)
+  context.subscriptions.push(
+    vscode.commands.registerCommand("moss.indexWorkspace", async () => {
+      void vscode.window.showInformationMessage(
+        "Moss: Index Workspace is not yet implemented."
+      );
+    })
+  );
+
+  // moss.search — focus the sidebar search view
+  context.subscriptions.push(
+    vscode.commands.registerCommand("moss.search", async () => {
+      await vscode.commands.executeCommand("moss.searchView.focus");
+    })
+  );
+
+  // moss.configureCredentials — project ID → settings; project key → SecretStorage
+  context.subscriptions.push(
+    vscode.commands.registerCommand("moss.configureCredentials", async () => {
+      const cfg = vscode.workspace.getConfiguration("moss");
+      const currentId = cfg.get<string>("projectId")?.trim() ?? "";
+
+      const projectId = await vscode.window.showInputBox({
+        title: "Moss",
+        prompt: "Project ID",
+        value: currentId,
+        ignoreFocusOut: true,
+        placeHolder: "Your Moss project id",
+      });
+      if (projectId === undefined) return;
+
+      const trimmedId = projectId.trim();
+      if (!trimmedId) {
+        void vscode.window.showWarningMessage(
+          "Moss: Project ID is required. Nothing was saved."
+        );
+        return;
+      }
+
+      const projectKey = await vscode.window.showInputBox({
+        title: "Moss",
+        prompt: "Project key",
+        password: true,
+        ignoreFocusOut: true,
+        placeHolder: "Leave empty to keep the existing key in secure storage",
+      });
+      if (projectKey === undefined) return;
+
+      const configTarget =
+        vscode.workspace.workspaceFolders &&
+        vscode.workspace.workspaceFolders.length > 0
+          ? vscode.ConfigurationTarget.Workspace
+          : vscode.ConfigurationTarget.Global;
+
+      try {
+        await cfg.update("projectId", trimmedId, configTarget);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        void vscode.window.showErrorMessage(
+          `Moss: Could not save project ID: ${msg}`
+        );
+        return;
+      }
+
+      if (projectKey !== "") {
+        await context.secrets.store(MOSS_SECRET_KEY_PROJECT_KEY, projectKey);
+      }
+
+      void vscode.window.showInformationMessage(
+        projectKey !== ""
+          ? "Moss: Project ID saved to settings and project key saved to secure storage."
+          : "Moss: Project ID saved to settings. Project key unchanged."
+      );
+    })
+  );
+
+  // moss.setApiKey — store / clear project key via SecretStorage
+  context.subscriptions.push(
+    vscode.commands.registerCommand("moss.setApiKey", async () => {
+      const key = await vscode.window.showInputBox({
+        prompt: "Enter your Moss project key",
+        password: true,
+        ignoreFocusOut: true,
+        placeHolder: "pk_…",
+      });
+      if (key !== undefined) {
+        if (key === "") {
+          await context.secrets.delete(MOSS_SECRET_KEY_PROJECT_KEY);
+          void vscode.window.showInformationMessage(
+            "Moss project key removed from secure storage."
+          );
+        } else {
+          await context.secrets.store(MOSS_SECRET_KEY_PROJECT_KEY, key);
+          void vscode.window.showInformationMessage(
+            "Moss project key saved to secure storage."
+          );
+        }
+      }
+    })
+  );
+
+  // moss.spikeConnectivity (Phase 1 — retained for dev testing)
+  registerSpikeCommand(context, log);
+
+  context.subscriptions.push(log);
+}
+
+export function deactivate(): void {}
+
+// ── Phase 1 spike command (temporary) ────────────────────────────────
 
 const SPIKE_INDEX_NAME = "vscode-moss-phase1-spike";
 const SPIKE_MODEL_ID = "moss-minilm";
-const OUTPUT_CHANNEL_ID = "moss-spike";
 
 const SPIKE_DOCS = [
   {
@@ -24,32 +156,8 @@ const SPIKE_DOCS = [
   },
 ];
 
-function getCredentials(): { projectId: string; projectKey: string } | undefined {
-  const fromEnv =
-    process.env.MOSS_PROJECT_ID && process.env.MOSS_PROJECT_KEY
-      ? {
-          projectId: process.env.MOSS_PROJECT_ID,
-          projectKey: process.env.MOSS_PROJECT_KEY,
-        }
-      : undefined;
-  if (fromEnv) {
-    return fromEnv;
-  }
-  const cfg = vscode.workspace.getConfiguration("moss");
-  const projectId = cfg.get<string>("projectId")?.trim();
-  const projectKey = cfg.get<string>("projectKey")?.trim();
-  if (projectId && projectKey) {
-    return { projectId, projectKey };
-  }
-  return undefined;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function tolerateDeleteIndex(
-  client: MossRestClient,
+  client: ReturnType<typeof createRestClient>,
   indexName: string,
   log: vscode.OutputChannel
 ): Promise<void> {
@@ -66,28 +174,28 @@ async function tolerateDeleteIndex(
   }
 }
 
-export function activate(context: vscode.ExtensionContext): void {
-  const log = vscode.window.createOutputChannel(OUTPUT_CHANNEL_ID);
-
-  const disposable = vscode.commands.registerCommand(
-    "moss.spikeConnectivity",
-    async () => {
+function registerSpikeCommand(
+  context: vscode.ExtensionContext,
+  log: vscode.OutputChannel
+): void {
+  context.subscriptions.push(
+    vscode.commands.registerCommand("moss.spikeConnectivity", async () => {
       log.clear();
       log.show(true);
       log.appendLine("Moss Phase 1 spike — starting…");
 
-      const creds = getCredentials();
+      const creds = await resolveCredentials(context);
       if (!creds) {
         const msg =
-          "Missing Moss credentials. Set MOSS_PROJECT_ID and MOSS_PROJECT_KEY in the environment " +
-          "(e.g. launch.json for F5), or add moss.projectId / moss.projectKey in Settings.";
+          "Missing Moss credentials. Run 'Moss: Configure credentials', or use 'Moss: Set API Key' " +
+          "with moss.projectId in Settings, or set MOSS_PROJECT_ID and MOSS_PROJECT_KEY in the environment.";
         log.appendLine(msg);
         void vscode.window.showErrorMessage(msg);
         return;
       }
 
-      const rest = new MossRestClient(creds.projectId, creds.projectKey);
-      const sdk = new MossClient(creds.projectId, creds.projectKey);
+      const rest = createRestClient(creds.projectId, creds.projectKey);
+      const sdk = createSdkClient(creds.projectId, creds.projectKey);
 
       try {
         log.appendLine("Step 1: REST deleteIndex (tolerate missing)…");
@@ -100,7 +208,6 @@ export function activate(context: vscode.ExtensionContext): void {
         log.appendLine("Step 3: Brief pause for index readiness…");
         await sleep(2500);
 
-        let localQueryMs: number | undefined;
         let localError: string | undefined;
 
         log.appendLine("Step 4: SDK loadIndex…");
@@ -109,12 +216,13 @@ export function activate(context: vscode.ExtensionContext): void {
           log.appendLine("loadIndex succeeded.");
 
           log.appendLine('Step 5: SDK query (local) — "refund policy"…');
-          const localResult = await sdk.query(SPIKE_INDEX_NAME, "refund policy", {
-            topK: 2,
-          });
-          localQueryMs = localResult.timeTakenInMs;
+          const localResult = await sdk.query(
+            SPIKE_INDEX_NAME,
+            "refund policy",
+            { topK: 2 }
+          );
           log.appendLine(
-            `Local query: ${localResult.docs.length} docs in ${localQueryMs ?? "?"} ms`
+            `Local query: ${localResult.docs.length} docs in ${localResult.timeTakenInMs ?? "?"} ms`
           );
           for (const d of localResult.docs) {
             log.appendLine(
@@ -125,13 +233,15 @@ export function activate(context: vscode.ExtensionContext): void {
           localError = e instanceof Error ? e.message : String(e);
           log.appendLine(`loadIndex/query (local path) failed: ${localError}`);
           log.appendLine(
-            "Falling back to cloud query (no loadIndex) — see PHASE1_SPIKE.md if this persists."
+            "Falling back to cloud query — see PHASE1_SPIKE.md if this persists."
           );
 
           log.appendLine('Step 5b: SDK query (cloud fallback) — "refund policy"…');
-          const cloudResult = await sdk.query(SPIKE_INDEX_NAME, "refund policy", {
-            topK: 2,
-          });
+          const cloudResult = await sdk.query(
+            SPIKE_INDEX_NAME,
+            "refund policy",
+            { topK: 2 }
+          );
           log.appendLine(
             `Cloud query: ${cloudResult.docs.length} docs in ${cloudResult.timeTakenInMs ?? "?"} ms`
           );
@@ -153,10 +263,6 @@ export function activate(context: vscode.ExtensionContext): void {
         log.appendLine(`SPIKE FAILED: ${msg}`);
         void vscode.window.showErrorMessage(`Moss spike failed: ${msg}`);
       }
-    }
+    })
   );
-
-  context.subscriptions.push(disposable, log);
 }
-
-export function deactivate(): void {}
