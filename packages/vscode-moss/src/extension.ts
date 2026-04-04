@@ -3,6 +3,7 @@ import {
   MOSS_SECRET_KEY_PROJECT_KEY,
   resolveCredentials,
 } from "./config.js";
+import { runIndexWorkspace } from "./indexWorkspace.js";
 import { createRestClient, createSdkClient } from "./mossClients.js";
 import { MossSearchViewProvider } from "./searchViewProvider.js";
 
@@ -24,12 +25,9 @@ export function activate(context: vscode.ExtensionContext): void {
     )
   );
 
-  // moss.indexWorkspace (placeholder — implementation in Phase 5)
   context.subscriptions.push(
     vscode.commands.registerCommand("moss.indexWorkspace", async () => {
-      void vscode.window.showInformationMessage(
-        "Moss: Index Workspace is not yet implemented."
-      );
+      await runIndexWorkspace(context, log);
     })
   );
 

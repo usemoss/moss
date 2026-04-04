@@ -12,6 +12,10 @@ export interface ChunkOptions {
   smallFileMaxLines?: number;
   workspaceFolderIndex?: number;
   workspaceFolderName?: string;
+  /**
+   * Uniquifies doc ids across workspace roots (e.g. multi-root). Omitted for single-folder workspaces.
+   */
+  chunkIdNamespace?: string;
 }
 
 function normalizeRelativePath(relativePath: string): string {
@@ -84,9 +88,14 @@ export function chunkFileContent(
 
   const docs: MossDocument[] = [];
 
+  const idPrefix =
+    options.chunkIdNamespace !== undefined && options.chunkIdNamespace !== ""
+      ? `${options.chunkIdNamespace}:`
+      : "";
+
   if (total === 0) {
     docs.push({
-      id: `${pathNorm}:1-1`,
+      id: `${idPrefix}${pathNorm}:1-1`,
       text: "",
       metadata: buildMetadata(pathNorm, 1, 1, options),
     });
@@ -102,7 +111,7 @@ export function chunkFileContent(
     );
     const endLine = endIdxExclusive;
     docs.push({
-      id: `${pathNorm}:1-${endLine}`,
+      id: `${idPrefix}${pathNorm}:1-${endLine}`,
       text: body,
       metadata: buildMetadata(pathNorm, 1, endLine, options),
     });
@@ -125,7 +134,7 @@ export function chunkFileContent(
     endLine = endIdxExclusive;
 
     docs.push({
-      id: `${pathNorm}:${startLine}-${endLine}`,
+      id: `${idPrefix}${pathNorm}:${startLine}-${endLine}`,
       text: body,
       metadata: buildMetadata(pathNorm, startLine, endLine, options),
     });
