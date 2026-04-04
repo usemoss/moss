@@ -1,7 +1,7 @@
 {
   "name": "vscode-moss",
   "displayName": "Moss",
-  "description": "Semantic codebase search powered by Moss (development / Phase 1 spike).",
+  "description": "Semantic codebase search powered by Moss — index your workspace and search from the sidebar.",
   "version": "0.0.1",
   "publisher": "inferedge",
   "license": "BSD-2-Clause",
@@ -39,12 +39,8 @@
         "title": "Moss: Configure credentials"
       },
       {
-        "command": "moss.setApiKey",
-        "title": "Moss: Set API Key"
-      },
-      {
-        "command": "moss.spikeConnectivity",
-        "title": "Moss: Run Phase 1 connectivity spike"
+        "command": "moss.openSettings",
+        "title": "Moss: Open Settings"
       }
     ],
     "viewsContainers": {
@@ -76,7 +72,7 @@
         "moss.projectKey": {
           "type": "string",
           "default": "",
-          "description": "Moss project key. Prefer 'Moss: Configure credentials' or 'Moss: Set API Key' for secure storage. Also accepted via MOSS_PROJECT_KEY environment variable."
+          "description": "Moss project key. Prefer 'Moss: Configure credentials' (project key only) for secure storage. Also accepted via MOSS_PROJECT_KEY environment variable."
         },
         "moss.indexName": {
           "type": "string",
@@ -152,6 +148,11 @@
           "type": "number",
           "default": 12,
           "description": "Number of overlapping lines between consecutive chunks."
+        },
+        "moss.logVerbose": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, the Moss output channel includes extra detail for indexing and search (default is a short summary)."
         }
       }
     }
@@ -160,6 +161,8 @@
     "check": "tsc --noEmit -p ./",
     "compile": "node esbuild.config.mjs",
     "watch": "node esbuild.config.mjs --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "package": "vsce package",
     "vscode:prepublish": "npm run check && npm run compile"
   },
@@ -172,6 +175,8 @@
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.2.2",
     "esbuild": "^0.27.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4",
+    "vscode-uri": "^3.1.0"
   }
 }

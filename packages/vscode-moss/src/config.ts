@@ -4,6 +4,11 @@ export const MOSS_SECRET_KEY_PROJECT_KEY = "moss.projectKey";
 
 export type MossQueryMode = "local" | "cloud";
 
+/** When true, Moss output includes extra indexing / spike / search detail (Phase 8). */
+export function getMossLogVerbose(): boolean {
+  return vscode.workspace.getConfiguration("moss").get<boolean>("logVerbose") === true;
+}
+
 export interface ResolvedConfig {
   projectId: string | undefined;
   projectKey: string | undefined;
@@ -69,7 +74,7 @@ function resolveProjectId(cfg: vscode.WorkspaceConfiguration): string | undefine
 }
 
 /**
- * Global Moss credentials (unscoped config), same precedence as Phase 0 / extension spike.
+ * Global Moss credentials (unscoped config), same precedence as Phase 0.
  */
 export async function resolveCredentials(
   context: vscode.ExtensionContext

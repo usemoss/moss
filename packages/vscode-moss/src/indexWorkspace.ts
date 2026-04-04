@@ -2,17 +2,15 @@ import * as vscode from "vscode";
 import path from "node:path";
 import { getMossConfig, resolveCredentials } from "./config.js";
 import { chunkFileContent } from "./chunking.js";
+import {
+  MOSS_LAST_INDEXED_KEY,
+  type LastIndexedState,
+} from "./lastIndexed.js";
+import { mossLog } from "./mossLog.js";
+import { invalidateLoadedSearchIndex } from "./mossQueryState.js";
+import { notifyMossIndexed } from "./mossStatusBar.js";
 import { createRestClient, createSdkClient } from "./mossClients.js";
 import type { MossDocument } from "./types.js";
-
-export const MOSS_LAST_INDEXED_KEY = "moss.lastIndexed";
-
-export interface LastIndexedState {
-  indexName: string;
-  docCount: number;
-  fileCount: number;
-  timestamp: number;
-}
 
 const MAX_FILE_SCAN = 80_000;
 const MAX_MOSS_DOCUMENTS = 60_000;
@@ -109,13 +107,21 @@ async function tolerateDeleteIndex(
 ): Promise<void> {
   try {
     await client.deleteIndex(indexName);
-    log.appendLine(`Deleted existing index "${indexName}" (if it existed).`);
+    mossLog(
+      log,
+      `Moss: Deleted existing index "${indexName}" (if it existed).`,
+      "verbose"
+    );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (/not found|does not exist/i.test(msg)) {
-      log.appendLine(`No existing index "${indexName}" to delete (ok).`);
+      mossLog(
+        log,
+        `Moss: No existing index "${indexName}" to delete (ok).`,
+        "verbose"
+      );
     } else {
-      log.appendLine(`deleteIndex warning: ${msg}`);
+      mossLog(log, `Moss: deleteIndex warning: ${msg}`);
     }
   }
 }
@@ -225,7 +231,7 @@ export async function runIndexWorkspace(
       cancellable: true,
     },
     async (progress, token) => {
-      log.appendLine("Moss: Index workspace — starting…");
+      mossLog(log, "Moss: Index workspace — starting…");
 
       const primary = folders[0]!;
       const cfg = await getMossConfig(context.secrets, primary);
@@ -244,17 +250,17 @@ export async function runIndexWorkspace(
       );
 
       if (token.isCancellationRequested) {
-        log.appendLine("Indexing cancelled (after scan).");
+        mossLog(log, "Moss: Indexing cancelled (after scan).");
         return;
       }
 
       if (scanTruncated) {
         const msg = `File scan stopped at ${MAX_FILE_SCAN} files. Narrow moss.includeGlob or add moss.excludeGlob to index a smaller set.`;
-        log.appendLine(msg);
+        mossLog(log, msg);
         void vscode.window.showWarningMessage(`Moss: ${msg}`);
       }
 
-      log.appendLine(`Found ${uris.length} file(s) to consider.`);
+      mossLog(log, `Moss: Found ${uris.length} file(s) to consider.`, "verbose");
 
       uris.sort((a, b) => a.fsPath.localeCompare(b.fsPath));
 
@@ -268,7 +274,7 @@ export async function runIndexWorkspace(
       const total = uris.length;
       for (let i = 0; i < uris.length; i++) {
         if (token.isCancellationRequested) {
-          log.appendLine("Indexing cancelled while reading files.");
+          mossLog(log, "Moss: Indexing cancelled while reading files.");
           return;
         }
 
@@ -306,8 +312,10 @@ export async function runIndexWorkspace(
         if (text === undefined) {
           skippedDecode += 1;
           if (!decodeLogged) {
-            log.appendLine(
-              "One or more files were skipped (invalid UTF-8 or binary content)."
+            mossLog(
+              log,
+              "Moss: One or more files were skipped (invalid UTF-8 or binary content).",
+              "verbose"
             );
             decodeLogged = true;
           }
@@ -330,8 +338,9 @@ export async function runIndexWorkspace(
         filesIndexed += 1;
 
         if (allDocs.length >= MAX_MOSS_DOCUMENTS) {
-          log.appendLine(
-            `Chunk limit reached (${MAX_MOSS_DOCUMENTS}); remaining files are skipped.`
+          mossLog(
+            log,
+            `Moss: Chunk limit reached (${MAX_MOSS_DOCUMENTS}); remaining files are skipped.`
           );
           void vscode.window.showWarningMessage(
             `Moss: Index truncated at ${MAX_MOSS_DOCUMENTS} chunks. Narrow include patterns or raise the limit in code.`
@@ -341,14 +350,14 @@ export async function runIndexWorkspace(
       }
 
       if (token.isCancellationRequested) {
-        log.appendLine("Indexing cancelled before upload.");
+        mossLog(log, "Moss: Indexing cancelled before upload.");
         return;
       }
 
       if (allDocs.length === 0) {
         const msg =
           "No indexable documents were produced (empty workspace, filters, or unsupported files).";
-        log.appendLine(msg);
+        mossLog(log, msg);
         void vscode.window.showWarningMessage(`Moss: ${msg}`);
         return;
       }
@@ -360,17 +369,19 @@ export async function runIndexWorkspace(
       try {
         await tolerateDeleteIndex(rest, cfg.indexName, log);
         if (token.isCancellationRequested) {
-          log.appendLine("Indexing cancelled before createIndex.");
+          mossLog(log, "Moss: Indexing cancelled before createIndex.");
           return;
         }
 
         await rest.createIndex(cfg.indexName, allDocs, cfg.modelId);
-        log.appendLine(
-          `createIndex completed (${allDocs.length} chunks from ${filesIndexed} file(s)).`
+        invalidateLoadedSearchIndex();
+        mossLog(
+          log,
+          `Moss: createIndex finished — ${allDocs.length} chunks from ${filesIndexed} file(s), index “${cfg.indexName}”.`
         );
       } catch (e: unknown) {
         const msg = formatError(e);
-        log.appendLine(`createIndex failed: ${msg}`);
+        mossLog(log, `Moss: createIndex failed: ${msg}`);
         void vscode.window.showErrorMessage(`Moss: Indexing failed: ${msg}`);
         return;
       }
@@ -382,8 +393,12 @@ export async function runIndexWorkspace(
         timestamp: Date.now(),
       } satisfies LastIndexedState);
 
-      log.appendLine(
-        `Skipped: ${skippedSize} over size cap, ${skippedBinary} by extension/binary, ${skippedDecode} decode/binary.`
+      notifyMossIndexed();
+
+      mossLog(
+        log,
+        `Moss: Skipped while scanning — ${skippedSize} over size cap, ${skippedBinary} binary/ext, ${skippedDecode} decode/binary.`,
+        "verbose"
       );
 
       if (cfg.queryMode === "local") {
@@ -398,10 +413,15 @@ export async function runIndexWorkspace(
         try {
           const sdk = createSdkClient(creds.projectId, creds.projectKey);
           await sdk.loadIndex(cfg.indexName);
-          log.appendLine("loadIndex completed (local query cache warmed).");
+          mossLog(
+            log,
+            "Moss: loadIndex completed (local query cache warmed).",
+            "verbose"
+          );
         } catch (e: unknown) {
-          log.appendLine(
-            `loadIndex after indexing failed (you can still search in cloud mode): ${formatError(e)}`
+          mossLog(
+            log,
+            `Moss: loadIndex after indexing failed (try moss.queryMode "cloud"): ${formatError(e)}`
           );
         }
       }
