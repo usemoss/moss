@@ -11,8 +11,8 @@
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![PyPI](https://img.shields.io/pypi/v/inferedge-moss?color=blue)](https://pypi.org/project/inferedge-moss/)
 [![PyPI downloads](https://static.pepy.tech/personalized-badge/inferedge-moss-core?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=pypi+downloads)](https://pepy.tech/project/inferedge-moss-core)
-[![npm](https://img.shields.io/npm/v/@inferedge/moss?color=blue)](https://www.npmjs.com/package/@inferedge/moss)
-[![npm downloads](https://img.shields.io/npm/dt/@inferedge/moss?label=npm+downloads)](https://www.npmjs.com/package/@inferedge/moss)
+[![npm](https://img.shields.io/npm/v/@moss-dev/moss?color=blue)](https://www.npmjs.com/package/@moss-dev/moss)
+[![npm downloads](https://img.shields.io/npm/dt/@moss-dev/moss?label=npm+downloads)](https://www.npmjs.com/package/@moss-dev/moss)
 [![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=white&label=Discord&color=7B2FBE)](https://moss.link/discord)
 
 [Website](https://moss.dev) · [Docs](https://docs.moss.dev) · [Discord](https://moss.link/discord) · [Blog](https://moss.dev/blog)
@@ -58,11 +58,11 @@ for doc in results.docs:
 ### TypeScript
 
 ```bash
-npm install @inferedge/moss
+npm install @moss-dev/moss
 ```
 
 ```typescript
-import { MossClient } from "@inferedge/moss";
+import { MossClient } from "@moss-dev/moss";
 
 const client = new MossClient("your_project_id", "your_project_key");
 
@@ -206,10 +206,10 @@ results = await client.query(name, "your query", QueryOptions(top_k=5))
 # results.time_taken_ms
 ```
 
-### TypeScript (`@inferedge/moss`)
+### TypeScript (`@moss-dev/moss`)
 
 ```typescript
-import { MossClient, DocumentInfo } from "@inferedge/moss";
+import { MossClient, DocumentInfo } from "@moss-dev/moss";
 
 const client = new MossClient(projectId, projectKey);
 

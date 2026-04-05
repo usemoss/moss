@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const mockLoadIndex = vi.fn()
 const mockQuery = vi.fn()
 
-vi.mock('@inferedge/moss', () => ({
+vi.mock('@moss-dev/moss', () => ({
   MossClient: vi.fn().mockImplementation(() => ({
     loadIndex: mockLoadIndex,
     query: mockQuery,

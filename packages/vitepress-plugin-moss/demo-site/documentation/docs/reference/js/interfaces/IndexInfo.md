@@ -2,11 +2,11 @@
 title: "IndexInfo (JS)"
 ---
 
-[**@inferedge/moss v1.0.0-beta.7**](../README.md)
+[**@moss-dev/moss v1.0.0**](../README.md)
 
 ***
 
-[@inferedge/moss](../globals.md) / IndexInfo
+[@moss-dev/moss](../globals.md) / IndexInfo
 
 # Interface: IndexInfo
 

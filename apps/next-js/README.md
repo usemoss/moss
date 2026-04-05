@@ -47,6 +47,6 @@ This demo showcases how to use **Server Actions** to securely interact with Moss
 
 To add Moss to your own Next.js app:
 
-1. Install the SDK: `npm install @inferedge/moss`
+1. Install the SDK: `npm install @moss-dev/moss`
 2. Create a Server Action (see `app/actions.ts`).
 3. Call the action from your React components.
