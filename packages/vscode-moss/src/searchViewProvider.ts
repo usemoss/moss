@@ -30,25 +30,27 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this._getHtml(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage((message) => {
-      switch (message.type) {
-        case "query":
-          if (typeof message.text === "string") {
-            void this._handleQuery(message.text.trim());
-          }
-          break;
-        case "openResult":
-          if (typeof message.hitIndex === "number") {
-            void this._openHitAtIndex(message.hitIndex);
-          }
-          break;
-        case "openMossSettings":
-          void vscode.commands.executeCommand("moss.openSettings");
-          break;
-        default:
-          break;
-      }
-    });
+    this._context.subscriptions.push(
+      webviewView.webview.onDidReceiveMessage((message) => {
+        switch (message.type) {
+          case "query":
+            if (typeof message.text === "string") {
+              void this._handleQuery(message.text.trim());
+            }
+            break;
+          case "openResult":
+            if (typeof message.hitIndex === "number") {
+              void this._openHitAtIndex(message.hitIndex);
+            }
+            break;
+          case "openMossSettings":
+            void vscode.commands.executeCommand("moss.openSettings");
+            break;
+          default:
+            break;
+        }
+      })
+    );
   }
 
   private async _handleQuery(text: string): Promise<void> {
