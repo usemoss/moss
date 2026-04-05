@@ -100,6 +100,7 @@ export async function runMossQuery(
   try {
     const result = await sdk.query(cfg.indexName, queryText, {
       topK: cfg.topK,
+      alpha: cfg.alpha,
     });
 
     const hits: SearchHit[] = result.docs.map((d) => ({

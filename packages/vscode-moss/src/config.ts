@@ -9,6 +9,9 @@ export function getMossLogVerbose(): boolean {
   return vscode.workspace.getConfiguration("moss").get<boolean>("logVerbose") === true;
 }
 
+/** Default hybrid-search blend (semantic-heavy), aligned with Moss SDK defaults. */
+export const DEFAULT_QUERY_ALPHA = 0.8;
+
 export interface ResolvedConfig {
   projectId: string | undefined;
   projectKey: string | undefined;
@@ -18,10 +21,19 @@ export interface ResolvedConfig {
   excludeGlobs: string[];
   maxFileSizeBytes: number;
   topK: number;
+  /** Hybrid search: 1.0 = semantic only, 0.0 = keyword only; clamped to [0, 1]. */
+  alpha: number;
   queryMode: MossQueryMode;
   chunkMaxLines: number;
   chunkOverlapLines: number;
   workspaceFolder: vscode.WorkspaceFolder;
+}
+
+/** Parse `moss.alpha`: finite number in [0, 1], else default. */
+export function resolveQueryAlpha(raw: unknown): number {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return DEFAULT_QUERY_ALPHA;
+  return Math.min(1, Math.max(0, n));
 }
 
 function toStringArray(value: unknown, fallback: string[]): string[] {
@@ -122,6 +134,7 @@ export async function getMossConfig(
 
   const maxFileSizeBytes = cfg.get<number>("maxFileSizeBytes") ?? 1_048_576;
   const topK = cfg.get<number>("topK") ?? 10;
+  const alpha = resolveQueryAlpha(cfg.get("alpha"));
 
   const modeRaw = cfg.get<string>("queryMode");
   const queryMode: MossQueryMode = modeRaw === "cloud" ? "cloud" : "local";
@@ -138,6 +151,7 @@ export async function getMossConfig(
     excludeGlobs,
     maxFileSizeBytes,
     topK,
+    alpha,
     queryMode,
     chunkMaxLines,
     chunkOverlapLines,

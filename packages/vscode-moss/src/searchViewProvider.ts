@@ -107,6 +107,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     this._lastHits = result.hits;
     webview.postMessage({
       type: "results",
+      query: text,
       hits: result.hits.map((h, index) => ({
         index,
         ...hitToRowDto(h),
@@ -246,10 +247,19 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       color: var(--vscode-list-hoverForeground, var(--vscode-foreground));
     }
     .result-path {
-      font-weight: 600;
       font-size: 0.92em;
+      line-height: 1.35;
       word-break: break-all;
       margin-bottom: 4px;
+    }
+    .result-dir {
+      font-weight: 400;
+      color: var(--vscode-descriptionForeground);
+      font-size: 0.92em;
+    }
+    .result-base {
+      font-weight: 600;
+      color: var(--vscode-foreground);
     }
     .result-sub {
       font-size: 0.82em;
@@ -257,7 +267,8 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       margin-bottom: 6px;
     }
     .result-snippet {
-      font-size: 0.88em;
+      font-family: var(--vscode-editor-font-family);
+      font-size: calc(var(--vscode-font-size) * 0.92);
       line-height: 1.45;
       color: var(--vscode-foreground);
       opacity: 0.95;
@@ -265,6 +276,19 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       -webkit-line-clamp: 4;
       -webkit-box-orient: vertical;
       overflow: hidden;
+    }
+    mark.query-hit {
+      background: var(
+        --vscode-editor-findMatchHighlightBackground,
+        rgba(234, 92, 0, 0.28)
+      );
+      color: inherit;
+      padding: 0 0.05em;
+      border-radius: 2px;
+    }
+    .result-row--selected {
+      outline: 1px solid var(--vscode-focusBorder);
+      outline-offset: -1px;
     }
     .settings-hint {
       margin-top: 14px;
@@ -303,7 +327,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
         <a href="#" id="mossSettingsLink" class="settings-link" role="button" tabindex="0">Open Moss settings</a>
       </p>
     </div>
-    <ul class="result-list" id="resultList" style="display:none;"></ul>
+    <ul class="result-list" id="resultList" style="display:none;" role="listbox" aria-label="Search results"></ul>
   </div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
@@ -316,6 +340,17 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     const emptyState = document.getElementById('emptyState');
     const resultList = document.getElementById('resultList');
     const mossSettingsLink = document.getElementById('mossSettingsLink');
+
+    const prior = vscode.getState();
+    if (prior && typeof prior.query === 'string') {
+      input.value = prior.query;
+    }
+
+    let selectedHitIndex = -1;
+
+    function persistQuery() {
+      vscode.setState({ query: input.value });
+    }
 
     function openSettingsClick(e) {
       e.preventDefault();
@@ -350,16 +385,139 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
         .replace(/"/g, '&quot;');
     }
 
+    function escapeRegExp(s) {
+      return s.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&');
+    }
+
+    /** Split path into directory (with trailing slash) + basename for display. */
+    function splitPath(p) {
+      const norm = String(p).replace(/\\\\/g, '/');
+      const i = norm.lastIndexOf('/');
+      if (i <= 0) {
+        return { dir: '', base: norm || '' };
+      }
+      return { dir: norm.slice(0, i + 1), base: norm.slice(i + 1) };
+    }
+
+    /**
+     * Wrap query terms (length ≥ 2) in <mark>; split on regex so we never inject HTML from the snippet.
+     */
+    function highlightSnippet(text, query) {
+      const raw = String(text);
+      const q = typeof query === 'string' ? query : '';
+      const terms = [...new Set(
+        q.trim().toLowerCase().split(/\\s+/).filter((t) => t.length >= 2)
+      )].sort((a, b) => b.length - a.length);
+      if (terms.length === 0) {
+        return escapeHtml(raw);
+      }
+      const pattern = terms.map((t) => escapeRegExp(t)).join('|');
+      if (!pattern) {
+        return escapeHtml(raw);
+      }
+      const re = new RegExp('(' + pattern + ')', 'gi');
+      const parts = raw.split(re);
+      return parts
+        .map((part, i) => {
+          if (i % 2 === 1) {
+            return '<mark class="query-hit">' + escapeHtml(part) + '</mark>';
+          }
+          return escapeHtml(part);
+        })
+        .join('');
+    }
+
+    function getResultRows() {
+      return [...resultList.querySelectorAll('.result-row')];
+    }
+
+    function clearResultSelection() {
+      selectedHitIndex = -1;
+      getResultRows().forEach((el) => {
+        el.classList.remove('result-row--selected');
+        el.setAttribute('aria-selected', 'false');
+        el.tabIndex = -1;
+      });
+    }
+
+    function applyResultSelection(focusSelected) {
+      const focus = focusSelected !== false;
+      const rows = getResultRows();
+      rows.forEach((el, i) => {
+        const on = i === selectedHitIndex;
+        el.classList.toggle('result-row--selected', on);
+        el.setAttribute('aria-selected', on ? 'true' : 'false');
+        el.tabIndex = on ? 0 : -1;
+        if (on && focus) {
+          el.focus();
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      });
+    }
+
+    function openHitIndex(idx) {
+      if (!Number.isNaN(idx)) {
+        vscode.postMessage({ type: 'openResult', hitIndex: idx });
+      }
+    }
+
     function submitQuery() {
       if (input.disabled) return;
       const text = input.value.trim();
       clearError();
+      persistQuery();
       vscode.postMessage({ type: 'query', text });
     }
 
     btn.addEventListener('click', submitQuery);
+    input.addEventListener('input', () => {
+      clearResultSelection();
+      persistQuery();
+    });
+    input.addEventListener('focus', () => {
+      clearResultSelection();
+    });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') submitQuery();
+      if (e.key === 'Enter') {
+        submitQuery();
+        return;
+      }
+      if (e.key === 'ArrowDown' && resultList.style.display !== 'none') {
+        const rows = getResultRows();
+        if (rows.length === 0) return;
+        e.preventDefault();
+        selectedHitIndex = 0;
+        applyResultSelection();
+      }
+    });
+
+    resultList.addEventListener('keydown', (e) => {
+      const rows = getResultRows();
+      if (rows.length === 0) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (selectedHitIndex < rows.length - 1) {
+          selectedHitIndex += 1;
+          applyResultSelection();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (selectedHitIndex > 0) {
+          selectedHitIndex -= 1;
+          applyResultSelection();
+        } else {
+          clearResultSelection();
+          input.focus();
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const idx = parseInt(rows[selectedHitIndex]?.getAttribute('data-hit-index') || '', 10);
+        openHitIndex(idx);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        clearResultSelection();
+        input.focus();
+      }
     });
 
     window.addEventListener('message', (event) => {
@@ -369,6 +527,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       if (msg.type === 'loading') {
         setLoading(!!msg.loading);
         if (msg.loading) {
+          clearResultSelection();
           meta.textContent = '';
           if (indexPrep) {
             indexPrep.textContent = '';
@@ -400,6 +559,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       }
 
       if (msg.type === 'error') {
+        clearResultSelection();
         showError(msg.message || 'Search failed.');
         resultList.style.display = 'none';
         resultList.innerHTML = '';
@@ -410,7 +570,9 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       }
 
       if (msg.type === 'results') {
+        clearResultSelection();
         const hits = Array.isArray(msg.hits) ? msg.hits : [];
+        const queryText = typeof msg.query === 'string' ? msg.query : '';
         if (hits.length === 0) {
           emptyBlock.style.display = 'block';
           emptyState.innerHTML = 'No results. Try different wording or run <strong>Moss: Index Workspace</strong>.';
@@ -424,13 +586,21 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
         emptyBlock.style.display = 'none';
         resultList.style.display = 'flex';
         resultList.innerHTML = hits.map((h) => {
-          const path = escapeHtml(h.path || '');
+          const rawPath = h.path || '';
+          const { dir, base } = splitPath(rawPath);
+          const pathHtml =
+            (dir
+              ? '<span class="result-dir">' + escapeHtml(dir) + '</span>'
+              : '') +
+            '<span class="result-base">' + escapeHtml(base || rawPath) + '</span>';
           const line = escapeHtml(String(h.lineLabel ?? ''));
           const score = typeof h.score === 'number' ? h.score.toFixed(3) : '';
-          const snippet = escapeHtml(h.snippet || '');
+          const snippet = highlightSnippet(h.snippet || '', queryText);
           return (
-            '<li class="result-row" data-hit-index="' + h.index + '">' +
-              '<div class="result-path">' + path + '</div>' +
+            '<li class="result-row" role="option" tabindex="-1" aria-selected="false" data-hit-index="' +
+            h.index +
+            '">' +
+              '<div class="result-path">' + pathHtml + '</div>' +
               '<div class="result-sub">Lines ' + line + (score ? ' · score ' + escapeHtml(score) : '') + '</div>' +
               '<div class="result-snippet">' + snippet + '</div>' +
             '</li>'
@@ -440,9 +610,10 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
         resultList.querySelectorAll('.result-row').forEach((el) => {
           el.addEventListener('click', () => {
             const idx = parseInt(el.getAttribute('data-hit-index'), 10);
-            if (!Number.isNaN(idx)) {
-              vscode.postMessage({ type: 'openResult', hitIndex: idx });
-            }
+            const rows = getResultRows();
+            selectedHitIndex = rows.indexOf(el);
+            applyResultSelection(false);
+            openHitIndex(idx);
           });
         });
 

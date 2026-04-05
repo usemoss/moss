@@ -125,6 +125,13 @@
           "default": 10,
           "description": "Number of results to return for each search query."
         },
+        "moss.alpha": {
+          "type": "number",
+          "default": 0.8,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Hybrid search blend: 1.0 = semantic (embedding) only, 0.0 = keyword only; values in between mix both. Default 0.8 is semantic-heavy."
+        },
         "moss.queryMode": {
           "type": "string",
           "enum": [

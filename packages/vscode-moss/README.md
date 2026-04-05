@@ -47,6 +47,7 @@ File paths and file contents you index are sent to **Moss** (cloud) for embeddin
 | `includeGlob` / `excludeGlob` | Which files to crawl when indexing. |
 | `maxFileSizeBytes` | Skip larger files. |
 | `topK` | Number of search hits. |
+| `alpha` | Hybrid search blend: `1.0` = semantic only, `0.0` = keyword only (default `0.8`). |
 | `queryMode` | `local` (download index) vs `cloud` (API-only queries). |
 | `chunkMaxLines` / `chunkOverlapLines` | Line-based chunking when indexing. |
 | `logVerbose` | Extra lines in **Output → Moss**. |

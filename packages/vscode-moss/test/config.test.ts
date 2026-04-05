@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { SecretStorage, WorkspaceConfiguration } from "vscode";
 import {
+  DEFAULT_QUERY_ALPHA,
   MOSS_SECRET_KEY_PROJECT_KEY,
   defaultIndexNameForFolder,
   getMossConfig,
   getMossLogVerbose,
   resolveProjectKey,
+  resolveQueryAlpha,
 } from "../src/config.js";
 import {
   resetMossTestConfig,
@@ -109,6 +111,26 @@ describe("resolveProjectKey", () => {
   });
 });
 
+describe("resolveQueryAlpha", () => {
+  it("defaults when missing or non-finite", () => {
+    expect(resolveQueryAlpha(undefined)).toBe(DEFAULT_QUERY_ALPHA);
+    expect(resolveQueryAlpha("x")).toBe(DEFAULT_QUERY_ALPHA);
+    expect(resolveQueryAlpha(Number.NaN)).toBe(DEFAULT_QUERY_ALPHA);
+  });
+
+  it("clamps to 0..1", () => {
+    expect(resolveQueryAlpha(-0.5)).toBe(0);
+    expect(resolveQueryAlpha(1.5)).toBe(1);
+    expect(resolveQueryAlpha(0)).toBe(0);
+    expect(resolveQueryAlpha(1)).toBe(1);
+  });
+
+  it("passes through in-range values", () => {
+    expect(resolveQueryAlpha(0.5)).toBe(0.5);
+    expect(resolveQueryAlpha(0.8)).toBe(0.8);
+  });
+});
+
 describe("getMossConfig", () => {
   afterEach(() => {
     resetMossTestConfig();
@@ -125,7 +147,20 @@ describe("getMossConfig", () => {
     const c = await getMossConfig(memorySecrets(), folder);
     expect(c.indexName).toBe("my-custom-index");
     expect(c.topK).toBe(10);
+    expect(c.alpha).toBe(DEFAULT_QUERY_ALPHA);
     expect(c.queryMode).toBe("local");
+  });
+
+  it("uses configured alpha when set", async () => {
+    const ws = Uri.file("/repo");
+    setMossTestConfig(ws.toString(), {
+      projectId: "pid",
+      projectKey: "pk",
+      alpha: 0.35,
+    });
+    const folder: WorkspaceFolder = { uri: ws, name: "repo", index: 0 };
+    const c = await getMossConfig(memorySecrets(), folder);
+    expect(c.alpha).toBe(0.35);
   });
 
   it("defaults index name from folder when indexName empty", async () => {
