@@ -1,4 +1,4 @@
-import type { MossClient } from "@inferedge/moss";
+import type { MossClient } from "@moss-dev/moss";
 import { createSdkClient } from "./mossClients.js";
 
 let cachedClient:
@@ -40,6 +40,11 @@ export function invalidateSearchSdkCache(): void {
  */
 export function invalidateLoadedSearchIndex(): void {
   loadedLocalIndexName = undefined;
+}
+
+/** True when `ensureLocalIndexLoaded` would skip calling `loadIndex` for this index on the cached SDK client. */
+export function isLocalSearchIndexCached(indexName: string): boolean {
+  return loadedLocalIndexName === indexName;
 }
 
 export async function ensureLocalIndexLoaded(

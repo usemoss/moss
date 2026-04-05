@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { preloadLocalMossIndex } from "./preloadLocalIndex.js";
 import { hitToRowDto, runMossQuery } from "./runMossQuery.js";
 import { metadataToRange, metadataToUri } from "./paths.js";
 import type { SearchHit } from "./types.js";
@@ -29,6 +30,14 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtml(webviewView.webview);
+
+    const preloadCts = new vscode.CancellationTokenSource();
+    webviewView.onDidDispose(() => preloadCts.dispose());
+    void preloadLocalMossIndex(
+      this._context,
+      this._log,
+      preloadCts.token
+    );
 
     this._context.subscriptions.push(
       webviewView.webview.onDidReceiveMessage((message) => {
@@ -70,7 +79,17 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     webview.postMessage({ type: "loading", loading: true });
     webview.postMessage({ type: "clearError" });
 
-    const result = await runMossQuery(this._context, text, this._log);
+    const result = await runMossQuery(this._context, text, this._log, {
+      onAwaitingLocalIndexDownload: () => {
+        webview.postMessage({
+          type: "localIndexLoading",
+          text: "Downloading index for local search — first time can take a minute…",
+        });
+      },
+      onLocalIndexDownloadFinished: () => {
+        webview.postMessage({ type: "localIndexLoading", text: "" });
+      },
+    });
 
     if (seq !== this._querySeq) return;
 
@@ -178,6 +197,13 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       color: var(--vscode-descriptionForeground);
       min-height: 1.2em;
     }
+    .index-prep {
+      display: none;
+      font-size: 0.88em;
+      color: var(--vscode-descriptionForeground);
+      line-height: 1.45;
+    }
+    .index-prep.visible { display: block; }
     .error-banner {
       display: none;
       padding: 8px 10px;
@@ -265,6 +291,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     <button id="searchBtn">Search</button>
   </div>
   <div class="meta-row" id="meta"></div>
+  <div class="index-prep" id="indexPrep" role="status" aria-live="polite"></div>
   <div class="error-banner" id="errorBanner" role="alert"></div>
   <div id="results">
     <div id="emptyBlock">
@@ -283,6 +310,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     const input = document.getElementById('query');
     const btn = document.getElementById('searchBtn');
     const meta = document.getElementById('meta');
+    const indexPrep = document.getElementById('indexPrep');
     const errorBanner = document.getElementById('errorBanner');
     const emptyBlock = document.getElementById('emptyBlock');
     const emptyState = document.getElementById('emptyState');
@@ -342,9 +370,26 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
         setLoading(!!msg.loading);
         if (msg.loading) {
           meta.textContent = '';
+          if (indexPrep) {
+            indexPrep.textContent = '';
+            indexPrep.classList.remove('visible');
+          }
           resultList.innerHTML = '';
           resultList.style.display = 'none';
           emptyBlock.style.display = 'none';
+        }
+        return;
+      }
+
+      if (msg.type === 'localIndexLoading') {
+        if (!indexPrep) return;
+        const t = typeof msg.text === 'string' ? msg.text : '';
+        if (t) {
+          indexPrep.textContent = t;
+          indexPrep.classList.add('visible');
+        } else {
+          indexPrep.textContent = '';
+          indexPrep.classList.remove('visible');
         }
         return;
       }

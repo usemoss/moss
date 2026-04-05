@@ -12,7 +12,12 @@ const buildOptions = {
   sourcemap: true,
   logLevel: "info",
   /** Provided by the extension host; Moss packages pull large native/WASM stacks — keep resolvable from node_modules. */
-  external: ["vscode", "@inferedge/moss", "@inferedge-rest/moss"],
+  external: [
+    "vscode",
+    "@moss-dev/moss",
+    "@moss-dev/moss-core",
+    "web-tree-sitter",
+  ],
 };
 
 if (watch) {

@@ -7,9 +7,13 @@ import {
   type LastIndexedState,
 } from "./lastIndexed.js";
 import { mossLog } from "./mossLog.js";
-import { invalidateLoadedSearchIndex } from "./mossQueryState.js";
+import {
+  ensureLocalIndexLoaded,
+  getOrCreateSdkClient,
+  invalidateLoadedSearchIndex,
+} from "./mossQueryState.js";
 import { notifyMossIndexed } from "./mossStatusBar.js";
-import { createRestClient, createSdkClient } from "./mossClients.js";
+import { createRestClient } from "./mossClients.js";
 import type { MossDocument } from "./types.js";
 
 const MAX_FILE_SCAN = 80_000;
@@ -22,6 +26,59 @@ const EXTRA_SAFE_EXCLUDES = [
   "**/.hg/**",
   "**/__pycache__/**",
 ];
+
+/** VS Code–style language id for structure-aware chunking (Markdown, JS/TS, and other Tree-sitter grammars). */
+function languageIdFromPath(fsPath: string): string | undefined {
+  switch (path.extname(fsPath).toLowerCase()) {
+    case ".md":
+    case ".mdx":
+      return "markdown";
+    case ".ts":
+    case ".mts":
+    case ".cts":
+      return "typescript";
+    case ".tsx":
+      return "typescriptreact";
+    case ".js":
+    case ".mjs":
+    case ".cjs":
+      return "javascript";
+    case ".jsx":
+      return "javascriptreact";
+    case ".py":
+    case ".pyi":
+    case ".pyw":
+      return "python";
+    case ".rs":
+      return "rust";
+    case ".go":
+      return "go";
+    case ".java":
+      return "java";
+    case ".rb":
+    case ".rake":
+    case ".ru":
+      return "ruby";
+    case ".php":
+      return "php";
+    case ".c":
+    case ".h":
+      return "c";
+    case ".cpp":
+    case ".cc":
+    case ".cxx":
+    case ".hpp":
+    case ".hh":
+    case ".hxx":
+    case ".inl":
+    case ".cu":
+      return "cpp";
+    case ".cs":
+      return "csharp";
+    default:
+      return undefined;
+  }
+}
 
 const BINARY_EXT = new Set(
   [
@@ -325,14 +382,19 @@ export async function runIndexWorkspace(
         const relativePath = vscode.workspace.asRelativePath(uri, false);
         if (relativePath === "") continue;
 
-        const chunks = chunkFileContent(relativePath, text, {
-          chunkMaxLines: cfg.chunkMaxLines,
-          chunkOverlapLines: cfg.chunkOverlapLines,
-          workspaceFolderIndex: folderIndex,
-          workspaceFolderName: folder.name,
-          chunkIdNamespace:
-            folders.length > 1 ? String(folderIndex) : undefined,
-        });
+        const chunks = await chunkFileContent(
+          relativePath,
+          text,
+          {
+            chunkMaxLines: cfg.chunkMaxLines,
+            chunkOverlapLines: cfg.chunkOverlapLines,
+            workspaceFolderIndex: folderIndex,
+            workspaceFolderName: folder.name,
+            chunkIdNamespace:
+              folders.length > 1 ? String(folderIndex) : undefined,
+          },
+          languageIdFromPath(uri.fsPath)
+        );
 
         allDocs.push(...chunks);
         filesIndexed += 1;
@@ -373,7 +435,9 @@ export async function runIndexWorkspace(
           return;
         }
 
-        await rest.createIndex(cfg.indexName, allDocs, cfg.modelId);
+        await rest.createIndex(cfg.indexName, allDocs, {
+          modelId: cfg.modelId,
+        });
         invalidateLoadedSearchIndex();
         mossLog(
           log,
@@ -411,8 +475,8 @@ export async function runIndexWorkspace(
           return;
         }
         try {
-          const sdk = createSdkClient(creds.projectId, creds.projectKey);
-          await sdk.loadIndex(cfg.indexName);
+          const sdk = getOrCreateSdkClient(creds.projectId, creds.projectKey);
+          await ensureLocalIndexLoaded(sdk, cfg.indexName);
           mossLog(
             log,
             "Moss: loadIndex completed (local query cache warmed).",

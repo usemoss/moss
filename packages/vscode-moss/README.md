@@ -15,7 +15,7 @@ VS Code extension for **semantic codebase search** with [Moss](https://moss.dev)
    npx vsce package
    ```
 
-   This produces **`vscode-moss-0.0.1.vsix`** (or whatever version is in `package.json`) in the current directory. The file is **large** (~100MB+) because **`@inferedge/moss`** bundles local embedding dependencies.
+   This produces **`vscode-moss-0.0.1.vsix`** (or whatever version is in `package.json`) in the current directory. Size depends on **`@moss-dev/moss`** and its **`@moss-dev/moss-core`** (N-API) dependency shipped in `node_modules`.
 
 2. In VS Code or Cursor: **Extensions** → **`…`** (Views and More Actions) → **Install from VSIX…** → choose the `.vsix` file.
 
@@ -74,7 +74,7 @@ Use the **Extension Development Host** (F5 from repo root or this package) with 
 
 ### Troubleshooting (`loadIndex` / local search)
 
-**Moss: Index Workspace** and sidebar search use the same **`@inferedge-rest/moss`** (upload) and **`@inferedge/moss`** (`loadIndex` + `query`) stack as the rest of the product.
+**Moss: Index Workspace** and sidebar search use **`@moss-dev/moss`** (`createIndex`, `deleteIndex`, `loadIndex`, `query`) — one client for cloud mutations and local or cloud queries.
 
 - If **`loadIndex`** or local **`query`** fails, read the error in **Output → Moss**. Common causes: Node / native addon constraints in the extension host, WASM path differences, or network/proxy blocking the index download.
 - Search still runs **`query`** after a failed `loadIndex`; the SDK falls back to **cloud** query (same idea as setting **`moss.queryMode`** to **`cloud`**).
@@ -117,6 +117,6 @@ npm run watch   # optional during development
 
 Same as [Install from VSIX](#install-from-vsix) step 1. You can also run **`npm run package`** (`vsce package`), which triggers **`vscode:prepublish`** (check + compile) first.
 
-Bundling only shrinks **our** entry file; the VSIX stays large because of **`@inferedge/moss`** / **`@huggingface/transformers`**. Trimming size further would need a different query architecture or upstream packaging changes.
+Bundling only shrinks **our** entry file; **`@moss-dev/moss`** and **`@moss-dev/moss-core`** remain **external** and ship inside the VSIX via `node_modules`.
 
 `package.json` still includes **`icon`** and **`galleryBanner`** for consistency if you ever list the extension elsewhere; they are not required for VSIX install.

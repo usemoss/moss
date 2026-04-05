@@ -3,7 +3,7 @@
  */
 export type MossMetadata = Record<string, string>;
 
-/** One chunk uploaded to Moss (aligned with @inferedge-rest/moss DocumentInfo). */
+/** One chunk uploaded to Moss (aligned with @moss-dev/moss DocumentInfo). */
 export interface MossDocument {
   id: string;
   text: string;

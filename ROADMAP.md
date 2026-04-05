@@ -61,7 +61,7 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 ### Developer Tools
 
 - [ ] **Moss CLI** — manage indexes, run queries, import data, and inspect results from the terminal (`moss index create`, `moss query`, `moss import`)
-- [ ] **VS Code extension** — semantic search over your codebase directly from the editor sidebar
+- [x] **VS Code extension** — semantic search over your codebase from the editor sidebar ([`packages/vscode-moss/`](packages/vscode-moss/); VSIX install, no Marketplace listing)
 
 ### Search Quality
 

@@ -3,6 +3,7 @@ import { getMossConfig, resolveCredentials } from "./config.js";
 import {
   ensureLocalIndexLoaded,
   getOrCreateSdkClient,
+  isLocalSearchIndexCached,
 } from "./mossQueryState.js";
 import { mossLog } from "./mossLog.js";
 import type { SearchHit } from "./types.js";
@@ -30,13 +31,21 @@ function lineLabel(meta: Record<string, string>): string {
   return "?";
 }
 
+export interface RunMossQueryHooks {
+  /** Called immediately before a blocking `loadIndex` (first local search or after cache invalidation). */
+  onAwaitingLocalIndexDownload?: () => void;
+  /** Called after `loadIndex` finishes or throws (before `query` runs). */
+  onLocalIndexDownloadFinished?: () => void;
+}
+
 /**
  * Semantic search against the configured workspace index.
  */
 export async function runMossQuery(
   context: vscode.ExtensionContext,
   queryText: string,
-  log: vscode.OutputChannel
+  log: vscode.OutputChannel,
+  hooks?: RunMossQueryHooks
 ): Promise<
   | { ok: true; hits: SearchHit[]; timeMs?: number }
   | { ok: false; error: SearchFailure }
@@ -69,6 +78,10 @@ export async function runMossQuery(
   const sdk = getOrCreateSdkClient(creds.projectId, creds.projectKey);
 
   if (cfg.queryMode === "local") {
+    const needsLocalDownload = !isLocalSearchIndexCached(cfg.indexName);
+    if (needsLocalDownload) {
+      hooks?.onAwaitingLocalIndexDownload?.();
+    }
     try {
       await ensureLocalIndexLoaded(sdk, cfg.indexName);
     } catch (e: unknown) {
@@ -77,6 +90,10 @@ export async function runMossQuery(
         `Moss: Search — loadIndex failed; continuing with cloud query. ${formatError(e)}`,
         "verbose"
       );
+    } finally {
+      if (needsLocalDownload) {
+        hooks?.onLocalIndexDownloadFinished?.();
+      }
     }
   }
 
