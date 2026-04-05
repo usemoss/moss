@@ -1,8 +1,8 @@
-[**@moss-dev/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / MetadataFilter
+[@inferedge/moss](../globals.md) / MetadataFilter
 
 # Type Alias: MetadataFilter
 

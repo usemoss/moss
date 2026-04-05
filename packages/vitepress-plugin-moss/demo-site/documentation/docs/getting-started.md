@@ -28,7 +28,7 @@ Enter valid card details to start the free trial, then select **Create Index** t
 ::: code-group
 
 ```bash [JavaScript]
-npm install @moss-dev/moss
+npm install @inferedge/moss
 ```
 
 ```bash [Python]
@@ -59,7 +59,7 @@ export MOSS_PROJECT_KEY="your-project-key"
 ::: code-group
 
 ```ts [JavaScript]
-import { MossClient, DocumentInfo } from '@moss-dev/moss'
+import { MossClient, DocumentInfo } from '@inferedge/moss'
 
 const client = new MossClient(
   process.env.MOSS_PROJECT_ID!,

@@ -1,8 +1,8 @@
-[**@moss-dev/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / LoadIndexOptions
+[@inferedge/moss](../globals.md) / LoadIndexOptions
 
 # Interface: LoadIndexOptions
 

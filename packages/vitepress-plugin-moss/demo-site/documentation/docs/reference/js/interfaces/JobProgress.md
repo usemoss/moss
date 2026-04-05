@@ -2,11 +2,11 @@
 title: "JobProgress (JS)"
 ---
 
-[**@moss-dev/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / JobProgress
+[@inferedge/moss](../globals.md) / JobProgress
 
 # Interface: JobProgress
 

@@ -46,7 +46,7 @@ Head to [Moss Portal](https://usemoss.dev) to set up projects and start building
 ::: code-group
 
 ```bash [npm]
-npm install @moss-dev/moss
+npm install @inferedge/moss
 ```
 
 ```bash [pip]
@@ -58,7 +58,7 @@ pip install inferedge-moss
 ::: code-group
 
 ```ts [JavaScript]
-import { MossClient } from '@moss-dev/moss'
+import { MossClient } from '@inferedge/moss'
 
 const client = new MossClient(process.env.PROJECT_ID!, process.env.PROJECT_KEY!)
 await client.createIndex('docs', [{ id: '1', text: 'Vector search in production' }])

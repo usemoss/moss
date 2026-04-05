@@ -1,6 +1,6 @@
 'use server'
 
-import { MossClient } from "@moss-dev/moss";
+import { MossClient } from "@inferedge/moss";
 
 /**
  * Server Action to perform semantic search using Moss SDK.

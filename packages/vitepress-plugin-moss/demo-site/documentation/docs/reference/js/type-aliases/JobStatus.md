@@ -2,11 +2,11 @@
 title: "JobStatus (JS)"
 ---
 
-[**@moss-dev/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / JobStatus
+[@inferedge/moss](../globals.md) / JobStatus
 
 # Type Alias: JobStatus
 

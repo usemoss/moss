@@ -2,11 +2,11 @@
 title: "MutationOptions (JS)"
 ---
 
-[**@moss-dev/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / MutationOptions
+[@inferedge/moss](../globals.md) / MutationOptions
 
 # Interface: MutationOptions
 

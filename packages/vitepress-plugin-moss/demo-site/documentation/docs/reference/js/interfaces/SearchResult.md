@@ -2,11 +2,11 @@
 title: "SearchResult (JS)"
 ---
 
-[**@moss-dev/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / SearchResult
+[@inferedge/moss](../globals.md) / SearchResult
 
 # Interface: SearchResult
 

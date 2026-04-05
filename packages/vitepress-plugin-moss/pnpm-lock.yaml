@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@moss-dev/moss':
+      '@inferedge/moss':
         specifier: ^1.0.0
         version: 1.0.0
       '@moss-tools/md-indexer':
@@ -489,35 +489,35 @@ packages:
   '@microsoft/tsdoc@0.14.2':
     resolution: {integrity: sha512-9b8mPpKrfeGRuhFH5iO1iwCLeIIsV6+H1sRfxbkoGXIyQE2BTsPd9zqSqQJ+pv5sJ/hT5M1zvOFL02MnEezFug==}
 
-  '@moss-dev/moss-core-darwin-arm64@0.8.7':
+  '@inferedge/moss-core-darwin-arm64@0.8.7':
     resolution: {integrity: sha512-SxRD5vV5HSezJRr1GcIxQKOyX/nJ6RCgQYSDZTPsYbo49M0bRdAATKUpGIW5xHC7YZsZXZY8OiUVcw5lBQW0Lg==}
     engines: {node: '>=20'}
     cpu: [arm64]
     os: [darwin]
 
-  '@moss-dev/moss-core-linux-arm64-gnu@0.8.7':
+  '@inferedge/moss-core-linux-arm64-gnu@0.8.7':
     resolution: {integrity: sha512-uRs/V6f0qvbStGSGNd/10cWJQKMPEumpQCAcjdRODiLbh5N+S6TIt2/bUHfc5uMxPFC9Bld7URglNmtfNXCKNA==}
     engines: {node: '>=20'}
     cpu: [arm64]
     os: [linux]
 
-  '@moss-dev/moss-core-linux-x64-gnu@0.8.7':
+  '@inferedge/moss-core-linux-x64-gnu@0.8.7':
     resolution: {integrity: sha512-HgQgYN3ivLVNGJbQIBp6N2i+96y7cN/40sqzL0jqh2TzTziygoiSlwIkIqkkDZJ8DnSwJAMMQ9o2l1zPoMskCQ==}
     engines: {node: '>=20'}
     cpu: [x64]
     os: [linux]
 
-  '@moss-dev/moss-core-win32-x64-msvc@0.8.7':
+  '@inferedge/moss-core-win32-x64-msvc@0.8.7':
     resolution: {integrity: sha512-P49hUAuOXpMP1gVM+SMf0DyvXUU8OHLpppUsz7CRWJ4GkNY6JCnC3tHD1dEJQSnHMx9zOnS0hoAV6qzuhWuIrg==}
     engines: {node: '>=20'}
     cpu: [x64]
     os: [win32]
 
-  '@moss-dev/moss-core@0.8.7':
+  '@inferedge/moss-core@0.8.7':
     resolution: {integrity: sha512-IxmJYNCBHhnjNj8o3H0T7XRCDVhSbwv+WmAc5KLDkAug9Ep74FK4/kpjiR32muZXTbvbktxYgB6iHL7oUMY2xw==}
     engines: {node: '>=20'}
 
-  '@moss-dev/moss@1.0.0':
+  '@inferedge/moss@1.0.0':
     resolution: {integrity: sha512-vRsRcQQibBCVmJmN4mESiLWqoef/ugrCuE6iU7OAfmtezZyTogOeEZnUGu1s/QbDp2nHXEVgkgFj0VeXZI1CeA==}
 
   '@moss-tools/md-indexer@1.0.0-beta.3':
@@ -2062,28 +2062,28 @@ snapshots:
 
   '@microsoft/tsdoc@0.14.2': {}
 
-  '@moss-dev/moss-core-darwin-arm64@0.8.7':
+  '@inferedge/moss-core-darwin-arm64@0.8.7':
     optional: true
 
-  '@moss-dev/moss-core-linux-arm64-gnu@0.8.7':
+  '@inferedge/moss-core-linux-arm64-gnu@0.8.7':
     optional: true
 
-  '@moss-dev/moss-core-linux-x64-gnu@0.8.7':
+  '@inferedge/moss-core-linux-x64-gnu@0.8.7':
     optional: true
 
-  '@moss-dev/moss-core-win32-x64-msvc@0.8.7':
+  '@inferedge/moss-core-win32-x64-msvc@0.8.7':
     optional: true
 
-  '@moss-dev/moss-core@0.8.7':
+  '@inferedge/moss-core@0.8.7':
     optionalDependencies:
-      '@moss-dev/moss-core-darwin-arm64': 0.8.7
-      '@moss-dev/moss-core-linux-arm64-gnu': 0.8.7
-      '@moss-dev/moss-core-linux-x64-gnu': 0.8.7
-      '@moss-dev/moss-core-win32-x64-msvc': 0.8.7
+      '@inferedge/moss-core-darwin-arm64': 0.8.7
+      '@inferedge/moss-core-linux-arm64-gnu': 0.8.7
+      '@inferedge/moss-core-linux-x64-gnu': 0.8.7
+      '@inferedge/moss-core-win32-x64-msvc': 0.8.7
 
-  '@moss-dev/moss@1.0.0':
+  '@inferedge/moss@1.0.0':
     dependencies:
-      '@moss-dev/moss-core': 0.8.7
+      '@inferedge/moss-core': 0.8.7
 
   '@moss-tools/md-indexer@1.0.0-beta.3(vitepress@1.6.4(@algolia/client-search@5.49.0)(@types/node@20.19.33)(postcss@8.5.8)(search-insights@2.17.3)(typescript@5.9.3))':
     dependencies:

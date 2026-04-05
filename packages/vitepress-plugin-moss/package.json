@@ -38,7 +38,7 @@
     "vitepress": ">=1.0.0"
   },
   "dependencies": {
-    "@moss-dev/moss": "^1.0.0",
+    "@inferedge/moss": "^1.0.0-beta.7",
     "@moss-tools/md-indexer": "^1.0.0-beta.3",
     "@vueuse/core": "^14.2.1",
     "@vueuse/integrations": "^14.2.1",

@@ -1,8 +1,8 @@
-[**@moss-dev/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / MossModel
+[@inferedge/moss](../globals.md) / MossModel
 
 # Type Alias: MossModel
 

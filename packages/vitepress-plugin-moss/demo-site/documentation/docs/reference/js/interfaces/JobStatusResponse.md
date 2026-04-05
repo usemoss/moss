@@ -2,11 +2,11 @@
 title: "JobStatusResponse (JS)"
 ---
 
-[**@moss-dev/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / JobStatusResponse
+[@inferedge/moss](../globals.md) / JobStatusResponse
 
 # Interface: JobStatusResponse
 
