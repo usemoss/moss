@@ -43,7 +43,9 @@ def run():
     if not qdrant_url or not qdrant_api_key:
         raise ValueError("QDRANT_URL and QDRANT_API_KEY must be set in .env")
     client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
-    client.recreate_collection(
+    if client.collection_exists(COLLECTION):
+        client.delete_collection(COLLECTION)
+    client.create_collection(
         collection_name=COLLECTION,
         vectors_config=VectorParams(
             size=embed.dimension, distance=Distance.COSINE
@@ -67,13 +69,6 @@ def run():
     print(f"  Loaded {client.count(COLLECTION).count} docs")
 
     def qdrant_search(query_vector):
-        """Compatibility wrapper for qdrant-client API changes."""
-        if hasattr(client, "search"):
-            return client.search(
-                collection_name=COLLECTION,
-                query_vector=query_vector,
-                limit=TOP_K,
-            )
         return client.query_points(
             collection_name=COLLECTION,
             query=query_vector,
