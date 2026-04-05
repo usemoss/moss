@@ -23,7 +23,6 @@
   },
   "type": "module",
   "main": "./out/extension.js",
-  "activationEvents": [],
   "contributes": {
     "commands": [
       {
