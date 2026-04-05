@@ -12,7 +12,7 @@ Each benchmark times the complete query cycle:
 |--------|----------------------|
 | **Moss** | `client.query(index_name, "text")` — embedding + search in one call |
 | **Pinecone** | Call embedding API → send vector to Pinecone cloud → get results |
-| **Qdrant** | Call embedding API → search local Qdrant index → get results |
+| **Qdrant** | Call embedding API → send vector to Qdrant Cloud → get results |
 | **ChromaDB** | Call embedding API → search local Chroma collection → get results |
 
 Moss bundles a built-in embedding model. Competitors require an external
@@ -42,7 +42,7 @@ python run_all.py qdrant chroma
 |-----------|--------------|
 | Moss | `MOSS_PROJECT_ID` + `MOSS_PROJECT_KEY` |
 | Pinecone | `PINECONE_API_KEY` |
-| Qdrant | Nothing (runs locally in-memory) |
+| Qdrant | `QDRANT_URL` + `QDRANT_API_KEY` |
 | ChromaDB | Nothing (runs locally in-memory) |
 | Embedding | `OPENAI_API_KEY` or a custom endpoint URL |
 
