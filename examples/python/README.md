@@ -59,7 +59,7 @@ python custom_embedding_sample.py
 
 Create an index, load it locally, and run queries filtered by document metadata using `$eq`, `$and`, `$in`, and `$near` operators.
 
-Requires `inferedge-moss>=1.0.0b17`.
+Requires `moss>=1.0.0`.
 
 ```bash
 python metadata_filtering.py

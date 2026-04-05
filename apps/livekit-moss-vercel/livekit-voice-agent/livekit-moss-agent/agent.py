@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from dotenv import load_dotenv
-from inferedge_moss import MossClient, QueryOptions
+from moss import MossClient, QueryOptions
 from livekit import agents, rtc
 from livekit.agents import Agent, AgentSession, ChatMessage, ChatRole, RunContext
 from livekit.agents.llm import ChatChunk, function_tool

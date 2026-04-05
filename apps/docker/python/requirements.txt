@@ -1,2 +1,2 @@
-inferedge-moss>=1.0.0b17
+moss>=1.0.0
 python-dotenv

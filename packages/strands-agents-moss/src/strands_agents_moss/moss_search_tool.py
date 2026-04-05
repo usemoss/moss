@@ -13,7 +13,7 @@ import logging
 from collections.abc import Sequence
 from typing import Any
 
-from inferedge_moss import MossClient, QueryOptions
+from moss import MossClient, QueryOptions
 from strands import tool
 
 __all__ = ["MossSearchTool"]

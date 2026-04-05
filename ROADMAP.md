@@ -4,7 +4,7 @@ This is a living document. We update it as priorities shift based on community f
 
 ## Shipped
 
-- [x] Python SDK (`inferedge-moss`) — async-first, type-safe
+- [x] Python SDK (`moss`) — async-first, type-safe
 - [x] TypeScript SDK (`@moss-dev/moss`) — full feature parity with Python
 - [x] Built-in embedding models (`moss-minilm`)
 - [x] **Hybrid search** — combine semantic search with BM25 keyword matching
