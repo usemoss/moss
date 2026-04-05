@@ -2,7 +2,7 @@
 title: "JobStatusResponse (JS)"
 ---
 
-[**@inferedge/moss v1.0.0**](../README.md)
+[**@inferedge/moss v1.0.0-beta.7**](../README.md)
 
 ***
 
