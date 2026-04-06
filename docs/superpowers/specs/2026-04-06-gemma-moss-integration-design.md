@@ -1,16 +1,15 @@
-# Gemma + Moss Integration Design
+# Gemma + Moss Integration Design (v2)
 
 ## Overview
 
 A Python package, `gemma-moss`, that integrates Moss semantic retrieval with Google's Gemma model running locally via Ollama.
 
-The package is intentionally split into three layers:
+The key design principle: **the LLM decides when to search.** Rather than retrieving from Moss on every turn, the system prompt tells Gemma what is searchable, and Gemma emits a structured search signal (`[SEARCH: ...]`) only when it needs external knowledge. Most turns are a single Ollama call.
+
+The package has two layers:
 
 1. **`MossRetriever`** — A thin reusable retrieval adapter over `inferedge_moss`.
-2. **`QueryRewriter`** — An optional callable that rewrites a user turn into a better retrieval query.
-3. **`GemmaMossSession`** — A chat/session wrapper that composes an Ollama chat model, a `MossRetriever`, and an optional `QueryRewriter`.
-
-This keeps retrieval reusable, makes query rewriting optional, and avoids hardwiring one chat strategy into the Moss layer.
+2. **`GemmaMossSession`** — A chat/session wrapper with a single-search-on-demand flow.
 
 ## Target Use Case
 
@@ -20,15 +19,19 @@ Secondary: reuse `MossRetriever` directly in scripts, tests, or other integratio
 
 ## Design Goals
 
+- Let the LLM decide when retrieval is needed.
 - Keep the Moss layer thin and reusable.
-- Make query rewriting optional, not structural.
 - Keep conversation/session logic separate from retrieval.
-- Minimize duplicated prompt-building and result-formatting logic.
-- Ensure `ask()` and `ask_stream()` share one internal turn pipeline.
-- Allow graceful degradation:
-  - If rewriting fails, use the raw user message for retrieval.
-  - If retrieval fails, continue generation without retrieved context.
-  - If no documents are found, continue generation without retrieved context.
+- Most turns should be a single Ollama call.
+- Support graceful degradation when retrieval yields no results or fails.
+- Keep the control-flow protocol strict and minimal.
+
+## Non-Goals
+
+- Multi-search agent loops within a single turn.
+- Tool-calling frameworks or generic agent orchestration.
+- Token-by-token streaming through the search-decision step.
+- Rich retrieval state persisted into chat history.
 
 ## Package Structure
 
@@ -57,16 +60,14 @@ packages/gemma-moss/
 - `MossRetriever`
 - `GemmaMossSession`
 - `DefaultContextFormatter`
-- `make_ollama_query_rewriter`
-- Re-exports from `inferedge_moss`: `MossClient`, `SearchResult`, `DocumentInfo`, `IndexInfo`, `GetDocumentsOptions`
+
+No `inferedge_moss` types are re-exported.
 
 ---
 
 ## Layer 1: `MossRetriever`
 
-### Responsibility
-
-Own the Moss client, index loading, querying, and formatting of retrieved documents into LLM-ready context text.
+Thin adapter over the Moss SDK. Owns Moss client, index loading, querying, and formatting.
 
 ### Constructor
 
@@ -84,92 +85,51 @@ class MossRetriever:
     ) -> None: ...
 ```
 
-- `project_id` — Moss project ID. Falls back to `MOSS_PROJECT_ID` env var.
-- `project_key` — Moss project key. Falls back to `MOSS_PROJECT_KEY` env var.
-- `index_name` — Name of the Moss index to query.
-- `top_k` — Number of results to retrieve per query.
-- `alpha` — Blend between semantic (1.0) and keyword (0.0) scoring.
-- `formatter` — Optional callable that formats retrieved docs into a context string. If omitted, uses `DefaultContextFormatter`.
-
 ### Methods
 
 | Method | Description |
 |--------|-------------|
 | `async load_index()` | Pre-load the configured Moss index into memory. |
 | `async query(query: str) -> SearchResult` | Raw Moss search, returns `SearchResult`. |
-| `async retrieve(query: str) -> str \| None` | Search + format through the configured formatter. Returns `None` if no docs. |
+| `async retrieve(query: str) -> str \| None` | Search + format. Returns `None` if no docs. |
+| `async retrieve_with_result(query: str) -> tuple[SearchResult, str \| None]` | Search, format, return both. Allows caller to inspect doc count. |
 
 ### Error Handling
 
-- If `load_index()` has not been called, `query()` and `retrieve()` raise `RuntimeError`.
-- `query()` and `retrieve()` surface Moss errors directly.
-- Graceful degradation belongs in the session layer, not the retriever layer.
+- All query methods raise `RuntimeError` if `load_index()` hasn't been called.
+- Moss errors surface directly. Graceful degradation belongs in the session layer.
+
+### `retrieve_with_result` Rationale
+
+The session needs to distinguish "no documents matched" from "retrieval failed" to provide accurate feedback to the LLM. `retrieve()` returns `None` for both empty results and formatter-declined-to-emit, which is ambiguous. `retrieve_with_result()` returns the raw `SearchResult` alongside the formatted text, letting the session inspect `len(result.docs)` for unambiguous three-way outcome resolution.
 
 ---
 
 ## Formatter Abstraction
 
-### Callable Shape
-
-```python
-Callable[[Sequence[Any]], str | None]
-```
-
-### Default Formatter
-
 ```python
 class DefaultContextFormatter:
-    def __init__(
-        self,
-        *,
-        prefix: str = "Relevant context from knowledge base:\n\n",
-    ) -> None: ...
-
+    def __init__(self, *, prefix: str = "Relevant context from knowledge base:\n\n") -> None: ...
     def __call__(self, documents: Sequence[Any]) -> str | None: ...
 ```
 
-- Returns `None` for empty document lists.
-- Emits one prefix block followed by one numbered entry per document.
-- Includes lightweight metadata when available: `source`, `score`.
+- Returns formatted string when documents are present.
+- Returns `None` when document sequence is empty.
 
 ---
 
-## Layer 2: Query Rewriter
+## Layer 2: `GemmaMossSession`
 
-### Callable Shape
+### How It Works
 
-```python
-Callable[[str, Sequence[dict[str, str]]], Awaitable[str]]
-```
+The system prompt tells Gemma about the Moss index and instructs it to use `[SEARCH: query]` when it needs information.
 
-- First argument: the current user message.
-- Second argument: prior conversation turns (read-only sequence).
+Per turn:
 
-### Failure Semantics
+- **No search signal** → return response directly. 1 Ollama call.
+- **Exact `[SEARCH: query]` signal** → one Moss retrieval, then one final Ollama call. 2 Ollama calls.
 
-If a rewriter raises an exception or returns an empty string: log a warning, fall back to the raw user message.
-
-### Convenience Helper
-
-```python
-def make_ollama_query_rewriter(
-    *,
-    model: str = "gemma4",
-    host: str | None = None,
-    instruction: str = (
-        "Based on the conversation history and the user's latest message, "
-        "generate a concise, specific search query that would retrieve the most "
-        "relevant information from a knowledge base. Output ONLY the search query, "
-        "nothing else."
-    ),
-) -> Callable[[str, Sequence[dict[str, str]]], Awaitable[str]]: ...
-```
-
-This helper exists to support the target Gemma/Ollama demo ergonomically. It is not part of the core architecture.
-
----
-
-## Layer 3: `GemmaMossSession`
+Exactly one retrieval per turn. No loops.
 
 ### Constructor
 
@@ -181,68 +141,120 @@ class GemmaMossSession:
         retriever: MossRetriever,
         model: str = "gemma4",
         ollama_host: str | None = None,
-        system_prompt: str = "You are a helpful assistant. Use the provided context to answer questions accurately.",
-        query_rewriter: Callable[[str, Sequence[dict[str, str]]], Awaitable[str]] | None = None,
+        system_prompt: str | None = None,
+        index_description: str = "a knowledge base",
         history: Sequence[dict[str, str]] | None = None,
     ) -> None: ...
 ```
 
-- `history` is copied on construction (not stored by reference).
+- `system_prompt` — Optional override for the full system prompt. If `None`, a default is built using `index_description`.
+- `index_description` — Human-readable description of what's in the index (e.g., "a customer FAQ covering orders, shipping, returns, and payments").
+- `history` — Copied on construction, not stored by reference.
+
+### Default System Prompt
+
+```
+You are a helpful assistant with access to {index_description}.
+
+When you need information from the knowledge base to answer a question, output ONLY a search request in this exact format:
+[SEARCH: your search query here]
+
+Rules:
+- Only search when you genuinely need information from the knowledge base.
+- Do NOT search for greetings, clarifications, rephrasing requests, or conversational replies.
+- When you search, output NOTHING except the single [SEARCH: ...] line.
+- If you already have enough information to answer well, answer directly.
+- After a search outcome is provided, answer the user's original question.
+- If the search finds nothing useful, say so honestly.
+- If search is unavailable, say so honestly and answer as best you can.
+```
 
 ### Public Methods
 
 | Method | Description |
 |--------|-------------|
-| `async ask(message: str) -> str` | Full turn: prepare, generate, commit. Returns complete response. |
-| `async ask_stream(message: str) -> AsyncIterator[str]` | Same as `ask` but streams response tokens as they arrive. |
-| `reset()` | Clear conversation history for a new session. |
-| `get_history() -> list[dict[str, str]]` | Returns a copy of the conversation history. |
+| `async ask(message: str) -> str` | Full turn with optional single retrieval. Returns the final response. |
+| `async ask_stream(message: str) -> AsyncIterator[str]` | Thin wrapper over `ask()`. Yields the complete response as one chunk. |
+| `reset()` | Clear conversation history. |
+| `get_history() -> list[dict[str, str]]` | Return a copy of the conversation history. |
 
-### Shared Internal Turn Pipeline
+---
+
+## Search Signal Protocol
+
+### Parsing Rule
+
+The entire trimmed model response must match this regex:
 
 ```python
-async def _prepare_turn(self, message: str) -> _PreparedTurn: ...
-async def _generate_text(self, prepared: _PreparedTurn) -> str: ...
-async def _generate_stream(self, prepared: _PreparedTurn) -> AsyncIterator[str]: ...
-def _commit_turn(self, message: str, response: str) -> None: ...
-def _build_messages(self, *, message: str, context: str | None) -> list[dict[str, str]]: ...
+_SEARCH_PATTERN = re.compile(r"^\[SEARCH:\s*(.+?)\s*\]$")
 ```
 
-`_PreparedTurn` is an internal implementation detail (dataclass/namedtuple holding the built message list).
+If it does not match exactly, the response is treated as a final answer. No partial parsing, no substring matching.
 
-### `ask()` Flow
+---
 
-1. `prepared = await _prepare_turn(message)`
-2. `response = await _generate_text(prepared)`
-3. `_commit_turn(message, response)`
-4. Return `response`
+## Retrieval Outcome Model
 
-### `ask_stream()` Flow
+Three explicit outcomes after `retriever.retrieve_with_result(query)`:
 
-1. `prepared = await _prepare_turn(message)`
-2. Stream chunks from `_generate_stream(prepared)`, yielding to caller
-3. Accumulate full response internally
-4. `_commit_turn(message, full_response)` after generation completes
+1. **Context found** — `len(result.docs) > 0` and `context is not None`. Formatted context injected as system message.
+2. **No results** — `len(result.docs) == 0`. System message: `"Search completed but no relevant results were found for: {query}"`
+3. **Retrieval failed** — Exception raised. System message: `"Search is currently unavailable. Please answer based on your existing knowledge."`
 
-### `_prepare_turn()` Details
+```python
+@dataclass(frozen=True)
+class _SearchOutcome:
+    context: str | None   # formatted context, or None
+    note: str | None      # fallback note for no-results or failure
+```
 
-1. Resolve retrieval query: if `query_rewriter` is set, call it with `(message, history)`. On failure, fall back to raw `message`.
-2. Resolve context: call `retriever.retrieve(resolved_query)`. On failure, log warning, set context to `None`.
-3. Build message list via `_build_messages(message=message, context=context)`.
-4. Return `_PreparedTurn` with the built messages.
+The session injects `outcome.context or outcome.note` as the system message before the user message.
 
-### Message Assembly
+---
+
+## Second-Call Search Leak Prevention
+
+The system message for the second Ollama call (after retrieval) includes:
+
+```
+A search has already been performed for this turn. Do NOT emit another [SEARCH: ...] request. Answer the user's question directly.
+```
+
+Additionally, if the entire trimmed second response matches the search-signal regex again, the session returns a deterministic fallback:
+
+```
+I was unable to find a relevant answer. Please try rephrasing your question.
+```
+
+No substring stripping. Only triggered on exact full-response match.
+
+---
+
+## Message Assembly
+
+### Initial generation (no search yet):
 
 ```python
 [
     {"role": "system", "content": system_prompt},
     *history,
-    {"role": "system", "content": context},   # only if context is not None
     {"role": "user", "content": message},
 ]
 ```
 
-Retrieved context is ephemeral — it is NOT persisted in history. Only user + assistant turns are committed.
+### Final generation (after search):
+
+```python
+[
+    {"role": "system", "content": system_prompt},
+    *history,
+    {"role": "system", "content": context_or_note + "\n\nA search has already been performed for this turn. Do NOT emit another [SEARCH: ...] request. Answer the user's question directly."},
+    {"role": "user", "content": message},
+]
+```
+
+Retrieved context is ephemeral — NOT persisted in history. Only user + final assistant turns are committed.
 
 ---
 
@@ -252,60 +264,59 @@ Retrieved context is ephemeral — it is NOT persisted in history. Only user + a
 User message
     |
     v
-Prepare turn
-    |-- Resolve retrieval query (rewriter or raw)
-    |-- Retrieve context from Moss (or None on failure)
-    |-- Build final Ollama message list
+Build messages [system + history + user]
+    |
     v
-Generate final answer with Gemma via Ollama
+Send to Gemma
+    |
     v
-Commit turn (user + assistant to history only)
+Parse response (strict regex)
+    |
+    +-- No match → Final answer → Commit to history
+    |
+    +-- Exact [SEARCH: query] match
+            |
+            v
+        Retrieve from Moss via retrieve_with_result()
+            |
+            v
+        Resolve outcome (context / no results / failed)
+            |
+            v
+        Build messages [system + history + outcome + user]
+            |
+            v
+        Send to Gemma → Parse again
+            |
+            +-- No match → Final answer → Commit to history
+            +-- Match again → Return deterministic fallback → Commit to history
 ```
 
 ---
+
+## What Changed from v1
+
+| Aspect | v1 (always-retrieve) | v2 (search-on-demand) |
+|--------|---------------------|----------------------|
+| Retrieval trigger | Every turn | LLM decides via `[SEARCH:]` |
+| Ollama calls per turn | 2 (rewriter + answer) | 1 (most turns) or 2 (when searching) |
+| Query rewriter | Separate callable | Removed — LLM generates query itself |
+| `make_ollama_query_rewriter` | Exported | Removed |
+| `index_description` param | N/A | New — describes what's searchable |
+| System prompt | Generic | Includes search instructions |
+| Public API exports | 4 classes + inferedge_moss types | 3 classes only |
+| `retrieve_with_result()` | N/A | New — unambiguous three-way outcome |
 
 ## Dependencies
 
 ```toml
 [project]
-name = "gemma-moss"
-version = "0.0.1"
-description = "Moss semantic search integration with Gemma via Ollama"
-readme = "README.md"
-requires-python = ">=3.10,<3.14"
 dependencies = [
     "inferedge-moss>=1.0.0b18",
     "ollama>=0.4.0",
 ]
-
-[dependency-groups]
-dev = [
-    "python-dotenv>=1.2.1",
-    "ruff>=0.1.0",
-]
 ```
-
-## CLI Demo (`examples/moss-gemma-demo.py`)
-
-Interactive terminal chatbot:
-- Loads env vars from `.env`
-- Validates Ollama is running and Gemma model is available
-- Loads the Moss index
-- Enters a `while True` loop reading user input
-- Streams Gemma responses to stdout
-- Supports `/reset` to clear history and `/quit` to exit
-
-## Index Setup Helper (`examples/moss-create-index-demo.py`)
-
-Follows the same pattern as `pipecat-moss/examples/moss-create-index-demo.py`:
-- Creates a sample FAQ index with demo documents
-- Uses `MossClient` directly
 
 ## Conventions
 
-- BSD 2-Clause License (matches existing packages)
-- Ruff for linting/formatting (same config as other packages)
-- Python >=3.10,<3.14
-- `setuptools` build backend
-- `src/` layout with `find` packages
-- Logging via stdlib `logging` (matches elevenlabs-moss pattern)
+BSD 2-Clause, ruff, Python >=3.10,<3.14, setuptools, src/ layout, stdlib logging.
