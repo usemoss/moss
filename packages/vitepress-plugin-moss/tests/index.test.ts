@@ -1,17 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-const { mockFsExistsSync, mockSync } = vi.hoisted(() => {
-  return {
-    mockFsExistsSync: vi.fn(),
-    mockSync: vi.fn()
-  }
-})
+import fs from 'node:fs'
 
 vi.mock('obug', () => ({ createDebug: () => () => {} }))
-vi.mock('node:fs', () => ({ default: { existsSync: mockFsExistsSync } }))
-vi.mock('@moss-tools/md-indexer', () => ({ sync: mockSync }))
+vi.mock('node:fs', () => ({ default: { existsSync: vi.fn(() => true) } }))
+vi.mock('@moss-tools/md-indexer', () => ({
+  buildJsonDocs: vi.fn().mockResolvedValue([{ text: 'word1 word2 word3 word4 word5', metadata: { title: 'Test', groupId: 'g1' } }]),
+  uploadDocuments: vi.fn().mockResolvedValue(undefined),
+}))
 
 import { mossIndexerPlugin } from '../index.ts'
+import * as mdIndexer from '@moss-tools/md-indexer'
 
 function setup(searchConfig: unknown) {
   const mockLogger = { error: vi.fn() }
@@ -29,10 +27,19 @@ function setup(searchConfig: unknown) {
   })
   return { plugin, mockLogger }
 }
+
+function getMockUpload() {
+  return vi.mocked(mdIndexer.uploadDocuments)
+}
+
+function getMockExists() {
+  return vi.mocked(fs.existsSync)
+}
+
 describe('mossIndexerPlugin', () => {
   beforeEach(() => {
-    mockFsExistsSync.mockReturnValue(true)
-    mockSync.mockClear()
+    getMockUpload().mockClear()
+    getMockExists().mockReturnValue(true)
   })
 
   describe('resolveId - virtual module', () => {
@@ -81,7 +88,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('does not shadow when file does not exist', () => {
-      mockFsExistsSync.mockReturnValue(false)
+      getMockExists().mockReturnValue(false)
       const plugin = mossIndexerPlugin() as any
       const result = plugin.resolveId('/path/to/VPNavBarSearch.vue')
       expect(result).toBeUndefined()
@@ -288,7 +295,7 @@ describe('mossIndexerPlugin', () => {
 
   describe('buildEnd - index sync', () => {
     it('syncs index when all credentials are provided', async () => {
-      mockSync.mockResolvedValue(undefined)
+      getMockUpload().mockResolvedValue(undefined)
       const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', projectKey: 'test-key', indexName: 'test-index' },
@@ -296,14 +303,15 @@ describe('mossIndexerPlugin', () => {
       
       await plugin.buildEnd()
       
-      expect(mockSync).toHaveBeenCalledWith({
-        root: '/test-root',
-        creds: {
+      expect(getMockUpload()).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
           projectId: 'test-id',
           projectKey: 'test-key',
-          indexName: 'test-index'
-        }
-      })
+          indexName: 'test-index',
+          modelName: 'moss-minilm'
+        })
+      )
     })
 
     it('does not sync when provider is not moss', async () => {
@@ -311,7 +319,7 @@ describe('mossIndexerPlugin', () => {
       
       await plugin.buildEnd()
       
-      expect(mockSync).not.toHaveBeenCalled()
+      expect(getMockUpload()).not.toHaveBeenCalled()
     })
 
     it('does not sync when search config is undefined', async () => {
@@ -319,7 +327,7 @@ describe('mossIndexerPlugin', () => {
       
       await plugin.buildEnd()
       
-      expect(mockSync).not.toHaveBeenCalled()
+      expect(getMockUpload()).not.toHaveBeenCalled()
     })
 
     it('logs error and continues when projectId is missing', async () => {
@@ -330,7 +338,7 @@ describe('mossIndexerPlugin', () => {
       
       await plugin.buildEnd()
       
-      expect(mockSync).not.toHaveBeenCalled()
+      expect(getMockUpload()).not.toHaveBeenCalled()
       expect(mockLogger.error).toHaveBeenCalled()
       const errorCall = mockLogger.error.mock.calls[0][0]
       expect(errorCall).toContain('Missing Moss configuration')
@@ -345,7 +353,7 @@ describe('mossIndexerPlugin', () => {
        
       await plugin.buildEnd()
        
-      expect(mockSync).not.toHaveBeenCalled()
+      expect(getMockUpload()).not.toHaveBeenCalled()
       expect(mockLogger.error).toHaveBeenCalled()
       const errorCall = mockLogger.error.mock.calls[0][0]
       expect(errorCall).toContain('Missing Moss configuration')
@@ -360,7 +368,7 @@ describe('mossIndexerPlugin', () => {
       
       await plugin.buildEnd()
       
-      expect(mockSync).not.toHaveBeenCalled()
+      expect(getMockUpload()).not.toHaveBeenCalled()
       expect(mockLogger.error).toHaveBeenCalled()
       const errorCall = mockLogger.error.mock.calls[0][0]
       expect(errorCall).toContain('Missing Moss configuration')
@@ -375,12 +383,12 @@ describe('mossIndexerPlugin', () => {
       
       await plugin.buildEnd()
       
-      expect(mockSync).not.toHaveBeenCalled()
+      expect(getMockUpload()).not.toHaveBeenCalled()
       expect(mockLogger.error).toHaveBeenCalled()
     })
 
     it('logs error and continues when sync fails', async () => {
-      mockSync.mockRejectedValue(new Error('Network error'))
+      getMockUpload().mockRejectedValue(new Error('Network error'))
       const { plugin, mockLogger } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', projectKey: 'test-key', indexName: 'test-index' },
@@ -388,7 +396,7 @@ describe('mossIndexerPlugin', () => {
       
       await plugin.buildEnd()
       
-      expect(mockSync).toHaveBeenCalled()
+      expect(getMockUpload()).toHaveBeenCalled()
       expect(mockLogger.error).toHaveBeenCalled()
       const errorCall = mockLogger.error.mock.calls[0][0]
       expect(errorCall).toContain('Moss index sync failed')
@@ -396,7 +404,7 @@ describe('mossIndexerPlugin', () => {
     })
 
     it('allows build to continue after sync failure', async () => {
-      mockSync.mockRejectedValue(new Error('Test error'))
+      getMockUpload().mockRejectedValue(new Error('Test error'))
       const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', projectKey: 'test-key', indexName: 'test-index' },
@@ -408,7 +416,7 @@ describe('mossIndexerPlugin', () => {
 
   describe('closeBundle', () => {
     it('delegates to buildEnd', async () => {
-      mockSync.mockResolvedValue(undefined)
+      getMockUpload().mockResolvedValue(undefined)
       const { plugin } = setup({
         provider: 'moss',
         options: { projectId: 'test-id', projectKey: 'test-key', indexName: 'test-index' },
@@ -416,7 +424,7 @@ describe('mossIndexerPlugin', () => {
       
       await plugin.closeBundle()
       
-      expect(mockSync).toHaveBeenCalled()
+      expect(getMockUpload()).toHaveBeenCalled()
     })
 
     it('handles buildEnd not being a function gracefully', async () => {

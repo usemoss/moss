@@ -4,7 +4,6 @@ import type { SiteConfig, DefaultTheme } from 'vitepress'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
-import { sync } from '@moss-tools/md-indexer'
 
 export type { MossSearchOptions } from './types.js'
 
