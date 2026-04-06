@@ -13,7 +13,7 @@ Required Environment Variables:
 import asyncio
 import os
 from dotenv import load_dotenv
-from inferedge_moss import MossClient, QueryOptions
+from moss import MossClient, QueryOptions
 
 # Load environment variables
 load_dotenv()
