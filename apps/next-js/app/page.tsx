@@ -6,8 +6,7 @@ import {
   Plus, Trash2, CheckCircle2, Loader2,
   Search, Zap, Database, AlertCircle, Ghost, Upload,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { createMossIndex, searchMoss, type DocInput } from './actions';
+import { createMossIndex, searchMoss, loadMossIndex, type DocInput } from './actions';
 
 const INITIAL_DOCS: DocInput[] = [
   { id: 'doc-1', text: 'Moss is a semantic search runtime for conversational AI agents with sub-10ms retrieval latency at production scale.' },
@@ -107,9 +106,20 @@ export default function MossDemo() {
     });
   };
 
-  const loadIndexIntoMemory = async () => {
-    if (isIndexLoaded) return;
-    setIsIndexLoaded(true);
+  const [isLoadingIndex, startLoadingIndex] = useTransition();
+
+  const loadIndexIntoMemory = () => {
+    if (isIndexLoaded || isLoadingIndex) return;
+
+    startLoadingIndex(async () => {
+      const response = await loadMossIndex(indexName);
+
+      if (response.success) {
+        setIsIndexLoaded(true);
+      } else {
+        setSearchError(response.error || 'Failed to load index');
+      }
+    });
   };
 
   // ── Search ─────────────────────────────────────────────────────────────────
@@ -140,17 +150,8 @@ export default function MossDemo() {
     <main>
       <div className="container">
         {/* Header */}
-        <motion.header 
-          className="logo-section"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
-          >
+        <header className="logo-section">
+          <div>
             <Image
               src="/moss-brand.png"
               alt="Moss Logo"
@@ -158,30 +159,20 @@ export default function MossDemo() {
               height={100}
               className="logo-icon"
               priority
-              style={{ 
+              style={{
                 objectFit: 'contain',
                 maxWidth: '100%',
                 height: 'auto'
               }}
             />
-          </motion.div>
-          <motion.h1 
-            className="title"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
-          >
+          </div>
+          <h1 className="title">
             Real-time semantic search for Conversational AI
-          </motion.h1>
-          <motion.p 
-            className="subtitle"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6, duration: 0.8 }}
-          >
+          </h1>
+          <p className="subtitle">
             Build and search your knowledge base with sub-10ms latency
-          </motion.p>
-        </motion.header>
+          </p>
+        </header>
 
         {/* Main grid */}
         <div className="demo-grid">
@@ -283,13 +274,18 @@ export default function MossDemo() {
               <button
                 className="btn btn-secondary"
                 onClick={loadIndexIntoMemory}
-                disabled={isIndexLoaded}
+                disabled={isIndexLoaded || isLoadingIndex || !buildState || buildState !== 'done'}
                 style={{ width: '100%' }}
               >
                 {isIndexLoaded ? (
                   <>
                     <CheckCircle2 size={14} />
                     Index Loaded
+                  </>
+                ) : isLoadingIndex ? (
+                  <>
+                    <Loader2 className="spinner" size={14} />
+                    Loading Index
                   </>
                 ) : (
                   <>
@@ -299,7 +295,7 @@ export default function MossDemo() {
                 )}
               </button>
               <div className={`load-status ${isIndexLoaded ? 'ready' : ''}`}>
-                {isIndexLoaded ? '✓ Ready' : 'Build first'}
+                {isIndexLoaded ? '✓ Ready' : buildState === 'done' ? 'Ready to load' : 'Build first'}
               </div>
             </div>
 
@@ -347,11 +343,10 @@ export default function MossDemo() {
                 </div>
               )}
 
-              {!isSearching && searchResults.map((result, idx) => (
+              {!isSearching && searchResults.map((result) => (
                 <div
                   key={result.id}
                   className="result-item"
-                  style={{ animationDelay: `${idx * 0.08}s` }}
                 >
                   <div className="result-meta">
                     <span className={`result-score ${result.score < 0.75 ? 'low' : ''}`}>
