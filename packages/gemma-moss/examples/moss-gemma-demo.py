@@ -1,4 +1,7 @@
-"""Interactive CLI chatbot: Gemma + Moss retrieval-augmented generation.
+"""Interactive CLI chatbot: Gemma + Moss via tool calling.
+
+Gemma decides when to search the Moss knowledge base using Ollama's
+native tool-calling API.
 
 Prerequisites:
     pip install gemma-moss python-dotenv
@@ -15,19 +18,16 @@ import sys
 from dotenv import load_dotenv
 
 from gemma_moss import GemmaMossSession, MossRetriever
-from gemma_moss.session import make_ollama_query_rewriter
 
 load_dotenv()
 
 
 async def main():
     """Run the interactive chatbot."""
-    # Validate environment
     required = ["MOSS_PROJECT_ID", "MOSS_PROJECT_KEY", "MOSS_INDEX_NAME"]
     missing = [v for v in required if not os.getenv(v)]
     if missing:
         print(f"Missing environment variables: {', '.join(missing)}")
-        print("Set them in a .env file or export them.")
         sys.exit(1)
 
     model = os.getenv("OLLAMA_MODEL", "gemma4")
@@ -53,14 +53,17 @@ async def main():
     print(f"Loading Moss index '{index_name}'...")
     await retriever.load_index()
 
-    # Set up session with query rewriter
+    # Set up session — Gemma decides when to search
     session = GemmaMossSession(
         retriever=retriever,
         model=model,
-        query_rewriter=make_ollama_query_rewriter(model=model),
+        index_description=os.getenv(
+            "MOSS_INDEX_DESCRIPTION", "a customer FAQ knowledge base"
+        ),
     )
 
     print(f"\nGemma + Moss Chat (model: {model}, index: {index_name})")
+    print("Gemma will search the knowledge base when it needs to.")
     print("Commands: /reset (clear history), /quit (exit)\n")
 
     while True:
@@ -80,10 +83,8 @@ async def main():
             print("History cleared.\n")
             continue
 
-        print("Assistant: ", end="", flush=True)
-        async for chunk in session.ask_stream(user_input):
-            print(chunk, end="", flush=True)
-        print("\n")
+        response = await session.ask(user_input)
+        print(f"Assistant: {response}\n")
 
 
 if __name__ == "__main__":

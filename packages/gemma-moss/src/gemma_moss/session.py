@@ -4,54 +4,53 @@
 # SPDX-License-Identifier: BSD 2-Clause License
 #
 
-"""Conversational session layer composing Moss retrieval with Ollama/Gemma."""
+"""Chat session with Moss retrieval via Ollama tool calling."""
 
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
-from dataclasses import dataclass
+from collections.abc import AsyncIterator, Sequence
 
 from ollama import AsyncClient
 
 from .moss_retriever import MossRetriever
 
-__all__ = ["GemmaMossSession", "make_ollama_query_rewriter"]
+__all__ = ["GemmaMossSession"]
 
 logger = logging.getLogger("gemma_moss")
 
-_DEFAULT_SYSTEM_PROMPT = (
-    "You are a helpful assistant. "
-    "Use the provided context to answer questions accurately."
-)
 
-
-@dataclass(frozen=True)
-class _PreparedTurn:
-    """Internal dataclass holding the assembled messages for one turn."""
-
-    messages: list[dict[str, str]]
+def _build_tool_definition(description: str) -> dict:
+    """Build the Ollama tool definition for Moss search."""
+    return {
+        "type": "function",
+        "function": {
+            "name": "search_knowledge_base",
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query to find relevant information.",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    }
 
 
 class GemmaMossSession:
-    """Conversational session that composes Moss retrieval with Ollama/Gemma.
-
-    Each call to :meth:`ask` or :meth:`ask_stream`:
-
-    1. Optionally rewrites the user query for better retrieval.
-    2. Retrieves relevant context from the Moss index.
-    3. Assembles messages: ``[system, *history, context?, user]``.
-    4. Sends to Ollama and returns the assistant response.
-    5. Persists the raw user message and assistant reply in history
-       (context is **not** persisted).
+    """Chat session where Gemma decides when to query Moss via tool calling.
 
     Usage::
 
-        session = GemmaMossSession(
-            retriever=retriever,
-            system_prompt="You are a helpful assistant.",
-        )
-        reply = await session.ask("What is Moss?")
+        retriever = MossRetriever(index_name="my-index")
+        await retriever.load_index()
+
+        session = GemmaMossSession(retriever=retriever)
+        response = await session.ask("How do refunds work?")
     """
 
     def __init__(
@@ -60,231 +59,109 @@ class GemmaMossSession:
         retriever: MossRetriever,
         model: str = "gemma4",
         ollama_host: str | None = None,
-        system_prompt: str = _DEFAULT_SYSTEM_PROMPT,
-        query_rewriter: Callable[[str, Sequence[dict[str, str]]], Awaitable[str]] | None = None,
+        system_prompt: str | None = None,
+        index_description: str = "a knowledge base",
         history: Sequence[dict[str, str]] | None = None,
     ) -> None:
         """Initialize the session.
 
         Args:
-            retriever: Moss retriever for fetching relevant context.
-            model: Ollama model name to use for generation.
-            ollama_host: Optional Ollama server host URL.
-            system_prompt: System prompt prepended to every request.
-            query_rewriter: Optional async callable that rewrites the user
-                message into a better retrieval query.
-            history: Optional initial conversation history (copied, not by ref).
+            retriever: A ``MossRetriever`` instance (must have ``load_index()`` called).
+            model: Ollama model name.
+            ollama_host: Ollama server URL.
+            system_prompt: Override the default system prompt. If ``None``, built
+                from ``index_description``.
+            index_description: What's in the Moss index (used in default prompt and
+                tool description).
+            history: Optional initial conversation history (copied on construction).
         """
         self._retriever = retriever
         self._model = model
-        self._system_prompt = system_prompt
-        self._query_rewriter = query_rewriter
-        self._history: list[dict[str, str]] = list(history) if history else []
         self._ollama = AsyncClient(host=ollama_host)
+        self._history: list[dict] = list(history) if history else []
+        self._tool = _build_tool_definition(
+            f"Search {index_description} for relevant information."
+        )
+        self._system_prompt = system_prompt or (
+            f"You are a helpful assistant with access to {index_description}. "
+            "Use the search_knowledge_base tool when you need information from "
+            "the knowledge base. Do not search for greetings or conversational replies."
+        )
 
     async def ask(self, message: str) -> str:
-        """Send a message and return the assistant response.
+        """Send a message and return the response.
 
-        Args:
-            message: The user message.
-
-        Returns:
-            The assistant's response text.
+        Gemma may call the Moss search tool, in which case the session executes
+        the search and sends the results back for a final answer.
         """
-        prepared = await self._prepare_turn(message)
-        response = await self._generate_text(prepared)
-        self._commit_turn(message, response)
-        return response
+        messages = self._build_messages(message)
+
+        response = await self._ollama.chat(
+            model=self._model,
+            messages=messages,
+            tools=[self._tool],
+            stream=False,
+        )
+
+        # Handle tool call if Gemma wants to search
+        if response.message.tool_calls:
+            tool_call = response.message.tool_calls[0]
+            query = tool_call.function.arguments.get("query", message)
+
+            # Execute the Moss search
+            tool_result = await self._execute_search(query)
+
+            # Send tool result back to Gemma
+            messages.append(response.message)
+            messages.append({"role": "tool", "content": tool_result})
+
+            response = await self._ollama.chat(
+                model=self._model,
+                messages=messages,
+                stream=False,
+            )
+
+        result = response.message.content
+        self._commit_turn(message, result)
+        return result
 
     async def ask_stream(self, message: str) -> AsyncIterator[str]:
-        """Send a message and stream the assistant response token-by-token.
+        """Send a message and yield the response.
 
-        Args:
-            message: The user message.
-
-        Yields:
-            Response text chunks as they arrive.
+        Calls ``ask()`` internally and yields the complete response.
         """
-        prepared = await self._prepare_turn(message)
-        accumulated: list[str] = []
-        async for chunk in self._generate_stream(prepared):
-            accumulated.append(chunk)
-            yield chunk
-        self._commit_turn(message, "".join(accumulated))
+        response = await self.ask(message)
+        yield response
 
     def reset(self) -> None:
-        """Clear the conversation history."""
+        """Clear conversation history."""
         self._history.clear()
 
     def get_history(self) -> list[dict[str, str]]:
-        """Return a copy of the conversation history.
-
-        Returns:
-            A shallow copy of the history list.
-        """
+        """Return a copy of the conversation history."""
         return list(self._history)
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    async def _prepare_turn(self, message: str) -> _PreparedTurn:
-        """Resolve query, retrieve context, and build messages.
-
-        Args:
-            message: The raw user message.
-
-        Returns:
-            A ``_PreparedTurn`` containing the assembled message list.
-        """
-        query = await self._resolve_query(message)
-        context = await self._resolve_context(query)
-        messages = self._build_messages(message=message, context=context)
-        return _PreparedTurn(messages=messages)
-
-    async def _generate_text(self, prepared: _PreparedTurn) -> str:
-        """Generate a complete response from Ollama.
-
-        Args:
-            prepared: The prepared turn with assembled messages.
-
-        Returns:
-            The assistant's full response text.
-        """
-        response = await self._ollama.chat(
-            model=self._model,
-            messages=prepared.messages,
-            stream=False,
-        )
-        return response.message.content
-
-    async def _generate_stream(self, prepared: _PreparedTurn) -> AsyncIterator[str]:
-        """Stream response chunks from Ollama.
-
-        Args:
-            prepared: The prepared turn with assembled messages.
-
-        Yields:
-            Response text chunks.
-        """
-        async for chunk in await self._ollama.chat(
-            model=self._model,
-            messages=prepared.messages,
-            stream=True,
-        ):
-            content = chunk.message.content
-            if content:
-                yield content
-
-    def _commit_turn(self, message: str, response: str) -> None:
-        """Persist user message and assistant reply to history.
-
-        Args:
-            message: The original user message.
-            response: The assistant's response.
-        """
-        self._history.append({"role": "user", "content": message})
-        self._history.append({"role": "assistant", "content": response})
-
-    async def _resolve_query(self, message: str) -> str:
-        """Resolve the retrieval query using the rewriter or raw message.
-
-        If a query rewriter is configured, it is called. On failure or empty
-        result, the raw message is used as fallback.
-
-        Args:
-            message: The raw user message.
-
-        Returns:
-            The query string to use for retrieval.
-        """
-        if self._query_rewriter is not None:
-            try:
-                rewritten = await self._query_rewriter(message, self._history)
-                if rewritten:
-                    return rewritten
-                logger.warning("Query rewriter returned empty string, using raw message")
-            except Exception:
-                logger.warning("Query rewriter failed, falling back to raw message", exc_info=True)
-        return message
-
-    async def _resolve_context(self, query: str) -> str | None:
-        """Retrieve context from Moss, with graceful degradation.
-
-        Args:
-            query: The retrieval query.
-
-        Returns:
-            The formatted context string, or None if retrieval fails or
-            returns no results.
-        """
+    async def _execute_search(self, query: str) -> str:
+        """Execute a Moss search and return formatted results."""
         try:
-            return await self._retriever.retrieve(query)
+            result = await self._retriever.retrieve(query)
+            if result is None:
+                return "No relevant results found."
+            return result
         except Exception:
-            logger.warning("Retrieval failed, continuing without context", exc_info=True)
-            return None
+            logger.warning("Moss search failed", exc_info=True)
+            return "Search is currently unavailable."
 
-    def _build_messages(
-        self, *, message: str, context: str | None
-    ) -> list[dict[str, str]]:
-        """Assemble the message list for Ollama.
-
-        Order: ``[system_prompt, *history, context (if any), user message]``.
-
-        Args:
-            message: The user message.
-            context: The retrieved context, or None.
-
-        Returns:
-            The assembled message list.
-        """
-        messages: list[dict[str, str]] = [
+    def _build_messages(self, message: str) -> list[dict]:
+        """Assemble the message list."""
+        messages: list[dict] = [
             {"role": "system", "content": self._system_prompt},
         ]
         messages.extend(self._history)
-        if context is not None:
-            messages.append({"role": "system", "content": context})
         messages.append({"role": "user", "content": message})
         return messages
 
-
-_DEFAULT_REWRITER_INSTRUCTION = (
-    "Based on the conversation history and the user's latest message, "
-    "generate a concise, specific search query that would retrieve the most "
-    "relevant information from a knowledge base. Output ONLY the search query, "
-    "nothing else."
-)
-
-
-def make_ollama_query_rewriter(
-    *,
-    model: str = "gemma4",
-    host: str | None = None,
-    instruction: str = _DEFAULT_REWRITER_INSTRUCTION,
-) -> Callable[[str, Sequence[dict[str, str]]], Awaitable[str]]:
-    """Create an Ollama-powered query rewriter.
-
-    This is a convenience helper, not part of the core architecture.
-    Any async callable with signature ``(message, history) -> str`` works.
-
-    Args:
-        model: Ollama model name.
-        host: Ollama server URL.
-        instruction: System instruction for the rewriter model.
-
-    Returns:
-        An async callable that rewrites user messages into search queries.
-    """
-    client = AsyncClient(host=host)
-
-    async def rewrite(message: str, history: Sequence[dict[str, str]]) -> str:
-        messages: list[dict[str, str]] = [
-            {"role": "system", "content": instruction},
-        ]
-        messages.extend(history)
-        messages.append({"role": "user", "content": message})
-
-        response = await client.chat(model=model, messages=messages, stream=False)
-        return response.message.content.strip()
-
-    return rewrite
+    def _commit_turn(self, message: str, response: str) -> None:
+        """Persist user + assistant turns to history."""
+        self._history.append({"role": "user", "content": message})
+        self._history.append({"role": "assistant", "content": response})
