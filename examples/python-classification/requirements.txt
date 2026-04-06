@@ -1,0 +1,2 @@
+moss-classify>=0.1.0
+python-dotenv

@@ -1,5 +1,5 @@
 # Moss SDK
-inferedge-moss>=1.0.0b18
+moss>=1.0.0
 
 # Competitors
 pinecone>=5.0.0

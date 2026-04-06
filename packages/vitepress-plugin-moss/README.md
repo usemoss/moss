@@ -92,6 +92,7 @@ Never hard-code credentials in your config file.
 # .env  ← add to .gitignore, never commit
 MOSS_PROJECT_ID=your_project_id
 MOSS_PROJECT_KEY=your_api_key
+MOSS_INDEX_NAME=my-docs
 ```
 
 > **Note:** `projectKey` ends up embedded in the client-side JavaScript bundle. Treat it as you would an Algolia search-only API key — use a key scoped to read/query operations only.

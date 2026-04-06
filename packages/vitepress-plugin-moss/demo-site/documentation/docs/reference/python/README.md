@@ -4,23 +4,25 @@
 
 Built for developers who want **instant, memory-efficient, privacy-first AI features** with seamless cloud integration.
 
-## ✨ Features
+---
 
-- ⚡ **On-Device Vector Search** - Sub-millisecond retrieval with zero network latency
-- 🔍 **Semantic, Keyword & Hybrid Search** - Embedding search blended with Keyword matching
-- ☁️ **Cloud Storage Integration** - Automatic index synchronization with cloud storage
-- 📦 **Multi-Index Support** - Manage multiple isolated search spaces
-- 🛡️ **Privacy-First by Design** - Computation happens locally, only indexes sync to cloud
-- 🚀 **High-Performance Rust Core** - Built on optimized Rust bindings for maximum speed
-- 🧠 **Custom Embedding Overrides** - Provide your own document and query vectors when you need full control
+## Features
 
-## 📦 Installation
+- **On-device vector search** — Sub-millisecond retrieval with zero network latency
+- **Semantic, keyword, and hybrid search** — Embedding search blended with keyword matching
+- **Cloud storage integration** — Automatic index synchronization with cloud storage
+- **Multi-index support** — Manage multiple isolated search spaces
+- **Privacy-first by design** — Computation happens locally, only indexes sync to cloud
+- **High-performance Rust core** — Built on optimized Rust bindings for maximum speed
+- **Custom embedding overrides** — Provide your own document and query vectors when you need full control
+
+## Installation
 
 ```bash
 pip install inferedge-moss
 ```
 
-## 🚀 Quick Start
+## Quick start
 
 ```python
 import asyncio
@@ -38,7 +40,7 @@ async def main():
             metadata={"category": "shipping"}
         ),
         DocumentInfo(
-            id="doc2", 
+            id="doc2",
             text="What is your return policy? We offer a 30-day return policy for most items.",
             metadata={"category": "returns"}
         ),
@@ -75,65 +77,62 @@ async def main():
 asyncio.run(main())
 ```
 
-## 🔥 Example Use Cases
+## Example use cases
 
 - Smart knowledge base search with cloud backup
-- Realtime Voice AI agents with persistent indexes
+- Realtime voice AI agents with persistent indexes
 - Personal note-taking search with sync across devices
 - Private in-app AI features with cloud storage
 - Local semantic search in edge devices with cloud fallback
 
-## Available Models
+---
 
-- `moss-minilm`: Lightweight model optimized for speed and efficiency
-- `moss-mediumlm`: Balanced model offering higher accuracy with reasonable performance
+## Available models
 
-## 🔧 Getting Started
+| Model | Description |
+| --- | --- |
+| `moss-minilm` | Lightweight model optimized for speed and efficiency |
+| `moss-mediumlm` | Balanced model offering higher accuracy with reasonable performance |
+
+## Getting started
 
 ### Prerequisites
 
 - Python 3.8 or higher
-- Valid Moss project credentials
+- Valid Moss project credentials from [Moss Portal](https://portal.usemoss.dev)
 
-### Environment Setup
+### Environment setup
 
-1. **Install the package:**
+Install the package:
 
 ```bash
 pip install inferedge-moss
 ```
 
-2. **Get your credentials:**
-
-Sign up at [Moss Platform](https://portal.usemoss.dev) to get your `project_id` and `project_key`.
-
-1. **Set up environment variables (optional):**
+Set up environment variables (optional):
 
 ```bash
 export MOSS_PROJECT_ID="your-project-id"
 export MOSS_PROJECT_KEY="your-project-key"
 ```
 
-### Basic Usage
+### Basic usage
 
 ```python
 import asyncio
 from inferedge_moss import MossClient, DocumentInfo, QueryOptions
 
 async def main():
-    # Initialize client
     client = MossClient("your-project-id", "your-project-key")
-    
-    # Create and populate an index
+
     documents = [
         DocumentInfo(id="1", text="Python is a programming language"),
         DocumentInfo(id="2", text="Machine learning with Python is popular"),
     ]
-    
+
     await client.create_index("my-docs", documents)
     await client.load_index("my-docs")
-    
-    # Search
+
     results = await client.query(
         "my-docs",
         "programming language",
@@ -145,26 +144,30 @@ async def main():
 asyncio.run(main())
 ```
 
-### Hybrid Search Controls
+### Hybrid search controls
 
-`alpha` lets you decide how much weight to give semantic similarity versus keyword relevance when running `query()`:
+`alpha` controls the balance between semantic similarity and keyword relevance:
+
+| Value | Behavior |
+| --- | --- |
+| `0.0` | Pure keyword search |
+| `0.8` | Semantic-heavy blend (default) |
+| `1.0` | Pure embedding search |
 
 ```python
 # Pure keyword search
 await client.query("my-docs", "programming language", QueryOptions(alpha=0.0))
 
-# Mixed results (default 0.8 => semantic heavy)
+# Default blend
 await client.query("my-docs", "programming language")
 
 # Pure embedding search
 await client.query("my-docs", "programming language", QueryOptions(alpha=1.0))
 ```
 
-Pick any value between 0.0 and 1.0 to tune the blend for your use case.
-
 ### Metadata filtering
 
-You can pass a metadata filter directly to `query()` after loading an index locally:
+Pass a metadata filter directly to `query()` after loading an index:
 
 ```python
 results = await client.query(
@@ -180,21 +183,19 @@ results = await client.query(
 )
 ```
 
-For a complete runnable example, see `python/user-facing-sdk/samples/metadata_filtering.py`.
+---
 
-## 🧠 Providing custom embeddings
+## Providing custom embeddings
 
-Already using your own embedding model? Supply vectors directly when managing
-indexes and queries:
+Already using your own embedding model? Supply vectors directly when managing indexes and queries:
 
 ```python
 import asyncio
-
 from inferedge_moss import DocumentInfo, MossClient, QueryOptions
 
 
 def my_embedding_model(text: str) -> list[float]:
-    """Placeholder for your custom embedding generator."""
+    """Your custom embedding generator."""
     ...
 
 
@@ -214,7 +215,7 @@ async def main() -> None:
         ),
     ]
 
-    await client.create_index("custom-embeddings", documents)  # Defaults to moss-minilm
+    await client.create_index("custom-embeddings", documents)
     await client.load_index("custom-embeddings")
 
     results = await client.query(
@@ -229,9 +230,10 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Leaving the model argument undefined defaults to `moss-minilm`.
-Pass `QueryOptions` to reuse your own embeddings or to override `top_k` on a per-query basis.
+Leaving the model argument undefined defaults to `moss-minilm`. Pass `QueryOptions` to reuse your own embeddings or to override `top_k` on a per-query basis.
 
-## 📄 License
+---
+
+## License
 
 [BSD 2-Clause License](https://github.com/usemoss/moss/blob/main/sdks/python/sdk/LICENSE)

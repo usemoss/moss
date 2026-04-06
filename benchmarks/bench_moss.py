@@ -21,7 +21,7 @@ QUERY_ROUNDS = 50
 
 
 async def run_async():
-    from inferedge_moss import MossClient, DocumentInfo, QueryOptions
+    from moss import MossClient, DocumentInfo, QueryOptions
 
     queries = get_queries()
 

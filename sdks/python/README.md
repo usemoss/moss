@@ -1,6 +1,6 @@
 # Moss Python SDK
 
-Source for the [`moss`](https://pypi.org/project/inferedge-moss/) Python package.
+Source for the [`moss`](https://pypi.org/project/moss/) Python package.
 
 ## Architecture
 

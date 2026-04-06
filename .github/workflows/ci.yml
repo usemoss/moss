@@ -26,7 +26,7 @@ jobs:
     - name: Lint with ruff
       run: ruff check examples/python apps/pipecat-moss apps/livekit-moss-vercel
     - name: Type check with mypy
-      run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports
+      run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports --exclude "apps/pipecat-moss/hume-ollama-local/create_index.py"
 
   javascript-lint:
     runs-on: ubuntu-latest

@@ -1,0 +1,8 @@
+examples/.env
+__pycache__/
+*.pyc
+src/elevenlabs_moss.egg-info/
+build/
+.env
+.ruff_cache/
+.venv/

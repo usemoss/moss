@@ -10,7 +10,7 @@
  * - MOSS_INDEX_NAME: Name of existing FAQ index to query
  */
 
-import { MossClient } from "@inferedge/moss";
+import { MossClient } from "@moss-dev/moss";
 import { config } from 'dotenv';
 
 // Load environment variables
