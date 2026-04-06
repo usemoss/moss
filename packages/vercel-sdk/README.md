@@ -7,13 +7,13 @@ Gives AI agents the ability to search, create indexes, and manage documents thro
 ## Install
 
 ```bash
-npm install @moss-tools/vercel-sdk @inferedge/moss ai zod
+npm install @moss-tools/vercel-sdk @moss-dev/moss ai zod
 ```
 
 ## Usage
 
 ```typescript
-import { MossClient } from '@inferedge/moss';
+import { MossClient } from '@moss-dev/moss';
 import { mossSearchTool, mossCreateIndexTool } from '@moss-tools/vercel-sdk';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';

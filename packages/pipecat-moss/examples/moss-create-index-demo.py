@@ -2,7 +2,7 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
-from inferedge_moss import DocumentInfo, MossClient
+from moss import DocumentInfo, MossClient
 from loguru import logger
 
 load_dotenv()
