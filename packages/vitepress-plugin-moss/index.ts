@@ -4,6 +4,7 @@ import type { SiteConfig, DefaultTheme } from 'vitepress'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
+import { sync } from '@moss-tools/md-indexer'
 
 export type { MossSearchOptions } from './types.js'
 
@@ -107,7 +108,6 @@ export function mossIndexerPlugin(): Plugin {
           indexName
         }
 
-        const { sync } = await import('@moss-tools/md-indexer')
         await sync({
           root: siteConfig.root, // VitePress root (where .vitepress/ lives); indexer reads srcDir from config
           creds
