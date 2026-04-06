@@ -45,7 +45,7 @@ class TestDefaultContextFormatter:
         assert result is not None
         assert "1. Return policy info" in result
         assert "source=faq.md" in result
-        assert "score=0.95" in result
+        assert "score=0.950" in result
         assert "2. Shipping details" in result
 
     def test_custom_prefix(self):

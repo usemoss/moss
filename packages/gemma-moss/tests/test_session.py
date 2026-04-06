@@ -112,7 +112,11 @@ class TestGemmaMossSession:
         )
         await session.ask("original question")
 
-        rewriter.assert_awaited_once_with("original question")
+        rewriter.assert_awaited_once()
+        call_args = rewriter.call_args
+        assert call_args[0][0] == "original question"
+        # History is passed by reference; at call time it was empty
+        assert call_args[0][1] is not None
         retriever.retrieve.assert_awaited_once_with("rewritten query")
 
     @pytest.mark.asyncio
@@ -221,6 +225,44 @@ class TestGemmaMossSession:
         history = session.get_history()
         assert len(history) == 1
         assert history[0] == {"role": "user", "content": "old"}
+
+    @pytest.mark.asyncio
+    async def test_ask_stream_yields_chunks_and_commits_history(self, MockAsyncClient):
+        """ask_stream() yields chunks and commits the full response to history."""
+        mock_client = MockAsyncClient.return_value
+
+        # Simulate streaming: ollama.chat(stream=True) returns an awaitable
+        # that resolves to an async iterator
+        chunk1 = MagicMock()
+        chunk1.message.content = "Hello "
+        chunk2 = MagicMock()
+        chunk2.message.content = "world"
+        chunk3 = MagicMock()
+        chunk3.message.content = ""  # empty chunk should be filtered
+
+        async def _stream():
+            for c in [chunk1, chunk2, chunk3]:
+                yield c
+
+        mock_client.chat = AsyncMock(return_value=_stream())
+
+        session = GemmaMossSession(
+            retriever=_mock_retriever(),
+            system_prompt="You are helpful.",
+        )
+
+        chunks = []
+        async for chunk in session.ask_stream("hi"):
+            chunks.append(chunk)
+
+        # Empty chunks should be filtered out
+        assert chunks == ["Hello ", "world"]
+
+        # History should contain the accumulated response
+        history = session.get_history()
+        assert len(history) == 2
+        assert history[0] == {"role": "user", "content": "hi"}
+        assert history[1] == {"role": "assistant", "content": "Hello world"}
 
     @pytest.mark.asyncio
     async def test_message_assembly_order(self, MockAsyncClient):

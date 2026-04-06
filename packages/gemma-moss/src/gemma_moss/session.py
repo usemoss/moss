@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from ollama import AsyncClient
 
@@ -20,12 +20,17 @@ __all__ = ["GemmaMossSession", "make_ollama_query_rewriter"]
 
 logger = logging.getLogger("gemma_moss")
 
+_DEFAULT_SYSTEM_PROMPT = (
+    "You are a helpful assistant. "
+    "Use the provided context to answer questions accurately."
+)
+
 
 @dataclass(frozen=True)
 class _PreparedTurn:
     """Internal dataclass holding the assembled messages for one turn."""
 
-    messages: list[dict[str, str]] = field(default_factory=list)
+    messages: list[dict[str, str]]
 
 
 class GemmaMossSession:
@@ -55,9 +60,9 @@ class GemmaMossSession:
         retriever: MossRetriever,
         model: str = "gemma4",
         ollama_host: str | None = None,
-        system_prompt: str,
-        query_rewriter: Callable[[str], Awaitable[str]] | None = None,
-        history: list[dict[str, str]] | None = None,
+        system_prompt: str = _DEFAULT_SYSTEM_PROMPT,
+        query_rewriter: Callable[[str, Sequence[dict[str, str]]], Awaitable[str]] | None = None,
+        history: Sequence[dict[str, str]] | None = None,
     ) -> None:
         """Initialize the session.
 
@@ -162,13 +167,14 @@ class GemmaMossSession:
         Yields:
             Response text chunks.
         """
-        stream = await self._ollama.chat(
+        async for chunk in await self._ollama.chat(
             model=self._model,
             messages=prepared.messages,
             stream=True,
-        )
-        async for chunk in stream:
-            yield chunk.message.content
+        ):
+            content = chunk.message.content
+            if content:
+                yield content
 
     def _commit_turn(self, message: str, response: str) -> None:
         """Persist user message and assistant reply to history.
@@ -194,7 +200,7 @@ class GemmaMossSession:
         """
         if self._query_rewriter is not None:
             try:
-                rewritten = await self._query_rewriter(message)
+                rewritten = await self._query_rewriter(message, self._history)
                 if rewritten:
                     return rewritten
                 logger.warning("Query rewriter returned empty string, using raw message")

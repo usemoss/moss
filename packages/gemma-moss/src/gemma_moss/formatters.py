@@ -57,7 +57,7 @@ class DefaultContextFormatter:
             if source := meta.get("source"):
                 extras.append(f"source={source}")
             if (score := getattr(doc, "score", None)) is not None:
-                extras.append(f"score={score}")
+                extras.append(f"score={score:.3f}")
 
             suffix = f" ({', '.join(extras)})" if extras else ""
             lines.append(f"{idx}. {text}{suffix}")
