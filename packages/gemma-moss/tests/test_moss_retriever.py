@@ -130,6 +130,8 @@ class TestMossRetriever:
         await retriever.query("test")
 
         call_args = retriever._client.query.call_args
-        options = call_args[1].get("options") or call_args[0][2] if len(call_args[0]) > 2 else call_args[1].get("options")
+        options = call_args[1].get("options")
+        if options is None and len(call_args[0]) > 2:
+            options = call_args[0][2]
         assert options.top_k == 3
         assert options.alpha == 0.5

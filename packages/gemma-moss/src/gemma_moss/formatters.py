@@ -15,11 +15,11 @@ __all__ = ["DefaultContextFormatter"]
 
 
 class DefaultContextFormatter:
-    """Format Moss search results into a context string for LLM consumption.
+    r"""Format Moss search results into a context string for LLM consumption.
 
     Usage::
 
-        formatter = DefaultContextFormatter(prefix="Context:\\n\\n")
+        formatter = DefaultContextFormatter(prefix="Context:\n\n")
         text = formatter(documents)  # str | None
     """
 

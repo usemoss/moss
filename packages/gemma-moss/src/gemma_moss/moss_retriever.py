@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from inferedge_moss import MossClient, QueryOptions, SearchResult
 
