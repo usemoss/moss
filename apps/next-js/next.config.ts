@@ -9,7 +9,11 @@ const nextConfig: NextConfig = {
     "onnxruntime",
     "onnxruntime-node",
   ],
-  // Configure webpack to exclude external packages
+  // Turbopack configuration (Next.js 16 default)
+  turbopack: {
+    resolveAlias: {},
+  },
+  // Also configure webpack as fallback
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = [
