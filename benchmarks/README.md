@@ -67,6 +67,10 @@ EMBEDDING_ENDPOINT=https://your-app--embedding-server-model-embed.modal.run
 EMBEDDING_DIMENSION=768
 ```
 
+## Test data
+
+`bench_100k_docs.json` contains the 100,000 FAQ-style documents used across all benchmarks. Use this file to reproduce results against the exact same corpus.
+
 ## Benchmark parameters
 
 - **Documents**: 100,000 FAQ-style documents across 8 categories

@@ -98,10 +98,10 @@ End-to-end query latency (embedding + search) on 100,000 documents, 750 measured
 |--------|-----|-----|-----|------|
 | **Moss** | **3.1 ms** | **4.3 ms** | **5.4 ms** | **3.3 ms** |
 | Pinecone | 432.6 ms | 732.1 ms | 934.2 ms | 485.8 ms |
-| Qdrant | 597.8 ms | 775.0 ms | 1120.2 ms | 637.6ms |
+| Qdrant | 597.6 ms | 682.0 ms | 771.4 ms | 596.5 ms |
 | ChromaDB | 351.8 ms | 423.5 ms | 538.5 ms | 358.0 ms |
 
-Moss includes embedding in the measurement — competitors use an external embedding service ([modal](https://modal.com/docs/examples/text_embeddings_inference)). Pinecone uses cloud search.
+Moss includes embedding in the measurement — competitors use an external embedding service ([modal](https://modal.com/docs/examples/text_embeddings_inference)). Pinecone and Qdrant use cloud search.
 
 > [Reproduce these benchmarks →](./benchmarks/)
 
