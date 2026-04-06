@@ -2,31 +2,29 @@
 title: JavaScript SDK
 ---
 
-**@inferedge/moss v1.0.0-beta.7**
-
-***
-
 # Moss client library for JavaScript
 
-`@inferedge/moss` enables **private, on-device semantic search** in your web, mobile, and edge applications - without cloud dependencies.
+`@inferedge/moss` enables **private, on-device semantic search** in your web, mobile, and edge applications — without cloud dependencies.
 
 Built for developers who want **instant, memory-efficient, privacy-first AI features** inside their apps.
 
-## ✨ Features
+---
 
-- ⚡ **On-Device Vector Search** - Sub-millisecond retrieval with zero network latency
-- 🔍 **Semantic Search & Hybrid Search** - Beyond keyword matching
-- 📦 **Multi-Index Support** - Manage multiple isolated search spaces
-- 🛠️ **Tiny SDK** - Optimized for edge deployments
-- 🛡️ **Privacy-First by Design** - No server-side cloud calls required to perform searches
+## Features
 
-## 📦 Installation
+- **On-device vector search** — Sub-millisecond retrieval with zero network latency
+- **Semantic search and hybrid search** — Beyond keyword matching
+- **Multi-index support** — Manage multiple isolated search spaces
+- **Tiny SDK** — Optimized for edge deployments
+- **Privacy-first by design** — No server-side cloud calls required to perform searches
+
+## Installation
 
 ```bash
 npm install @inferedge/moss
 ```
 
-## 🚀 Quick Start
+## Quick start
 
 ```typescript
 import { MossClient, DocumentInfo } from "@inferedge/moss";
@@ -45,34 +43,30 @@ async function main() {
       text: "How do I track my order? You can track your order by logging into your account.",
     },
     {
-      id: "doc2", 
+      id: "doc2",
       text: "What is your return policy? We offer a 30-day return policy for most items.",
     },
     {
       id: "doc3",
       text: "How can I change my shipping address? Contact our customer service team.",
     },
-    // Add more documents here
-    // .
-    // .
-    // .
   ];
 
-  // Create an index with documents and model
+  // Create an index with documents
   const indexName = "faqs";
-  const created = await mossClient.createIndex(
-    indexName,
-    documents
-  ); // Defaults to the service's `moss-minilm` model when omitted
+  const created = await mossClient.createIndex(indexName, documents);
+  // Defaults to moss-minilm when model is omitted
   console.log("Index created:", created);
 
   // Load the index before searching
   await mossClient.loadIndex(indexName);
 
   // Search the index
-  const result = await mossClient.query(indexName, "How do I return a damaged product?", {
-    topK: 3,
-  });
+  const result = await mossClient.query(
+    indexName,
+    "How do I return a damaged product?",
+    { topK: 3 }
+  );
 
   // Display results
   console.log(`Query: ${result.query}`);
@@ -87,15 +81,17 @@ async function main() {
 main().catch(console.error);
 ```
 
-## 🔥 Example Use Cases
+## Example use cases
 
 - Smart knowledge base search
-- Realtime Voice AI agents
+- Realtime voice AI agents
 - Personal note-taking search
 - Private in-app AI features (recommendations, retrieval)
 - Local semantic search in edge devices, AR/VR, mobile apps
 
-## 🧠 Providing custom embeddings
+---
+
+## Providing custom embeddings
 
 Already using your own embedding model? Supply vectors directly when managing indexes:
 
@@ -124,14 +120,16 @@ const results = await mossClient.query("custom-embeddings", "", {
 
 Leaving `modelId` undefined defaults to `moss-minilm`. You can still pass `{ modelId: "moss-mediumlm" }` or another supported identifier if you want the service to generate embeddings for documents without the optional `embedding` field.
 
-## 📄 License
+---
+
+## License
 
 This package is licensed under the [PolyForm Shield License 1.0.0](_media/LICENSE.txt).
 
-- ✅ Free for testing, evaluation, internal use, and modifications.
-- ❌ Not permitted for production or competing commercial use.
-- 📩 For commercial licenses, contact: <contact@moss.dev>
+- Free for testing, evaluation, internal use, and modifications.
+- Not permitted for production or competing commercial use.
+- For commercial licenses, contact: [contact@moss.dev](mailto:contact@moss.dev)
 
-## 📬 Contact
+## Contact
 
-For support, commercial licensing, or partnership inquiries, contact us: [contact@moss.dev](mailto:contact@moss.dev)
+For support, commercial licensing, or partnership inquiries: [contact@moss.dev](mailto:contact@moss.dev)

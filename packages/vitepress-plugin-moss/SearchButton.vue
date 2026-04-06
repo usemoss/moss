@@ -45,30 +45,57 @@ onMounted(() => {
 
 <style scoped>
 .moss-search-btn {
+  --moss-bg: #fafaf8;
+  --moss-surface: #fff;
+  --moss-muted: #888;
+  --moss-accent: #0a0a0a;
+  --moss-border: #e5e5e0;
+  --moss-title: #0a0a0a;
+
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 12px;
-  background: var(--vp-c-bg-alt);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
+  gap: 10px;
+  padding: 7px 14px;
+  background: var(--moss-bg);
+  border: 1px solid var(--moss-border);
+  border-radius: 10px;
   cursor: pointer;
-  color: var(--vp-c-text-2);
-  font-size: 13px;
-  transition: border-color 0.2s, color 0.2s;
+  color: var(--moss-muted);
+  font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  min-width: 200px;
+}
+
+:global(.dark) .moss-search-btn {
+  --moss-bg: #0a0a0a;
+  --moss-surface: #151515;
+  --moss-muted: #666;
+  --moss-accent: #f0f0ee;
+  --moss-border: #252523;
+  --moss-title: #f0f0ee;
 }
 
 .moss-search-btn:hover {
-  border-color: var(--vp-c-brand-1);
-  color: var(--vp-c-text-1);
+  border-color: var(--moss-accent);
+  color: var(--moss-title);
+  background: color-mix(in srgb, var(--moss-accent) 4%, var(--moss-bg));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--moss-accent) 8%, transparent);
 }
 
 .moss-search-btn-text {
   flex: 1;
+  text-align: left;
 }
 
 @media (max-width: 767px) {
+  .moss-search-btn {
+    min-width: auto;
+    padding: 7px 10px;
+  }
   .moss-search-btn-text,
   .moss-search-btn-keys {
     display: none;
@@ -77,16 +104,18 @@ onMounted(() => {
 
 .moss-search-btn-keys {
   display: flex;
-  gap: 2px;
-  opacity: 0.6;
+  gap: 3px;
 }
 
 .moss-search-btn-keys kbd {
   font-family: inherit;
-  font-size: 11px;
-  padding: 1px 5px;
-  background: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 1px 6px;
+  background: var(--moss-surface);
+  border: 1px solid var(--moss-border);
+  border-radius: 5px;
+  color: var(--moss-muted);
+  line-height: 1.5;
 }
 </style>

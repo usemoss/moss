@@ -7,6 +7,10 @@ import os
 import warnings
 from pathlib import Path
 
+from unittest.mock import MagicMock, patch
+
+from moss import MossClient
+
 import pytest
 from dotenv import load_dotenv
 
@@ -52,3 +56,29 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if item.fspath.basename in CLOUD_TEST_FILES:
             item.add_marker(skip_cloud)
+
+
+@pytest.fixture
+def client():
+    with (
+        patch("moss.client.moss_client.ManageClient") as mock_manage,
+        patch("moss.client.moss_client.IndexManager") as mock_mgr,
+    ):
+        c = MossClient("test-project", "test-key")
+        c._manage = mock_manage.return_value
+        c._manager = mock_mgr.return_value
+        c._manager.has_index = MagicMock(return_value=True)
+        yield c
+
+
+@pytest.fixture
+def unloaded_client():
+    with (
+        patch("moss.client.moss_client.ManageClient") as mock_manage,
+        patch("moss.client.moss_client.IndexManager") as mock_mgr,
+    ):
+        c = MossClient("test-project", "test-key")
+        c._manage = mock_manage.return_value
+        c._manager = mock_mgr.return_value
+        c._manager.has_index = MagicMock(return_value=False)
+        yield c

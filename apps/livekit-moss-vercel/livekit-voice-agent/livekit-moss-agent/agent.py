@@ -12,11 +12,11 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from dotenv import load_dotenv
-from inferedge_moss import MossClient, QueryOptions
 from livekit import agents, rtc
 from livekit.agents import Agent, AgentSession, ChatMessage, ChatRole, RunContext
 from livekit.agents.llm import ChatChunk, function_tool
 from livekit.plugins import cartesia, deepgram, openai, silero  # type: ignore
+from moss import MossClient, QueryOptions
 
 # Load environment variables
 load_dotenv(".env.local")

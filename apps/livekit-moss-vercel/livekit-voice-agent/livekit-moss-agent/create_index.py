@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List
 
 from dotenv import load_dotenv
-from inferedge_moss import DocumentInfo, MossClient
+from moss import DocumentInfo, MossClient
 
 # Load environment variables from the project .env file
 load_dotenv(".env.local")

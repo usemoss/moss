@@ -64,7 +64,7 @@ def fetch_docs_from_moss():
 
 
 async def _fetch_moss_docs(index_name, project_id, project_key):
-    from inferedge_moss import MossClient
+    from moss import MossClient
 
     client = MossClient(project_id, project_key)
     print(f"  Fetching docs from Moss index '{index_name}'...")

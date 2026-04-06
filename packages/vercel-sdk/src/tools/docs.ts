@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { MossClient } from '@inferedge/moss';
+import type { MossClient } from '@moss-dev/moss';
 
 export interface MossAddDocsToolOptions {
   client: MossClient;

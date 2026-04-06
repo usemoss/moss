@@ -6,5 +6,5 @@ export default defineConfig({
   dts: true,
   sourcemap: false,
   clean: true,
-  external: ['@inferedge/moss', 'ai', 'zod'],
+  external: ['@moss-dev/moss', 'ai', 'zod'],
 });

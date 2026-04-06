@@ -25,6 +25,8 @@ export default defineConfig({
         indexName: process.env.MOSS_INDEX_NAME || 'moss-sdk-docs',
       } as any,
     },
+    logo: '/moss-logo.png',
+
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Moss Portal', link: 'https://usemoss.dev', target: '_blank', rel: 'noopener noreferrer' },

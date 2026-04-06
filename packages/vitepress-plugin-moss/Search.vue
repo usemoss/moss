@@ -1,666 +1,1000 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { useRouter } from 'vitepress';
-import SearchButton from './SearchButton.vue';
-// @ts-ignore — resolved by the virtual module at build time
-import getMossConfig from 'virtual:moss-config';
+import { ref, shallowRef, computed, nextTick, watch, onBeforeUnmount, onMounted } from 'vue'
+import { useData, useRouter } from 'vitepress'
+import { onKeyStroke, useScrollLock, useInfiniteScroll } from '@vueuse/core'
+import { useFocusTrap } from '@vueuse/integrations/useFocusTrap'
+import type { SearchResult, QueryResultDocumentInfo } from '@inferedge/moss'
+import SearchButton from './SearchButton.vue'
+import mossLogo from './InferEdgeLogo_Dark_Icon.png'
 
-const config = getMossConfig();
-import InferEdgeLogo from './InferEdgeLogo_Dark_Icon.png';
-
-const isOpen = ref(false);
-const query = ref('');
-const results = ref<MossResult[]>([]);
-const selectedIndex = ref(-1);
-const isIndexLoading = ref(false);
-const isSearching = ref(false);
-const errorMsg = ref('');
-const searchInput = ref<HTMLInputElement | null>(null);
-
+// --------- Metadata structure for Search Results ---------
 interface MossMetadata {
-  title: string;
-  groupId: string;
-  type: 'page' | 'header' | 'text' | 'code';
-  groupTitle: string;
-  displayBreadcrumb: string;
-  sanitizedText: string;
-  navigation: string; // the URL to navigate to, including anchor e.g. /guide#installation
+  title: string
+  path: string
+  groupId: string
+  type: 'page' | 'header' | 'text' | 'code'
+  groupTitle: string
+  displayBreadcrumb: string
+  sanitizedText: string
+  navigation?: string
 }
 
-interface MossResult {
-  id: string;
-  text: string;
-  score?: number;
-  metadata?: MossMetadata;
+// --------- UI View Model for each search hit ---------
+interface ResultItemVM {
+  id: string
+  data: QueryResultDocumentInfo
+  flatIndex: number
+  htmlSnippet: string
+  breadcrumb: string
+  breadcrumbHtml: string
+  titleHtml?: string
+  navigation: string
+  type: 'page' | 'header' | 'text' | 'code'
+  isSynthesized?: boolean
 }
 
-// ---------------------------------------------------------------------------
-// Moss client
-// ---------------------------------------------------------------------------
-let mossClient: any = null;
-const isClientReady = ref(false);
-const indexLoaded = ref(false);
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+// --------- UI View Model for each group of search hits ---------
+interface GroupVM {
+  title: string
+  path: string
+  headerMatch: ResultItemVM | null
+  children: ResultItemVM[]
+}
 
-// Phase 1: import SDK and create client — fast, enables cloud (hot-path) queries immediately
-const initClient = async () => {
-  if (mossClient) return;
-  errorMsg.value = '';
-  try {
-    const { MossClient } = await import('@inferedge/moss');
-    mossClient = new MossClient(config.projectId, config.projectKey);
-    isClientReady.value = true;
-  } catch (err: any) {
-    console.error('[Moss] Failed to initialize client:', err);
-    errorMsg.value = 'Could not initialize search. Check your Moss configuration.';
+// --------- Configuration ---------
+const { theme } = useData()
+const router = useRouter()
+const options = computed(() => theme.value.search?.options || {})
+
+// --------- Open State (self-contained) ---------
+const isOpen = ref(false)
+const isMounted = ref(false)
+
+// --------- Element refs ---------
+const el = ref<HTMLElement>()
+const searchInput = ref<HTMLInputElement>()
+
+// --------- Input vs Search State ---------
+const inputValue = ref('')
+const searchQuery = ref('')
+
+const rawResults = shallowRef<QueryResultDocumentInfo[]>([])
+const displayGroups = shallowRef<GroupVM[]>([])
+const flatNavigationList = shallowRef<Array<{ path: string }>>([])
+
+const status = ref<'idle' | 'initializing' | 'ready' | 'searching' | 'processing' | 'error'>('idle')
+const selectedIndex = ref(0)
+const errorMessage = ref('')
+
+// --------- Persistent Client ---------
+const mossClient = shallowRef<any>(null)
+let initPromise: Promise<void> | null = null
+let lastQueryToken = 0
+
+// --------- Performance Profiling ---------
+const ENABLE_PROFILING = import.meta.env.VITE_MOSS_LOG_LEVEL === 'info'
+let currentProfile: {
+  query: string; inputTime: number; searchStartTime: number; searchEndTime: number
+  processingStartTime: number; processingEndTime: number; escapeHtmlTime: number
+  generateSnippetTime: number; highlightBreadcrumbTime: number; visibleGroupsTime: number; totalTime: number
+} | null = null
+
+let escapeHtmlCallCount = 0, escapeHtmlTotalTime = 0
+let generateSnippetCallCount = 0, generateSnippetTotalTime = 0
+let highlightBreadcrumbCallCount = 0, highlightBreadcrumbTotalTime = 0
+
+function getTime() { return performance?.now?.() ?? Date.now() }
+
+function logProfile() {
+  if (!ENABLE_PROFILING || !currentProfile) return
+  const p = currentProfile
+  console.group(`[Moss Performance] "${p.query}"`)
+  console.log(`Total: ${p.totalTime.toFixed(2)}ms`)
+  console.log(`  ├─ Search API: ${(p.searchEndTime - p.searchStartTime).toFixed(2)}ms`)
+  console.log(`  ├─ Processing: ${(p.processingEndTime - p.processingStartTime).toFixed(2)}ms`)
+  console.log(`  │  ├─ escapeHtml: ${p.escapeHtmlTime.toFixed(2)}ms (${escapeHtmlCallCount} calls)`)
+  console.log(`  │  ├─ generateSnippet: ${p.generateSnippetTime.toFixed(2)}ms (${generateSnippetCallCount} calls)`)
+  console.log(`  │  └─ highlightBreadcrumb: ${p.highlightBreadcrumbTime.toFixed(2)}ms (${highlightBreadcrumbCallCount} calls)`)
+  console.log(`  └─ visibleGroups: ${p.visibleGroupsTime.toFixed(2)}ms`)
+  console.groupEnd()
+  escapeHtmlCallCount = escapeHtmlTotalTime = generateSnippetCallCount = generateSnippetTotalTime = 0
+  highlightBreadcrumbCallCount = highlightBreadcrumbTotalTime = 0
+  currentProfile = null
+}
+
+const isLoading = computed(() => ['initializing', 'searching', 'processing'].includes(status.value))
+
+// --------- Spinner UX smoothing ---------
+const isSpinnerVisible = ref(false)
+let spinnerShowTimer: ReturnType<typeof setTimeout> | null = null
+let spinnerHideTimer: ReturnType<typeof setTimeout> | null = null
+let spinnerShownAt: number | null = null
+
+function clearSpinnerTimers() {
+  if (spinnerShowTimer) { clearTimeout(spinnerShowTimer); spinnerShowTimer = null }
+  if (spinnerHideTimer) { clearTimeout(spinnerHideTimer); spinnerHideTimer = null }
+}
+
+watch(isLoading, (loading) => {
+  clearSpinnerTimers()
+  if (loading) {
+    spinnerShowTimer = setTimeout(() => { isSpinnerVisible.value = true; spinnerShownAt = Date.now() }, 120)
+  } else {
+    const elapsed = spinnerShownAt ? Date.now() - spinnerShownAt : 0
+    spinnerHideTimer = setTimeout(() => { isSpinnerVisible.value = false; spinnerShownAt = null }, Math.max(0, 200 - elapsed))
   }
-};
+})
 
-// Phase 2: download model + index locally — runs in background, enables sub-10ms on-device queries
-const loadLocalIndex = async () => {
-  if (indexLoaded.value || isIndexLoading.value || !mossClient) return;
-  isIndexLoading.value = true;
-  try {
-    await mossClient.loadIndex(config.indexName);
-    indexLoaded.value = true;
-  } catch (err: any) {
-    console.error('[Moss] Failed to load local index, staying on cloud search:', err);
-  } finally {
-    isIndexLoading.value = false;
+// --------- Infinite scroll ---------
+const dropdownEl = ref<HTMLElement>()
+const renderLimit = ref(15)
+
+const visibleGroups = computed(() => {
+  const start = ENABLE_PROFILING ? getTime() : 0
+  const limit = renderLimit.value
+  const result: GroupVM[] = []
+  let count = 0
+  for (const group of displayGroups.value) {
+    if (count >= limit) break
+    const newGroup: GroupVM = { ...group, children: [] }
+    if (group.headerMatch) { if (count >= limit) break; count++ }
+    const remaining = limit - count
+    if (remaining > 0) {
+      if (group.children.length <= remaining) { newGroup.children = group.children; count += group.children.length }
+      else { newGroup.children = group.children.slice(0, remaining); count += remaining }
+    }
+    result.push(newGroup)
   }
-};
+  if (ENABLE_PROFILING && currentProfile) currentProfile.visibleGroupsTime = getTime() - start
+  return result
+})
 
-// ---------------------------------------------------------------------------
-// Open / close
-// ---------------------------------------------------------------------------
-const open = async () => {
-  isOpen.value = true;
-  await initClient(); // fast — just SDK import + constructor; enables cloud queries
-  loadLocalIndex();   // fire & forget — background model + index download
-  await nextTick();
-  searchInput.value?.focus();
-};
+useInfiniteScroll(dropdownEl, () => {
+  const total = displayGroups.value.reduce((s, g) => s + (g.headerMatch ? 1 : 0) + g.children.length, 0)
+  const visible = visibleGroups.value.reduce((s, g) => s + (g.headerMatch ? 1 : 0) + g.children.length, 0)
+  if (visible < total) renderLimit.value += 20
+}, { distance: 50 })
 
-const close = () => {
-  isOpen.value = false;
-  query.value = '';
-  results.value = [];
-  selectedIndex.value = -1;
-  errorMsg.value = '';
-};
+watch(inputValue, () => { renderLimit.value = 15 })
 
-// ---------------------------------------------------------------------------
-// Search
-// ---------------------------------------------------------------------------
+const maxMatchPerPage = computed(() => (options.value as any).MaxMatchPerPage ?? 2)
+
+// --------- Helpers ---------
+function escapeHtml(str: string) {
+  const start = ENABLE_PROFILING ? getTime() : 0
+  const result = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  if (ENABLE_PROFILING) { escapeHtmlCallCount++; escapeHtmlTotalTime += getTime() - start; if (currentProfile) currentProfile.escapeHtmlTime = escapeHtmlTotalTime }
+  return result
+}
+
+function getTypeIcon(type: 'page' | 'header' | 'text' | 'code') {
+  switch (type) {
+    case 'page': return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>'
+    case 'header': return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>'
+    case 'code': return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>'
+    default: return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>'
+  }
+}
+
+// --------- Display groups processor ---------
+function updateDisplayGroups() {
+  const results = rawResults.value
+  const q = searchQuery.value.trim()
+  if (!q || results.length === 0) {
+    displayGroups.value = []; flatNavigationList.value = []; selectedIndex.value = 0; return
+  }
+  const processingStart = ENABLE_PROFILING ? getTime() : 0
+  if (ENABLE_PROFILING && currentProfile) currentProfile.processingStartTime = processingStart
+  status.value = 'processing'
+
+  const safeQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${safeQ})`, 'gi')
+
+  const generateSnippet = (text: string): string => {
+    const t0 = ENABLE_PROFILING ? getTime() : 0
+    if (!text) return ''
+    if (text.length <= 150) {
+      const r = escapeHtml(text).replace(regex, '<span class="Moss-Match">$&</span>')
+      if (ENABLE_PROFILING) { generateSnippetCallCount++; generateSnippetTotalTime += getTime() - t0; if (currentProfile) currentProfile.generateSnippetTime = generateSnippetTotalTime }
+      return r
+    }
+    const idx = text.toLowerCase().indexOf(q.toLowerCase())
+    let snippet: string
+    if (idx === -1) { snippet = escapeHtml(text.slice(0, 100)) + '...' }
+    else {
+      let s = Math.max(0, idx - 20), e = Math.min(text.length, idx + q.length + 100)
+      snippet = (s > 0 ? '...' : '') + text.slice(s, e) + (e < text.length ? '...' : '')
+      snippet = escapeHtml(snippet).replace(regex, '<span class="Moss-Match">$&</span>')
+    }
+    if (ENABLE_PROFILING) { generateSnippetCallCount++; generateSnippetTotalTime += getTime() - t0; if (currentProfile) currentProfile.generateSnippetTime = generateSnippetTotalTime }
+    return snippet
+  }
+
+  const highlightBreadcrumb = (text: string): string => {
+    const t0 = ENABLE_PROFILING ? getTime() : 0
+    if (!text) return ''
+    const r = escapeHtml(text).replace(regex, '<span class="Moss-Match">$&</span>')
+    if (ENABLE_PROFILING) { highlightBreadcrumbCallCount++; highlightBreadcrumbTotalTime += getTime() - t0; if (currentProfile) currentProfile.highlightBreadcrumbTime = highlightBreadcrumbTotalTime }
+    return r
+  }
+
+  const map = new Map<string, GroupVM>()
+  const navLinksPerGroup = new Map<string, Set<string>>()
+
+  results.forEach(item => {
+    const meta = item.metadata as unknown as MossMetadata
+    const groupId = meta.groupId
+    const navigation = meta.navigation || item.id
+    if (!navLinksPerGroup.has(groupId)) navLinksPerGroup.set(groupId, new Set())
+    const used = navLinksPerGroup.get(groupId)!
+    if (used.has(navigation)) return
+
+    let breadcrumb = ''
+    if (meta.type !== 'page') {
+      breadcrumb = meta.displayBreadcrumb || meta.title || ({ header: 'Heading', code: 'Code Block', text: 'Text' } as any)[meta.type] || 'Section'
+    }
+
+    if (!map.has(groupId)) {
+      map.set(groupId, { title: meta.groupTitle || 'Documentation', path: groupId, headerMatch: null, children: [] })
+    }
+    const group = map.get(groupId)!
+    if (meta.type !== 'page' && group.children.length >= maxMatchPerPage.value) return
+
+    const vm: ResultItemVM = {
+      id: item.id, data: item, flatIndex: 0,
+      breadcrumb, breadcrumbHtml: breadcrumb ? highlightBreadcrumb(breadcrumb) : '',
+      htmlSnippet: generateSnippet(meta.sanitizedText || item.text || ''),
+      titleHtml: highlightBreadcrumb(meta.groupTitle || meta.title || 'Documentation'),
+      navigation, type: meta.type || 'text'
+    }
+
+    if (meta.type === 'page') { if (!group.headerMatch) { group.headerMatch = vm; used.add(navigation) } }
+    else { if (group.children.length < maxMatchPerPage.value) { group.children.push(vm); used.add(navigation) } }
+  })
+
+  // Ensure every group has a page-level anchor even if no type=page chunk was returned
+  for (const group of map.values()) {
+    if (!group.headerMatch && group.children.length > 0) {
+      group.headerMatch = {
+        id: group.path,
+        data: null as any,
+        flatIndex: 0,
+        htmlSnippet: '',
+        breadcrumb: '',
+        breadcrumbHtml: '',
+        titleHtml: highlightBreadcrumb(group.title),
+        navigation: group.path,
+        type: 'page',
+        isSynthesized: true
+      }
+    }
+  }
+
+  let idx = 0
+  const groups = Array.from(map.values())
+  const navList: Array<{ path: string }> = []
+  groups.forEach(g => {
+    if (g.headerMatch) { g.headerMatch.flatIndex = idx++; navList.push({ path: g.headerMatch.navigation }) }
+    g.children.forEach(c => { c.flatIndex = idx++; navList.push({ path: c.navigation }) })
+  })
+
+  if (ENABLE_PROFILING && currentProfile) currentProfile.processingEndTime = getTime()
+  displayGroups.value = groups
+  flatNavigationList.value = navList
+  if (selectedIndex.value >= navList.length) selectedIndex.value = Math.max(0, navList.length - 1)
+  status.value = 'ready'
+  if (ENABLE_PROFILING && currentProfile) nextTick(() => { currentProfile!.totalTime = getTime() - currentProfile!.inputTime; logProfile() })
+}
+
+// --------- Moss Client ---------
+async function initMoss() {
+  if (mossClient.value || initPromise) return initPromise
+  status.value = 'initializing'
+  initPromise = (async () => {
+    try {
+      const { MossClient } = await import(/* @vite-ignore */ '@inferedge/moss')
+      const client = new MossClient((options.value as any).projectId, (options.value as any).projectKey)
+      mossClient.value = client
+      status.value = 'ready'
+      client.loadIndex((options.value as any).indexName).catch(() => {})
+    } catch (e) {
+      status.value = 'error'
+      errorMessage.value = `Failed to initialize search: ${e instanceof Error ? e.message : String(e)}`
+      initPromise = null; throw e
+    }
+  })()
+  return initPromise
+}
+
+// --------- Search ---------
 const performSearch = async (q: string) => {
-  if (!q.trim() || !mossClient) {
-    results.value = [];
-    return;
+  const currentQuery = q.trim()
+  if (!currentQuery) {
+    rawResults.value = []; displayGroups.value = []; flatNavigationList.value = []; selectedIndex.value = 0; status.value = 'ready'; return
   }
-  isSearching.value = true;
+  const token = ++lastQueryToken
+  try { if (!mossClient.value) await initMoss() } catch { return }
   try {
-    const topK = config.search?.topK ?? 10;
-    const response = await mossClient.query(config.indexName, q, { topK });
-    results.value = response.docs ?? [];
-    selectedIndex.value = -1;
-  } catch (err) {
-    console.error('[Moss] Query error:', err);
-    results.value = [];
-  } finally {
-    isSearching.value = false;
+    status.value = 'searching'
+    const searchStart = getTime()
+    if (ENABLE_PROFILING && currentProfile) currentProfile.searchStartTime = searchStart
+    const topk = (options.value as any).topk ?? 20
+    const response = (await mossClient.value.query((options.value as any).indexName, currentQuery, topk)) as SearchResult
+    if (token !== lastQueryToken || currentQuery !== searchQuery.value.trim()) return
+    if (ENABLE_PROFILING && currentProfile) currentProfile.searchEndTime = getTime()
+    rawResults.value = Array.isArray(response?.docs) ? response.docs : []
+    updateDisplayGroups()
+    selectedIndex.value = 0
+  } catch { status.value = 'error'; errorMessage.value = 'Search failed.' }
+}
+
+function onInput() {
+  const q = inputValue.value
+  if (ENABLE_PROFILING) {
+    currentProfile = { query: q, inputTime: getTime(), searchStartTime: 0, searchEndTime: 0, processingStartTime: 0, processingEndTime: 0, escapeHtmlTime: 0, generateSnippetTime: 0, highlightBreadcrumbTime: 0, visibleGroupsTime: 0, totalTime: 0 }
   }
-};
+  searchQuery.value = q
+  performSearch(q)
+}
 
-watch(query, (q) => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  if (!q.trim()) {
-    results.value = [];
-    selectedIndex.value = -1;
-    return;
+function clearSearch() {
+  inputValue.value = ''; searchQuery.value = ''; rawResults.value = []; displayGroups.value = []
+  flatNavigationList.value = []; selectedIndex.value = 0; status.value = 'ready'
+}
+
+// --------- Navigation ---------
+function handleSelect(index: number) {
+  if (index < 0 || index >= flatNavigationList.value.length) return
+  const item = flatNavigationList.value[index]
+  if (item?.path) { try { router.go(item.path); isOpen.value = false } catch (e) { console.error('Navigation failed:', e) } }
+}
+
+function scrollToActive() {
+  nextTick(() => el.value?.querySelector('.Moss-Item[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+}
+
+// --------- Focus trap & scroll lock ---------
+const { activate, deactivate } = useFocusTrap(el, { immediate: false, escapeDeactivates: false })
+const isLocked = useScrollLock(typeof window !== 'undefined' ? document.body : null)
+
+watch(isOpen, (open) => {
+  if (open) {
+    isLocked.value = true
+    nextTick(() => { activate(); searchInput.value?.focus() })
+  } else {
+    isLocked.value = false
+    deactivate()
+    clearSearch()
+    status.value = 'idle'
   }
-  debounceTimer = setTimeout(() => performSearch(q), 200);
-});
+})
 
-// Re-run search when client first becomes available (edge case: user typed before import finished)
-watch(isClientReady, (ready) => {
-  if (ready && query.value.trim()) performSearch(query.value);
-});
+// --------- Keyboard shortcuts ---------
+onKeyStroke('Escape', () => { isOpen.value = false })
 
-// Seamless handoff: re-run active query with local index once it finishes downloading
-watch(indexLoaded, (loaded) => {
-  if (loaded && query.value.trim()) performSearch(query.value);
-});
+onKeyStroke('ArrowUp', (e) => {
+  if (!isOpen.value) return
+  e.preventDefault()
+  selectedIndex.value = Math.max(0, selectedIndex.value - 1)
+  scrollToActive()
+})
 
-// ---------------------------------------------------------------------------
-// Navigation
-// ---------------------------------------------------------------------------
-const router = useRouter();
+onKeyStroke('ArrowDown', (e) => {
+  if (!isOpen.value) return
+  e.preventDefault()
+  selectedIndex.value = Math.min(Math.max(0, flatNavigationList.value.length - 1), selectedIndex.value + 1)
+  scrollToActive()
+})
 
-const navigateTo = (result: MossResult) => {
-  close();
-  // Use metadata.navigation which is the clean URL with anchor, e.g. /guide#installation
-  // Fall back to result.id if metadata isn't present
-  router.go(result.metadata?.navigation ?? result.id);
-};
+onKeyStroke('Enter', (e) => {
+  if (!isOpen.value) return
+  e.preventDefault()
+  handleSelect(selectedIndex.value)
+})
 
-// ---------------------------------------------------------------------------
-// Keyboard handling
-// ---------------------------------------------------------------------------
-const handleGlobalKeydown = (e: KeyboardEvent) => {
-  if (
-    (e.key?.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) ||
-    (!isEditingContent(e) && e.key === '/')
-  ) {
-    e.preventDefault();
-    isOpen.value ? close() : open();
-  }
-};
+onKeyStroke('k', (e) => {
+  if (e.metaKey || e.ctrlKey) { e.preventDefault(); isOpen.value = !isOpen.value }
+})
 
-const handleModalKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') {
-    close();
-  } else if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    selectedIndex.value = Math.min(selectedIndex.value + 1, results.value.length - 1);
-    scrollResultIntoView(selectedIndex.value);
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    selectedIndex.value = Math.max(selectedIndex.value - 1, -1);
-    scrollResultIntoView(selectedIndex.value);
-  } else if (e.key === 'Enter' && selectedIndex.value >= 0) {
-    e.preventDefault();
-    navigateTo(results.value[selectedIndex.value]);
-  }
-};
+onKeyStroke('/', (e) => {
+  const t = e.target as HTMLElement
+  if (!t.isContentEditable && !['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName)) { e.preventDefault(); isOpen.value = true }
+})
 
-const scrollResultIntoView = (index: number) => {
-  if (index < 0) return;
-  const el = document.querySelector(`.moss-result[data-index="${index}"]`);
-  el?.scrollIntoView({ block: 'nearest' });
-};
-
-const isEditingContent = (e: KeyboardEvent): boolean => {
-  const el = e.target as HTMLElement;
-  return (
-    el.isContentEditable ||
-    ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)
-  );
-};
-
-onMounted(() => window.addEventListener('keydown', handleGlobalKeydown));
-onUnmounted(() => window.removeEventListener('keydown', handleGlobalKeydown));
-
-// ---------------------------------------------------------------------------
-// Result helpers
-// ---------------------------------------------------------------------------
-const getTitle = (r: MossResult): string => {
-  return r.metadata?.title || r.text.split('\n')[0] || 'Untitled';
-};
-
-const getBreadcrumb = (r: MossResult): string => {
-  return r.metadata?.displayBreadcrumb ?? '';
-};
-
-const getPageTitle = (r: MossResult): string => r.metadata?.groupTitle ?? '';
-
-const getSnippet = (r: MossResult): string => {
-  // sanitizedText is the cleaned content without heading prefix
-  const s = r.metadata?.sanitizedText ?? '';
-  if (s) return s.slice(0, 140);
-  // fallback: strip the injected heading line from .text
-  const lines = r.text.split('\n').filter(Boolean);
-  return lines.slice(2).join(' ').slice(0, 140);
-};
-
-const getTypeIcon = (r: MossResult): string => {
-  switch (r.metadata?.type) {
-    case 'code': return '#';
-    case 'header': return '§';
-    default: return '';
-  }
-};
+onMounted(() => { isMounted.value = true; initMoss().catch(() => {}) })
+onBeforeUnmount(() => { isLocked.value = false; deactivate(); clearSpinnerTimers() })
 </script>
 
 <template>
   <!-- Nav bar button -->
   <div class="moss-search-wrapper">
     <SearchButton
-      :text="config.search?.buttonText || 'Search'"
-      :aria-label="config.search?.buttonText || 'Search docs'"
-      @click="open"
+      :text="(options as any).search?.buttonText || 'Search'"
+      :aria-label="(options as any).search?.buttonText || 'Search docs'"
+      @click="isOpen = true"
     />
   </div>
 
   <!-- Search modal -->
   <Teleport to="body">
-    <div
-      v-if="isOpen"
-      class="moss-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Search"
-      @click.self="close"
-      @keydown="handleModalKeydown"
-    >
-      <div class="moss-modal">
-        <!-- Header: search input -->
-        <div class="moss-header">
-          <div class="moss-input-wrap">
-            <svg
-              class="moss-icon-search"
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              ref="searchInput"
-              v-model="query"
-              type="search"
-              class="moss-input"
-              :placeholder="config.search?.placeholder || 'Search docs...'"
-              autocomplete="off"
-              spellcheck="false"
-              @keydown="handleModalKeydown"
-            />
-            <button
-              v-if="query"
-              class="moss-btn-clear"
-              aria-label="Clear"
-              @click="query = ''"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
+    <div v-if="isOpen && isMounted" ref="el" class="Moss-Container" role="dialog" aria-modal="true">
+      <div class="Moss-Backdrop" @click="isOpen = false" />
+      <div class="Moss-Modal">
+
+        <header class="Moss-Header">
+          <form class="Moss-Form" @submit.prevent>
+            <label class="Moss-MagnifierLabel" for="moss-search-input">
+              <svg v-if="isSpinnerVisible" width="20" height="20" class="Moss-Spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" stroke-opacity="0.3"></circle><path d="M12 2C6.48 2 2 6.48 2 12" stroke-width="4" stroke-linecap="round"></path></svg>
+              <svg v-else width="20" height="20" class="Moss-SearchIcon" viewBox="0 0 20 20"><path d="M14.386 14.386l4.0877 4.0877-4.0877-4.0877c-2.9418 2.9419-7.7115 2.9419-10.6533 0-2.9419-2.9418-2.9419-7.7115 0-10.6533 2.9418-2.9419 7.7115-2.9419 10.6533 0 2.9419 2.9418 2.9419 7.7115 0 10.6533z" stroke="currentColor" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </label>
+            <input id="moss-search-input" ref="searchInput" v-model="inputValue" @input="onInput" class="Moss-Input" placeholder="Search docs..." autocomplete="off" />
+            <div class="Moss-Controls">
+              <button v-if="inputValue" class="Moss-Reset" type="button" @click="clearSearch">
+                <svg width="18" height="18" viewBox="0 0 20 20"><path d="M10 10l5.09-5.09L10 10l5.09 5.09L10 10zm0 0L4.91 4.91 10 10l-5.09 5.09L10 10z" stroke="currentColor" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </button>
+              <button v-else class="Moss-Cancel" type="button" @click="isOpen = false">Esc</button>
+            </div>
+          </form>
+        </header>
+
+        <div class="Moss-Dropdown" ref="dropdownEl">
+          <div v-if="status === 'error'" class="Moss-State error">{{ errorMessage }}</div>
+          <div v-else-if="inputValue.trim() && flatNavigationList.length === 0 && status === 'ready' && inputValue === searchQuery" class="Moss-State">
+            No results for "<span class="q-text">{{ inputValue }}</span>"
+          </div>
+
+          <div class="Moss-Results" v-if="flatNavigationList.length > 0">
+            <div v-for="group in visibleGroups" :key="group.path" class="Moss-Group">
+
+              <div
+                v-if="group.headerMatch"
+                class="Moss-Item Moss-PageHeader"
+                :class="{ 'Moss-PageHeader--synthesized': group.headerMatch.isSynthesized }"
+                :aria-selected="selectedIndex === group.headerMatch.flatIndex"
+                @click="handleSelect(group.headerMatch.flatIndex)"
+                @mouseenter="selectedIndex = group.headerMatch.flatIndex"
               >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-          <button class="moss-btn-close" aria-label="Close search" @click="close">
-            <kbd>Esc</kbd>
-          </button>
-        </div>
-
-        <!-- Body: status / results -->
-        <div class="moss-body">
-          <!-- Error (e.g. bad credentials — client could not be initialized) -->
-          <div v-if="errorMsg" class="moss-status moss-status--error">
-            <span>{{ errorMsg }}</span>
-          </div>
-
-          <!-- No query yet -->
-          <div v-else-if="!query.trim()" class="moss-status">
-            <span>Type to search the docs</span>
-          </div>
-
-          <!-- Searching (only shown when no prior results to display) -->
-          <div v-else-if="isSearching && results.length === 0" class="moss-status">
-            <svg class="moss-spinner" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-            <span>Searching…</span>
-          </div>
-
-          <!-- No results -->
-          <div v-else-if="results.length === 0" class="moss-status">
-            No results for "<strong>{{ query }}</strong>"
-          </div>
-
-          <!-- Results -->
-          <ul v-else class="moss-results" role="listbox">
-            <li
-              v-for="(result, i) in results"
-              :key="result.id"
-              :data-index="i"
-              class="moss-result"
-              :class="{ 'is-selected': i === selectedIndex }"
-              role="option"
-              :aria-selected="i === selectedIndex"
-              @mouseenter="selectedIndex = i"
-              @click="navigateTo(result)"
-            >
-              <div class="moss-result-header">
-                <span v-if="getTypeIcon(result)" class="moss-result-type-icon" aria-hidden="true">{{ getTypeIcon(result) }}</span>
-                <span class="moss-result-title">{{ getTitle(result) }}</span>
-                <span
-                  v-if="getPageTitle(result) && getPageTitle(result) !== getTitle(result)"
-                  class="moss-result-page"
-                >{{ getPageTitle(result) }}</span>
+                <div class="Moss-IconContainer">
+                  <span v-html="getTypeIcon('page')"></span>
+                </div>
+                <div class="Moss-Content">
+                  <div class="Moss-Title" v-html="group.headerMatch?.titleHtml || group.title"></div>
+                </div>
+                <div class="Moss-PageMeta">
+                  <span v-if="!group.headerMatch.isSynthesized" class="Moss-PageBadge">Page</span>
+                  <span v-if="group.children.length > 0" class="Moss-ChildCount">{{ group.children.length }} result{{ group.children.length > 1 ? 's' : '' }}</span>
+                </div>
               </div>
-              <div v-if="getBreadcrumb(result)" class="moss-result-breadcrumb">{{ getBreadcrumb(result) }}</div>
-              <p v-if="getSnippet(result)" class="moss-result-snippet">
-                {{ getSnippet(result) }}
-              </p>
-            </li>
-          </ul>
+
+              <div v-if="group.children.length > 0" class="Moss-Children" :class="{ 'Moss-Children--connected': group.headerMatch }">
+                <div
+                  v-for="child in group.children"
+                  :key="child.id"
+                  class="Moss-Item Moss-ChildItem"
+                  :class="`Moss-Item--${child.type}`"
+                  :aria-selected="selectedIndex === child.flatIndex"
+                  @click="handleSelect(child.flatIndex)"
+                  @mouseenter="selectedIndex = child.flatIndex"
+                >
+                  <div class="Moss-IconContainer mini">
+                    <span v-html="getTypeIcon(child.type || 'text')"></span>
+                  </div>
+                  <div class="Moss-Content">
+                    <div v-if="child.breadcrumb" class="Moss-Breadcrumb" v-html="child.breadcrumbHtml || child.breadcrumb"></div>
+                    <div class="Moss-Text" v-html="child.htmlSnippet"></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
 
-        <!-- Footer -->
-        <div class="moss-footer">
-          <span class="moss-footer-keys">
-            <kbd>↑</kbd><kbd>↓</kbd> navigate &nbsp;
-            <kbd>↵</kbd> select &nbsp;
-            <kbd>Esc</kbd> close
-          </span>
-          <span v-if="isIndexLoading" class="moss-footer-syncing" title="Downloading local index for sub-10ms search">
-            <svg class="moss-spinner-sm" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-            Syncing locally…
-          </span>
-          <span class="moss-footer-brand">
-            Powered by
-            <a href="https://moss.dev" target="_blank" rel="noopener noreferrer">
-              <img :src="InferEdgeLogo" alt="Moss" class="moss-footer-logo" />
-              Moss
-            </a>
-          </span>
-        </div>
+        <footer class="Moss-Footer">
+          <ul class="Moss-Commands">
+            <li><kbd class="Moss-Key">↵</kbd><span class="Moss-Label">select</span></li>
+            <li><kbd class="Moss-Key">↓</kbd><kbd class="Moss-Key">↑</kbd><span class="Moss-Label">navigate</span></li>
+            <li><kbd class="Moss-Key">esc</kbd><span class="Moss-Label">close</span></li>
+          </ul>
+          <div class="Moss-Logo">
+            <span>Search by</span>
+            <div class="MossBrand-Container">
+              <img :src="mossLogo" class="MossBrand-Logo" alt="Moss" width="16" height="16" />
+              <span class="MossBrand-Text">Moss</span>
+            </div>
+          </div>
+        </footer>
+
       </div>
     </div>
   </Teleport>
 </template>
 
 <style scoped>
-/* ── Nav wrapper ─────────────────────────────────────────────────────────── */
-.moss-search-wrapper {
-  display: flex;
-  align-items: center;
+/* --- Search wrapper (nav bar) --- */
+.moss-search-wrapper { display: flex; align-items: center; }
+@media (min-width: 768px) { .moss-search-wrapper { flex-grow: 1; padding-left: 24px; } }
+@media (min-width: 960px) { .moss-search-wrapper { padding-left: 32px; } }
+
+/* --- Design Tokens: Light Mode --- */
+.Moss-Container {
+  --moss-modal-bg: #fff;
+  --moss-modal-width: 680px;
+  --moss-surface: #fafaf8;
+  --moss-accent: #1a1a1a;
+  --moss-accent-light: #333;
+  --moss-title: #0a0a0a;
+  --moss-text: #555;
+  --moss-muted: #888;
+  --moss-border: #e5e5e0;
+  --moss-border-light: #d0d0c8;
+  --moss-key-bg: #f5f5f2;
+  --moss-key-border: #e0e0db;
+  --moss-danger: #b52828;
 }
 
-@media (min-width: 768px) {
-  .moss-search-wrapper {
-    flex-grow: 1;
-    padding-left: 24px;
-  }
+/* --- Design Tokens: Dark Mode --- */
+:global(.dark) .Moss-Container {
+  --moss-modal-bg: #141412;
+  --moss-surface: #1a1a18;
+  --moss-accent: #f0f0ee;
+  --moss-accent-light: #e0e0dc;
+  --moss-title: #f0f0ee;
+  --moss-text: #888;
+  --moss-muted: #555;
+  --moss-border: #222220;
+  --moss-border-light: #2a2a28;
+  --moss-key-bg: #1e1e1c;
+  --moss-key-border: #2a2a28;
+  --moss-danger: #f87171;
 }
 
-@media (min-width: 960px) {
-  .moss-search-wrapper {
-    padding-left: 32px;
-  }
-}
-
-/* ── Overlay ─────────────────────────────────────────────────────────────── */
-.moss-overlay {
+/* --- Layout --- */
+.Moss-Container {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
-  z-index: 9999;
+  z-index: 100;
   display: flex;
   align-items: flex-start;
+  padding-top: 8vh;
   justify-content: center;
-  padding-top: 10vh;
+  font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Modal ───────────────────────────────────────────────────────────────── */
-.moss-modal {
-  width: 100%;
-  max-width: 640px;
-  margin: 0 16px;
-  background: var(--vp-c-bg);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
+.Moss-Backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: moss-fade-in 0.15s ease-out;
+}
+
+.Moss-Modal {
+  position: relative;
+  width: calc(100% - 32px);
+  max-width: var(--moss-modal-width);
+  background: var(--moss-modal-bg);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
-  max-height: 80vh;
+  max-height: 72vh;
+  overflow: hidden;
+  border: 1px solid var(--moss-border);
+  overscroll-behavior: contain;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.08),
+    0 32px 64px -12px rgba(0, 0, 0, 0.14);
+  animation: moss-modal-in 0.2s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* ── Header ──────────────────────────────────────────────────────────────── */
-.moss-header {
+@keyframes moss-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes moss-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --- Header / Search Input --- */
+.Moss-Header {
+  padding: 4px 4px 0;
+}
+
+.Moss-Form {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--vp-c-divider);
+  padding: 0 16px;
+  height: 56px;
+  border-bottom: 1px solid var(--moss-border);
 }
 
-.moss-input-wrap {
-  flex: 1;
+.Moss-MagnifierLabel {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
-  padding: 6px 12px;
-  transition: border-color 0.2s;
-}
-
-.moss-input-wrap:focus-within {
-  border-color: var(--vp-c-brand-1);
-}
-
-.moss-icon-search {
-  color: var(--vp-c-text-3);
   flex-shrink: 0;
 }
 
-.moss-input {
+.Moss-Input {
   flex: 1;
   background: transparent;
   border: none;
   outline: none;
-  font-size: 15px;
-  color: var(--vp-c-text-1);
-  line-height: 1.5;
-}
-
-.moss-input::placeholder {
-  color: var(--vp-c-text-3);
-}
-
-.moss-input::-webkit-search-cancel-button {
-  display: none;
-}
-
-.moss-btn-clear {
-  display: flex;
-  align-items: center;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: var(--vp-c-text-3);
-  transition: color 0.2s;
-  line-height: 1;
-}
-
-.moss-btn-clear:hover {
-  color: var(--vp-c-text-1);
-}
-
-.moss-btn-close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px 6px;
-  color: var(--vp-c-text-2);
-  border-radius: 5px;
-  transition: background 0.15s;
-}
-
-.moss-btn-close:hover {
-  background: var(--vp-c-bg-soft);
-}
-
-.moss-btn-close kbd {
+  color: var(--moss-title);
+  font-size: 16px;
   font-family: inherit;
-  font-size: 11px;
-  padding: 2px 5px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 3px;
+  font-weight: 400;
+  margin-left: 14px;
+  height: 100%;
+  letter-spacing: -0.011em;
 }
 
-/* ── Body ────────────────────────────────────────────────────────────────── */
-.moss-body {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 120px;
+.Moss-Input::placeholder {
+  color: var(--moss-muted);
 }
 
-.moss-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 40px 24px;
-  color: var(--vp-c-text-2);
-  font-size: 14px;
-}
-
-.moss-status--error {
-  color: var(--vp-c-danger-1, #f43f5e);
-}
-
-/* Spinner */
-.moss-spinner {
+.Moss-SearchIcon,
+.Moss-Spinner {
+  color: var(--moss-muted);
   flex-shrink: 0;
+}
+
+.Moss-Spinner {
   animation: moss-spin 0.8s linear infinite;
 }
 
 @keyframes moss-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* ── Results ─────────────────────────────────────────────────────────────── */
-.moss-results {
-  list-style: none;
-  margin: 0;
-  padding: 8px;
-}
-
-.moss-result {
-  padding: 12px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-
-.moss-result.is-selected,
-.moss-result:hover {
-  background: var(--vp-c-bg-soft);
-}
-
-.moss-result-header {
+.Moss-Controls {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 3px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
-.moss-result-title {
-  font-size: 14px;
+.Moss-Cancel {
+  background: var(--moss-key-bg);
+  border: 1px solid var(--moss-key-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--moss-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.Moss-Cancel:hover {
+  color: var(--moss-title);
+  border-color: var(--moss-border-light);
+}
+
+.Moss-Reset {
+  background: transparent;
+  border: none;
+  color: var(--moss-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.Moss-Reset:hover {
+  color: var(--moss-title);
+  background: var(--moss-surface);
+}
+
+/* --- Results Area --- */
+.Moss-Dropdown {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px 12px;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  will-change: scroll-position;
+}
+
+.Moss-State {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--moss-muted);
+  font-size: 13.5px;
+  gap: 4px;
+}
+
+.Moss-State.error {
+  color: var(--moss-danger);
+}
+
+.q-text {
+  font-style: italic;
+  color: var(--moss-text);
+}
+
+/* --- Result Groups --- */
+.Moss-Group {
+  margin-bottom: 6px;
+  background: var(--moss-surface);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--moss-border);
+  content-visibility: auto;
+  contain-intrinsic-size: 50px;
+}
+
+.Moss-Item {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  border-left: 3px solid transparent;
+}
+
+.Moss-Item:hover {
+  background: color-mix(in srgb, var(--moss-accent) 5%, var(--moss-surface));
+}
+
+.Moss-Item[aria-selected="true"] {
+  background: var(--moss-accent);
+  border-left-color: var(--moss-accent);
+}
+
+.Moss-Item[aria-selected="true"] * {
+  color: #fff !important;
+}
+
+/* --- Page Header Items --- */
+.Moss-PageHeader {
+  background: transparent;
+  border-bottom: none;
+}
+
+.Moss-PageHeader .Moss-Title {
   font-weight: 600;
-  color: var(--vp-c-brand-1);
+  font-size: 13.5px;
+  color: var(--moss-title);
+  letter-spacing: -0.01em;
+}
+
+.Moss-PageHeader .Moss-IconContainer {
+  color: var(--moss-title);
+}
+
+.Moss-PageHeader--synthesized {
+  opacity: 0.72;
+}
+
+.Moss-PageHeader--synthesized .Moss-Title {
+  font-weight: 500;
+}
+
+.Moss-PageMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
   flex-shrink: 0;
 }
 
-.moss-result-page {
-  font-size: 12px;
-  color: var(--vp-c-text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.Moss-PageBadge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--moss-accent);
+  background: color-mix(in srgb, var(--moss-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--moss-accent) 25%, transparent);
+  border-radius: 5px;
+  padding: 2px 6px;
+  line-height: 1.4;
 }
 
-.moss-result-type-icon {
-  font-size: 12px;
-  color: var(--vp-c-text-3);
-  flex-shrink: 0;
-}
-
-.moss-result-breadcrumb {
+.Moss-ChildCount {
   font-size: 11px;
-  color: var(--vp-c-text-3);
-  margin-bottom: 3px;
+  color: var(--moss-muted);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.moss-result-snippet {
-  margin: 0;
+.Moss-Item[aria-selected="true"] .Moss-PageMeta * {
+  color: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* --- Child Items & Tree --- */
+.Moss-Children {
+  padding: 0;
+  background: transparent;
+}
+
+.Moss-Children--connected {
+  border-left: 1.5px solid var(--moss-border);
+  margin-left: 22px;
+  border-radius: 0 0 0 6px;
+  padding-bottom: 4px;
+}
+
+.Moss-ChildItem {
+  position: relative;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.Moss-Children--connected .Moss-ChildItem {
+  padding-left: 28px;
+}
+
+.Moss-Children--connected .Moss-ChildItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 20px;
+  height: 1.5px;
+  background: var(--moss-border);
+  transform: translateY(-50%);
+}
+
+.Moss-Children--connected .Moss-ChildItem:last-child::after {
+  content: '';
+  position: absolute;
+  left: -1.5px;
+  top: 50%;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--moss-surface);
+}
+
+/* --- Icon Colors by Type --- */
+.Moss-Item--header .Moss-IconContainer { color: var(--moss-accent); }
+.Moss-Item--code .Moss-IconContainer { color: #888; }
+.Moss-Item--text .Moss-IconContainer { color: var(--moss-muted); }
+.Moss-Item--page .Moss-IconContainer { color: var(--moss-title); }
+.Moss-Item[aria-selected="true"] .Moss-IconContainer { color: #fff !important; }
+
+:global(.dark) .Moss-Item--code .Moss-IconContainer { color: #999; }
+
+.Moss-IconContainer {
+  width: 24px;
+  margin-right: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.Moss-IconContainer.mini {
+  width: 22px;
+  margin-right: 10px;
+  opacity: 0.55;
+}
+
+.Moss-Content {
+  min-width: 0;
+  flex: 1;
+}
+
+.Moss-Breadcrumb {
+  font-weight: 600;
   font-size: 13px;
-  color: var(--vp-c-text-2);
-  line-height: 1.5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-bottom: 2px;
+  color: var(--moss-title);
+  letter-spacing: -0.01em;
 }
 
-/* ── Footer ──────────────────────────────────────────────────────────────── */
-.moss-footer {
+.Moss-Text {
+  font-size: 12.5px;
+  color: var(--moss-text);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 1px;
+}
+
+/* --- Match Highlighting --- */
+:deep(.Moss-Match) {
+  color: var(--moss-accent);
+  font-weight: 700;
+  background: none;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--moss-accent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.Moss-Item[aria-selected="true"] :deep(.Moss-Match) {
+  color: #fff;
+  text-decoration-color: rgba(255, 255, 255, 0.7);
+}
+
+/* --- Footer --- */
+.Moss-Footer {
+  padding: 0 16px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
-  border-top: 1px solid var(--vp-c-divider);
+  border-top: 1px solid var(--moss-border);
+  background: var(--moss-modal-bg);
+  color: var(--moss-muted);
   font-size: 12px;
-  color: var(--vp-c-text-3);
 }
 
-.moss-footer-keys kbd {
-  font-family: inherit;
-  font-size: 11px;
-  padding: 1px 4px;
-  background: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 3px;
+.Moss-Commands {
+  display: flex;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.moss-footer-syncing {
+.Moss-Commands li {
   display: flex;
   align-items: center;
-  gap: 4px;
+}
+
+.Moss-Key {
+  background: var(--moss-key-bg);
+  border: 1px solid var(--moss-key-border);
+  border-radius: 5px;
+  padding: 2px 6px;
+  font-family: inherit;
   font-size: 11px;
-  color: var(--vp-c-text-3);
-  opacity: 0.8;
+  font-weight: 500;
+  min-width: 20px;
+  text-align: center;
+  margin-right: 5px;
+  color: var(--moss-muted);
+  line-height: 1.4;
 }
 
-.moss-spinner-sm {
+.Moss-Label {
+  color: var(--moss-muted);
+}
+
+.Moss-Logo {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--moss-muted);
+  font-size: 12px;
+}
+
+.MossBrand-Container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 5px;
+}
+
+.MossBrand-Logo {
+  color: var(--moss-title);
   flex-shrink: 0;
-  animation: moss-spin 0.8s linear infinite;
 }
 
-.moss-footer-brand a {
-  color: var(--vp-c-brand-1);
-  text-decoration: none;
-}
-
-.moss-footer-brand a:hover {
-  text-decoration: underline;
-}
-
-.moss-footer-logo {
-  display: inline-block;
-  height: 16px;
-  width: auto;
-  vertical-align: middle;
-  margin-right: 4px;
+.MossBrand-Text {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--moss-title);
+  letter-spacing: -0.02em;
 }
 </style>

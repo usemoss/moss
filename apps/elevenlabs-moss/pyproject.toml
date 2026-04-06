@@ -1,0 +1,25 @@
+[project]
+name = "elevenlabs-moss-demo"
+version = "0.1.0"
+description = "Voice AI agent with ElevenLabs Conversational AI + Moss semantic retrieval"
+requires-python = ">=3.10"
+dependencies = [
+    "elevenlabs>=2.40.0",
+    "elevenlabs-moss>=0.0.1",
+    "pyaudio>=0.2.14",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",
+]
+
+[tool.uv.sources]
+elevenlabs-moss = { path = "../../packages/elevenlabs-moss" }
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["I"]

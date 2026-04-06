@@ -4,8 +4,8 @@ This is a living document. We update it as priorities shift based on community f
 
 ## Shipped
 
-- [x] Python SDK (`inferedge-moss`) — async-first, type-safe
-- [x] TypeScript SDK (`@inferedge/moss`) — full feature parity with Python
+- [x] Python SDK (`moss`) — async-first, type-safe
+- [x] TypeScript SDK (`@moss-dev/moss`) — full feature parity with Python
 - [x] Built-in embedding models (`moss-minilm`)
 - [x] **Hybrid search** — combine semantic search with BM25 keyword matching
 - [x] Custom embedding support (bring your own OpenAI, Cohere, etc.)
@@ -19,13 +19,16 @@ This is a living document. We update it as priorities shift based on community f
 - [x] VitePress search plugin
 - [x] Docker deployment examples (ECS/K8s patterns)
 - [x] WebAssembly runtime — client-side semantic search in the browser, no server required
+- [x] **Benchmarks directory** — reproducible latency/throughput scripts comparing Moss vs Pinecone, Qdrant, and Chroma on standardized datasets
+- [x] **MCP server** — expose Moss as a Model Context Protocol server so any MCP-compatible AI tool (Claude, Cursor, Windsurf) can do semantic search
+- [x] **Vercel AI SDK integration** — retrieval provider for the Vercel AI SDK
+- [x] **Ollama + Moss + Pipecat reference architecture** — an end-to-end local LLM voice agent: Ollama for LLM inference, Moss for retrieval, Pipecat for real-time audio. A single `docker compose up` to run the entire stack.
 
 ## In Progress
 
-- [ ] **Benchmarks directory** — reproducible latency/throughput scripts comparing Moss vs Pinecone, Qdrant, and Chroma on standardized datasets
-- [ ] **MCP server** — expose Moss as a Model Context Protocol server so any MCP-compatible AI tool (Claude, Cursor, Windsurf) can do semantic search
-- [ ] **npm/PyPI package rename** — consolidating package names under the Moss brand
-- [ ] **Vercel AI SDK integration** — retrieval provider for the Vercel AI SDK
+- [ ] **CrewAI integration** — Moss as a retrieval tool for CrewAI agents
+- [ ] **Haystack integration** — document store / retriever integration
+- [ ] **Reranking support** — plug in cross-encoder rerankers as a post-retrieval step
 
 ## Next Up — Community Contributions Welcome
 
@@ -37,18 +40,31 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 - [ ] **Go bindings** — for backend services and CLI tools ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Elixir bindings** — for Phoenix/LiveView apps ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Rust bindings** — for performance-critical pipelines ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
+- [ ] **Kotlin bindings** — for Android apps and Spring Boot backend services ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 
 ### Framework Integrations
 
-- [ ] **CrewAI** — Moss as a retrieval tool for CrewAI agents ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
-- [ ] **Haystack** — document store / retriever integration
 - [ ] **AutoGen** — retrieval-augmented tool for AutoGen agents
 - [ ] **LlamaIndex** — retriever and query engine integration
 - [ ] **Semantic Kernel** — .NET/Python retrieval plugin
+- [ ] **LangGraph** — retrieval node for stateful multi-agent workflows
+- [ ] **Google ADK** — Moss as a retrieval tool for Google's Agent Development Kit
+- [ ] **OpenAI Agents SDK** — Moss as a tool for the OpenAI agents framework
+- [ ] **Smolagents** — lightweight retrieval tool for Hugging Face's agent framework
+
+### Voice AI Ecosystem
+
+- [ ] **Vapi integration** — Moss retrieval tool for Vapi voice agents
+- [ ] **Daily.co integration** — real-time audio pipeline with semantic context injection
+- [ ] **Twilio integration** — retrieval for phone-based AI agents (IVR, call center bots)
+
+### Developer Tools
+
+- [ ] **Moss CLI** — manage indexes, run queries, import data, and inspect results from the terminal (`moss index create`, `moss query`, `moss import`)
+- [ ] **VS Code extension** — semantic search over your codebase directly from the editor sidebar
 
 ### Search Quality
 
-- [ ] **Reranking support** — plug in cross-encoder rerankers (Cohere Rerank, bge-reranker, etc.) as a post-retrieval step
 - [ ] **Multi-vector retrieval** — support ColBERT-style late interaction models
 
 ### Data Ingestion
@@ -64,7 +80,6 @@ These are bigger bets we're exploring. They're directional, not committed — co
 ### Local-First AI Stack
 
 - [ ] **vLLM-based local inference + local search** — a fully local pipeline: your model, your embeddings, your search, your hardware. No API calls. This is a natural fit for the privacy-first voice AI use case and can meaningfully cut latency for on-premise deployments.
-- [ ] **Ollama + Moss + Pipecat reference architecture** — an end-to-end fully local voice agent: Ollama for LLM inference, Moss for retrieval, Pipecat for real-time audio. A single `docker compose up` to run the entire stack.
 
 ### Evaluation & Quality
 
@@ -74,6 +89,21 @@ These are bigger bets we're exploring. They're directional, not committed — co
 ### Browser & Edge
 
 - [ ] **Edge runtime support** — run Moss in Cloudflare Workers, Deno Deploy, and Vercel Edge Functions
+
+### Advanced Retrieval
+
+- [ ] **Query expansion** — LLM-powered query rewriting to improve recall on short or ambiguous queries
+- [ ] **Sparse-dense fusion (SPLADE)** — learned sparse retrieval to complement BM25 hybrid, improving precision on rare terms
+- [ ] **Contextual retrieval** — pre-chunking contextualization to make every chunk self-contained and more retrievable
+
+### Data Connectors
+
+Connect knowledge sources to Moss without writing custom ETL.
+
+- [ ] **GitHub connector** — index code, issues, PRs, and docs from repositories
+- [ ] **Notion connector** — sync and index Notion workspace pages
+- [ ] **Confluence connector** — enterprise knowledge base indexing
+- [ ] **S3/GCS sync** — auto-index documents from cloud storage buckets on upload
 
 ---
 

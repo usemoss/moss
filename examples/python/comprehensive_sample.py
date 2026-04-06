@@ -17,7 +17,7 @@ import os
 from typing import List
 from dotenv import load_dotenv
 from datetime import datetime
-from inferedge_moss import (
+from moss import (
     DocumentInfo,
     GetDocumentsOptions,
     MossClient,

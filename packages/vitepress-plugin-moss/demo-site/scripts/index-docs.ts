@@ -15,14 +15,13 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-dotenv.config()
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 const target = process.argv[2] ?? 'documentation'
 const inspect = process.argv.includes('--inspect')
 const root = path.resolve(__dirname, '..', target)
-const tempFile = path.resolve(__dirname, '../.index-preview.json')
 
 // Build all chunks from the markdown files
 console.log(`Building index from: ${root}`)
@@ -38,31 +37,37 @@ const wordFiltered = allDocs.filter((doc: any) => {
 
 // Filter out structural-only section headings that carry no semantic value
 // (e.g. "Parameters", "Constructors", "Methods" are just navigation anchors)
-// const STRUCTURAL_TITLES = new Set(['Parameters', 'Constructors', 'Methods', 'Properties', 'Type declaration'])
-// const structuralFiltered = wordFiltered.filter((doc: any) => {
-//   const title: string = (doc.metadata?.title ?? '').trim().replace(/\u200b/g, '').trim()
-//   return !STRUCTURAL_TITLES.has(title)
-// })
+const STRUCTURAL_TITLES = new Set(['Parameters', 'Constructors', 'Methods', 'Properties', 'Type declaration'])
+const structuralFiltered = wordFiltered.filter((doc: any) => {
+  const title: string = (doc.metadata?.title ?? '').trim().replace(/\u200b/g, '').trim()
+  return !STRUCTURAL_TITLES.has(title)
+})
 
 // Deduplicate: within the same page (groupId), keep only the first chunk per
 // section title — repeated headings are redundant sub-sections of the same topic
-// const seen = new Set<string>()
-// const filtered = structuralFiltered.filter((doc: any) => {
-//   const key = `${doc.metadata?.groupId ?? ''}||${doc.metadata?.title ?? ''}`
-//   if (seen.has(key)) return false
-//   seen.add(key)
-//   return true
-// })
+const seen = new Set<string>()
+const filtered = structuralFiltered.filter((doc: any) => {
+  const key = `${doc.metadata?.groupId ?? ''}||${doc.metadata?.title ?? ''}`
+  if (seen.has(key)) return false
+  seen.add(key)
+  return true
+})
 
-// console.log(`After filtering (>3 words): ${wordFiltered.length} chunks`)
-// console.log(`After removing structural headings: ${structuralFiltered.length} chunks`)
-// console.log(`After deduplicating by (page, section): ${filtered.length} chunks (removed ${allDocs.length - filtered.length} total)`)
+console.log(`After filtering (>3 words): ${wordFiltered.length} chunks`)
+console.log(`After removing structural headings: ${structuralFiltered.length} chunks`)
+console.log(`After deduplicating by (page, section): ${filtered.length} chunks (removed ${allDocs.length - filtered.length} total)`)
 
-const filtered = wordFiltered
-console.log(`After filtering (>3 words): ${filtered.length} chunks (removed ${allDocs.length - filtered.length})`)
+const projectId = process.env.MOSS_PROJECT_ID
+const projectKey = process.env.MOSS_PROJECT_KEY
+const indexName = process.env.MOSS_INDEX_NAME
+
+if (!inspect && (!projectId || !projectKey || !indexName)) {
+  console.error('Missing env vars: MOSS_PROJECT_ID, MOSS_PROJECT_KEY, MOSS_INDEX_NAME')
+  process.exit(1)
+}
 
 // Write filtered chunks to temp file (used for inspect and upload)
-fs.writeFileSync(tempFile, JSON.stringify(filtered, null, 2))
+// fs.writeFileSync(tempFile, JSON.stringify(filtered, null, 2))
 
 if (inspect) {
   console.log('\nSample (first 3 chunks):')
@@ -71,17 +76,8 @@ if (inspect) {
   process.exit(0)
 }
 
-const projectId = process.env.MOSS_PROJECT_ID
-const projectKey = process.env.MOSS_PROJECT_KEY
-const indexName = process.env.MOSS_INDEX_NAME
-
-if (!projectId || !projectKey || !indexName) {
-  console.error('Missing env vars: MOSS_PROJECT_ID, MOSS_PROJECT_KEY, MOSS_INDEX_NAME')
-  process.exit(1)
-}
-
 console.log(`Uploading to index: ${indexName}`)
-await createIndex(tempFile, { projectId, projectKey, indexName, modelName: 'moss-minilm' })
+await createIndex(tempFile, { projectId, projectKey, indexName, modelName: 'moss-minilm', alpha: 0.2 })
 
 // Clean up temp file
 // fs.unlinkSync(tempFile)

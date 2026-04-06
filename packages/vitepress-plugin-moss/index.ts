@@ -80,8 +80,6 @@ export function mossIndexerPlugin(): Plugin {
 
       // Only run for client build and only during production build
       // NOTE: environment.name is used in newer Vite/VitePress
-      const environment = (this as any).environment
-      
       try {
         debug('Starting Moss index sync...')
 
@@ -108,12 +106,39 @@ export function mossIndexerPlugin(): Plugin {
           indexName
         }
 
-        await sync({
-          root: siteConfig.root, // VitePress root (where .vitepress/ lives); indexer reads srcDir from config
-          creds
+        const { buildJsonDocs, uploadDocuments } = await import('@moss-tools/md-indexer')
+
+        // Build chunks
+        const allDocs = await buildJsonDocs(siteConfig.root) as any[]
+        debug(`Built ${allDocs.length} chunks`)
+
+        // Filter: remove chunks with 3 or fewer words
+        const wordFiltered = allDocs.filter((doc: any) => {
+          const wordCount = doc.text?.trim().split(/\s+/).filter(Boolean).length ?? 0
+          return wordCount > 3
         })
 
-        debug('✅ Moss index sync completed.')
+        // Filter: remove structural-only section headings
+        const STRUCTURAL_TITLES = new Set(['Parameters', 'Constructors', 'Methods', 'Properties', 'Type declaration'])
+        const structuralFiltered = wordFiltered.filter((doc: any) => {
+          const title: string = (doc.metadata?.title ?? '').trim().replace(/\u200b/g, '').trim()
+          return !STRUCTURAL_TITLES.has(title)
+        })
+
+        // Deduplicate: keep only the first chunk per (groupId, title)
+        const seen = new Set<string>()
+        const filtered = structuralFiltered.filter((doc: any) => {
+          const key = `${doc.metadata?.groupId ?? ''}||${doc.metadata?.title ?? ''}`
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+
+        debug(`After filtering: ${filtered.length} chunks (removed ${allDocs.length - filtered.length})`)
+
+        await uploadDocuments(filtered, { ...creds, modelName: 'moss-minilm' })
+
+        debug('Moss index sync completed.')
       } catch (error) {
         const err = error as Error
         siteConfig.logger.error(

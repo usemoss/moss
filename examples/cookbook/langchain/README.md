@@ -14,7 +14,7 @@ Moss is a semantic search platform that allows you to build and query high-perfo
 Ensure you have the required packages installed:
 
 ```bash
-pip install inferedge-moss langchain langchain-openai python-dotenv
+pip install moss langchain langchain-openai python-dotenv
 ```
 
 ## Setup
