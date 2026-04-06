@@ -9,15 +9,14 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Callable, Awaitable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Optional
 
 from ollama import AsyncClient
 
 from .moss_retriever import MossRetriever
 
-__all__ = ["GemmaMossSession"]
+__all__ = ["GemmaMossSession", "make_ollama_query_rewriter"]
 
 logger = logging.getLogger("gemma_moss")
 
@@ -241,3 +240,45 @@ class GemmaMossSession:
             messages.append({"role": "system", "content": context})
         messages.append({"role": "user", "content": message})
         return messages
+
+
+_DEFAULT_REWRITER_INSTRUCTION = (
+    "Based on the conversation history and the user's latest message, "
+    "generate a concise, specific search query that would retrieve the most "
+    "relevant information from a knowledge base. Output ONLY the search query, "
+    "nothing else."
+)
+
+
+def make_ollama_query_rewriter(
+    *,
+    model: str = "gemma4",
+    host: str | None = None,
+    instruction: str = _DEFAULT_REWRITER_INSTRUCTION,
+) -> Callable[[str, Sequence[dict[str, str]]], Awaitable[str]]:
+    """Create an Ollama-powered query rewriter.
+
+    This is a convenience helper, not part of the core architecture.
+    Any async callable with signature ``(message, history) -> str`` works.
+
+    Args:
+        model: Ollama model name.
+        host: Ollama server URL.
+        instruction: System instruction for the rewriter model.
+
+    Returns:
+        An async callable that rewrites user messages into search queries.
+    """
+    client = AsyncClient(host=host)
+
+    async def rewrite(message: str, history: Sequence[dict[str, str]]) -> str:
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": instruction},
+        ]
+        messages.extend(history)
+        messages.append({"role": "user", "content": message})
+
+        response = await client.chat(model=model, messages=messages, stream=False)
+        return response.message.content.strip()
+
+    return rewrite
