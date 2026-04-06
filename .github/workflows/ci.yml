@@ -155,7 +155,7 @@ jobs:
       run: npm run compile
     - name: Package VSIX (publishability check)
       working-directory: packages/vscode-moss
-      run: npx vsce package --out /tmp/vscode-moss-ci.vsix
+      run: npm run package:ci
 
   vitepress-plugin-test:
     runs-on: ubuntu-latest

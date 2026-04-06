@@ -12,7 +12,7 @@ VS Code extension for **semantic codebase search** with [Moss](https://moss.dev)
    cd packages/vscode-moss
    npm ci
    npm run check && npm run compile
-   npx vsce package
+   npm run package
    ```
 
    This produces **`vscode-moss-0.0.1.vsix`** (or whatever version is in `package.json`) in the current directory. Size depends on **`@moss-dev/moss`** and its **`@moss-dev/moss-core`** (N-API) dependency shipped in `node_modules`.
