@@ -19,3 +19,6 @@ venv/
 *CLAUDE.md
 
 *.egg-info
+
+mvenv/Include/site/python3.11/greenlet
+mvenv/Lib/site-packages
