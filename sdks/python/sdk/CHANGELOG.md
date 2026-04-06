@@ -102,7 +102,7 @@ Performance improvements for query() calls.
 
 ## [1.0.0-beta.1] - 2025-09-14
 
-Initial release of inferedge-moss with core features:
+Initial release of moss with core features:
 
 - Semantic search using transformer-based embeddings
 - Lightweight embedding models for edge computing; supports proprietary "moss-minilm" model

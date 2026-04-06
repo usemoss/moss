@@ -67,8 +67,12 @@ class MossClient:
         self._project_key = project_key
         self._client_id = str(uuid.uuid4())
         manage_url = _get_manage_url()
-        self._manage = ManageClient(project_id, project_key, manage_url, self._client_id)
-        self._manager = IndexManager(project_id, project_key, manage_url, self._client_id)
+        self._manage = ManageClient(
+            project_id, project_key, manage_url, self._client_id
+        )
+        self._manager = IndexManager(
+            project_id, project_key, manage_url, self._client_id
+        )
 
     # -- Mutations (via Rust ManageClient) --------------------------
 
@@ -81,7 +85,10 @@ class MossClient:
         """Create a new index and populate it with documents."""
         resolved_model_id = self._resolve_model_id(docs, model_id)
         return await asyncio.to_thread(
-            self._manage.create_index, name, docs, resolved_model_id,
+            self._manage.create_index,
+            name,
+            docs,
+            resolved_model_id,
         )
 
     async def add_docs(
@@ -92,7 +99,10 @@ class MossClient:
     ) -> MutationResult:
         """Add or update documents in an index."""
         return await asyncio.to_thread(
-            self._manage.add_docs, name, docs, options,
+            self._manage.add_docs,
+            name,
+            docs,
+            options,
         )
 
     async def delete_docs(
@@ -102,7 +112,9 @@ class MossClient:
     ) -> MutationResult:
         """Delete documents from an index by their IDs."""
         return await asyncio.to_thread(
-            self._manage.delete_docs, name, doc_ids,
+            self._manage.delete_docs,
+            name,
+            doc_ids,
         )
 
     async def get_job_status(self, job_id: str) -> JobStatusResponse:
@@ -147,7 +159,10 @@ class MossClient:
         """
         try:
             await asyncio.to_thread(
-                self._manager.load_index, name, auto_refresh, polling_interval_in_seconds,
+                self._manager.load_index,
+                name,
+                auto_refresh,
+                polling_interval_in_seconds,
             )
             await asyncio.to_thread(self._manager.load_query_model, name)
             return name
@@ -201,15 +216,24 @@ class MossClient:
         query: str,
         options: Optional[QueryOptions],
     ) -> SearchResult:
-        top_k = getattr(options, "top_k", None) or 5
-        alpha = getattr(options, "alpha", None) or 0.8
+        top_k = getattr(options, "top_k", None)
+        if top_k is None:
+            top_k = 5
+        alpha = getattr(options, "alpha", None)
+        if alpha is None:
+            alpha = 0.8
         query_embedding = getattr(options, "embedding", None)
         filter = getattr(options, "filter", None)
 
         if query_embedding is None:
             try:
                 return await asyncio.to_thread(
-                    self._manager.query_text, name, query, top_k, alpha, filter,
+                    self._manager.query_text,
+                    name,
+                    query,
+                    top_k,
+                    alpha,
+                    filter,
                 )
             except RuntimeError as e:
                 if "requires explicit query embeddings" in str(e):
@@ -220,7 +244,13 @@ class MossClient:
                 raise
 
         return await asyncio.to_thread(
-            self._manager.query, name, query, list(query_embedding), top_k, alpha, filter,
+            self._manager.query,
+            name,
+            query,
+            list(query_embedding),
+            top_k,
+            alpha,
+            filter,
         )
 
     async def _query_cloud(

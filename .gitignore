@@ -5,6 +5,7 @@ __pycache__
 node_modules/
 .env
 .env.*
+!.env.template
 .env.local
 dist/
 .next/
@@ -19,6 +20,7 @@ venv/
 *CLAUDE.md
 
 *.egg-info
+.moss-cache
 
 mvenv/Include/site/python3.11/greenlet
 mvenv/Lib/site-packages

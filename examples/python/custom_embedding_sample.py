@@ -9,7 +9,7 @@ from typing import List
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from inferedge_moss import (
+from moss import (
 	DocumentInfo,
 	MossClient,
 	MutationOptions,

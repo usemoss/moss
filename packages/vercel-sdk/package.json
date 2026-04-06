@@ -31,12 +31,12 @@
   "author": "InferEdge Inc.",
   "license": "BSD-2-Clause",
   "peerDependencies": {
-    "@inferedge/moss": "^1.0.0-beta.7",
+    "@moss-dev/moss": "^1.0.0",
     "ai": "^6.0.0",
     "zod": "^3.25.76 || ^4.1.8"
   },
   "devDependencies": {
-    "@inferedge/moss": "1.0.0-beta.7",
+    "@moss-dev/moss": "1.0.0",
     "ai": "6.0.97",
     "zod": "3.25.76",
     "@types/node": "22.13.14",
