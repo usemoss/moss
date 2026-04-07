@@ -9,7 +9,8 @@ export type SearchErrorCode =
   | "NO_WORKSPACE"
   | "NO_CREDENTIALS"
   | "INDEX_NOT_FOUND"
-  | "QUERY_FAILED";
+  | "QUERY_FAILED"
+  | "CANCELLED";
 
 export interface SearchFailure {
   code: SearchErrorCode;
@@ -31,6 +32,14 @@ export interface RunMossQueryHooks {
   onLocalIndexDownloadFinished?: () => void;
 }
 
+export type RunMossQueryOptions = RunMossQueryHooks & {
+  token?: vscode.CancellationToken;
+  /**
+   * When set, skips `resolveCredentials` (caller already validated credentials).
+   */
+  credentials?: { projectId: string; projectKey: string };
+};
+
 export interface MossQuerySession {
   client: MossClient;
   localIndexState: LocalIndexLoadState;
@@ -40,16 +49,22 @@ export interface MossQuerySession {
  * Semantic search against the configured workspace index.
  * Uses `session` for the Moss client and local `loadIndex` state (sidebar search lifetime).
  */
+function cancelledFailure(): SearchFailure {
+  return { code: "CANCELLED", message: "" };
+}
+
 export async function runMossQuery(
   context: vscode.ExtensionContext,
   queryText: string,
   log: vscode.OutputChannel,
   session: MossQuerySession,
-  hooks?: RunMossQueryHooks
+  options?: RunMossQueryOptions
 ): Promise<
   | { ok: true; hits: QueryResultDocumentInfo[]; timeMs?: number }
   | { ok: false; error: SearchFailure }
 > {
+  const token = options?.token;
+
   const folders = vscode.workspace.workspaceFolders;
   if (!folders?.length) {
     return {
@@ -61,7 +76,12 @@ export async function runMossQuery(
     };
   }
 
-  const creds = await resolveCredentials(context);
+  if (token?.isCancellationRequested) {
+    return { ok: false, error: cancelledFailure() };
+  }
+
+  const creds =
+    options?.credentials ?? (await resolveCredentials(context));
   if (!creds) {
     return {
       ok: false,
@@ -73,9 +93,17 @@ export async function runMossQuery(
     };
   }
 
+  if (token?.isCancellationRequested) {
+    return { ok: false, error: cancelledFailure() };
+  }
+
   const primary = folders[0]!;
   const cfg = await getMossConfig(context.secrets, primary);
   const sdk = session.client;
+
+  if (token?.isCancellationRequested) {
+    return { ok: false, error: cancelledFailure() };
+  }
 
   const state = session.localIndexState;
   const willAttemptLocalLoad =
@@ -83,7 +111,7 @@ export async function runMossQuery(
     state.localLoadFailedIndex !== cfg.indexName;
 
   if (willAttemptLocalLoad) {
-    hooks?.onAwaitingLocalIndexDownload?.();
+    options?.onAwaitingLocalIndexDownload?.();
   }
   try {
     await ensureLocalIndexLoaded(sdk, cfg.indexName, state);
@@ -95,8 +123,12 @@ export async function runMossQuery(
     );
   } finally {
     if (willAttemptLocalLoad) {
-      hooks?.onLocalIndexDownloadFinished?.();
+      options?.onLocalIndexDownloadFinished?.();
     }
+  }
+
+  if (token?.isCancellationRequested) {
+    return { ok: false, error: cancelledFailure() };
   }
 
   try {

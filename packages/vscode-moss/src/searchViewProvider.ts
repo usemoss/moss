@@ -20,6 +20,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
   };
   private _localIndexState: LocalIndexLoadState = {};
   private _webviewMessageDisposable?: vscode.Disposable;
+  private _queryCts?: vscode.CancellationTokenSource;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -29,8 +30,15 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
 
   /** Drop Moss client + local `loadIndex` state (sidebar closed, credentials changed, or index rebuilt). */
   public resetSearchSession(): void {
+    this._disposeQueryCancellation();
     this._session = undefined;
     clearLocalIndexLoadState(this._localIndexState);
+  }
+
+  private _disposeQueryCancellation(): void {
+    this._queryCts?.cancel();
+    this._queryCts?.dispose();
+    this._queryCts = undefined;
   }
 
   private _clientFor(projectId: string, projectKey: string): MossClient {
@@ -90,6 +98,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     webviewView.onDidDispose(() => {
       this._webviewMessageDisposable?.dispose();
       this._webviewMessageDisposable = undefined;
+      this._disposeQueryCancellation();
       this._view = undefined;
       warmCts.cancel();
       warmCts.dispose();
@@ -127,19 +136,34 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     if (!webview) return;
 
     if (text === "") {
-      webview.postMessage({ type: "clearResults" });
+      this._disposeQueryCancellation();
+      this._querySeq += 1;
+      if (this._view?.webview === webview) {
+        webview.postMessage({ type: "clearResults" });
+      }
       return;
     }
 
+    this._disposeQueryCancellation();
+    this._queryCts = new vscode.CancellationTokenSource();
+    const queryToken = this._queryCts.token;
+
     const seq = ++this._querySeq;
-    webview.postMessage({ type: "loading", loading: true });
-    webview.postMessage({ type: "clearError" });
+
+    const post = (message: unknown): void => {
+      if (seq !== this._querySeq) return;
+      if (this._view?.webview !== webview) return;
+      webview.postMessage(message);
+    };
+
+    post({ type: "loading", loading: true });
+    post({ type: "clearError" });
 
     const creds = await resolveCredentials(this._context);
     if (!creds) {
       if (seq !== this._querySeq) return;
-      webview.postMessage({ type: "loading", loading: false });
-      webview.postMessage({
+      post({ type: "loading", loading: false });
+      post({
         type: "error",
         code: "NO_CREDENTIALS",
         message:
@@ -155,24 +179,30 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       this._log,
       { client, localIndexState: this._localIndexState },
       {
+        token: queryToken,
+        credentials: creds,
         onAwaitingLocalIndexDownload: () => {
-          webview.postMessage({
+          post({
             type: "localIndexLoading",
             text: "Downloading index for local search — first time can take a minute…",
           });
         },
         onLocalIndexDownloadFinished: () => {
-          webview.postMessage({ type: "localIndexLoading", text: "" });
+          post({ type: "localIndexLoading", text: "" });
         },
       }
     );
 
+    if (!result.ok && result.error.code === "CANCELLED") {
+      return;
+    }
+
     if (seq !== this._querySeq) return;
 
-    webview.postMessage({ type: "loading", loading: false });
+    post({ type: "loading", loading: false });
 
     if (!result.ok) {
-      webview.postMessage({
+      post({
         type: "error",
         code: result.error.code,
         message: result.error.message,
@@ -181,7 +211,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     }
 
     this._lastHits = result.hits;
-    webview.postMessage({
+    post({
       type: "results",
       query: text,
       hits: result.hits.map((h, index) => ({
@@ -406,7 +436,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
         <a href="#" id="mossSettingsLink" class="settings-link" role="button" tabindex="0">Open Moss settings</a>
       </p>
     </div>
-    <ul class="result-list" id="resultList" style="display:none;" role="listbox" aria-label="Search results"></ul>
+    <ul class="result-list" id="resultList" style="display:none;" role="listbox" aria-label="Search results" aria-multiselectable="false"></ul>
   </div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

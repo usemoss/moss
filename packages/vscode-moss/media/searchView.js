@@ -124,12 +124,17 @@
       .join("");
   }
 
+  function hitRowDomId(hitIndex) {
+    return "moss-hit-" + hitIndex;
+  }
+
   function getResultRows() {
     return [...resultList.querySelectorAll(".result-row")];
   }
 
   function clearResultSelection() {
     selectedHitIndex = -1;
+    resultList.removeAttribute("aria-activedescendant");
     getResultRows().forEach((el) => {
       el.classList.remove("result-row--selected");
       el.setAttribute("aria-selected", "false");
@@ -150,6 +155,12 @@
         el.scrollIntoView({ block: "nearest" });
       }
     });
+    if (selectedHitIndex >= 0 && rows[selectedHitIndex]) {
+      const id = rows[selectedHitIndex].id;
+      if (id) resultList.setAttribute("aria-activedescendant", id);
+    } else {
+      resultList.removeAttribute("aria-activedescendant");
+    }
   }
 
   function openHitIndex(idx) {
@@ -250,6 +261,7 @@
           indexPrep.classList.remove("visible");
         }
         resultList.innerHTML = "";
+        resultList.removeAttribute("aria-activedescendant");
         resultList.style.display = "none";
         emptyBlock.style.display = "none";
       }
@@ -283,6 +295,7 @@
         indexPrep.classList.remove("visible");
       }
       resultList.innerHTML = "";
+      resultList.removeAttribute("aria-activedescendant");
       resultList.style.display = "none";
       emptyBlock.style.display = "block";
       emptyState.innerHTML = DEFAULT_EMPTY_HTML;
@@ -294,6 +307,7 @@
       showError(msg.message || "Search failed.");
       resultList.style.display = "none";
       resultList.innerHTML = "";
+      resultList.removeAttribute("aria-activedescendant");
       emptyBlock.style.display = "block";
       emptyState.innerHTML =
         "Could not complete this search. Fix the issue above, then try again.";
@@ -310,6 +324,7 @@
           "No results. Try different wording or run <strong>Moss: Index Workspace</strong>.";
         resultList.style.display = "none";
         resultList.innerHTML = "";
+        resultList.removeAttribute("aria-activedescendant");
         const t = typeof msg.timeMs === "number" ? msg.timeMs + " ms" : "";
         meta.textContent = t ? "0 results · " + t : "0 results";
         return;
@@ -332,8 +347,11 @@
           const score =
             typeof h.score === "number" ? h.score.toFixed(3) : "";
           const snippet = highlightSnippet(h.snippet || "", queryText);
+          const domId = hitRowDomId(h.index);
           return (
-            '<li class="result-row" role="option" tabindex="-1" aria-selected="false" data-hit-index="' +
+            '<li class="result-row" id="' +
+            domId +
+            '" role="option" tabindex="-1" aria-selected="false" data-hit-index="' +
             h.index +
             '">' +
             '<div class="result-path">' +
