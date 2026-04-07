@@ -18,6 +18,33 @@ from ..config import resolve_credentials
 console = Console()
 
 
+def _parse_set_command(line: str) -> tuple[Optional[str], Optional[str]]:
+    parts = line.strip().split()
+    if len(parts) != 3 or parts[0] != "/set":
+        return None, "Usage: /set <alpha|top-k> <value>"
+
+    key = parts[1].lower()
+    if key not in {"alpha", "top-k", "topk"}:
+        return None, "Unknown setting. Supported: alpha, top-k"
+
+    if key == "alpha":
+        try:
+            alpha = float(parts[2])
+        except ValueError:
+            return None, "Invalid alpha. Must be a number between 0.0 and 1.0."
+        if not 0.0 <= alpha <= 1.0:
+            return None, "Invalid alpha. Must be between 0.0 and 1.0."
+        return f"alpha={alpha}", None
+
+    try:
+        top_k = int(parts[2])
+    except ValueError:
+        return None, "Invalid top-k. Must be a positive integer."
+    if top_k < 1:
+        return None, "Invalid top-k. Must be >= 1."
+    return f"top_k={top_k}", None
+
+
 def query_command(
     ctx: typer.Context,
     index_name: str = typer.Argument(..., help="Index name"),
@@ -26,12 +53,18 @@ def query_command(
     alpha: float = typer.Option(0.8, "--alpha", "-a", help="Semantic weight (0.0=keyword, 1.0=semantic)"),
     filter_json: Optional[str] = typer.Option(None, "--filter", help="Metadata filter as JSON string"),
     cloud: bool = typer.Option(False, "--cloud", "-c", help="Query via cloud API instead of downloading the index"),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        "-i",
+        help="Start interactive query session for multiple queries against one loaded index",
+    ),
 ) -> None:
     """Query an index. Downloads the index and queries on-device by default. Use --cloud to skip the download and query via the cloud API."""
     json_mode = ctx.obj.get("json_output", False)
 
-    # Resolve query text
-    if query_text is None:
+    # Resolve query text for non-interactive mode
+    if not interactive and query_text is None:
         if sys.stdin.isatty():
             output.print_error("No query provided. Pass as argument or pipe via stdin.", json_mode)
             raise typer.Exit(1)
@@ -66,6 +99,61 @@ def query_command(
             if not json_mode:
                 console.print(f"Loading index [cyan]{index_name}[/cyan] locally...")
             await client.load_index(index_name)
+
+        if interactive:
+            current_top_k = top_k
+            current_alpha = alpha
+
+            if not json_mode:
+                console.print(
+                    "Interactive mode started. Type queries, [/set alpha <value>], "
+                    "[/set top-k <value>], or [/exit]."
+                )
+                console.print(
+                    f"Session defaults: top-k={current_top_k}, alpha={current_alpha}"
+                )
+
+            async def run_query(text: str) -> None:
+                options = QueryOptions(top_k=current_top_k, alpha=current_alpha, filter=parsed_filter)
+                result = await client.query(index_name, text, options)
+                output.print_search_results(result, json_mode=json_mode)
+
+            if query_text:
+                await run_query(query_text)
+
+            while True:
+                try:
+                    line = input("moss> ").strip()
+                except EOFError:
+                    break
+
+                if not line:
+                    continue
+                if line == "/exit":
+                    break
+                if line.startswith("/set"):
+                    parsed, err = _parse_set_command(line)
+                    if err:
+                        output.print_error(err, json_mode)
+                        continue
+                    if parsed is None:
+                        output.print_error("Invalid /set command.", json_mode)
+                        continue
+                    if parsed.startswith("alpha="):
+                        current_alpha = float(parsed.split("=", 1)[1])
+                    else:
+                        current_top_k = int(parsed.split("=", 1)[1])
+                    if not json_mode:
+                        console.print(
+                            f"Session defaults updated: top-k={current_top_k}, alpha={current_alpha}"
+                        )
+                    continue
+
+                await run_query(line)
+
+            if not json_mode:
+                console.print("Exiting interactive session.")
+            return
 
         options = QueryOptions(top_k=top_k, alpha=alpha, filter=parsed_filter)
         result = await client.query(index_name, query_text, options)

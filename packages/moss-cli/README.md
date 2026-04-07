@@ -114,6 +114,17 @@ moss query my-index "neural networks" --top-k 20 --alpha 0.3
 # Cloud mode (skip download, query via cloud API)
 moss query my-index "transformers" --cloud
 
+# Interactive mode (keeps one loaded index for multiple queries)
+moss query my-index --interactive
+
+# Interactive mode with session defaults
+moss query my-index --interactive --top-k 20 --alpha 0.4
+
+# In interactive prompt:
+#   /set alpha 0.5
+#   /set top-k 10
+#   /exit
+
 # With metadata filter (local only)
 moss query my-index "shoes" --filter '{"field": "category", "condition": {"$eq": "footwear"}}'
 
