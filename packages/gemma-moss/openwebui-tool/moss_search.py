@@ -2,7 +2,7 @@
 title: Moss Knowledge Base Search
 description: Search a Moss semantic index. Gemma (or any model) can call this tool to retrieve relevant information.
 author: InferEdge
-version: 0.0.2
+version: 0.0.1
 """
 
 import time
