@@ -15,7 +15,7 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '
 
 const INDEXING_STEPS = [
 	'Parsing PDF with LiteParse',
-	'Chunking content (400 words, 50 overlap)',
+	'Chunking content (400 words, 2-sentence overlap)',
 	'Generating embeddings',
 	'Building Moss index',
 	'Ready for queries',
@@ -103,7 +103,7 @@ export default function Home() {
 
 			const data = await apiPromise;
 			setSessionId(data.session_id);
-			setDocCount(25);
+			setDocCount(data.chunk_count || 25);
 			setPhase('ready');
 		} catch {
 			toast.error('Failed to load sample PDF.');
