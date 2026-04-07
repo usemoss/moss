@@ -2,18 +2,16 @@
 title: Moss Knowledge Base Search
 description: Search a Moss semantic index. Gemma (or any model) can call this tool to retrieve relevant information.
 author: InferEdge
-version: 0.0.1
+version: 0.0.2
 """
 
-import asyncio
-import os
-from typing import Any, Awaitable, Callable
+import time
 
 from pydantic import BaseModel, Field
 
 
 class Tools:
-    """Moss semantic search tool for Open WebUI."""
+    """Moss semantic search tool for Open WebUI with in-memory index."""
 
     class Valves(BaseModel):
         """Configuration — set these in Open WebUI's tool settings."""
@@ -34,6 +32,10 @@ class Tools:
             default=5,
             description="Number of results to return per search",
         )
+        alpha: float = Field(
+            default=0.8,
+            description="Blend: 1.0 = semantic only, 0.0 = keyword only",
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -51,16 +53,20 @@ class Tools:
             )
 
     async def _ensure_index(self):
-        """Load the index if not already loaded."""
+        """Load the index into memory if not already loaded."""
         if not self._index_loaded:
             self._ensure_client()
             await self._client.load_index(self.valves.moss_index_name)
+            await self._client.load_index(
+                self.valves.moss_index_name, auto_refresh=True
+            )
             self._index_loaded = True
 
     async def search_knowledge_base(
         self,
         query: str,
         __user__: dict = {},
+        __event_emitter__=None,
     ) -> str:
         """Search the Moss knowledge base for relevant information.
 
@@ -77,20 +83,58 @@ class Tools:
             return "Error: Moss index name not configured. Set it in the tool's Valves settings."
 
         try:
+            # Emit status while loading/searching
+            if __event_emitter__:
+                if not self._index_loaded:
+                    await __event_emitter__(
+                        {
+                            "type": "status",
+                            "data": {
+                                "description": f"Loading Moss index '{self.valves.moss_index_name}'...",
+                                "done": False,
+                            },
+                        }
+                    )
+
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": f"Searching for: {query}",
+                            "done": False,
+                        },
+                    }
+                )
+
             await self._ensure_index()
 
             from inferedge_moss import QueryOptions
 
+            start = time.perf_counter()
             result = await self._client.query(
                 self.valves.moss_index_name,
                 query,
-                options=QueryOptions(top_k=self.valves.top_k, alpha=0.8),
+                options=QueryOptions(
+                    top_k=self.valves.top_k, alpha=self.valves.alpha
+                ),
             )
+            elapsed_ms = (time.perf_counter() - start) * 1000
+
+            if __event_emitter__:
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": f"Moss: {len(result.docs)} results in {elapsed_ms:.1f}ms",
+                            "done": True,
+                        },
+                    }
+                )
 
             if not result.docs:
                 return "No relevant results found."
 
-            lines = ["Relevant results from knowledge base:\n"]
+            lines = [f"Relevant results ({len(result.docs)} found in {elapsed_ms:.1f}ms):\n"]
             for i, doc in enumerate(result.docs, 1):
                 text = getattr(doc, "text", "") or ""
                 score = getattr(doc, "score", None)
@@ -109,4 +153,11 @@ class Tools:
 
         except Exception as e:
             self._index_loaded = False
+            if __event_emitter__:
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {"description": f"Search failed: {e}", "done": True},
+                    }
+                )
             return f"Search failed: {str(e)}"
