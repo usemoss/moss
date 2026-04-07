@@ -174,4 +174,21 @@ describe("getMossConfig", () => {
     expect(c.indexName).toBe("vscode-moss-alpha-beta");
   });
 
+  it("clamps invalid numeric settings to safe defaults or caps", async () => {
+    const ws = Uri.file("/repo");
+    setMossTestConfig(ws.toString(), {
+      projectId: "p",
+      projectKey: "k",
+      maxFileSizeBytes: -1,
+      topK: 9999,
+      chunkMaxLines: 0,
+      chunkOverlapLines: -5,
+    });
+    const folder: WorkspaceFolder = { uri: ws, name: "r", index: 0 };
+    const c = await getMossConfig(memorySecrets(), folder);
+    expect(c.maxFileSizeBytes).toBe(1_048_576);
+    expect(c.topK).toBe(100);
+    expect(c.chunkMaxLines).toBe(100);
+    expect(c.chunkOverlapLines).toBe(12);
+  });
 });

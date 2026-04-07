@@ -10,6 +10,47 @@ export function getMossLogVerbose(): boolean {
 /** Default hybrid-search blend (semantic-heavy), aligned with Moss SDK defaults. */
 export const DEFAULT_QUERY_ALPHA = 0.8;
 
+const DEFAULT_MAX_FILE_SIZE_BYTES = 1_048_576;
+const MAX_FILE_SIZE_BYTES_CAP = 50 * 1024 * 1024;
+const DEFAULT_TOP_K = 10;
+const TOP_K_CAP = 100;
+const DEFAULT_CHUNK_MAX_LINES = 100;
+const CHUNK_MAX_LINES_CAP = 10_000;
+const DEFAULT_CHUNK_OVERLAP_LINES = 12;
+const CHUNK_OVERLAP_CAP = 10_000;
+
+function clampPositiveInt(
+  value: unknown,
+  fallback: number,
+  max: number
+): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const i = Math.trunc(n);
+  if (i < 1) return fallback;
+  return Math.min(i, max);
+}
+
+function clampNonNegativeInt(
+  value: unknown,
+  fallback: number,
+  max: number
+): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const i = Math.trunc(n);
+  if (i < 0) return fallback;
+  return Math.min(i, max);
+}
+
+function clampMaxFileSizeBytes(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_MAX_FILE_SIZE_BYTES;
+  const i = Math.trunc(n);
+  if (i < 1024) return DEFAULT_MAX_FILE_SIZE_BYTES;
+  return Math.min(i, MAX_FILE_SIZE_BYTES_CAP);
+}
+
 export interface ResolvedConfig {
   projectId: string | undefined;
   projectKey: string | undefined;
@@ -129,12 +170,20 @@ export async function getMossConfig(
   ];
   const excludeGlobs = toStringArray(cfg.get("excludeGlob"), defaultExcludes);
 
-  const maxFileSizeBytes = cfg.get<number>("maxFileSizeBytes") ?? 1_048_576;
-  const topK = cfg.get<number>("topK") ?? 10;
+  const maxFileSizeBytes = clampMaxFileSizeBytes(cfg.get("maxFileSizeBytes"));
+  const topK = clampPositiveInt(cfg.get("topK"), DEFAULT_TOP_K, TOP_K_CAP);
   const alpha = resolveQueryAlpha(cfg.get("alpha"));
 
-  const chunkMaxLines = cfg.get<number>("chunkMaxLines") ?? 100;
-  const chunkOverlapLines = cfg.get<number>("chunkOverlapLines") ?? 12;
+  const chunkMaxLines = clampPositiveInt(
+    cfg.get("chunkMaxLines"),
+    DEFAULT_CHUNK_MAX_LINES,
+    CHUNK_MAX_LINES_CAP
+  );
+  const chunkOverlapLines = clampNonNegativeInt(
+    cfg.get("chunkOverlapLines"),
+    DEFAULT_CHUNK_OVERLAP_LINES,
+    CHUNK_OVERLAP_CAP
+  );
 
   return {
     projectId,

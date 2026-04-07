@@ -14,6 +14,19 @@
   const resultList = document.getElementById("resultList");
   const mossSettingsLink = document.getElementById("mossSettingsLink");
 
+  if (
+    !input ||
+    !btn ||
+    !meta ||
+    !errorBanner ||
+    !emptyBlock ||
+    !emptyState ||
+    !resultList ||
+    !mossSettingsLink
+  ) {
+    return;
+  }
+
   const DEFAULT_EMPTY_HTML =
     "Run <strong>Moss: Index Workspace</strong> to index your files,<br/>then search here.";
 
@@ -140,9 +153,8 @@
   }
 
   function openHitIndex(idx) {
-    if (!Number.isNaN(idx)) {
-      vscode.postMessage({ type: "openResult", hitIndex: idx });
-    }
+    if (typeof idx !== "number" || !Number.isInteger(idx) || idx < 0) return;
+    vscode.postMessage({ type: "openResult", hitIndex: idx });
   }
 
   function flushLiveQuery() {

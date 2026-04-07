@@ -3,6 +3,7 @@ import path from "node:path";
 import { MossClient } from "@moss-dev/moss";
 import { getMossConfig, resolveCredentials } from "./config.js";
 import { chunkFileContent } from "./chunking.js";
+import { formatError } from "./formatError.js";
 import {
   MOSS_LAST_INDEXED_KEY,
   type LastIndexedState,
@@ -250,10 +251,6 @@ async function readUtf8Text(uri: vscode.Uri): Promise<string | undefined> {
   }
 }
 
-function formatError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
-
 /**
  * Full workspace reindex: discover files, chunk, REST deleteIndex + createIndex, optional loadIndex.
  */
@@ -422,16 +419,16 @@ export async function runIndexWorkspace(
 
       progress.report({ message: "Uploading index to Moss…", increment: 0 });
 
-      const rest = new MossClient(creds.projectId, creds.projectKey);
+      const client = new MossClient(creds.projectId, creds.projectKey);
 
       try {
-        await tolerateDeleteIndex(rest, cfg.indexName, log);
+        await tolerateDeleteIndex(client, cfg.indexName, log);
         if (token.isCancellationRequested) {
           mossLog(log, "Moss: Indexing cancelled before createIndex.");
           return;
         }
 
-        await rest.createIndex(cfg.indexName, allDocs, {
+        await client.createIndex(cfg.indexName, allDocs, {
           modelId: cfg.modelId,
         });
         notifySearchIndexStale();
@@ -470,9 +467,8 @@ export async function runIndexWorkspace(
         return;
       }
       try {
-        const sdk = new MossClient(creds.projectId, creds.projectKey);
         const localState: { loadedIndexName?: string } = {};
-        await ensureLocalIndexLoaded(sdk, cfg.indexName, localState);
+        await ensureLocalIndexLoaded(client, cfg.indexName, localState);
         mossLog(
           log,
           "Moss: loadIndex completed (local query cache warmed).",

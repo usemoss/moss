@@ -1,4 +1,5 @@
 import { MossClient, type QueryResultDocumentInfo } from "@moss-dev/moss";
+import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
 import { getMossConfig, resolveCredentials } from "./config.js";
 import { ensureLocalIndexLoaded, clearLocalIndexLoadState, type LocalIndexLoadState } from "./mossQueryState.js";
@@ -443,9 +444,10 @@ async function openSearchHit(hit: QueryResultDocumentInfo): Promise<void> {
 function getNonce(): string {
   const chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = randomBytes(32);
   let result = "";
   for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars[bytes[i]! % chars.length]!;
   }
   return result;
 }

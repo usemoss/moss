@@ -5,6 +5,7 @@ import {
 import {
   buildMetadata,
   chunkLineWindowSegment,
+  DEFAULT_MAX_CHARS,
   normalizeRelativePath,
   truncateToMaxChars,
 } from "./chunkCore.js";
@@ -14,7 +15,6 @@ import type { ChunkOptions } from "./chunkCore.js";
 
 export type { ChunkOptions };
 
-const DEFAULT_MAX_CHARS = 12_000;
 const DEFAULT_SMALL_FILE_LINES = 50;
 
 /**

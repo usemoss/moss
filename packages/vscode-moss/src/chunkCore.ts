@@ -1,7 +1,8 @@
 import type { DocumentInfo } from "@moss-dev/moss";
 import type { MossMetadata } from "./types.js";
 
-const DEFAULT_MAX_CHARS = 12_000;
+/** Upper bound on embedded text length per chunk (shared with line-window chunking entry). */
+export const DEFAULT_MAX_CHARS = 12_000;
 
 export interface ChunkOptions {
   chunkMaxLines: number;

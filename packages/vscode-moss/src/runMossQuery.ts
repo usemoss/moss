@@ -1,6 +1,7 @@
 import type { MossClient, QueryResultDocumentInfo } from "@moss-dev/moss";
 import * as vscode from "vscode";
 import { getMossConfig, resolveCredentials } from "./config.js";
+import { formatError } from "./formatError.js";
 import { ensureLocalIndexLoaded, type LocalIndexLoadState } from "./mossQueryState.js";
 import { mossLog } from "./mossLog.js";
 
@@ -13,10 +14,6 @@ export type SearchErrorCode =
 export interface SearchFailure {
   code: SearchErrorCode;
   message: string;
-}
-
-function formatError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
 }
 
 function lineLabel(meta: Record<string, string>): string {

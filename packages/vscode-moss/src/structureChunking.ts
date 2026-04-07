@@ -229,6 +229,9 @@ async function ensureParser(): Promise<void> {
     const nm = nodeModulesRoot();
     parserInit = TreeSitter.Parser.init({
       locateFile: (base: string) => path.join(nm, "web-tree-sitter", base),
+    }).catch((err: unknown) => {
+      parserInit = undefined;
+      return Promise.reject(err);
     });
   }
   await parserInit;
