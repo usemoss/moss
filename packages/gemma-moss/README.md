@@ -223,10 +223,10 @@ Gemma (via Ollama, with Moss tool)
 |-------------|--------|-----|
 | Model keep-alive | No cold starts between messages | `keep_alive: 24h` via API |
 | Smaller context | Faster per-token generation | Set context to 8192 in model settings |
-| Moss in-memory | Sub-10ms search (~65x faster than cloud) | `load_index()` (automatic in the tool) |
+| Moss in-memory | Sub-10ms search | `load_index()` (automatic in the tool) |
 | Auto-refresh | Index stays synced without restarts | Enabled in the tool |
 
-> **Note on Flash Attention:** Ollama supports `OLLAMA_FLASH_ATTENTION=1` and `OLLAMA_KV_CACHE_TYPE=q8_0`, but these can actually slow down inference on Apple Silicon (~56 tok/s vs ~65 tok/s default). Benchmark on your hardware before enabling. They may help on NVIDIA GPUs with CUDA.
+> **Note on Flash Attention:** Ollama supports `OLLAMA_FLASH_ATTENTION=1` and `OLLAMA_KV_CACHE_TYPE=q8_0`. Benchmark on your hardware before enabling.
 
 ## License
 
