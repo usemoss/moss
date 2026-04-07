@@ -18,9 +18,20 @@ pip install gemma-moss
 
 ### 1. Install and start Ollama
 
+Download from [ollama.com](https://ollama.com/) or install via package manager:
+
 ```bash
+# macOS
 brew install ollama
-brew services start ollama
+
+# Linux
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+Start the server:
+
+```bash
+ollama serve
 ```
 
 ### 2. Pull Gemma 4
@@ -31,7 +42,7 @@ ollama pull gemma4
 
 ### 3. Keep the model hot
 
-By default Ollama unloads models after 5 minutes of inactivity, causing cold start delays. Set a longer keep-alive:
+By default Ollama unloads models after a period of inactivity, causing cold start delays. Set a longer keep-alive:
 
 ```bash
 curl http://localhost:11434/api/generate -d '{"model":"gemma4","keep_alive":"24h","prompt":""}'
@@ -116,13 +127,13 @@ EOF
 ### 2. Create a Moss index (one-time)
 
 ```bash
-uv run python examples/moss-create-index-demo.py
+python examples/moss-create-index-demo.py
 ```
 
 ### 3. Start the chatbot
 
 ```bash
-uv run python examples/moss-gemma-demo.py
+python examples/moss-gemma-demo.py
 ```
 
 Commands: `/reset` (clear history), `/quit` (exit)
@@ -159,7 +170,11 @@ Chat session with native tool calling. Gemma decides when to search Moss.
 ```python
 from gemma_moss import GemmaMossSession, MossRetriever
 
-retriever = MossRetriever(index_name="my-index")
+retriever = MossRetriever(
+    project_id="...",
+    project_key="...",
+    index_name="my-index",
+)
 await retriever.load_index()
 
 session = GemmaMossSession(
@@ -176,7 +191,7 @@ response = await session.ask("How do refunds work?")
 | `retriever` | (required) | A `MossRetriever` instance |
 | `model` | `gemma4` | Ollama model name |
 | `ollama_host` | `None` | Ollama server URL |
-| `system_prompt` | `None` | Optional system prompt for the conversation |
+| `system_prompt` | (auto-generated) | System prompt; built from `index_description` if not provided |
 | `index_description` | `"a knowledge base"` | Describes what's searchable (used in tool definition) |
 | `history` | `None` | Initial conversation history |
 
