@@ -176,8 +176,8 @@ response = await session.ask("How do refunds work?")
 | `retriever` | (required) | A `MossRetriever` instance |
 | `model` | `gemma4` | Ollama model name |
 | `ollama_host` | `None` | Ollama server URL |
-| `system_prompt` | `None` | Override default system prompt |
-| `index_description` | `"a knowledge base"` | Describes what's searchable |
+| `system_prompt` | `None` | Optional system prompt for the conversation |
+| `index_description` | `"a knowledge base"` | Describes what's searchable (used in tool definition) |
 | `history` | `None` | Initial conversation history |
 
 | Method | Description |
