@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import path from "node:path";
+import { MossClient } from "@moss-dev/moss";
 import { getMossConfig, resolveCredentials } from "./config.js";
 import { chunkFileContent } from "./chunking.js";
 import {
@@ -7,14 +8,9 @@ import {
   type LastIndexedState,
 } from "./lastIndexed.js";
 import { mossLog } from "./mossLog.js";
-import {
-  ensureLocalIndexLoaded,
-  getOrCreateSdkClient,
-  invalidateLoadedSearchIndex,
-} from "./mossQueryState.js";
+import { ensureLocalIndexLoaded, notifySearchIndexStale } from "./mossQueryState.js";
 import { notifyMossIndexed } from "./mossStatusBar.js";
-import { createRestClient } from "./mossClients.js";
-import type { MossDocument } from "./types.js";
+import type { DocumentInfo } from "@moss-dev/moss";
 
 const MAX_FILE_SCAN = 80_000;
 const MAX_MOSS_DOCUMENTS = 60_000;
@@ -158,7 +154,7 @@ function canBraceCombine(patterns: string[]): boolean {
 }
 
 async function tolerateDeleteIndex(
-  client: ReturnType<typeof createRestClient>,
+  client: MossClient,
   indexName: string,
   log: vscode.OutputChannel
 ): Promise<void> {
@@ -321,7 +317,7 @@ export async function runIndexWorkspace(
 
       uris.sort((a, b) => a.fsPath.localeCompare(b.fsPath));
 
-      const allDocs: MossDocument[] = [];
+      const allDocs: DocumentInfo[] = [];
       let filesIndexed = 0;
       let skippedSize = 0;
       let skippedBinary = 0;
@@ -426,7 +422,7 @@ export async function runIndexWorkspace(
 
       progress.report({ message: "Uploading index to Moss…", increment: 0 });
 
-      const rest = createRestClient(creds.projectId, creds.projectKey);
+      const rest = new MossClient(creds.projectId, creds.projectKey);
 
       try {
         await tolerateDeleteIndex(rest, cfg.indexName, log);
@@ -438,7 +434,7 @@ export async function runIndexWorkspace(
         await rest.createIndex(cfg.indexName, allDocs, {
           modelId: cfg.modelId,
         });
-        invalidateLoadedSearchIndex();
+        notifySearchIndexStale();
         mossLog(
           log,
           `Moss: createIndex finished — ${allDocs.length} chunks from ${filesIndexed} file(s), index “${cfg.indexName}”.`
@@ -465,29 +461,28 @@ export async function runIndexWorkspace(
         "verbose"
       );
 
-      if (cfg.queryMode === "local") {
-        progress.report({ message: "Preparing local search cache…" });
-        await sleep(POST_CREATE_SETTLE_MS);
-        if (token.isCancellationRequested) {
-          void vscode.window.showInformationMessage(
-            "Moss: Index uploaded. Local cache warm-up was cancelled."
-          );
-          return;
-        }
-        try {
-          const sdk = getOrCreateSdkClient(creds.projectId, creds.projectKey);
-          await ensureLocalIndexLoaded(sdk, cfg.indexName);
-          mossLog(
-            log,
-            "Moss: loadIndex completed (local query cache warmed).",
-            "verbose"
-          );
-        } catch (e: unknown) {
-          mossLog(
-            log,
-            `Moss: loadIndex after indexing failed (try moss.queryMode "cloud"): ${formatError(e)}`
-          );
-        }
+      progress.report({ message: "Preparing local search cache…" });
+      await sleep(POST_CREATE_SETTLE_MS);
+      if (token.isCancellationRequested) {
+        void vscode.window.showInformationMessage(
+          "Moss: Index uploaded. Local cache warm-up was cancelled."
+        );
+        return;
+      }
+      try {
+        const sdk = new MossClient(creds.projectId, creds.projectKey);
+        const localState: { loadedIndexName?: string } = {};
+        await ensureLocalIndexLoaded(sdk, cfg.indexName, localState);
+        mossLog(
+          log,
+          "Moss: loadIndex completed (local query cache warmed).",
+          "verbose"
+        );
+      } catch (e: unknown) {
+        mossLog(
+          log,
+          `Moss: loadIndex after indexing failed (search will use cloud fallback): ${formatError(e)}`
+        );
       }
 
       void vscode.window.showInformationMessage(

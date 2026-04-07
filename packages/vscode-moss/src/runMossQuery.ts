@@ -1,12 +1,8 @@
+import type { MossClient, QueryResultDocumentInfo } from "@moss-dev/moss";
 import * as vscode from "vscode";
 import { getMossConfig, resolveCredentials } from "./config.js";
-import {
-  ensureLocalIndexLoaded,
-  getOrCreateSdkClient,
-  isLocalSearchIndexCached,
-} from "./mossQueryState.js";
+import { ensureLocalIndexLoaded, type LocalIndexLoadState } from "./mossQueryState.js";
 import { mossLog } from "./mossLog.js";
-import type { SearchHit } from "./types.js";
 
 export type SearchErrorCode =
   | "NO_WORKSPACE"
@@ -38,16 +34,23 @@ export interface RunMossQueryHooks {
   onLocalIndexDownloadFinished?: () => void;
 }
 
+export interface MossQuerySession {
+  client: MossClient;
+  localIndexState: LocalIndexLoadState;
+}
+
 /**
  * Semantic search against the configured workspace index.
+ * Uses `session` for the Moss client and local `loadIndex` state (sidebar search lifetime).
  */
 export async function runMossQuery(
   context: vscode.ExtensionContext,
   queryText: string,
   log: vscode.OutputChannel,
+  session: MossQuerySession,
   hooks?: RunMossQueryHooks
 ): Promise<
-  | { ok: true; hits: SearchHit[]; timeMs?: number }
+  | { ok: true; hits: QueryResultDocumentInfo[]; timeMs?: number }
   | { ok: false; error: SearchFailure }
 > {
   const folders = vscode.workspace.workspaceFolders;
@@ -75,25 +78,27 @@ export async function runMossQuery(
 
   const primary = folders[0]!;
   const cfg = await getMossConfig(context.secrets, primary);
-  const sdk = getOrCreateSdkClient(creds.projectId, creds.projectKey);
+  const sdk = session.client;
 
-  if (cfg.queryMode === "local") {
-    const needsLocalDownload = !isLocalSearchIndexCached(cfg.indexName);
-    if (needsLocalDownload) {
-      hooks?.onAwaitingLocalIndexDownload?.();
-    }
-    try {
-      await ensureLocalIndexLoaded(sdk, cfg.indexName);
-    } catch (e: unknown) {
-      mossLog(
-        log,
-        `Moss: Search — loadIndex failed; continuing with cloud query. ${formatError(e)}`,
-        "verbose"
-      );
-    } finally {
-      if (needsLocalDownload) {
-        hooks?.onLocalIndexDownloadFinished?.();
-      }
+  const state = session.localIndexState;
+  const willAttemptLocalLoad =
+    state.loadedIndexName !== cfg.indexName &&
+    state.localLoadFailedIndex !== cfg.indexName;
+
+  if (willAttemptLocalLoad) {
+    hooks?.onAwaitingLocalIndexDownload?.();
+  }
+  try {
+    await ensureLocalIndexLoaded(sdk, cfg.indexName, state);
+  } catch (e: unknown) {
+    mossLog(
+      log,
+      `Moss: Search — loadIndex failed; continuing with cloud query. ${formatError(e)}`,
+      "verbose"
+    );
+  } finally {
+    if (willAttemptLocalLoad) {
+      hooks?.onLocalIndexDownloadFinished?.();
     }
   }
 
@@ -103,10 +108,8 @@ export async function runMossQuery(
       alpha: cfg.alpha,
     });
 
-    const hits: SearchHit[] = result.docs.map((d) => ({
-      id: d.id,
-      score: d.score,
-      text: d.text,
+    const hits: QueryResultDocumentInfo[] = result.docs.map((d) => ({
+      ...d,
       metadata: { ...(d.metadata ?? {}) },
     }));
 
@@ -134,17 +137,18 @@ export async function runMossQuery(
   }
 }
 
-export function hitToRowDto(hit: SearchHit): {
+export function hitToRowDto(hit: QueryResultDocumentInfo): {
   path: string;
   lineLabel: string;
   score: number;
   snippet: string;
 } {
-  const path = hit.metadata.path?.replace(/\\/g, "/") ?? hit.id;
+  const meta = hit.metadata ?? {};
+  const path = meta.path?.replace(/\\/g, "/") ?? hit.id;
   const snippet = truncateSnippet(hit.text, 280);
   return {
     path,
-    lineLabel: lineLabel(hit.metadata),
+    lineLabel: lineLabel(meta),
     score: hit.score,
     snippet,
   };

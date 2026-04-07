@@ -1,57 +1,61 @@
 import type { MossClient } from "@moss-dev/moss";
-import { createSdkClient } from "./mossClients.js";
 
-let cachedClient:
-  | { projectId: string; projectKey: string; client: MossClient }
-  | undefined;
-
-/** Which index `loadIndex` last completed successfully for `cachedClient` (local mode). */
-let loadedLocalIndexName: string | undefined;
-
-export function getOrCreateSdkClient(
-  projectId: string,
-  projectKey: string
-): MossClient {
-  if (
-    cachedClient?.projectId === projectId &&
-    cachedClient.projectKey === projectKey
-  ) {
-    return cachedClient.client;
-  }
-  cachedClient = {
-    projectId,
-    projectKey,
-    client: createSdkClient(projectId, projectKey),
-  };
-  loadedLocalIndexName = undefined;
-  return cachedClient.client;
-}
-
-/**
- * Drop the SDK instance (e.g. after API key changes).
- */
-export function invalidateSearchSdkCache(): void {
-  cachedClient = undefined;
-  loadedLocalIndexName = undefined;
-}
-
-/**
- * Forget local `loadIndex` so the next local-mode search downloads again (e.g. after reindex).
- */
-export function invalidateLoadedSearchIndex(): void {
-  loadedLocalIndexName = undefined;
-}
-
-/** True when `ensureLocalIndexLoaded` would skip calling `loadIndex` for this index on the cached SDK client. */
-export function isLocalSearchIndexCached(indexName: string): boolean {
-  return loadedLocalIndexName === indexName;
+/** Tracks which index `loadIndex` last completed for a given `MossClient` session. */
+export interface LocalIndexLoadState {
+  loadedIndexName?: string;
+  /**
+   * When `loadIndex` fails for this index name, further attempts in the same session are skipped
+   * (avoids repeating download UI and work; `query` still uses cloud fallback). Cleared on success
+   * or when the session is reset.
+   */
+  localLoadFailedIndex?: string;
 }
 
 export async function ensureLocalIndexLoaded(
   client: MossClient,
-  indexName: string
+  indexName: string,
+  state: LocalIndexLoadState
 ): Promise<void> {
-  if (loadedLocalIndexName === indexName) return;
-  await client.loadIndex(indexName);
-  loadedLocalIndexName = indexName;
+  if (state.loadedIndexName === indexName) return;
+  if (state.localLoadFailedIndex === indexName) return;
+  try {
+    await client.loadIndex(indexName);
+    state.loadedIndexName = indexName;
+    state.localLoadFailedIndex = undefined;
+  } catch (e: unknown) {
+    state.localLoadFailedIndex = indexName;
+    throw e;
+  }
+}
+
+export function clearLocalIndexLoadState(state: LocalIndexLoadState): void {
+  state.loadedIndexName = undefined;
+  state.localLoadFailedIndex = undefined;
+}
+
+const searchIndexStaleHandlers = new Set<() => void>();
+
+/**
+ * Register a callback when a full re-index finishes so listeners can reset search state.
+ * Returns a disposable; prefer pushing it onto `ExtensionContext.subscriptions`.
+ */
+export function registerSearchIndexStaleHandler(
+  handler: () => void
+): { dispose: () => void } {
+  searchIndexStaleHandlers.add(handler);
+  return {
+    dispose: () => {
+      searchIndexStaleHandlers.delete(handler);
+    },
+  };
+}
+
+export function notifySearchIndexStale(): void {
+  for (const h of searchIndexStaleHandlers) {
+    try {
+      h();
+    } catch {
+      /* isolate handler failures */
+    }
+  }
 }

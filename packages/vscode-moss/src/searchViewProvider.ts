@@ -1,21 +1,75 @@
+import { MossClient, type QueryResultDocumentInfo } from "@moss-dev/moss";
 import * as vscode from "vscode";
-import { preloadLocalMossIndex } from "./preloadLocalIndex.js";
+import { getMossConfig, resolveCredentials } from "./config.js";
+import { ensureLocalIndexLoaded, clearLocalIndexLoadState, type LocalIndexLoadState } from "./mossQueryState.js";
+import { mossLog } from "./mossLog.js";
 import { hitToRowDto, runMossQuery } from "./runMossQuery.js";
 import { metadataToRange, metadataToUri } from "./paths.js";
-import type { SearchHit } from "./types.js";
 
 export class MossSearchViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewId = "moss.searchView";
 
   private _view?: vscode.WebviewView;
-  private _lastHits: SearchHit[] = [];
+  private _lastHits: QueryResultDocumentInfo[] = [];
   private _querySeq = 0;
+  private _session?: {
+    projectId: string;
+    projectKey: string;
+    client: MossClient;
+  };
+  private _localIndexState: LocalIndexLoadState = {};
+  private _webviewMessageDisposable?: vscode.Disposable;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
     private readonly _context: vscode.ExtensionContext,
     private readonly _log: vscode.OutputChannel
   ) {}
+
+  /** Drop Moss client + local `loadIndex` state (sidebar closed, credentials changed, or index rebuilt). */
+  public resetSearchSession(): void {
+    this._session = undefined;
+    clearLocalIndexLoadState(this._localIndexState);
+  }
+
+  private _clientFor(projectId: string, projectKey: string): MossClient {
+    if (
+      this._session?.projectId === projectId &&
+      this._session?.projectKey === projectKey
+    ) {
+      return this._session.client;
+    }
+    this._session = {
+      projectId,
+      projectKey,
+      client: new MossClient(projectId, projectKey),
+    };
+    clearLocalIndexLoadState(this._localIndexState);
+    return this._session.client;
+  }
+
+  private async _warmLocalIndex(token: vscode.CancellationToken): Promise<void> {
+    if (token.isCancellationRequested) return;
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders?.length) return;
+    const creds = await resolveCredentials(this._context);
+    if (!creds) return;
+    const cfg = await getMossConfig(this._context.secrets, folders[0]!);
+    if (token.isCancellationRequested) return;
+    try {
+      const client = this._clientFor(creds.projectId, creds.projectKey);
+      await ensureLocalIndexLoaded(client, cfg.indexName, this._localIndexState);
+      mossLog(this._log, "Moss: Sidebar index warm-up finished.", "verbose");
+    } catch (e: unknown) {
+      if (token.isCancellationRequested) return;
+      const msg = e instanceof Error ? e.message : String(e);
+      mossLog(
+        this._log,
+        `Moss: Sidebar index warm-up failed; local loadIndex skipped for this session (cloud fallback). ${msg}`,
+        "verbose"
+      );
+    }
+  }
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -31,16 +85,19 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this._getHtml(webviewView.webview);
 
-    const preloadCts = new vscode.CancellationTokenSource();
-    webviewView.onDidDispose(() => preloadCts.dispose());
-    void preloadLocalMossIndex(
-      this._context,
-      this._log,
-      preloadCts.token
-    );
+    const warmCts = new vscode.CancellationTokenSource();
+    webviewView.onDidDispose(() => {
+      this._webviewMessageDisposable?.dispose();
+      this._webviewMessageDisposable = undefined;
+      this._view = undefined;
+      warmCts.cancel();
+      warmCts.dispose();
+      this.resetSearchSession();
+    });
 
-    this._context.subscriptions.push(
-      webviewView.webview.onDidReceiveMessage((message) => {
+    this._webviewMessageDisposable?.dispose();
+    this._webviewMessageDisposable = webviewView.webview.onDidReceiveMessage(
+      (message) => {
         switch (message.type) {
           case "query":
             if (typeof message.text === "string") {
@@ -58,8 +115,10 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
           default:
             break;
         }
-      })
+      }
     );
+
+    void this._warmLocalIndex(warmCts.token);
   }
 
   private async _handleQuery(text: string): Promise<void> {
@@ -67,11 +126,7 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     if (!webview) return;
 
     if (text === "") {
-      webview.postMessage({
-        type: "error",
-        code: "QUERY_FAILED",
-        message: "Enter a search query.",
-      });
+      webview.postMessage({ type: "clearResults" });
       return;
     }
 
@@ -79,17 +134,37 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     webview.postMessage({ type: "loading", loading: true });
     webview.postMessage({ type: "clearError" });
 
-    const result = await runMossQuery(this._context, text, this._log, {
-      onAwaitingLocalIndexDownload: () => {
-        webview.postMessage({
-          type: "localIndexLoading",
-          text: "Downloading index for local search — first time can take a minute…",
-        });
-      },
-      onLocalIndexDownloadFinished: () => {
-        webview.postMessage({ type: "localIndexLoading", text: "" });
-      },
-    });
+    const creds = await resolveCredentials(this._context);
+    if (!creds) {
+      if (seq !== this._querySeq) return;
+      webview.postMessage({ type: "loading", loading: false });
+      webview.postMessage({
+        type: "error",
+        code: "NO_CREDENTIALS",
+        message:
+          "Missing Moss credentials. Run “Moss: Configure credentials” or set MOSS_PROJECT_ID / MOSS_PROJECT_KEY.",
+      });
+      return;
+    }
+
+    const client = this._clientFor(creds.projectId, creds.projectKey);
+    const result = await runMossQuery(
+      this._context,
+      text,
+      this._log,
+      { client, localIndexState: this._localIndexState },
+      {
+        onAwaitingLocalIndexDownload: () => {
+          webview.postMessage({
+            type: "localIndexLoading",
+            text: "Downloading index for local search — first time can take a minute…",
+          });
+        },
+        onLocalIndexDownloadFinished: () => {
+          webview.postMessage({ type: "localIndexLoading", text: "" });
+        },
+      }
+    );
 
     if (seq !== this._querySeq) return;
 
@@ -341,12 +416,17 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
     const resultList = document.getElementById('resultList');
     const mossSettingsLink = document.getElementById('mossSettingsLink');
 
+    const DEFAULT_EMPTY_HTML =
+      'Run <strong>Moss: Index Workspace</strong> to index your files,<br/>then search here.';
+
     const prior = vscode.getState();
     if (prior && typeof prior.query === 'string') {
       input.value = prior.query;
     }
 
     let selectedHitIndex = -1;
+    const SEARCH_DEBOUNCE_MS = 320;
+    let searchDebounceId = null;
 
     function persistQuery() {
       vscode.setState({ query: input.value });
@@ -461,7 +541,11 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       }
     }
 
-    function submitQuery() {
+    function flushLiveQuery() {
+      if (searchDebounceId !== null) {
+        clearTimeout(searchDebounceId);
+        searchDebounceId = null;
+      }
       if (input.disabled) return;
       const text = input.value.trim();
       clearError();
@@ -469,17 +553,30 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({ type: 'query', text });
     }
 
-    btn.addEventListener('click', submitQuery);
+    function scheduleLiveQuery() {
+      if (searchDebounceId !== null) clearTimeout(searchDebounceId);
+      searchDebounceId = setTimeout(() => {
+        searchDebounceId = null;
+        flushLiveQuery();
+      }, SEARCH_DEBOUNCE_MS);
+    }
+
+    if (prior && typeof prior.query === 'string' && prior.query.trim() !== '') {
+      scheduleLiveQuery();
+    }
+
+    btn.addEventListener('click', () => flushLiveQuery());
     input.addEventListener('input', () => {
       clearResultSelection();
       persistQuery();
+      scheduleLiveQuery();
     });
     input.addEventListener('focus', () => {
       clearResultSelection();
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        submitQuery();
+        flushLiveQuery();
         return;
       }
       if (e.key === 'ArrowDown' && resultList.style.display !== 'none') {
@@ -558,6 +655,21 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
         return;
       }
 
+      if (msg.type === 'clearResults') {
+        clearResultSelection();
+        clearError();
+        meta.textContent = '';
+        if (indexPrep) {
+          indexPrep.textContent = '';
+          indexPrep.classList.remove('visible');
+        }
+        resultList.innerHTML = '';
+        resultList.style.display = 'none';
+        emptyBlock.style.display = 'block';
+        emptyState.innerHTML = DEFAULT_EMPTY_HTML;
+        return;
+      }
+
       if (msg.type === 'error') {
         clearResultSelection();
         showError(msg.message || 'Search failed.');
@@ -628,9 +740,10 @@ export class MossSearchViewProvider implements vscode.WebviewViewProvider {
   }
 }
 
-async function openSearchHit(hit: SearchHit): Promise<void> {
+async function openSearchHit(hit: QueryResultDocumentInfo): Promise<void> {
   const folders = vscode.workspace.workspaceFolders;
-  const uri = metadataToUri(folders, hit.metadata);
+  const meta = hit.metadata ?? {};
+  const uri = metadataToUri(folders, meta);
   if (!uri) {
     void vscode.window.showWarningMessage(
       "Moss: Could not resolve file location for this result."
@@ -641,7 +754,7 @@ async function openSearchHit(hit: SearchHit): Promise<void> {
   try {
     const doc = await vscode.workspace.openTextDocument(uri);
     const editor = await vscode.window.showTextDocument(doc, { preview: true });
-    const range = metadataToRange(hit.metadata);
+    const range = metadataToRange(meta);
     const start = range.start;
     editor.selection = new vscode.Selection(start, start);
     editor.revealRange(

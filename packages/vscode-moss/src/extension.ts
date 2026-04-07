@@ -3,8 +3,7 @@ import {
   MOSS_SECRET_KEY_PROJECT_KEY,
 } from "./config.js";
 import { runIndexWorkspace } from "./indexWorkspace.js";
-import { MOSS_EXTENSION_SETTINGS_QUERY } from "./mossConstants.js";
-import { invalidateSearchSdkCache } from "./mossQueryState.js";
+import { registerSearchIndexStaleHandler } from "./mossQueryState.js";
 import { registerMossStatusBar } from "./mossStatusBar.js";
 import { MossSearchViewProvider } from "./searchViewProvider.js";
 
@@ -22,6 +21,31 @@ export function activate(context: vscode.ExtensionContext): void {
     log
   );
   context.subscriptions.push(
+    registerSearchIndexStaleHandler(() => searchProvider.resetSearchSession())
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      const mossKeysAffectingSession = [
+        "moss.projectId",
+        "moss.projectKey",
+        "moss.indexName",
+        "moss.topK",
+        "moss.alpha",
+        "moss.modelId",
+        "moss.includeGlob",
+        "moss.excludeGlob",
+        "moss.maxFileSizeBytes",
+        "moss.chunkMaxLines",
+        "moss.chunkOverlapLines",
+      ] as const;
+      if (mossKeysAffectingSession.some((k) => e.affectsConfiguration(k))) {
+        searchProvider.resetSearchSession();
+      }
+    })
+  );
+
+  context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       MossSearchViewProvider.viewId,
       searchProvider
@@ -36,9 +60,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("moss.openSettings", async () => {
+      // Filter must match package.json publisher + name (moss-dev / vscode-moss).
       await vscode.commands.executeCommand(
         "workbench.action.openSettings",
-        MOSS_EXTENSION_SETTINGS_QUERY
+        "@ext:moss-dev.vscode-moss"
       );
     })
   );
@@ -90,13 +115,13 @@ export function activate(context: vscode.ExtensionContext): void {
         if (key === undefined) return;
         if (key === "") {
           await context.secrets.delete(MOSS_SECRET_KEY_PROJECT_KEY);
-          invalidateSearchSdkCache();
+          searchProvider.resetSearchSession();
           void vscode.window.showInformationMessage(
             "Moss: Project key removed from secure storage."
           );
         } else {
           await context.secrets.store(MOSS_SECRET_KEY_PROJECT_KEY, key);
-          invalidateSearchSdkCache();
+          searchProvider.resetSearchSession();
           void vscode.window.showInformationMessage(
             "Moss: Project key saved to secure storage."
           );
@@ -153,7 +178,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await context.secrets.store(MOSS_SECRET_KEY_PROJECT_KEY, projectKey);
       }
 
-      invalidateSearchSdkCache();
+      searchProvider.resetSearchSession();
 
       void vscode.window.showInformationMessage(
         projectKey !== ""

@@ -2,8 +2,6 @@ import * as vscode from "vscode";
 
 export const MOSS_SECRET_KEY_PROJECT_KEY = "moss.projectKey";
 
-export type MossQueryMode = "local" | "cloud";
-
 /** When true, Moss output includes extra indexing / spike / search detail (Phase 8). */
 export function getMossLogVerbose(): boolean {
   return vscode.workspace.getConfiguration("moss").get<boolean>("logVerbose") === true;
@@ -23,7 +21,6 @@ export interface ResolvedConfig {
   topK: number;
   /** Hybrid search: 1.0 = semantic only, 0.0 = keyword only; clamped to [0, 1]. */
   alpha: number;
-  queryMode: MossQueryMode;
   chunkMaxLines: number;
   chunkOverlapLines: number;
   workspaceFolder: vscode.WorkspaceFolder;
@@ -136,9 +133,6 @@ export async function getMossConfig(
   const topK = cfg.get<number>("topK") ?? 10;
   const alpha = resolveQueryAlpha(cfg.get("alpha"));
 
-  const modeRaw = cfg.get<string>("queryMode");
-  const queryMode: MossQueryMode = modeRaw === "cloud" ? "cloud" : "local";
-
   const chunkMaxLines = cfg.get<number>("chunkMaxLines") ?? 100;
   const chunkOverlapLines = cfg.get<number>("chunkOverlapLines") ?? 12;
 
@@ -152,7 +146,6 @@ export async function getMossConfig(
     maxFileSizeBytes,
     topK,
     alpha,
-    queryMode,
     chunkMaxLines,
     chunkOverlapLines,
     workspaceFolder: folder,

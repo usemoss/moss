@@ -25,7 +25,7 @@ VS Code extension for **semantic codebase search** with [Moss](https://moss.dev)
 
 1. Set credentials: **Moss: Configure credentials** (pick **Project ID and project key** or **Project key only**; in key-only mode, an empty field removes the stored key), or set **`moss.projectId`** / **`moss.projectKey`** in settings, or **`MOSS_PROJECT_ID`** / **`MOSS_PROJECT_KEY`** in the environment.
 2. Run **Moss: Index Workspace** (crawl + chunk + upload to Moss).
-3. Open the **Moss** icon in the activity bar → **Search**, or run **Moss: Search** from the Command Palette. Enter a query; click a result to jump to the file and line range.
+3. Open the **Moss** icon in the activity bar → **Search**, or run **Moss: Search** from the Command Palette. Type a query (search runs as you pause typing, ~320ms debounce; **Enter** or **Search** runs immediately); click a result to jump to the file and line range.
 
 To change Moss options without opening Search, run **Moss: Open Settings** from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
 
@@ -48,11 +48,18 @@ File paths and file contents you index are sent to **Moss** (cloud) for embeddin
 | `maxFileSizeBytes` | Skip larger files. |
 | `topK` | Number of search hits. |
 | `alpha` | Hybrid search blend: `1.0` = semantic only, `0.0` = keyword only (default `0.8`). |
-| `queryMode` | `local` (download index) vs `cloud` (API-only queries). |
 | `chunkMaxLines` / `chunkOverlapLines` | Line-based chunking when indexing. |
 | `logVerbose` | Extra lines in **Output → Moss**. |
 
+### Multi-root workspaces
+
+**Indexing** walks every workspace folder, and chunk metadata records which root a file came from (`workspaceFolderIndex`). **`moss.*` settings used for indexing and sidebar search are read from the first folder only** (`workspaceFolders[0]`): `indexName`, `includeGlob`, `excludeGlob`, chunk options, `topK`, `alpha`, etc. Per-folder `moss.*` overrides on other roots are ignored. Put shared Moss settings in the workspace file or the first root’s `.vscode/settings.json`, or use a single-folder workspace if you need different indexes per root.
+
+Changing Moss settings that affect **credentials, index name, search, or indexing** (see `extension.ts` — all `moss.*` except **`logVerbose`**) resets the sidebar search session so the next search picks up new configuration.
+
 ## Development
+
+Indexing pipeline details: see [**WORKFLOW.md**](./WORKFLOW.md) in this package.
 
 ### Automated tests
 
@@ -61,13 +68,13 @@ From `packages/vscode-moss`:
 ```bash
 npm ci
 npm run check    # TypeScript
-npm test         # Vitest (chunking, paths, config, moss client factories)
+npm test         # Vitest (chunking, paths, config, mossQueryState)
 npm run compile
 ```
 
 ### Manual QA (before release)
 
-Use the **Extension Development Host** (F5 from repo root or this package) with real Moss credentials.
+Use the **Extension Development Host** (F5 — launch config lives under **`packages/vscode-moss/.vscode`**) with real Moss credentials.
 
 1. **Happy path:** Open a small test folder → configure credentials → **Moss: Index Workspace** → **Moss: Search** for text you know exists → click a result → editor jumps to the right file and range.
 2. **Cancel indexing:** Start **Moss: Index Workspace** on a larger tree → cancel from the notification → confirm no crash; **Output → Moss** notes cancellation.
@@ -75,11 +82,11 @@ Use the **Extension Development Host** (F5 from repo root or this package) with 
 
 ### Troubleshooting (`loadIndex` / local search)
 
-**Moss: Index Workspace** and sidebar search use **`@moss-dev/moss`** (`createIndex`, `deleteIndex`, `loadIndex`, `query`) — one client for cloud mutations and local or cloud queries.
+**Moss: Index Workspace** and sidebar search use **`@moss-dev/moss`** (`createIndex`, `deleteIndex`, `loadIndex`, `query`).
 
-- If **`loadIndex`** or local **`query`** fails, read the error in **Output → Moss**. Common causes: Node / native addon constraints in the extension host, WASM path differences, or network/proxy blocking the index download.
-- Search still runs **`query`** after a failed `loadIndex`; the SDK falls back to **cloud** query (same idea as setting **`moss.queryMode`** to **`cloud`**).
-- If local mode is **unreliable** in your environment, use **`moss.queryMode`: `cloud`** in settings.
+- The extension always tries **`loadIndex`** first so queries run locally when possible.
+- If **`loadIndex`** fails, read the error in **Output → Moss** (Node / native addon constraints, WASM paths, or network/proxy blocking the download). Search still runs **`query`**; the SDK falls back to the **cloud** query API automatically.
+- For the rest of that sidebar session, **`loadIndex` is not retried** for the same index (no repeated “downloading index” UI). Run **Moss: Index Workspace** again, change Moss settings, or close and reopen the Moss Search view to reset and retry local load.
 
 This extension uses **`"type": "module"`** (ESM); **`out/extension.js`** is built as ESM (`NodeNext`).
 
@@ -87,14 +94,14 @@ This extension uses **`"type": "module"`** (ESM); **`out/extension.js`** is buil
 
 Either:
 
-- Set **`MOSS_PROJECT_ID`** and **`MOSS_PROJECT_KEY`** in the environment (recommended for F5: edit `.vscode/launch.json` at the **repository root** under `env`, or use your OS environment), or  
+- Set **`MOSS_PROJECT_ID`** and **`MOSS_PROJECT_KEY`** in the environment (recommended for F5: add `env` in **`packages/vscode-moss/.vscode/launch.json`**, or use your OS environment), or  
 - Set **`moss.projectId`** and **`moss.projectKey`** in VS Code Settings (workspace or user).
 
 ### Run the extension (monorepo)
 
-1. Open the **`moss` repository root** in VS Code.
+1. Open the **`moss` repository root** in VS Code (or open **`packages/vscode-moss`** only — see below).
 2. **Terminal:** `cd packages/vscode-moss && npm install && npm run compile` (or rely on the watch task).
-3. **Run and Debug** → **vscode-moss: Run Extension** (uses `packages/vscode-moss` as `extensionDevelopmentPath`).
+3. **Run and Debug** → **vscode-moss: Run Extension** (defined in **`packages/vscode-moss/.vscode/launch.json`**; `extensionDevelopmentPath` points at this package).
 4. In the Extension Development Host, use **Moss: Configure credentials**, **Moss: Index Workspace**, and **Moss: Search** as needed.
 5. Open **Output** → channel **Moss** for logs.
 

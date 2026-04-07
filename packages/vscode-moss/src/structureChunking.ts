@@ -13,7 +13,8 @@ import {
   chunkLineWindowSegment,
   normalizeRelativePath,
 } from "./chunkCore.js";
-import type { MossDocument, MossMetadata } from "./types.js";
+import type { DocumentInfo } from "@moss-dev/moss";
+import type { MossMetadata } from "./types.js";
 
 /** 1-based inclusive line range in the source file. */
 export interface LineRange1 {
@@ -431,7 +432,7 @@ export function packStructuralRanges(
   lines: string[],
   structural: LineRange1[],
   options: ChunkOptions
-): MossDocument[] {
+): DocumentInfo[] {
   const total = lines.length;
   if (total === 0) return [];
 
@@ -444,7 +445,7 @@ export function packStructuralRanges(
       ? `${options.chunkIdNamespace}:`
       : "";
 
-  const out: MossDocument[] = [];
+  const out: DocumentInfo[] = [];
 
   for (const r of combined) {
     const sub = chunkLineWindowSegment(
@@ -477,7 +478,7 @@ export async function tryStructureAwareChunk(
   lines: string[],
   options: ChunkOptions,
   languageId: string | undefined
-): Promise<MossDocument[] | undefined> {
+): Promise<DocumentInfo[] | undefined> {
   const id = languageId?.toLowerCase();
   const pathNorm = normalizeRelativePath(relativePath);
 

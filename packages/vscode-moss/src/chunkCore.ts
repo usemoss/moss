@@ -1,4 +1,5 @@
-import type { MossDocument, MossMetadata } from "./types.js";
+import type { DocumentInfo } from "@moss-dev/moss";
+import type { MossMetadata } from "./types.js";
 
 const DEFAULT_MAX_CHARS = 12_000;
 
@@ -79,7 +80,7 @@ export function chunkLineWindowSegment(
   options: ChunkOptions,
   idPrefix: string,
   metaForRange: (startLine1: number, endLine1: number) => MossMetadata
-): MossDocument[] {
+): DocumentInfo[] {
   const total = lines.length;
   const segStart = Math.max(1, Math.min(segmentStartLine1, total || 1));
   const segEnd = Math.max(segStart, Math.min(segmentEndLine1, total || 1));
@@ -92,7 +93,7 @@ export function chunkLineWindowSegment(
   }
   const maxChars = options.maxCharsPerChunk ?? DEFAULT_MAX_CHARS;
 
-  const docs: MossDocument[] = [];
+  const docs: DocumentInfo[] = [];
 
   if (segLen <= 0) return docs;
 

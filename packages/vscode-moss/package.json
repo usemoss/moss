@@ -132,19 +132,6 @@
           "maximum": 1,
           "description": "Hybrid search blend: 1.0 = semantic (embedding) only, 0.0 = keyword only; values in between mix both. Default 0.8 is semantic-heavy."
         },
-        "moss.queryMode": {
-          "type": "string",
-          "enum": [
-            "local",
-            "cloud"
-          ],
-          "default": "local",
-          "description": "Query mode: 'local' downloads the index for fast in-process search; 'cloud' queries the Moss API directly.",
-          "enumDescriptions": [
-            "Download index and query in-process (fast, recommended)",
-            "Query the Moss cloud API (higher latency, no local cache)"
-          ]
-        },
         "moss.chunkMaxLines": {
           "type": "number",
           "default": 100,

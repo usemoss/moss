@@ -148,7 +148,6 @@ describe("getMossConfig", () => {
     expect(c.indexName).toBe("my-custom-index");
     expect(c.topK).toBe(10);
     expect(c.alpha).toBe(DEFAULT_QUERY_ALPHA);
-    expect(c.queryMode).toBe("local");
   });
 
   it("uses configured alpha when set", async () => {
@@ -175,15 +174,4 @@ describe("getMossConfig", () => {
     expect(c.indexName).toBe("vscode-moss-alpha-beta");
   });
 
-  it("treats queryMode cloud only when exactly cloud", async () => {
-    const ws = Uri.file("/r");
-    setMossTestConfig(ws.toString(), {
-      projectId: "p",
-      projectKey: "k",
-      queryMode: "cloud",
-    });
-    const folder: WorkspaceFolder = { uri: ws, name: "r", index: 0 };
-    const c = await getMossConfig(memorySecrets(), folder);
-    expect(c.queryMode).toBe("cloud");
-  });
 });
