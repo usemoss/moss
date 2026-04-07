@@ -29,21 +29,7 @@ brew services start ollama
 ollama pull gemma4
 ```
 
-### 3. Optimize Ollama for speed
-
-Stop the default service and restart with flash attention and quantized KV cache:
-
-```bash
-brew services stop ollama
-OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 ollama serve
-```
-
-- **Flash Attention** — ~20-40% faster inference, lower memory usage, no quality loss
-- **q8_0 KV Cache** — quantizes the attention cache to 8-bit, further reducing memory
-
-To make this permanent, always start Ollama with these environment variables.
-
-### 4. Keep the model hot
+### 3. Keep the model hot
 
 By default Ollama unloads models after 5 minutes of inactivity, causing cold start delays. Set a longer keep-alive:
 
@@ -51,7 +37,7 @@ By default Ollama unloads models after 5 minutes of inactivity, causing cold sta
 curl http://localhost:11434/api/generate -d '{"model":"gemma4","keep_alive":"24h","prompt":""}'
 ```
 
-### 5. Reduce context length (optional)
+### 4. Reduce context length (optional)
 
 Gemma 4 defaults to 32K context. If your conversations are short, reducing to 8192 frees GPU memory and speeds up inference. Set this in Open WebUI's model settings or via the Ollama API.
 
@@ -235,12 +221,12 @@ Gemma (via Ollama, with Moss tool)
 
 | Optimization | Impact | How |
 |-------------|--------|-----|
-| Flash Attention | ~20-40% faster inference | `OLLAMA_FLASH_ATTENTION=1` |
-| q8_0 KV Cache | Less memory, faster | `OLLAMA_KV_CACHE_TYPE=q8_0` |
-| Model keep-alive | No cold starts | `keep_alive: 24h` |
-| Smaller context | Faster per-token | Set context to 8192 in model settings |
-| Moss in-memory | Sub-10ms search | `load_index()` (automatic in the tool) |
-| Auto-refresh | Index stays synced | Enabled in the tool |
+| Model keep-alive | No cold starts between messages | `keep_alive: 24h` via API |
+| Smaller context | Faster per-token generation | Set context to 8192 in model settings |
+| Moss in-memory | Sub-10ms search (~65x faster than cloud) | `load_index()` (automatic in the tool) |
+| Auto-refresh | Index stays synced without restarts | Enabled in the tool |
+
+> **Note on Flash Attention:** Ollama supports `OLLAMA_FLASH_ATTENTION=1` and `OLLAMA_KV_CACHE_TYPE=q8_0`, but these can actually slow down inference on Apple Silicon (~56 tok/s vs ~65 tok/s default). Benchmark on your hardware before enabling. They may help on NVIDIA GPUs with CUDA.
 
 ## License
 
