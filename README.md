@@ -289,6 +289,10 @@ See our [Contributing Guide](CONTRIBUTING.md) for setup instructions and our [Ro
 
 Check out issues labeled [`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue) to get started.
 
+## Contributors
+
+[![Contributors](https://contrib.rocks/image?repo=usemoss/moss)](https://github.com/usemoss/moss/graphs/contributors)
+
 ## Community
 
 - [Discord](https://moss.link/discord) — ask questions, share what you're building
