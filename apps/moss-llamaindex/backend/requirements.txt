@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-inferedge-moss
-python-dotenv
-python-multipart
-liteparse
-nltk

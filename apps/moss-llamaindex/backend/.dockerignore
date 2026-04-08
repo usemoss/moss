@@ -1,7 +1,0 @@
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-.env
-node_modules/
