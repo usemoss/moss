@@ -121,6 +121,7 @@ moss query my-index --interactive
 moss query my-index --interactive --top-k 20 --alpha 0.4
 
 # Note: interactive mode is local-only (no --cloud) and not supported with --json
+# Note: with redirected/piped stdin, interactive mode runs the piped query (if provided) and exits
 
 # In interactive prompt:
 #   /set alpha 0.5

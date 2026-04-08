@@ -139,6 +139,16 @@ def query_command(
             if query_text:
                 await run_query(query_text)
 
+            # When stdin is redirected (non-TTY), an interactive prompt cannot be sustained.
+            # In that case, run any piped initial query and exit with an explicit message.
+            if not sys.stdin.isatty():
+                if not json_mode:
+                    console.print(
+                        "Interactive stdin is not a TTY; exiting after piped input.",
+                        style="yellow",
+                    )
+                return
+
             while True:
                 try:
                     line = (await asyncio.to_thread(input, "moss> ")).strip()
