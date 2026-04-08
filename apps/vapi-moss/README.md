@@ -25,13 +25,7 @@ User speaks → VAPI STT → LLM refines query → tool-calls request → This s
    # Edit .env and fill in your Moss credentials
    ```
 
-2. **Create the Moss index** (one-time):
-
-   ```bash
-   uv run python create_index.py
-   ```
-
-3. **Start the server:**
+2. **Start the server:**
 
    ```bash
    uv run uvicorn server:app --port 3001
@@ -94,5 +88,5 @@ User speaks → VAPI STT → LLM refines query → tool-calls request → This s
 |----------|---------|-------------|
 | `MOSS_PROJECT_ID` | — | Moss project ID |
 | `MOSS_PROJECT_KEY` | — | Moss project key |
-| `MOSS_INDEX_NAME` | `product-knowledge` | Moss index to query |
+| `MOSS_INDEX_NAME` | — | Moss index to query |
 | `VAPI_WEBHOOK_SECRET` | — | Webhook secret for signature verification (leave empty to disable) |

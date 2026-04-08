@@ -32,7 +32,7 @@ logger = logging.getLogger("vapi_moss_server")
 
 MOSS_PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
 MOSS_PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
-INDEX_NAME = os.getenv("MOSS_INDEX_NAME", "product-knowledge")
+INDEX_NAME = os.getenv("MOSS_INDEX_NAME")
 WEBHOOK_SECRET = os.getenv("VAPI_WEBHOOK_SECRET", "").strip()
 
 moss_search = MossVapiSearch(

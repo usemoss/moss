@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from inferedge_moss import DocumentInfo, MossClient, SearchResult
+from moss import DocumentInfo, MossClient, SearchResult
 
 from .search import MossVapiSearch, VapiSearchResult
 from .signature import verify_vapi_signature
