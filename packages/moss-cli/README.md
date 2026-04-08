@@ -120,6 +120,8 @@ moss query my-index --interactive
 # Interactive mode with session defaults
 moss query my-index --interactive --top-k 20 --alpha 0.4
 
+# Note: interactive mode is local-only (no --cloud) and not supported with --json
+
 # In interactive prompt:
 #   /set alpha 0.5
 #   /set top-k 10

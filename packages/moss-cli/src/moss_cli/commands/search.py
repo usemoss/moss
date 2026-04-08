@@ -91,6 +91,18 @@ def query_command(
             json_mode,
         )
         raise typer.Exit(1)
+    if interactive and json_mode:
+        output.print_error(
+            "Interactive mode is not supported with --json. Remove --interactive or --json.",
+            json_mode,
+        )
+        raise typer.Exit(1)
+    if interactive and cloud:
+        output.print_error(
+            "Interactive mode currently supports local queries only. Remove --cloud.",
+            json_mode,
+        )
+        raise typer.Exit(1)
 
     client = MossClient(pid, pkey)
 
@@ -107,7 +119,8 @@ def query_command(
             if not json_mode:
                 console.print(
                     "Interactive mode started. Type queries, [/set alpha <value>], "
-                    "[/set top-k <value>], or [/exit]."
+                    "[/set top-k <value>], or [/exit].",
+                    markup=False,
                 )
                 console.print(
                     f"Session defaults: top-k={current_top_k}, alpha={current_alpha}"
@@ -123,8 +136,8 @@ def query_command(
 
             while True:
                 try:
-                    line = input("moss> ").strip()
-                except EOFError:
+                    line = (await asyncio.to_thread(input, "moss> ")).strip()
+                except (EOFError, KeyboardInterrupt):
                     break
 
                 if not line:
