@@ -63,15 +63,18 @@ def query_command(
     """Query an index. Downloads the index and queries on-device by default. Use --cloud to skip the download and query via the cloud API."""
     json_mode = ctx.obj.get("json_output", False)
 
-    # Resolve query text for non-interactive mode
-    if not interactive and query_text is None:
-        if sys.stdin.isatty():
-            output.print_error("No query provided. Pass as argument or pipe via stdin.", json_mode)
-            raise typer.Exit(1)
+    # Resolve query text from stdin when piped.
+    # In interactive mode this becomes the initial query before entering the prompt loop.
+    if query_text is None and not sys.stdin.isatty():
         query_text = sys.stdin.read().strip()
         if not query_text:
             output.print_error("Empty query from stdin.", json_mode)
             raise typer.Exit(1)
+
+    # Non-interactive mode still requires either arg query or piped stdin input.
+    if not interactive and query_text is None:
+        output.print_error("No query provided. Pass as argument or pipe via stdin.", json_mode)
+        raise typer.Exit(1)
 
     # Parse filter
     parsed_filter = None
@@ -144,7 +147,7 @@ def query_command(
                     continue
                 if line == "/exit":
                     break
-                if line.startswith("/set"):
+                if line == "/set" or line.startswith("/set "):
                     parsed, err = _parse_set_command(line)
                     if err:
                         output.print_error(err, json_mode)
