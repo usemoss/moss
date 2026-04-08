@@ -37,6 +37,13 @@ export default function UploadSection({ onUpload, isUploading }: UploadSectionPr
 		[handleFiles]
 	);
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			inputRef.current?.click();
+		}
+	};
+
 	const handleSubmit = () => {
 		if (files.length > 0) {
 			onUpload(files);
@@ -46,15 +53,18 @@ export default function UploadSection({ onUpload, isUploading }: UploadSectionPr
 	return (
 		<div className='space-y-6'>
 			{/* Drop zone */}
-			<div
+			<label
 				onDragOver={(e) => {
 					e.preventDefault();
 					setDragOver(true);
 				}}
 				onDragLeave={() => setDragOver(false)}
 				onDrop={handleDrop}
-				onClick={() => inputRef.current?.click()}
-				className={`relative cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all duration-200 ${
+				onKeyDown={handleKeyDown}
+				tabIndex={0}
+				role='button'
+				aria-label='Upload PDF files - drag and drop or click to browse'
+				className={`relative cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[--color-moss-cta] ${
 					dragOver
 						? 'border-[--color-moss-cta] bg-[--color-moss-cta]/[0.03]'
 						: 'border-[--color-moss-border] hover:border-[--color-moss-border-light] hover:bg-gray-50/50'
@@ -62,11 +72,13 @@ export default function UploadSection({ onUpload, isUploading }: UploadSectionPr
 			>
 				<input
 					ref={inputRef}
+					id='pdf-upload'
 					type='file'
 					accept='.pdf'
 					multiple
 					onChange={(e) => handleFiles(e.target.files)}
 					className='hidden'
+					aria-hidden='true'
 				/>
 				<div className='flex flex-col items-center gap-3'>
 					<div className='rounded-full bg-gray-100 p-3'>
@@ -95,10 +107,12 @@ export default function UploadSection({ onUpload, isUploading }: UploadSectionPr
 								</span>
 							</div>
 							<button
+								type='button'
 								onClick={(e) => {
 									e.stopPropagation();
 									removeFile(file.name);
 								}}
+								aria-label={`Remove ${file.name}`}
 								className='ml-2 rounded p-1 text-[--color-moss-muted] hover:bg-gray-100 hover:text-[--color-moss-title] transition-colors'
 							>
 								<X className='h-4 w-4' />

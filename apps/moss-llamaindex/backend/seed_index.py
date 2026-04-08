@@ -38,7 +38,8 @@ def chunk_text(text: str, chunk_size_words: int = 400, overlap_sentences: int = 
         text: The text to chunk
         chunk_size_words: Target word count per chunk (default 400)
         overlap_sentences: Number of sentences to carry forward for overlap (default 2).
-                          Must be >= 0. Values >= chunk_size_words are clamped.
+                          Must be >= 0. Clamped to max(1, chunk_size_words // 100) to prevent
+                          excessive overlap that reduces chunking progress.
 
     Returns:
         List of text chunks (each containing complete sentences only)
