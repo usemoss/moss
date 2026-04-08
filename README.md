@@ -242,7 +242,7 @@ const results = await client.query(name, "your query", { topK: 5 });
 | [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
-| [Vercel AI SDK](https://sdk.vercel.ai) | Coming soon | — |
+| [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`packages/vercel-sdk/`](packages/vercel-sdk/) |
 | [CrewAI](https://github.com/crewAIInc/crewAI) | Coming soon | — |
 
 ## Architecture
@@ -280,7 +280,7 @@ Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
 We welcome contributions! Here's where the community can have the most impact:
 
 - **New SDK bindings** — Swift, Go, Elixir,...
-- **Framework integrations** — Vercel AI SDK, CrewAI, Haystack, AutoGen
+- **Framework integrations** — CrewAI, Haystack, AutoGen
 - **Reranking support** — plug in cross-encoder rerankers
 - **Doc-parsing connectors** — PDF, DOCX, HTML, Markdown ingestion
 - **Examples and tutorials** — if you build something with Moss, we'd love to feature it
