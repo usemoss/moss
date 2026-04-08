@@ -8,10 +8,10 @@
         "@moss-dev/moss": "^1.0.0",
         "dotenv": "^17.2.3",
         "elysia": "^1.1.12",
-        "prettier": "^3.1.0",
       },
       "devDependencies": {
         "@types/bun": "latest",
+        "prettier": "^3.1.0",
       },
     },
   },
