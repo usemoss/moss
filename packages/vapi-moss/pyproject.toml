@@ -12,6 +12,7 @@ dependencies = [
 dev = [
     "python-dotenv>=1.2.1",
     "ruff>=0.1.0",
+    "pytest>=8.0",
 ]
 
 [tool.ruff]

@@ -92,7 +92,12 @@ async def tool_search(request: Request):
         function = tool_call.get("function", {})
         params = function.get("arguments", {}) or tool_call.get("parameters", {})
         if isinstance(params, str):
-            params = json.loads(params)
+            try:
+                params = json.loads(params)
+            except (json.JSONDecodeError, ValueError):
+                params = {}
+        if not isinstance(params, dict):
+            params = {}
         query = (params.get("query") or "").strip()
 
         if not query:
