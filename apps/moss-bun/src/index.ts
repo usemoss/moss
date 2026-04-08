@@ -177,8 +177,10 @@ const app = new Elysia()
       }
 
       console.log(`🔄 Loading index "${indexName}"...`);
-      await mossClient.loadIndex(indexName);
-      loadedIndexes.add(indexName);
+      const isLoaded = await ensureIndexLoaded(indexName);
+      if (!isLoaded) {
+        return { success: false, error: `Index "${indexName}" could not be loaded` };
+      }
 
       return { success: true, message: `Index "${indexName}" loaded successfully` };
     } catch (error) {
