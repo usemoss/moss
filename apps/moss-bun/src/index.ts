@@ -333,7 +333,14 @@ const app = new Elysia()
         await mossClient.addDocs(indexName, documents, { upsert: true });
 
         // Reload index to ensure queries return updated data
-        await mossClient.loadIndex(indexName);
+        try {
+          await mossClient.loadIndex(indexName);
+        } catch (reloadError) {
+          // Invalidate cache so subsequent requests will retry the reload
+          loadedIndexes.delete(indexName);
+          console.error(`Failed to reload index "${indexName}" after adding documents:`, reloadError);
+          throw reloadError;
+        }
 
         return {
           success: true,
@@ -363,7 +370,14 @@ const app = new Elysia()
       await mossClient.deleteDocs(indexName, docIds);
 
       // Reload index to ensure queries return updated data
-      await mossClient.loadIndex(indexName);
+      try {
+        await mossClient.loadIndex(indexName);
+      } catch (reloadError) {
+        // Invalidate cache so subsequent requests will retry the reload
+        loadedIndexes.delete(indexName);
+        console.error(`Failed to reload index "${indexName}" after deleting documents:`, reloadError);
+        throw reloadError;
+      }
 
       return {
         success: true,
