@@ -323,7 +323,7 @@ PORT=3001 bun run start
 ### Build fails
 ```bash
 # Clear cache and reinstall
-rm -rf node_modules bun.lockb
+rm -rf node_modules bun.lock
 bun install
 ```
 

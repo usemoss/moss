@@ -124,7 +124,7 @@ const app = new Elysia()
   })
 
  
-  .post("/api/initialize", async ({ body }: { body: InitializeRequest }) => {
+  .post("/api/initialize", async ({ body }: any) => {
     try {
       const { indexName, documents } = body;
 
@@ -358,8 +358,8 @@ const app = new Elysia()
     try {
       const { indexName, docIds } = body;
 
-      if (!indexName || !docIds) {
-        return { success: false, error: "indexName and docIds are required" };
+      if (!indexName || !Array.isArray(docIds) || docIds.length === 0) {
+        return { success: false, error: "indexName and docIds array are required" };
       }
 
       const isLoaded = await ensureIndexLoaded(indexName);
