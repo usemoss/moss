@@ -114,10 +114,10 @@ describe("Moss Bun Integration", () => {
     }, { timeout: 15000 });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     try {
       // Cleanup: delete test index
-      client.deleteIndex(testIndexName);
+      await client.deleteIndex(testIndexName);
     } catch (error) {
       // Ignore cleanup errors
     }

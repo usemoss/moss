@@ -58,22 +58,42 @@ const mossClient = new MossClient(MOSS_PROJECT_ID, MOSS_PROJECT_KEY);
 // Track loaded indexes
 const loadedIndexes = new Set<string>();
 
+// Track in-flight loads to prevent race conditions
+const loadingIndexes = new Map<string, Promise<boolean>>();
+
 /**
  * Load an index if not already loaded
+ * Prevents race conditions by deduplicating concurrent loads
  */
 async function ensureIndexLoaded(indexName: string): Promise<boolean> {
+  // Return immediately if already loaded
   if (loadedIndexes.has(indexName)) {
     return true;
   }
 
-  try {
-    await mossClient.loadIndex(indexName);
-    loadedIndexes.add(indexName);
-    return true;
-  } catch (error) {
-    console.error(`Failed to load index "${indexName}":`, error);
-    return false;
+  // Return existing in-flight promise if load is already in progress
+  if (loadingIndexes.has(indexName)) {
+    return loadingIndexes.get(indexName)!;
   }
+
+  // Create new load promise
+  const loadPromise = (async () => {
+    try {
+      await mossClient.loadIndex(indexName);
+      loadedIndexes.add(indexName);
+      return true;
+    } catch (error) {
+      console.error(`Failed to load index "${indexName}":`, error);
+      return false;
+    } finally {
+      loadingIndexes.delete(indexName);
+    }
+  })();
+
+  // Track in-flight load
+  loadingIndexes.set(indexName, loadPromise);
+
+  return loadPromise;
 }
 
 /**
