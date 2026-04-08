@@ -60,33 +60,26 @@ export function mossCreateIndexTool(options: MossCreateIndexToolOptions) {
 export function mossLoadIndexTool(options: MossLoadIndexToolOptions) {
   const { client, indexName: boundIndexName, description } = options;
 
+  const baseFields = {
+    autoRefresh: z
+      .boolean()
+      .default(false)
+      .describe('Enable auto-refresh polling to keep the index up-to-date.'),
+    pollingIntervalInSeconds: z
+      .number()
+      .int()
+      .min(60)
+      .optional()
+      .describe('Polling interval in seconds when autoRefresh is enabled (min 60).'),
+  };
+
   const inputSchema = boundIndexName != null
-    ? z.object({
-        autoRefresh: z
-          .boolean()
-          .default(false)
-          .describe('Enable auto-refresh polling to keep the index up-to-date.'),
-        pollingIntervalInSeconds: z
-          .number()
-          .int()
-          .min(60)
-          .optional()
-          .describe('Polling interval in seconds when autoRefresh is enabled (min 60).'),
-      })
+    ? z.object(baseFields)
     : z.object({
         indexName: z
           .string()
           .describe('Name of the index to load into memory.'),
-        autoRefresh: z
-          .boolean()
-          .default(false)
-          .describe('Enable auto-refresh polling to keep the index up-to-date.'),
-        pollingIntervalInSeconds: z
-          .number()
-          .int()
-          .min(60)
-          .optional()
-          .describe('Polling interval in seconds when autoRefresh is enabled (min 60).'),
+        ...baseFields,
       });
 
   return tool({
