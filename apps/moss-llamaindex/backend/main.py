@@ -34,7 +34,7 @@ MOSS_PROJECT_ID = os.getenv("MOSS_PROJECT_ID", "")
 MOSS_PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY", "")
 
 _parser = LiteParse()
-_seed             = os.getenv("SEED_INDEX_NAME", "transformer-paper")
+_seed             = os.getenv("SEED_INDEX_NAME", "")
 _seed_chunk_count = int(os.getenv("SEED_CHUNK_COUNT", "0"))
 
 sessions: dict[str, dict] = {}
@@ -59,6 +59,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"[startup] Warning: could not load seed index '{_seed}': {e}")
             print(f"[startup] Sample PDF will be unavailable until the index is created.")
+            sessions.pop("seed", None)
     yield
 
 
