@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.0] - 2026-03-29
+
+First stable release of the `moss` Python SDK (previously published as `inferedge-moss`).
+
+**Import path changed:** `from moss import MossClient` (was `from inferedge_moss import ...`)
+
+### Features
+
+- **Semantic search** with built-in on-device models (`moss-minilm`, `moss-mediumlm`); embedding computation runs in Rust for speed; custom embeddings supported via `QueryOptions.embedding`
+- **Hybrid search** with keyword + semantic search and configurable alpha blending
+- **Metadata filtering** on locally loaded indexes with rich operators (`$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$and`, `$or`, `$near` for geo-distance)
+- **Cloud query fallback**: `query()` automatically falls back to the cloud API when the index is not loaded locally
+- **Hot reload & auto-refresh**: `load_index()` supports `auto_refresh` with configurable polling interval to detect and reload updated indexes
+- **Async bulk index pipeline**: binary upload, server-side build, poll until completion
+- **Index mutations**: `create_index`, `add_docs`, `delete_docs` return `MutationResult` with `job_id`, `index_name`, `doc_count`
+- **Multi-index support** for isolated search spaces
+- **Python 3.10 to 3.14** supported
+
 ## [1.0.0-beta.19] - 2026-03-24
 
 - Updated `inferedge-moss-core` dependency to `0.8.7`
@@ -102,7 +120,7 @@ Performance improvements for query() calls.
 
 ## [1.0.0-beta.1] - 2025-09-14
 
-Initial release of moss with core features:
+Initial release of inferedge-moss with core features:
 
 - Semantic search using transformer-based embeddings
 - Lightweight embedding models for edge computing; supports proprietary "moss-minilm" model

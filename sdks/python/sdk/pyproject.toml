@@ -50,7 +50,7 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/usemoss/moss"
 Repository = "https://github.com/usemoss/moss"
-Documentation = "https://docs.usemoss.dev/"
+Documentation = "https://docs.moss.dev/"
 Source = "https://github.com/usemoss/moss/tree/main/sdks/python/sdk"
 Changelog = "https://github.com/usemoss/moss/blob/main/sdks/python/sdk/CHANGELOG.md"
 
