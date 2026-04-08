@@ -134,13 +134,10 @@ async function seed() {
     }
 
     console.log(`
-╔════════════════════════════════════════════════════════╗
-║           ✅ Seeding Complete!                        ║
-╠════════════════════════════════════════════════════════╣
-║ Index Name: ${indexName}
-║ Documents: ${SAMPLE_DOCUMENTS.length}
-║ Status: Ready for queries
-╚════════════════════════════════════════════════════════╝
+                ✅ Seeding Complete!    
+ Index Name: ${indexName}
+ Documents: ${SAMPLE_DOCUMENTS.length}
+ Status: Ready for queries
 
 Now you can:
   • Start the server: bun run src/index.ts

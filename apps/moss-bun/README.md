@@ -338,25 +338,10 @@ Ensure you have valid Moss credentials in `.env` or tests will skip automaticall
 4. **Use topK=5** by default, increase only if needed
 5. **Cache results** in your application layer
 
-## Limitations
-
-- Session/index data is not persisted (stored in memory)
-- Each process maintains its own loaded indexes
-- For distributed setups, use a state management solution
-
-## Contributing
-
-Contributions welcome! Areas for improvement:
-- Redis-backed index caching
-- Distributed tracing
-- Metrics/monitoring
-- Authentication/rate limiting
-
 ## Resources
 
 - [Moss Documentation](https://docs.moss.dev)
 - [Bun Documentation](https://bun.sh/docs)
-- [Elysia Web Framework](https://elysia.io)
 
 ## License
 

@@ -396,37 +396,4 @@ const app = new Elysia()
 
   .listen(PORT);
 
-console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║           🌿 Moss Bun Server Started                      ║
-╠═══════════════════════════════════════════════════════════╣
-║ Server: http://localhost:${PORT}
-║ Health: http://localhost:${PORT}/health
-║ Docs:   http://localhost:${PORT}/api/doc
-║
-║ Default Index: ${DEFAULT_INDEX}
-╚═══════════════════════════════════════════════════════════╝
-
-📚 Available Endpoints:
-
-Health & Status:
-  GET  /health                    - Health check
-  GET  /status                    - Server status
-
-Index Management:
-  POST /api/initialize            - Create & load index
-  POST /api/load/:indexName       - Load existing index
-  GET  /api/indexes               - List loaded indexes
-  GET  /api/index/:indexName      - Get index info
-  DELETE /api/index/:indexName    - Delete index
-
-Search:
-  POST /api/search                - Single search
-  POST /api/search-batch          - Batch search
-
-Documents:
-  POST /api/docs/add              - Add documents
-  DELETE /api/docs/delete         - Delete documents
-  GET  /api/docs/:indexName/:docId - Get document
-
-`);
+console.log(`🌿 Moss Bun Server listening on http://localhost:${PORT}`);
