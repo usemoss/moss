@@ -319,7 +319,7 @@ const app = new Elysia()
       try {
         const { indexName, documents } = body;
 
-        if (!indexName || !documents) {
+        if (!indexName || !Array.isArray(documents) || documents.length === 0) {
           return { success: false, error: "indexName and documents are required" };
         }
 
@@ -331,6 +331,9 @@ const app = new Elysia()
         console.log(`➕ Adding ${documents.length} documents to "${indexName}"`);
 
         await mossClient.addDocs(indexName, documents, { upsert: true });
+
+        // Reload index to ensure queries return updated data
+        await mossClient.loadIndex(indexName);
 
         return {
           success: true,
@@ -358,6 +361,9 @@ const app = new Elysia()
       }
 
       await mossClient.deleteDocs(indexName, docIds);
+
+      // Reload index to ensure queries return updated data
+      await mossClient.loadIndex(indexName);
 
       return {
         success: true,

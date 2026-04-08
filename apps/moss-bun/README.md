@@ -328,7 +328,7 @@ bun install
 ```
 
 ### Tests fail
-Ensure you have valid Moss credentials in `.env` or tests will skip automatically.
+Ensure you have valid Moss credentials in `.env` before running tests. Missing or invalid credentials may cause the tests to fail.
 
 ## Performance Tips
 
