@@ -94,7 +94,7 @@ asyncio.run(main())
 ### Prerequisites
 
 - Python 3.10 or higher
-- Valid InferEdge project credentials
+- Valid Moss project credentials
 
 ### Environment Setup
 
