@@ -147,6 +147,10 @@ const app = new Elysia()
       );
 
       // Create index
+      // Invalidate cache first — createIndex changes server state, so the
+      // previously-loaded in-memory index is stale regardless of whether
+      // the subsequent loadIndex succeeds.
+      loadedIndexes.delete(indexName);
       await mossClient.createIndex(indexName, documents);
 
       // Load index
