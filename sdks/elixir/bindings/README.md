@@ -1,6 +1,6 @@
-# moss_nif
+# moss_core
 
-`moss_nif` is the Rustler NIF layer that powers the `moss` Elixir SDK. It exposes the high-performance Rust core as native BEAM functions.
+`moss_core` is the Rustler NIF layer that powers the `moss` Elixir SDK. It exposes the high-performance Rust core as native BEAM functions.
 
 ## Overview
 
@@ -9,13 +9,13 @@ This package is a low-level NIF dependency and is not intended for direct use. F
 ```elixir
 # mix.exs
 defp deps do
-  [{:moss, "~> 0.1"}]
+  [{:moss, "~> 1.0"}]
 end
 ```
 
 ## What's inside
 
-`moss_nif` wraps three core Rust types via Rustler:
+`moss_core` wraps three core Rust types via Rustler:
 
 | Resource | Description |
 |---|---|
@@ -23,7 +23,7 @@ end
 | `ManagerResource` | Cloud index manager — load, cache, and query cloud indexes |
 | `ManageResource` | Cloud CRUD client — create, add docs, get job status, etc. |
 
-All NIF functions are declared in `MossNif.Nif`. I/O-bound operations (load, push, cloud calls) run on Erlang dirty schedulers and do not block the main scheduler.
+All NIF functions are declared in `MossCore.Nif`. I/O-bound operations (load, push, cloud calls) run on Erlang dirty schedulers and do not block the main scheduler.
 
 ## Building locally
 

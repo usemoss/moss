@@ -1,4 +1,4 @@
-# Load .env from the project root if present (local development credentials).
+# Load .env from the SDK root (sdk/.env) if present (local development credentials).
 # Lines starting with # are ignored; blank lines are skipped.
 env_path = Path.join(__DIR__, "../.env")
 

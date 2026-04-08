@@ -33,7 +33,7 @@ defmodule Moss.MixProject do
 
   defp deps do
     [
-      {:moss_core, path: "../bindings/elixir"},
+      {:moss_core, path: "../bindings"},
       {:req, "~> 0.5"},
       {:uniq, "~> 0.6"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}

@@ -35,7 +35,7 @@ Source for the [`moss`](https://hex.pm/packages/moss) Elixir package.
 ```
 
 ```elixir
-client = Moss.Client.new("your_project_id", "your_project_key")
+{:ok, client} = Moss.Client.new("your_project_id", "your_project_key")
 
 Moss.Client.create_index(client, "support-docs", [
   %{id: "1", text: "Refunds are processed within 3-5 business days."},

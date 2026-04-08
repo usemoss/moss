@@ -8,7 +8,7 @@
 # Usage:
 #   mix run samples/example_manage_metadata_filtering.exs
 
-# Load credentials from elixir/.env if present.
+# Load credentials from sdk/.env if present.
 env_path = Path.join(__DIR__, "../.env")
 if File.exists?(env_path) do
   env_path |> File.read!() |> String.split("\n", trim: true)
