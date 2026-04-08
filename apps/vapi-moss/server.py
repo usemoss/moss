@@ -89,7 +89,10 @@ async def tool_search(request: Request):
     results = []
     for tool_call in message.get("toolCallList", []):
         call_id = tool_call.get("id", "")
-        params = tool_call.get("parameters", {})
+        function = tool_call.get("function", {})
+        params = function.get("arguments", {}) or tool_call.get("parameters", {})
+        if isinstance(params, str):
+            params = json.loads(params)
         query = (params.get("query") or "").strip()
 
         if not query:
