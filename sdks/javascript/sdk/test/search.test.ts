@@ -235,16 +235,9 @@ async function run_scenario(
         // 1. Search
         let res: SearchResult;
         if (config.alpha === null) {
-            res = await client.query(indexName, text, config.topK);
+            res = await client.query(indexName, text, { topK: config.topK });
         } else {
-            // Some SDK versions expose alpha as a 4th positional argument.
-            const queryWithAlpha = client.query as unknown as (
-                indexName: string,
-                query: string,
-                topK: number,
-                alpha: number
-            ) => Promise<SearchResult>;
-            res = await queryWithAlpha(indexName, text, config.topK, config.alpha);
+            res = await client.query(indexName, text, { topK: config.topK, alpha: config.alpha ?? undefined });
         }
 
         // 2. Latency Measurement 
@@ -292,7 +285,7 @@ async function run_scenario(
 
 function readSdkVersion(): string {
     // In this repo, this script is typically run from the SDK package itself
-    // (e.g. `javascript/user-facing-sdk/`), so the most reliable source is the
+    // (e.g. `sdks/javascript/sdk/`), so the most reliable source is the
     // local package.json.
     try {
         const raw = fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf-8');
@@ -308,7 +301,7 @@ function readSdkVersion(): string {
     // SDK package.json by walking up.
     let dir = process.cwd();
     for (let i = 0; i < 8; i++) {
-        const candidate = path.join(dir, 'javascript/user-facing-sdk/package.json');
+        const candidate = path.join(dir, 'sdks/javascript/sdk/package.json');
         if (fs.existsSync(candidate)) {
             try {
                 const raw = fs.readFileSync(candidate, 'utf-8');
@@ -423,7 +416,7 @@ async function main() {
         console.log(`   ✨ Creating fresh index: ${indexName}...`);
         const t0 = performance.now();
         try {
-            const success = await client.createIndex(indexName, docs, EMBEDDING_MODEL);
+            const success = await client.createIndex(indexName, docs, { modelId: EMBEDDING_MODEL });
             if (!success) {
                 console.log(`   ❌ Failed to create index for ${datasetName}`);
                 continue;
