@@ -66,8 +66,10 @@ def query_command(
     # Resolve query text from stdin when piped.
     # In interactive mode this becomes the initial query before entering the prompt loop.
     if query_text is None and not sys.stdin.isatty():
-        query_text = sys.stdin.read().strip()
-        if not query_text:
+        piped_query = sys.stdin.read().strip()
+        if piped_query:
+            query_text = piped_query
+        elif not interactive:
             output.print_error("Empty query from stdin.", json_mode)
             raise typer.Exit(1)
 
@@ -165,7 +167,11 @@ def query_command(
                         )
                     continue
 
-                await run_query(line)
+                try:
+                    await run_query(line)
+                except Exception as e:
+                    output.print_error(f"Query failed: {e}", json_mode)
+                    continue
 
             if not json_mode:
                 console.print("Exiting interactive session.")
