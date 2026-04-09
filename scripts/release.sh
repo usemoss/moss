@@ -57,6 +57,12 @@ preflight() {
     ok "node $(node --version)"
   fi
 
+  if ! command -v pnpm &>/dev/null; then
+    warn "pnpm not found — packages with pnpm-lock.yaml will fall back to npm"
+  else
+    ok "pnpm $(pnpm --version)"
+  fi
+
   if ! command -v python3 &>/dev/null; then
     fail "python3 not found"; missing=1
   else
@@ -68,13 +74,21 @@ preflight() {
       fail "Neither uv nor pip found — need one for Python builds"; missing=1
     else
       ok "pip $(pip --version | awk '{print $2}')"
+
+      if python3 -m build --version &>/dev/null; then
+        ok "python3 -m build available"
+      else
+        fail "Python 'build' module not found — install with: pip install build"; missing=1
+      fi
+
+      if python3 -m twine --version &>/dev/null; then
+        ok "python3 -m twine available"
+      else
+        fail "Python 'twine' module not found — install with: pip install twine"; missing=1
+      fi
     fi
   else
     ok "uv $(uv --version 2>&1 | awk '{print $2}')"
-  fi
-
-  if ! command -v twine &>/dev/null && ! command -v uv &>/dev/null; then
-    warn "twine not found — will try 'uv publish' or 'python3 -m twine'"
   fi
 
   # Check npm auth
@@ -99,37 +113,37 @@ release_npm() {
   local pkg_name
   pkg_name=$(basename "$pkg_dir")
   local full_name
-  full_name=$(node -p "require('$pkg_dir/package.json').name")
+  full_name=$(node -p "require('$pkg_dir/package.json').name") || return 1
   local version
-  version=$(node -p "require('$pkg_dir/package.json').version")
+  version=$(node -p "require('$pkg_dir/package.json').version") || return 1
 
   hr
   log "Publishing ${full_name}@${version} to npm"
 
-  cd "$pkg_dir"
+  cd "$pkg_dir" || return 1
 
   # Install dependencies
   if [[ -f "pnpm-lock.yaml" ]]; then
-    pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+    { pnpm install --frozen-lockfile 2>/dev/null || pnpm install; } || return 1
   elif [[ -f "package-lock.json" ]]; then
-    npm ci 2>/dev/null || npm install
+    { npm ci 2>/dev/null || npm install; } || return 1
   else
-    npm install
+    npm install || return 1
   fi
 
   # Build
   if node -p "require('./package.json').scripts?.build" 2>/dev/null | grep -qv "undefined"; then
     log "  Building..."
-    npm run build
+    npm run build || return 1
   fi
 
   # Publish
   if [[ "$DRY_RUN" == "true" ]]; then
     log "  [DRY RUN] Would publish ${full_name}@${version}"
-    npm pack --dry-run
+    npm pack --dry-run || return 1
     ok "Dry run complete for ${full_name}"
   else
-    npm publish --access public
+    npm publish --access public || return 1
     ok "Published ${full_name}@${version}"
   fi
 
@@ -143,23 +157,31 @@ release_pypi() {
   local pkg_dir="$1"
   local pkg_name
   pkg_name=$(python3 -c "
-import tomllib, pathlib
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+import pathlib
 p = pathlib.Path('$pkg_dir/pyproject.toml')
 d = tomllib.loads(p.read_text())
 print(d['project']['name'])
-")
+") || return 1
   local version
   version=$(python3 -c "
-import tomllib, pathlib
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+import pathlib
 p = pathlib.Path('$pkg_dir/pyproject.toml')
 d = tomllib.loads(p.read_text())
 print(d['project']['version'])
-")
+") || return 1
 
   hr
   log "Publishing ${pkg_name}==${version} to PyPI"
 
-  cd "$pkg_dir"
+  cd "$pkg_dir" || return 1
 
   # Clean previous builds
   rm -rf dist/ build/ *.egg-info src/*.egg-info
@@ -167,9 +189,9 @@ print(d['project']['version'])
   # Build
   log "  Building sdist + wheel..."
   if command -v uv &>/dev/null; then
-    uv build
+    uv build || return 1
   else
-    python3 -m build
+    python3 -m build || return 1
   fi
 
   # Publish
@@ -179,11 +201,11 @@ print(d['project']['version'])
     ok "Dry run complete for ${pkg_name}"
   else
     if command -v uv &>/dev/null; then
-      uv publish
+      uv publish || return 1
     elif command -v twine &>/dev/null; then
-      twine upload dist/*
+      twine upload dist/* || return 1
     else
-      python3 -m twine upload dist/*
+      python3 -m twine upload dist/* || return 1
     fi
     ok "Published ${pkg_name}==${version}"
   fi
@@ -248,18 +270,22 @@ do_pypi=()
 if [[ ${#SELECTED_PACKAGES[@]} -gt 0 ]]; then
   for sel in "${SELECTED_PACKAGES[@]}"; do
     matched=false
-    for np in "${NPM_PACKAGES[@]}"; do
-      if [[ "$np" == "$sel" ]]; then
-        do_npm+=("$np")
-        matched=true
-      fi
-    done
-    for pp in "${PYPI_PACKAGES[@]}"; do
-      if [[ "$pp" == "$sel" ]]; then
-        do_pypi+=("$pp")
-        matched=true
-      fi
-    done
+    if [[ "$PYPI_ONLY" != "true" ]]; then
+      for np in "${NPM_PACKAGES[@]}"; do
+        if [[ "$np" == "$sel" ]]; then
+          do_npm+=("$np")
+          matched=true
+        fi
+      done
+    fi
+    if [[ "$NPM_ONLY" != "true" ]]; then
+      for pp in "${PYPI_PACKAGES[@]}"; do
+        if [[ "$pp" == "$sel" ]]; then
+          do_pypi+=("$pp")
+          matched=true
+        fi
+      done
+    fi
     if [[ "$matched" == "false" ]]; then
       fail "Unknown package: $sel"
       exit 1

@@ -1,5 +1,8 @@
 name: Publish moss-cli
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
 

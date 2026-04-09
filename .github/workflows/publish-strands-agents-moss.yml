@@ -1,5 +1,8 @@
 name: Publish strands-agents-moss
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
 

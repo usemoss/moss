@@ -1,5 +1,8 @@
 name: Publish vapi-moss
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
 
