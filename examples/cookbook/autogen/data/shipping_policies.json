@@ -1,7 +1,50 @@
 [
-  { "type": "Standard Shipping", "cost": 4.99, "eta_days": "5-7", "eligible_for": "All orders" },
-  { "type": "Express Shipping", "cost": 14.99, "eta_days": "1-2", "eligible_for": "In-stock items only" },
-  { "type": "Free Shipping", "cost": 0, "eta_days": "5-7", "eligible_for": "Orders over $75" },
-  { "type": "Overnight Shipping", "cost": 24.99, "eta_days": "1", "eligible_for": "Electronics and Kitchen categories only" },
-  { "type": "Damaged Item Replacement Shipping", "cost": 0, "eta_days": "2-3", "eligible_for": "Confirmed damaged deliveries only, requires returns_agent approval" }
+  {
+    "type": "Standard Shipping",
+    "cost": 4.99,
+    "eta_days": "5-7",
+    "eligible_for": "All orders"
+  },
+  {
+    "type": "Express Shipping",
+    "cost": 14.99,
+    "eta_days": "1-2",
+    "eligible_for": "In-stock items only"
+  },
+  {
+    "type": "Free Shipping",
+    "cost": 0,
+    "eta_days": "5-7",
+    "eligible_for": "Orders over $75"
+  },
+  {
+    "type": "Overnight Shipping",
+    "cost": 24.99,
+    "eta_days": "1",
+    "eligible_for": "Electronics and Kitchen categories only"
+  },
+  {
+    "type": "Damaged Item Replacement Shipping",
+    "cost": 0,
+    "eta_days": "2-3",
+    "eligible_for": "Confirmed damaged deliveries only, requires returns_agent approval"
+  },
+  {
+    "type": "Heavy Freight Delivery",
+    "cost": 49.99,
+    "eta_days": "7-14",
+    "eligible_for": "Furniture and heavy fitness equipment"
+  },
+  {
+    "type": "Same-Day Delivery",
+    "cost": 29.99,
+    "eta_days": "0",
+    "eligible_for": "Local zip codes, placed before 12 PM"
+  },
+  {
+    "type": "International Standard",
+    "cost": 19.99,
+    "eta_days": "10-21",
+    "eligible_for": "Global orders"
+  }
 ]
