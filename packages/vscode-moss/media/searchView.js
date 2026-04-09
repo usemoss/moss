@@ -53,7 +53,8 @@
   });
 
   function setLoading(loading) {
-    input.disabled = loading;
+    // Do not disable the query input while loading: disabling removes focus in the
+    // webview, so live search would force a click back into the field after each query.
     btn.disabled = loading;
     btn.textContent = loading ? "Searching…" : "Search";
   }
@@ -173,7 +174,6 @@
       clearTimeout(searchDebounceId);
       searchDebounceId = null;
     }
-    if (input.disabled) return;
     const text = input.value.trim();
     clearError();
     persistQuery();
