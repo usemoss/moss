@@ -77,7 +77,8 @@ async function ensureIndexLoaded(indexName: string): Promise<boolean> {
   }
 
   // Create new load promise
-  const loadPromise = (async () => {
+  let loadPromise: Promise<boolean>;
+  loadPromise = (async () => {
     try {
       await mossClient.loadIndex(indexName);
       loadedIndexes.add(indexName);
@@ -86,7 +87,10 @@ async function ensureIndexLoaded(indexName: string): Promise<boolean> {
       console.error(`Failed to load index "${indexName}":`, error);
       return false;
     } finally {
-      loadingIndexes.delete(indexName);
+      // Only delete if this is still our entry (another operation may have overwritten it)
+      if (loadingIndexes.get(indexName) === loadPromise) {
+        loadingIndexes.delete(indexName);
+      }
     }
   })();
 
@@ -148,7 +152,7 @@ const app = new Elysia()
 
       // Register this initialize operation in loadingIndexes so that concurrent
       // ensureIndexLoaded calls will wait on it instead of starting their own load
-      const initPromise = (async () => {
+      const initPromise: Promise<boolean> = (async () => {
         try {
           // Invalidate cache first — createIndex changes server state, so the
           // previously-loaded in-memory index is stale regardless of whether
@@ -164,7 +168,10 @@ const app = new Elysia()
           console.error(`Failed to initialize index "${indexName}":`, error);
           return false;
         } finally {
-          loadingIndexes.delete(indexName);
+          // Only delete if this is still our entry (another operation may have overwritten it)
+          if (loadingIndexes.get(indexName) === initPromise) {
+            loadingIndexes.delete(indexName);
+          }
         }
       })();
 
