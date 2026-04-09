@@ -146,16 +146,40 @@ const app = new Elysia()
         `📝 Creating index "${indexName}" with ${documents.length} documents...`
       );
 
-      // Create index
-      // Invalidate cache first — createIndex changes server state, so the
-      // previously-loaded in-memory index is stale regardless of whether
-      // the subsequent loadIndex succeeds.
-      loadedIndexes.delete(indexName);
-      await mossClient.createIndex(indexName, documents);
+      // Register this initialize operation in loadingIndexes so that concurrent
+      // ensureIndexLoaded calls will wait on it instead of starting their own load
+      const initPromise = (async () => {
+        try {
+          // Invalidate cache first — createIndex changes server state, so the
+          // previously-loaded in-memory index is stale regardless of whether
+          // the subsequent loadIndex succeeds.
+          loadedIndexes.delete(indexName);
+          await mossClient.createIndex(indexName, documents);
 
-      // Load index
-      await mossClient.loadIndex(indexName);
-      loadedIndexes.add(indexName);
+          // Load index
+          await mossClient.loadIndex(indexName);
+          loadedIndexes.add(indexName);
+          return true;
+        } catch (error) {
+          console.error(`Failed to initialize index "${indexName}":`, error);
+          return false;
+        } finally {
+          loadingIndexes.delete(indexName);
+        }
+      })();
+
+      // Register the in-flight initialize operation
+      loadingIndexes.set(indexName, initPromise);
+
+      // Wait for it to complete
+      const success = await initPromise;
+
+      if (!success) {
+        return {
+          success: false,
+          error: `Failed to create and load index "${indexName}"`,
+        };
+      }
 
       console.log(`✓ Index "${indexName}" created and loaded`);
 
