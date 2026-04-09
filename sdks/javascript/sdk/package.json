@@ -48,11 +48,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
-    "@microsoft/api-extractor": "^7.45.0",
+    "@microsoft/api-extractor": "^7.58.1",
     "@types/javascript-obfuscator": "^0.0.5",
     "@types/node": "^22.18.3",
     "dotenv": "^17.2.1",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.27.4",
     "esbuild-plugin-obfuscator": "^1.2.4",
     "rimraf": "^6.0.1",
     "eslint": "^8.57.1",
@@ -63,6 +63,6 @@
     "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.30.1",
-    "vitest": "^1.3.1"
+    "vitest": "^4.1.3"
   }
 }
