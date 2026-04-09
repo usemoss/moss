@@ -5,7 +5,7 @@ Use [Moss](https://moss.dev) semantic search as a retrieval tool for [CrewAI](ht
 ## Installation
 
 ```bash
-pip install crewai inferedge-moss python-dotenv
+pip install crewai moss python-dotenv
 ```
 
 ## Setup
@@ -22,7 +22,7 @@ GEMINI_API_KEY=your-gemini-key
 
 ```python
 from crewai import Agent, Task, Crew
-from inferedge_moss import MossClient
+from moss import MossClient
 from moss_crewai import MossSearchTool
 
 client = MossClient("your-project-id", "your-project-key")
@@ -139,7 +139,7 @@ All tools are defined in `moss_crewai.py`. Copy this file into your project and 
 Create all 8 tools with shared configuration:
 
 ```python
-from inferedge_moss import MossClient
+from moss import MossClient
 from moss_crewai import moss_tools
 
 client = MossClient("your-project-id", "your-project-key")

@@ -4,7 +4,7 @@ import os
 
 from crewai import LLM, Agent, Crew, Task
 from dotenv import load_dotenv
-from inferedge_moss import DocumentInfo, MossClient
+from moss import DocumentInfo, MossClient
 
 from moss_crewai import MossSearchTool
 
@@ -75,7 +75,7 @@ def build_agents():
             backstory=config["backstory"],
             tools=[search],
             llm=llm,
-            verbose=True,
+            verbose=False,
         ))
 
     writer = Agent(
@@ -87,7 +87,7 @@ def build_agents():
             "Ignore results not relevant to the question."
         ),
         llm=llm,
-        verbose=True,
+        verbose=False,
     )
     return specialists, writer
 
@@ -129,7 +129,7 @@ def chat():
         crew = Crew(
             agents=specialists + [writer],
             tasks=search_tasks + [write_task],
-            verbose=True,
+            verbose=False,
         )
         result = crew.kickoff()
         print(f"\nAgent: {result}\n")

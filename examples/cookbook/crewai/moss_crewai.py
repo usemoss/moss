@@ -3,7 +3,7 @@ import uuid
 from typing import Any
 
 from crewai.tools import BaseTool
-from inferedge_moss import DocumentInfo, MossClient, MutationOptions, QueryOptions
+from moss import DocumentInfo, GetDocumentsOptions, MossClient, MutationOptions, QueryOptions
 from pydantic import BaseModel, Field, PrivateAttr
 
 
@@ -162,8 +162,6 @@ class MossGetDocsTool(MossBaseTool):
 
     async def _arun(self, doc_ids: list[str] | None = None) -> str:
         """Async retrieve documents from Moss index."""
-        from inferedge_moss import GetDocumentsOptions
-
         options = None
         if doc_ids:
             options = GetDocumentsOptions(doc_ids=doc_ids)

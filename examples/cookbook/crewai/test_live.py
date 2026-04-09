@@ -3,7 +3,7 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from inferedge_moss import MossClient
+from moss import MossClient
 
 from moss_crewai import (
     MossAddDocsTool,
