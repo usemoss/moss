@@ -292,6 +292,7 @@ export async function runIndexWorkspace(
       ]);
 
       progress.report({ message: "Scanning files…" });
+      mossLog(log, "Moss: Scanning workspace for files…");
       const { uris, scanTruncated } = await findWorkspaceFiles(
         cfg.includeGlobs,
         excludeGlobs,
@@ -311,6 +312,10 @@ export async function runIndexWorkspace(
       }
 
       mossLog(log, `Moss: Found ${uris.length} file(s) to consider.`, "verbose");
+      mossLog(
+        log,
+        `Moss: Reading and chunking ${uris.length} file(s) — progress is shown in the notification…`
+      );
 
       uris.sort((a, b) => a.fsPath.localeCompare(b.fsPath));
 
@@ -418,6 +423,10 @@ export async function runIndexWorkspace(
       }
 
       progress.report({ message: "Uploading index to Moss…", increment: 0 });
+      mossLog(
+        log,
+        `Moss: Uploading ${allDocs.length} chunk(s) to Moss (createIndex)…`
+      );
 
       const client = new MossClient(creds.projectId, creds.projectKey);
 
