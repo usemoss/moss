@@ -21,6 +21,3 @@ venv/
 
 *.egg-info
 .moss-cache
-
-mvenv/Include/site/python3.11/greenlet
-mvenv/Lib/site-packages
