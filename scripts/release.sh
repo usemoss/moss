@@ -123,7 +123,7 @@ release_npm() {
   cd "$pkg_dir" || return 1
 
   # Install dependencies
-  if [[ -f "pnpm-lock.yaml" ]]; then
+  if [[ -f "pnpm-lock.yaml" ]] && command -v pnpm &>/dev/null; then
     { pnpm install --frozen-lockfile 2>/dev/null || pnpm install; } || return 1
   elif [[ -f "package-lock.json" ]]; then
     { npm ci 2>/dev/null || npm install; } || return 1
