@@ -107,7 +107,12 @@ def set_profile_credentials(profile: str, project_id: str, project_key: str) -> 
         profiles = {}
 
     profiles[profile] = {"project_id": project_id, "project_key": project_key}
-    save_config({"active_profile": profile, "profiles": profiles})
+    active_profile = normalized.get("active_profile")
+    if not isinstance(active_profile, str) or not active_profile:
+        active_profile = profile
+    elif active_profile not in profiles:
+        active_profile = profile
+    save_config({"active_profile": active_profile, "profiles": profiles})
 
 
 def list_profiles() -> list[str]:

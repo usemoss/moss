@@ -87,7 +87,27 @@ def test_resolve_credentials_cli_or_env_creds_override_profile(monkeypatch, tmp_
     assert pkey == "flag-key"
 
 
-def test_set_profile_credentials_updates_active_profile(monkeypatch, tmp_path):
+def test_set_profile_credentials_preserves_active_profile(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "default",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+
+    config.set_profile_credentials("staging", "staging-id", "staging-key")
+    cfg = json.loads(path.read_text(encoding="utf-8"))
+
+    assert cfg["active_profile"] == "default"
+    assert cfg["profiles"]["staging"]["project_id"] == "staging-id"
+    assert cfg["profiles"]["staging"]["project_key"] == "staging-key"
+
+
+def test_set_profile_credentials_initializes_active_when_missing(monkeypatch, tmp_path):
     path = tmp_path / "config.json"
     monkeypatch.setattr(config, "get_config_path", lambda: path)
 
@@ -95,8 +115,6 @@ def test_set_profile_credentials_updates_active_profile(monkeypatch, tmp_path):
     cfg = json.loads(path.read_text(encoding="utf-8"))
 
     assert cfg["active_profile"] == "staging"
-    assert cfg["profiles"]["staging"]["project_id"] == "staging-id"
-    assert cfg["profiles"]["staging"]["project_key"] == "staging-key"
 
 
 def test_profile_list_command_shows_profiles(monkeypatch, tmp_path):
