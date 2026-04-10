@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "crewai-moss"
+version = "0.1.0"
+description = "CrewAI integration for Moss semantic search"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "BSD-2-Clause" }
+authors = [
+    { name = "InferEdge Inc.", email = "contact@moss.dev" }
+]
+dependencies = [
+    "crewai",
+    "moss>=1.0.0",
+    "pydantic",
+    "python-dotenv",
+    "crewai[google-genai]"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["moss_crewai.py"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "README.md",
+    "moss_crewai.py",
+]

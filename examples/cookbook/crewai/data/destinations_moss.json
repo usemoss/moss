@@ -1,0 +1,82 @@
+[
+  {
+    "id": "dest-tok-001",
+    "text": "Tokyo Budget Overview: Tokyo can be affordable. Use a Pasmo or Suica card for subways. Average daily budget for low-cost travelers is \u00c2\u00a55,000\u00e2\u20ac\u201c\u00c2\u00a58,000. Best free view: Tokyo Metropolitan Government Building in Shinjuku.",
+    "metadata": {
+      "country": "Japan",
+      "topic": "Tokyo Budget Overview"
+    }
+  },
+  {
+    "id": "dest-tok-002",
+    "text": "Neighborhood Guide: Asakusa: Asakusa retains a 'Low City' vibe. Home to Senso-ji Temple. It is the most budget-friendly area for traditional sightseeing and street food like Taiyaki.",
+    "metadata": {
+      "country": "Japan",
+      "topic": "Neighborhood Guide: Asakusa"
+    }
+  },
+  {
+    "id": "dest-tok-003",
+    "text": "Best Time to Visit: Mid-week visits (Tues-Thurs) see lower crowds at free attractions. Late March for Blossoms is expensive; January and June offer the lowest regional travel costs.",
+    "metadata": {
+      "country": "Japan",
+      "topic": "Best Time to Visit"
+    }
+  },
+  {
+    "id": "dest-vn-004",
+    "text": "All-Rounder Budget Travel: Vietnam offers incredible value. Key hubs: Hanoi (culture/food) and Da Nang (beaches). Use the 'Grab' app for cheap transport. Street food like Banh Mi or Pho costs \u00c2\u00a5200-\u00c2\u00a5400. Best time: Feb\u00e2\u20ac\u201cApril for dry weather.",
+    "metadata": {
+      "country": "Vietnam",
+      "topic": "All-Rounder Budget Travel"
+    }
+  },
+  {
+    "id": "dest-al-005",
+    "text": "The Mediterranean Alternative: The 'Maldives of Europe' at half the price. Focus on the Albanian Riviera (Ksamil/Sarande). Local tip: Use 'furgons' (minibuses) for intercity travel. Cash is king here; few places outside Tirana take cards.",
+    "metadata": {
+      "country": "Albania",
+      "topic": "The Mediterranean Alternative"
+    }
+  },
+  {
+    "id": "dest-tr-006",
+    "text": "Crossroads of Culture: Ideal for history buffs. Istanbul's public ferries are the cheapest scenic 'tours.' Explore the Fatih district for authentic, low-cost Lokantas (tradesmen restaurants). Currency fluctuations often favor travelers.",
+    "metadata": {
+      "country": "Turkey",
+      "topic": "Crossroads of Culture"
+    }
+  },
+  {
+    "id": "dest-ro-007",
+    "text": "Medieval Charm: Focus on Transylvania (Brasov and Sibiu). Medieval architecture and hiking are the main draws. Trains are affordable and reliable. Local tip: Visit 'Autoservire' restaurants for cheap, home-cooked Romanian meals.",
+    "metadata": {
+      "country": "Romania",
+      "topic": "Medieval Charm"
+    }
+  },
+  {
+    "id": "dest-th-008",
+    "text": "The Budget Standard: Bangkok and Chiang Mai are the best for low-cost living. Use the BTS/MRT in Bangkok to avoid traffic. Local tip: Shop at night markets (like Jodd Fairs) for high-quality, low-cost clothing and souvenirs.",
+    "metadata": {
+      "country": "Thailand",
+      "topic": "The Budget Standard"
+    }
+  },
+  {
+    "id": "dest-ge-009",
+    "text": "Wine and Mountains: Tbilisi is a design-forward city that remains very affordable. Famous for sulfur baths (approx. \u00c2\u00a5600 entry) and world-class wine. Tip: Order 'Khachapuri' (cheese bread) for a filling, budget-friendly meal.",
+    "metadata": {
+      "country": "Georgia",
+      "topic": "Wine and Mountains"
+    }
+  },
+  {
+    "id": "dest-pt-010",
+    "text": "Affordable Western Europe: Lisbon and Porto are more affordable than neighboring Spain or France. Walkable cities with free viewpoints (Miradouros). Tip: Buy a 'Viva Viagem' card for discounted metro and tram 28 rides.",
+    "metadata": {
+      "country": "Portugal",
+      "topic": "Affordable Western Europe"
+    }
+  }
+]
