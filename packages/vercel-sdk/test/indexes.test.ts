@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mossCreateIndexTool, mossListIndexesTool } from '../src/tools/indexes.js';
+import { mossCreateIndexTool, mossListIndexesTool, mossLoadIndexTool } from '../src/tools/indexes.js';
 
 function createMockClient() {
   return {
@@ -85,5 +85,66 @@ describe('mossListIndexesTool', () => {
     const tool = mossListIndexesTool({ client, description: 'Custom list' });
 
     expect(tool.description).toBe('Custom list');
+  });
+});
+
+describe('mossLoadIndexTool', () => {
+  it('creates a tool with correct description', () => {
+    const client = createMockClient();
+    const tool = mossLoadIndexTool({ client });
+
+    expect(tool.description).toContain('Load a MOSS index');
+    expect(tool.inputSchema).toBeDefined();
+  });
+
+  it('executes with indexName from input', async () => {
+    const client = createMockClient();
+    client.loadIndex.mockResolvedValue('my-index');
+    const tool = mossLoadIndexTool({ client });
+
+    const result = await tool.execute!(
+      { indexName: 'my-index', autoRefresh: false },
+      toolCallContext,
+    );
+
+    expect(client.loadIndex).toHaveBeenCalledWith('my-index', {});
+    expect(result).toEqual({ indexName: 'my-index', status: 'loaded' });
+  });
+
+  it('uses bound indexName when provided', async () => {
+    const client = createMockClient();
+    client.loadIndex.mockResolvedValue('bound-index');
+    const tool = mossLoadIndexTool({ client, indexName: 'bound-index' });
+
+    const result = await tool.execute!(
+      { autoRefresh: false },
+      toolCallContext,
+    );
+
+    expect(client.loadIndex).toHaveBeenCalledWith('bound-index', {});
+    expect(result).toEqual({ indexName: 'bound-index', status: 'loaded' });
+  });
+
+  it('passes autoRefresh and pollingIntervalInSeconds', async () => {
+    const client = createMockClient();
+    client.loadIndex.mockResolvedValue('my-index');
+    const tool = mossLoadIndexTool({ client });
+
+    await tool.execute!(
+      { indexName: 'my-index', autoRefresh: true, pollingIntervalInSeconds: 120 },
+      toolCallContext,
+    );
+
+    expect(client.loadIndex).toHaveBeenCalledWith('my-index', {
+      autoRefresh: true,
+      pollingIntervalInSeconds: 120,
+    });
+  });
+
+  it('accepts a custom description', () => {
+    const client = createMockClient();
+    const tool = mossLoadIndexTool({ client, description: 'Custom load' });
+
+    expect(tool.description).toBe('Custom load');
   });
 });
