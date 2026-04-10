@@ -18,9 +18,9 @@ We recommend using [uv](https://docs.astral.sh/uv/) for fast dependency manageme
     ```
 
 2.  **Configure environment**:
-    Copy the `.env.example` file and fill in your credentials:
+    Copy the `env.example` file and fill in your credentials:
     ```bash
-    cp .env.example .env
+    cp env.example .env
     ```
 
 ## 🛠️ Components
