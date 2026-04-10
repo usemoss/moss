@@ -11,6 +11,7 @@ from .commands.doc import doc_app
 from .commands.index import index_app
 from .commands.init_cmd import init_command
 from .commands.job import job_app
+from .commands.profile import profile_app
 from .commands.search import query_command
 from .commands.version import version_command
 from .output import print_error
@@ -26,6 +27,7 @@ app = typer.Typer(
 app.add_typer(index_app, name="index", help="Manage indexes")
 app.add_typer(doc_app, name="doc", help="Manage documents")
 app.add_typer(job_app, name="job", help="Track background jobs")
+app.add_typer(profile_app, name="profile", help="Manage auth profiles")
 
 # Register top-level commands
 app.command(name="query")(query_command)
@@ -42,6 +44,12 @@ def main(
     project_key: Optional[str] = typer.Option(
         None, "--project-key", envvar="MOSS_PROJECT_KEY", help="Project key"
     ),
+    profile: Optional[str] = typer.Option(
+        None,
+        "--profile",
+        envvar="MOSS_PROFILE",
+        help="Credential profile name",
+    ),
     json_output: bool = typer.Option(
         False, "--json", help="Output as JSON"
     ),
@@ -53,6 +61,7 @@ def main(
     ctx.ensure_object(dict)
     ctx.obj["project_id"] = project_id
     ctx.obj["project_key"] = project_key
+    ctx.obj["profile"] = profile
     ctx.obj["json_output"] = json_output
 
     if verbose:
