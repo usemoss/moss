@@ -32,7 +32,7 @@ def add(
     index_name: str = typer.Argument(..., help="Index name"),
     file: str = typer.Option(..., "--file", "-f", help="Path to JSON/CSV document file, or '-' for stdin"),
     profile: Optional[str] = typer.Option(
-        None, "--profile", envvar="MOSS_PROFILE", help="Credential profile name"
+        None, "--profile", help="Credential profile name"
     ),
     upsert: bool = typer.Option(False, "--upsert", "-u", help="Update existing documents"),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
@@ -66,7 +66,7 @@ def delete(
     index_name: str = typer.Argument(..., help="Index name"),
     ids: str = typer.Option(..., "--ids", "-i", help="Comma-separated document IDs"),
     profile: Optional[str] = typer.Option(
-        None, "--profile", envvar="MOSS_PROFILE", help="Credential profile name"
+        None, "--profile", help="Credential profile name"
     ),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
@@ -98,7 +98,7 @@ def get(
     index_name: str = typer.Argument(..., help="Index name"),
     ids: Optional[str] = typer.Option(None, "--ids", "-i", help="Comma-separated document IDs (omit for all)"),
     profile: Optional[str] = typer.Option(
-        None, "--profile", envvar="MOSS_PROFILE", help="Credential profile name"
+        None, "--profile", help="Credential profile name"
     ),
 ) -> None:
     """Retrieve documents from an index."""

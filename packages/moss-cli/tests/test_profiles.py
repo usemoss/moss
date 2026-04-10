@@ -3,6 +3,7 @@ import json
 from typer.testing import CliRunner
 
 from moss_cli import config
+from moss_cli.commands import init_cmd
 from moss_cli.commands import index as index_cmd
 from moss_cli.main import app
 
@@ -170,3 +171,68 @@ def test_index_list_accepts_profile_option_after_subcommand(monkeypatch, tmp_pat
     assert result.exit_code == 0
     assert seen["project_id"] == "staging-id"
     assert seen["project_key"] == "staging-key"
+
+
+def test_global_profile_overrides_environment(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "default",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+                "staging": {"project_id": "staging-id", "project_key": "staging-key"},
+                "prod": {"project_id": "prod-id", "project_key": "prod-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+    monkeypatch.setenv("MOSS_PROFILE", "prod")
+
+    seen = {}
+
+    class FakeClient:
+        def __init__(self, project_id, project_key):
+            seen["project_id"] = project_id
+            seen["project_key"] = project_key
+
+        async def list_indexes(self):
+            return []
+
+    monkeypatch.setattr(index_cmd, "MossClient", FakeClient)
+
+    result = runner.invoke(app, ["--profile", "staging", "index", "list"])
+
+    assert result.exit_code == 0
+    assert seen["project_id"] == "staging-id"
+    assert seen["project_key"] == "staging-key"
+
+
+def test_init_uses_global_profile_context(monkeypatch, tmp_path):
+    path = tmp_path / "config.json"
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+    prompt_answers = iter(["project-123", "secret-456"])
+    monkeypatch.setattr(init_cmd.Prompt, "ask", lambda *args, **kwargs: next(prompt_answers))
+
+    seen = {}
+
+    class FakeClient:
+        def __init__(self, project_id, project_key):
+            seen["project_id"] = project_id
+            seen["project_key"] = project_key
+
+        async def list_indexes(self):
+            return []
+
+    monkeypatch.setattr(init_cmd, "MossClient", FakeClient)
+
+    result = runner.invoke(
+        app,
+        ["--profile", "staging", "init"],
+    )
+
+    assert result.exit_code == 0
+    assert seen["project_id"] == "project-123"
+    assert seen["project_key"] == "secret-456"
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["active_profile"] == "staging"
+    assert saved["profiles"]["staging"]["project_id"] == "project-123"

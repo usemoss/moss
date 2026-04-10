@@ -27,7 +27,7 @@ def status(
     ctx: typer.Context,
     job_id: str = typer.Argument(..., help="Job ID"),
     profile: str | None = typer.Option(
-        None, "--profile", envvar="MOSS_PROFILE", help="Credential profile name"
+        None, "--profile", help="Credential profile name"
     ),
     wait: bool = typer.Option(False, "--wait", "-w", help="Poll until job completes"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),

@@ -33,7 +33,7 @@ def create(
     file: str = typer.Option(..., "--file", "-f", help="Path to JSON/CSV document file, or '-' for stdin"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Model ID (default: moss-minilm)"),
     profile: Optional[str] = typer.Option(
-        None, "--profile", envvar="MOSS_PROFILE", help="Credential profile name"
+        None, "--profile", help="Credential profile name"
     ),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
@@ -59,7 +59,7 @@ def create(
 def list_indexes(
     ctx: typer.Context,
     profile: Optional[str] = typer.Option(
-        None, "--profile", envvar="MOSS_PROFILE", help="Credential profile name"
+        None, "--profile", help="Credential profile name"
     ),
 ) -> None:
     """List all indexes."""
@@ -76,7 +76,7 @@ def get(
     ctx: typer.Context,
     name: str = typer.Argument(..., help="Index name"),
     profile: Optional[str] = typer.Option(
-        None, "--profile", envvar="MOSS_PROFILE", help="Credential profile name"
+        None, "--profile", help="Credential profile name"
     ),
 ) -> None:
     """Get details of an index."""
@@ -93,7 +93,7 @@ def delete(
     ctx: typer.Context,
     name: str = typer.Argument(..., help="Index name"),
     profile: Optional[str] = typer.Option(
-        None, "--profile", envvar="MOSS_PROFILE", help="Credential profile name"
+        None, "--profile", help="Credential profile name"
     ),
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
 ) -> None:

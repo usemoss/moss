@@ -22,17 +22,15 @@ console = Console()
 
 
 def init_command(
+    ctx: typer.Context,
     force: bool = typer.Option(False, "--force", help="Overwrite existing config"),
     profile: Optional[str] = typer.Option(
-        None,
-        "--profile",
-        envvar="MOSS_PROFILE",
-        help="Profile name to save credentials under",
+        None, "--profile", help="Profile name to save credentials under"
     ),
 ) -> None:
     """Save project credentials to ~/.moss/config.json."""
     path = get_config_path()
-    selected_profile = get_selected_profile(profile)
+    selected_profile = profile or ctx.obj.get("profile") or get_selected_profile()
 
     existing_pid, _ = get_profile_credentials(selected_profile)
     if path.exists() and existing_pid and not force:
