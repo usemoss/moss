@@ -27,7 +27,7 @@ class MossRetrievalTool(Tool):
             "type": "object",
             "description": (
                 "Optional metadata filter using Moss structured filter DSL. "
-                "Example: {'operator': 'AND', 'conditions': [{'field': 'category', 'operator': 'eq', 'value': 'refunds'}]}"
+                "Example: {'$and': [{'field': 'category', 'condition': {'$eq': 'refunds'}}, {'field': 'price', 'condition': {'$lt': 50}}]}"
             ),
             "nullable": True,
         },

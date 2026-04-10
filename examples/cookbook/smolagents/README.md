@@ -41,10 +41,9 @@ The tool defines a clear schema for the LLM:
 Moss filters allow for complex combined logic. When the agent uses this tool, it can provide structured filters in this format:
 ```python
 metadata_filter = {
-    "operator": "AND",
-    "conditions": [
-        {"field": "category", "operator": "eq", "value": "refunds"},
-        {"field": "price", "operator": "lt", "value": 50}
+    "$and": [
+        {"field": "category", "condition": {"$eq": "refunds"}},
+        {"field": "price", "condition": {"$lt": 50}}
     ]
 }
 ```
