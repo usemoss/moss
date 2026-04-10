@@ -1,53 +1,66 @@
 # Moss + Smolagents Cookbook
 
-This example shows how to plug **Moss** into a **Smolagents** agent as a blazingly fast retrieval tool.
+This example shows how to plug **Moss** into a **Smolagents** agent as a high-performance retrieval tool.
 
 ## 🚀 Why Moss with Smolagents?
 
-When building agents, retrieval steps can really slow things down. Traditional vector databases often take 200–500ms to return results due to round-trips to the cloud. When an agent does multiple tool calls, these delays pile up.
+Retrieval steps are often the bottleneck in agentic workflows. Traditional vector databases can take 200–500ms per search, which leads to slow, unresponsive agents.
 
-Moss fixes this by letting you load the vector index and model weights directly into your application's memory using `load_index()`. This drops retrieval latency to **under 10ms**, which makes a huge difference in agent responsiveness!
+Moss solves this by loading the vector index and model weights directly into your application's memory. This enables **sub-10ms** retrieval latency, making your agents feel significantly more responsive.
 
 ## 📦 Getting Started
 
-1.  **Install the requirements**:
+We recommend using [uv](https://docs.astral.sh/uv/) for fast dependency management and execution.
+
+1.  **Install requirements**:
     ```bash
-    pip install smolagents inferedge-moss python-dotenv
+    uv pip install smolagents inferedge-moss python-dotenv
     ```
 
-2.  **Set up your environment variables**:
-    Drop a `.env` file in this folder (or export them directly):
-    ```env
-    MOSS_PROJECT_ID=your_moss_project_id
-    MOSS_PROJECT_KEY=your_moss_project_key
-    MOSS_INDEX_NAME=your_moss_index_name
-    OPENAI_API_KEY=your_openai_api_key
+2.  **Configure environment**:
+    Copy the `.env.example` file and fill in your credentials:
+    ```bash
+    cp .env.example .env
     ```
 
-## 🛠️ What's happening in the code?
+## 🛠️ Components
 
-We're subclassing `smolagents.Tool` to create `MossRetrievalTool`. 
+The example is split into two main files:
 
-We define the schema carefully so the LLM knows how to use it:
-- **`name`**: `moss_retrieval`
-- **`description`**: Tells the LLM exactly when to grab this tool.
-- **`inputs`**: Outlines the `query`, `top_k`, and an optional `metadata_filter`.
-- **`forward()`**: This runs the Moss search against the local memory index. 
+- **`tool.py`**: Contains the `MossRetrievalTool`, a custom `smolagents.Tool` that handles the bridge between the sync agent loop and the async Moss SDK.
+- **`moss_smol_agent_demo.py`**: The main entry point that loads the index and runs the agent.
 
-### The Secret Sauce: Loading the Index
+### The Retrieval Tool
 
-Before we even start the agent, we pull the index into memory:
+The tool defines a clear schema for the LLM:
+- **`query`**: The semantic search query.
+- **`top_k`**: Number of results to return.
+- **`metadata_filter`**: Advanced filtering using the **Moss structured filter DSL**.
+
+#### Moss Filter DSL Example
+Moss filters allow for complex combined logic. When the agent uses this tool, it can provide structured filters in this format:
+```python
+metadata_filter = {
+    "operator": "AND",
+    "conditions": [
+        {"field": "category", "operator": "eq", "value": "refunds"},
+        {"field": "price", "operator": "lt", "value": 50}
+    ]
+}
+```
+
+### Loading the Index
+
+To achieve sub-10ms performance, the index is pulled into local memory once before the agent starts. This is handled in the demo script:
 ```python
 client = MossClient(project_id, project_key)
-asyncio.run(client.load_index("my-docs-index")) # Sub-10ms search unlocked
+asyncio.run(client.load_index("my-docs-index"))
 ```
-If you skip this step, Moss will fall back to querying the cloud API (which works, but is much slower).
 
-## 🏃 Running the Example
+## 🏃 Running the Demo
 
-Just run the script:
 ```bash
-python smolagents_retrieval.py
+uv run moss_smol_agent_demo.py
 ```
 
-You'll see the agent get a question, realize it needs internal docs, call the Moss tool, and write up a grounded answer!
+The agent will receive a question, decide to use the `moss_retrieval` tool, and provide an answer grounded in your local knowledge base.
