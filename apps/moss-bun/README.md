@@ -4,11 +4,11 @@ Production-ready semantic search application built with **Moss** and **Bun**.
 
 ## What's Included
 
-- 🚀 **REST API Server** - Full-featured HTTP API for Moss operations
-- 🎯 **CLI Tool** - Command-line interface for searching and managing indexes
-- 🧪 **Test Suite** - Unit tests using Bun's built-in test runner
-- 🐳 **Docker Support** - Production-ready Docker image
-- ⚡ **High Performance** - 2-3x faster than Node.js with native TypeScript
+- **REST API Server** - Full-featured HTTP API for Moss operations
+- **CLI Tool** - Command-line interface for searching and managing indexes
+- **Test Suite** - Unit tests using Bun's built-in test runner
+- **Docker Support** - Production-ready Docker image
+- **High Performance** - 2-3x faster than Node.js with native TypeScript
 
 ## Quick Start
 
