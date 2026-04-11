@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 from rich.console import Console
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from .errors import CliError
 
 console = Console()
 err_console = Console(stderr=True)
@@ -82,16 +85,33 @@ def _job_status_to_dict(status: Any) -> Dict[str, Any]:
     return d
 
 
-def _print_json(data: Any) -> None:
-    print(json.dumps(data, indent=2, default=str))
+def _print_json(
+    data: Any,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
+    if envelope:
+        wrapped: Dict[str, Any] = {"ok": True, "data": data}
+        if command:
+            wrapped["meta"] = {"command": command}
+        print(json.dumps(wrapped, indent=2, default=str))
+    else:
+        print(json.dumps(data, indent=2, default=str))
 
 
 # --- Public API ---
 
 
-def print_index_table(indexes: list, json_mode: bool = False) -> None:
+def print_index_table(
+    indexes: list,
+    json_mode: bool = False,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
     if json_mode:
-        _print_json([_index_to_dict(i) for i in indexes])
+        _print_json([_index_to_dict(i) for i in indexes], envelope=envelope, command=command)
         return
     if not indexes:
         console.print("[dim]No indexes found.[/dim]")
@@ -115,9 +135,15 @@ def print_index_table(indexes: list, json_mode: bool = False) -> None:
     console.print(table)
 
 
-def print_index_detail(info: Any, json_mode: bool = False) -> None:
+def print_index_detail(
+    info: Any,
+    json_mode: bool = False,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
     if json_mode:
-        _print_json(_index_to_dict(info))
+        _print_json(_index_to_dict(info), envelope=envelope, command=command)
         return
     console.print(f"[bold cyan]Index:[/bold cyan] {info.name}")
     console.print(f"  ID:         {info.id}")
@@ -129,9 +155,15 @@ def print_index_detail(info: Any, json_mode: bool = False) -> None:
     console.print(f"  Updated:    {info.updated_at}")
 
 
-def print_doc_table(docs: list, json_mode: bool = False) -> None:
+def print_doc_table(
+    docs: list,
+    json_mode: bool = False,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
     if json_mode:
-        _print_json([_doc_to_dict(d) for d in docs])
+        _print_json([_doc_to_dict(d) for d in docs], envelope=envelope, command=command)
         return
     if not docs:
         console.print("[dim]No documents found.[/dim]")
@@ -150,9 +182,15 @@ def print_doc_table(docs: list, json_mode: bool = False) -> None:
     console.print(table)
 
 
-def print_search_results(result: Any, json_mode: bool = False) -> None:
+def print_search_results(
+    result: Any,
+    json_mode: bool = False,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
     if json_mode:
-        _print_json(_search_result_to_dict(result))
+        _print_json(_search_result_to_dict(result), envelope=envelope, command=command)
         return
     time_str = f" in {result.time_taken_ms}ms" if result.time_taken_ms else ""
     console.print(
@@ -172,9 +210,15 @@ def print_search_results(result: Any, json_mode: bool = False) -> None:
         console.print()
 
 
-def print_mutation_result(result: Any, json_mode: bool = False) -> None:
+def print_mutation_result(
+    result: Any,
+    json_mode: bool = False,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
     if json_mode:
-        _print_json(_mutation_to_dict(result))
+        _print_json(_mutation_to_dict(result), envelope=envelope, command=command)
         return
     console.print(f"[green]Job submitted[/green]")
     console.print(f"  Job ID:  {result.job_id}")
@@ -182,9 +226,15 @@ def print_mutation_result(result: Any, json_mode: bool = False) -> None:
     console.print(f"  Docs:    {result.doc_count}")
 
 
-def print_job_status(status: Any, json_mode: bool = False) -> None:
+def print_job_status(
+    status: Any,
+    json_mode: bool = False,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
     if json_mode:
-        _print_json(_job_status_to_dict(status))
+        _print_json(_job_status_to_dict(status), envelope=envelope, command=command)
         return
     status_val = (status.status.value if hasattr(status.status, "value") else str(status.status)).upper()
     color = "green" if status_val == "COMPLETED" else "red" if status_val == "FAILED" else "yellow"
@@ -207,15 +257,53 @@ def print_job_status(status: Any, json_mode: bool = False) -> None:
         console.print(f"  Completed: {status.completed_at}")
 
 
-def print_success(message: str, json_mode: bool = False) -> None:
+def print_success(
+    message: str,
+    json_mode: bool = False,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
     if json_mode:
-        _print_json({"status": "ok", "message": message})
+        _print_json({"status": "ok", "message": message}, envelope=envelope, command=command)
         return
     console.print(f"[green]{message}[/green]")
 
 
-def print_error(message: str, json_mode: bool = False) -> None:
+def print_error(
+    message: str,
+    json_mode: bool = False,
+    *,
+    envelope: bool = False,
+    command: str = "",
+) -> None:
     if json_mode:
-        print(json.dumps({"error": message}), file=sys.stderr)
+        if envelope:
+            payload: Dict[str, Any] = {"ok": False, "error": message}
+            if command:
+                payload["meta"] = {"command": command}
+            print(json.dumps(payload), file=sys.stderr)
+        else:
+            print(json.dumps({"error": message}), file=sys.stderr)
     else:
         err_console.print(f"[red]{message}[/red]")
+
+
+def print_cli_error(
+    error: CliError,
+    json_mode: bool = False,
+    command: str = "",
+) -> None:
+    """Render a structured CliError to stderr."""
+    if json_mode:
+        payload: Dict[str, Any] = {
+            "ok": False,
+            "error": error.to_dict(),
+        }
+        if command:
+            payload["meta"] = {"command": command}
+        print(json.dumps(payload, indent=2, default=str), file=sys.stderr)
+    else:
+        err_console.print(f"[red]Error:[/red] {error.message}")
+        if error.hint:
+            err_console.print(f"[dim]Hint: {error.hint}[/dim]")

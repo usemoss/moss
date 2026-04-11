@@ -6,20 +6,11 @@ import asyncio
 
 import typer
 
-from moss import MossClient
-
 from .. import output
-from ..config import resolve_credentials
+from ..context import get_client, get_ctx
 from ..job_waiter import wait_for_job
 
 job_app = typer.Typer(name="job", help="Track background jobs")
-
-
-def _client(ctx: typer.Context) -> MossClient:
-    pid, pkey = resolve_credentials(
-        ctx.obj.get("project_id"), ctx.obj.get("project_key")
-    )
-    return MossClient(pid, pkey)
 
 
 @job_app.command(name="status")
@@ -30,11 +21,11 @@ def status(
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
 ) -> None:
     """Get the status of a background job."""
-    json_mode = ctx.obj.get("json_output", False)
-    client = _client(ctx)
+    cli = get_ctx(ctx)
+    client = get_client(ctx)
 
     if wait:
-        asyncio.run(wait_for_job(client, job_id, poll_interval, json_mode))
+        asyncio.run(wait_for_job(client, job_id, poll_interval, cli.json_output))
     else:
         result = asyncio.run(client.get_job_status(job_id))
-        output.print_job_status(result, json_mode=json_mode)
+        output.print_job_status(result, json_mode=cli.json_output, envelope=cli.json_envelope, command="job status")

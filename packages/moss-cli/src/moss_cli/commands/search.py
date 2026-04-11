@@ -13,7 +13,8 @@ from rich.console import Console
 from moss import MossClient, QueryOptions
 
 from .. import output
-from ..config import resolve_credentials
+from ..context import get_client, get_ctx
+from ..errors import CliValidationError
 
 console = Console()
 
@@ -28,17 +29,18 @@ def query_command(
     cloud: bool = typer.Option(False, "--cloud", "-c", help="Query via cloud API instead of downloading the index"),
 ) -> None:
     """Query an index. Downloads the index and queries on-device by default. Use --cloud to skip the download and query via the cloud API."""
-    json_mode = ctx.obj.get("json_output", False)
+    cli = get_ctx(ctx)
 
     # Resolve query text
     if query_text is None:
         if sys.stdin.isatty():
-            output.print_error("No query provided. Pass as argument or pipe via stdin.", json_mode)
-            raise typer.Exit(1)
+            raise CliValidationError(
+                "No query provided.",
+                hint="Pass as argument or pipe via stdin.",
+            )
         query_text = sys.stdin.read().strip()
         if not query_text:
-            output.print_error("Empty query from stdin.", json_mode)
-            raise typer.Exit(1)
+            raise CliValidationError("Empty query from stdin.")
 
     # Parse filter
     parsed_filter = None
@@ -46,29 +48,27 @@ def query_command(
         try:
             parsed_filter = json.loads(filter_json)
         except json.JSONDecodeError as e:
-            output.print_error(f"Invalid --filter JSON: {e}", json_mode)
-            raise typer.Exit(1)
+            raise CliValidationError(
+                f"Invalid --filter JSON: {e}",
+                hint="Provide a valid JSON object, e.g. --filter '{\"key\": \"value\"}'",
+            )
 
-    pid, pkey = resolve_credentials(
-        ctx.obj.get("project_id"), ctx.obj.get("project_key")
-    )
     if cloud and parsed_filter:
-        output.print_error(
-            "Metadata filters are only supported for local queries. Remove --cloud or --filter.",
-            json_mode,
+        raise CliValidationError(
+            "Metadata filters are only supported for local queries.",
+            hint="Remove --cloud or --filter.",
         )
-        raise typer.Exit(1)
 
-    client = MossClient(pid, pkey)
+    client = get_client(ctx)
 
     async def _run() -> None:
         if not cloud:
-            if not json_mode:
+            if not cli.json_output:
                 console.print(f"Loading index [cyan]{index_name}[/cyan] locally...")
             await client.load_index(index_name)
 
         options = QueryOptions(top_k=top_k, alpha=alpha, filter=parsed_filter)
         result = await client.query(index_name, query_text, options)
-        output.print_search_results(result, json_mode=json_mode)
+        output.print_search_results(result, json_mode=cli.json_output, envelope=cli.json_envelope, command="query")
 
     asyncio.run(_run())

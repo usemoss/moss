@@ -8,55 +8,62 @@ from typing import Optional
 import typer
 from rich.console import Console
 
-from moss import MossClient
-
 from .. import output
-from ..config import resolve_credentials
+from ..context import get_client, get_ctx
 from ..documents import load_documents
+from ..errors import CliSdkError, CliValidationError
 from ..job_waiter import wait_for_job
 
 console = Console()
 index_app = typer.Typer(name="index", help="Manage indexes")
 
 
-def _client(ctx: typer.Context) -> MossClient:
-    pid, pkey = resolve_credentials(
-        ctx.obj.get("project_id"), ctx.obj.get("project_key")
-    )
-    return MossClient(pid, pkey)
-
-
 @index_app.command(name="create")
 def create(
     ctx: typer.Context,
     name: str = typer.Argument(..., help="Index name"),
-    file: str = typer.Option(..., "--file", "-f", help="Path to JSON/CSV document file, or '-' for stdin"),
+    file: Optional[str] = typer.Option(None, "--file", "-f", help="Path to JSON/CSV document file, or '-' for stdin"),
+    stdin: bool = typer.Option(False, "--stdin", help="Read documents from stdin (alias for --file -)"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Model ID (default: moss-minilm)"),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
 ) -> None:
     """Create a new index with documents."""
-    json_mode = ctx.obj.get("json_output", False)
-    client = _client(ctx)
+    cli = get_ctx(ctx)
+    client = get_client(ctx)
+
+    if stdin and file:
+        raise CliValidationError(
+            "Cannot use both --stdin and --file.",
+            hint="Use one or the other.",
+        )
+    if stdin:
+        file = "-"
+    if not file:
+        raise CliValidationError(
+            "One of --file or --stdin is required.",
+            hint="Provide a file path with --file or pipe data via --stdin.",
+        )
+
     docs = load_documents(file)
 
-    if not json_mode:
+    if not cli.json_output:
         console.print(f"Creating index [cyan]{name}[/cyan] with {len(docs)} document(s)...")
 
     result = asyncio.run(client.create_index(name, docs, model))
-    output.print_mutation_result(result, json_mode=json_mode)
+    output.print_mutation_result(result, json_mode=cli.json_output, envelope=cli.json_envelope, command="index create")
 
     if wait:
-        asyncio.run(wait_for_job(client, result.job_id, poll_interval, json_mode))
+        asyncio.run(wait_for_job(client, result.job_id, poll_interval, cli.json_output))
 
 
 @index_app.command(name="list")
 def list_indexes(ctx: typer.Context) -> None:
     """List all indexes."""
-    json_mode = ctx.obj.get("json_output", False)
-    client = _client(ctx)
+    cli = get_ctx(ctx)
+    client = get_client(ctx)
     indexes = asyncio.run(client.list_indexes())
-    output.print_index_table(indexes, json_mode=json_mode)
+    output.print_index_table(indexes, json_mode=cli.json_output, envelope=cli.json_envelope, command="index list")
 
 
 @index_app.command(name="get")
@@ -65,10 +72,10 @@ def get(
     name: str = typer.Argument(..., help="Index name"),
 ) -> None:
     """Get details of an index."""
-    json_mode = ctx.obj.get("json_output", False)
-    client = _client(ctx)
+    cli = get_ctx(ctx)
+    client = get_client(ctx)
     info = asyncio.run(client.get_index(name))
-    output.print_index_detail(info, json_mode=json_mode)
+    output.print_index_detail(info, json_mode=cli.json_output, envelope=cli.json_envelope, command="index get")
 
 
 @index_app.command(name="delete")
@@ -78,15 +85,17 @@ def delete(
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
 ) -> None:
     """Delete an index."""
-    json_mode = ctx.obj.get("json_output", False)
-    if not confirm and not json_mode:
+    cli = get_ctx(ctx)
+    if not confirm and not cli.no_input and not cli.json_output:
         typer.confirm(f"Delete index '{name}'?", abort=True)
 
-    client = _client(ctx)
+    client = get_client(ctx)
     result = asyncio.run(client.delete_index(name))
 
     if result:
-        output.print_success(f"Index '{name}' deleted.", json_mode=json_mode)
+        output.print_success(f"Index '{name}' deleted.", json_mode=cli.json_output, envelope=cli.json_envelope, command="index delete")
     else:
-        output.print_error(f"Failed to delete index '{name}'.", json_mode=json_mode)
-        raise typer.Exit(1)
+        raise CliSdkError(
+            f"Failed to delete index '{name}'.",
+            hint="Check that the index exists with 'moss index list'.",
+        )
