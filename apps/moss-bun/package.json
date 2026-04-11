@@ -1,0 +1,30 @@
+{
+  "name": "moss-bun-app",
+  "version": "1.0.0",
+  "description": "Production-ready Moss semantic search application built with Bun",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "cli": "bun run src/cli.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "seed": "bun run src/seed.ts",
+    "build": "bun build src/index.ts --outdir dist",
+    "type-check": "bun check",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@moss-dev/moss": "^1.0.0",
+    "dotenv": "^17.2.3",
+    "elysia": "^1.1.12"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prettier": "^3.1.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

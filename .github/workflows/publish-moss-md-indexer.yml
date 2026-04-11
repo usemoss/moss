@@ -1,0 +1,88 @@
+name: Publish moss-md-indexer
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: moss-md-indexer-release
+  cancel-in-progress: false
+
+jobs:
+  determine-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Get version from package.json
+        id: compute
+        shell: bash
+        run: |
+          cd packages/moss-md-indexer
+          VERSION=$(node -p "require('./package.json').version")
+
+          if [[ -z "$VERSION" || "$VERSION" == "undefined" ]]; then
+            echo "Could not read version from package.json" >&2
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+  build-and-publish:
+    needs: determine-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      PKG_DIR: packages/moss-md-indexer
+      VERSION: ${{ needs.determine-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
+          cache-dependency-path: ${{ env.PKG_DIR }}/pnpm-lock.yaml
+
+      - name: Show version to be published
+        run: echo "Publishing version ${{ env.VERSION }}"
+
+      - name: Install dependencies
+        working-directory: ${{ env.PKG_DIR }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        working-directory: ${{ env.PKG_DIR }}
+        run: pnpm build
+
+      - name: Publish to npm
+        working-directory: ${{ env.PKG_DIR }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: pnpm publish --no-git-checks --access public
+
+      - name: Tag release
+        env:
+          VERSION: ${{ env.VERSION }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "moss-md-indexer-v${VERSION}"
+          git push origin "moss-md-indexer-v${VERSION}"
