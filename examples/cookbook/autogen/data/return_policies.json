@@ -1,0 +1,58 @@
+[
+  {
+    "policy": "Standard Return",
+    "window_days": 30,
+    "condition": "Unopened, original packaging",
+    "refund_method": "Original payment method",
+    "processing_days": 5
+  },
+  {
+    "policy": "Damaged Item Return",
+    "window_days": 90,
+    "condition": "Item damaged on arrival or within 90 days of purchase",
+    "refund_method": "Full refund or free replacement",
+    "processing_days": 2
+  },
+  {
+    "policy": "Electronics Return",
+    "window_days": 15,
+    "condition": "Unopened or confirmed defective",
+    "refund_method": "Store credit or original payment method",
+    "processing_days": 7
+  },
+  {
+    "policy": "Furniture Return",
+    "window_days": 14,
+    "condition": "Unassembled and in original packaging only",
+    "refund_method": "Store credit only",
+    "processing_days": 10
+  },
+  {
+    "policy": "Non-Returnable",
+    "window_days": 0,
+    "condition": "Final sale items and digital goods",
+    "refund_method": "None",
+    "processing_days": 0
+  },
+  {
+    "policy": "Fitness Equipment Return",
+    "window_days": 30,
+    "condition": "Unused and in original packaging",
+    "refund_method": "Full refund",
+    "processing_days": 5
+  },
+  {
+    "policy": "Clearance Return",
+    "window_days": 7,
+    "condition": "Unopened only",
+    "refund_method": "Store credit only",
+    "processing_days": 3
+  },
+  {
+    "policy": "Holiday Gift Return",
+    "window_days": 60,
+    "condition": "Gift receipt required, unopened",
+    "refund_method": "Store credit",
+    "processing_days": 7
+  }
+]
