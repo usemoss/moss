@@ -9,6 +9,7 @@ import asyncio
 import os
 import sys
 
+from agents.tool_context import ToolContext
 from dotenv import load_dotenv
 from moss import MossClient
 
@@ -29,6 +30,19 @@ TEST_INDEX = "openai-agents-live-test"
 
 passed = 0
 failed = 0
+_call_counter = 0
+
+
+def _make_ctx(tool_name: str, args: str) -> ToolContext:
+    """Build a minimal ToolContext for direct tool invocation in tests."""
+    global _call_counter
+    _call_counter += 1
+    return ToolContext(
+        context=None,
+        tool_name=tool_name,
+        tool_call_id=f"test_call_{_call_counter}",
+        tool_arguments=args,
+    )
 
 
 def report(name, success, detail=""):
@@ -67,9 +81,10 @@ async def run_tests():
             raise
 
     try:
+        add_args = '{"texts": ["Moss delivers sub-10ms semantic search.", "OpenAI Agents SDK orchestrates tool-using agents.", "Python is popular for AI development."], "ids": ["doc-1", "doc-2", "doc-3"]}'
         result = await add_tool.on_invoke_tool(
-            None,
-            '{"texts": ["Moss delivers sub-10ms semantic search.", "OpenAI Agents SDK orchestrates tool-using agents.", "Python is popular for AI development."], "ids": ["doc-1", "doc-2", "doc-3"]}',
+            _make_ctx("moss_add_docs", add_args),
+            add_args,
         )
         report("add 3 docs", "Added 3" in result, result)
     except Exception as e:
@@ -79,7 +94,8 @@ async def run_tests():
     print("2. moss_search")
     search_tool = moss_search_tool(client, TEST_INDEX, top_k=3)
     try:
-        result = await search_tool.on_invoke_tool(None, '{"query": "semantic search"}')
+        search_args = '{"query": "semantic search"}'
+        result = await search_tool.on_invoke_tool(_make_ctx("moss_search", search_args), search_args)
         report("search", "Result" in result, result[:80])
     except Exception as e:
         report("search", False, str(e))
@@ -88,7 +104,8 @@ async def run_tests():
     print("3. moss_search_with_filter")
     filter_tool = moss_search_with_filter_tool(client, TEST_INDEX, top_k=3)
     try:
-        result = await filter_tool.on_invoke_tool(None, '{"query": "search"}')
+        filter_args = '{"query": "search"}'
+        result = await filter_tool.on_invoke_tool(_make_ctx("moss_search_with_filter", filter_args), filter_args)
         report("search (no filter)", "Result" in result or "No relevant" in result, result[:80])
     except Exception as e:
         report("search (no filter)", False, str(e))
@@ -97,7 +114,8 @@ async def run_tests():
     print("4. moss_get_docs")
     get_tool = moss_get_docs_tool(client, TEST_INDEX)
     try:
-        result = await get_tool.on_invoke_tool(None, '{"doc_ids": ["doc-1"]}')
+        get_args = '{"doc_ids": ["doc-1"]}'
+        result = await get_tool.on_invoke_tool(_make_ctx("moss_get_docs", get_args), get_args)
         report("get by ID", "doc-1" in result, result[:80])
     except Exception as e:
         report("get by ID", False, str(e))
@@ -106,7 +124,8 @@ async def run_tests():
     print("5. moss_list_indexes")
     list_tool = moss_list_indexes_tool(client)
     try:
-        result = await list_tool.on_invoke_tool(None, '{}')
+        list_args = '{}'
+        result = await list_tool.on_invoke_tool(_make_ctx("moss_list_indexes", list_args), list_args)
         report("list indexes", TEST_INDEX in result or "docs" in result, result[:80])
     except Exception as e:
         report("list indexes", False, str(e))
@@ -115,7 +134,8 @@ async def run_tests():
     print("6. moss_delete_docs")
     delete_tool = moss_delete_docs_tool(client, TEST_INDEX)
     try:
-        result = await delete_tool.on_invoke_tool(None, '{"doc_ids": ["doc-1", "doc-2", "doc-3"]}')
+        delete_args = '{"doc_ids": ["doc-1", "doc-2", "doc-3"]}'
+        result = await delete_tool.on_invoke_tool(_make_ctx("moss_delete_docs", delete_args), delete_args)
         report("delete docs", "Deleted 3" in result, result)
     except Exception as e:
         report("delete docs", False, str(e))
