@@ -11,7 +11,7 @@ import {
 import { mossLog } from "./mossLog.js";
 import { ensureLocalIndexLoaded, notifySearchIndexStale } from "./mossQueryState.js";
 import { notifyMossIndexed } from "./mossStatusBar.js";
-import type { DocumentInfo } from "@moss-dev/moss";
+import type { DocumentInfo, JobProgress } from "@moss-dev/moss";
 
 const MAX_FILE_SCAN = 80_000;
 const MAX_MOSS_DOCUMENTS = 60_000;
@@ -427,8 +427,29 @@ export async function runIndexWorkspace(
         log,
         `Moss: Uploading ${allDocs.length} chunk(s) to Moss (createIndex)…`
       );
+      if (allDocs.length >= 5_000) {
+        mossLog(
+          log,
+          "Moss: Large index — upload and server-side embedding can take many minutes; progress updates appear below.",
+          "verbose"
+        );
+      }
 
       const client = new MossClient(creds.projectId, creds.projectKey);
+
+      const reportCreateProgress = (p: JobProgress) => {
+        const phase =
+          p.currentPhase != null ? ` · ${p.currentPhase}` : "";
+        progress.report({
+          message: `Uploading index to Moss… ${p.status} ${p.progress}%${phase}`,
+          increment: 0,
+        });
+        mossLog(
+          log,
+          `Moss: createIndex progress — ${p.status} ${p.progress}%${phase} (job ${p.jobId})`,
+          "verbose"
+        );
+      };
 
       try {
         await tolerateDeleteIndex(client, cfg.indexName, log);
@@ -437,8 +458,14 @@ export async function runIndexWorkspace(
           return;
         }
 
+        progress.report({
+          message: "Uploading index to Moss… starting",
+          increment: 0,
+        });
+
         await client.createIndex(cfg.indexName, allDocs, {
           modelId: cfg.modelId,
+          onProgress: reportCreateProgress,
         });
         notifySearchIndexStale();
         mossLog(
