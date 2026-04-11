@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openai-agents-moss"
+version = "0.1.0"
+description = "OpenAI Agents SDK cookbook example for Moss semantic search"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "BSD-2-Clause" }
+authors = [
+    { name = "InferEdge Inc.", email = "contact@moss.dev" }
+]
+dependencies = [
+    "openai-agents>=0.0.7",
+    "moss>=1.0.0",
+    "python-dotenv",
+]
