@@ -6,14 +6,14 @@ This cookbook shows how to expose [Moss](https://moss.dev) semantic search as a 
 
 Moss is a semantic search platform that delivers sub-10ms retrieval by loading vector indices into local memory. This cookbook provides:
 
-1. **MossSearchTool** — a class that wraps `MossClient` and exposes a `.tool` property for Pydantic AI agents.
-2. **as_tool(...)** — a convenience helper that creates the tool in one call.
+1. **MossSearchTool** - a class that wraps `MossClient` and exposes a `.tool` property for Pydantic AI agents.
+2. **as_tool(...)** - a convenience helper that creates the tool in one call.
 
 ## Installation
 
 ```bash
 cd examples/cookbook/pydantic-ai
-pip install -e .
+uv sync
 ```
 
 ## Setup
@@ -41,7 +41,7 @@ from moss_pydantic_ai import MossSearchTool
 async def main():
     client = MossClient("your-project-id", "your-project-key")
     moss = MossSearchTool(client=client, index_name="my-index")
-    await moss.load_index()                    # pre-load for fast queries
+    await moss.load_index()  # pre-load for fast queries
 
     agent = Agent("openai:gpt-4o", tools=[moss.tool])
     result = await agent.run("What is the refund policy?")
@@ -53,14 +53,21 @@ asyncio.run(main())
 ### Using the as_tool helper
 
 ```python
+import asyncio
 from moss import MossClient
+from pydantic_ai import Agent
 from moss_pydantic_ai import as_tool
 
-client = MossClient("your-project-id", "your-project-key")
-moss, tool = as_tool(client=client, index_name="my-index")
-await moss.load_index()
+async def main():
+    client = MossClient("your-project-id", "your-project-key")
+    moss, tool = as_tool(client=client, index_name="my-index")
+    await moss.load_index()
 
-agent = Agent("openai:gpt-4o", tools=[tool])
+    agent = Agent("openai:gpt-4o", tools=[tool])
+    result = await agent.run("What is the refund policy?")
+    print(result.output)
+
+asyncio.run(main())
 ```
 
 ## Configuration
@@ -77,10 +84,16 @@ agent = Agent("openai:gpt-4o", tools=[tool])
 ## Run the Demo
 
 ```bash
-python moss_pydantic_ai.py
+uv run python moss_pydantic_ai.py
 ```
 
 The demo creates a `MossClient`, loads your index, defines a `MossSearchTool`, and runs a Pydantic AI agent against it.
+
+## Run the Tests
+
+```bash
+uv run python test_integration.py
+```
 
 ## How It Works
 

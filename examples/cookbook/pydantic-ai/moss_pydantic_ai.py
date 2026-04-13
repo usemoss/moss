@@ -1,10 +1,3 @@
-"""Cookbook example: use Moss semantic search as a Pydantic AI tool.
-
-This module provides a reusable ``MossSearchTool`` class and a convenience
-``as_tool()`` helper.  Copy this file into your own project, or install the
-cookbook as a package with ``pip install -e .``
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -21,29 +14,10 @@ __all__ = ["MossSearchTool", "as_tool"]
 logger = logging.getLogger("moss_pydantic_ai")
 
 
-# ---------------------------------------------------------------------------
-# Core adapter
-# ---------------------------------------------------------------------------
 
 
 class MossSearchTool:
-    """Moss semantic search exposed as a Pydantic AI tool.
-
-    Manages the :class:`MossClient` lifecycle and exposes a ``.tool``
-    property returning a :class:`pydantic_ai.Tool` ready to be passed
-    to ``Agent(tools=[...])``.
-
-    Usage::
-
-        from moss import MossClient
-        from moss_pydantic_ai import MossSearchTool
-
-        client = MossClient("pid", "pkey")
-        moss = MossSearchTool(client=client, index_name="my-index")
-        await moss.load_index()
-
-        agent = Agent("openai:gpt-4o", tools=[moss.tool])
-    """
+    """Moss semantic search exposed as a Pydantic AI tool."""
 
     def __init__(
         self,
@@ -55,17 +29,7 @@ class MossSearchTool:
         top_k: int = 5,
         alpha: float = 0.8,
     ) -> None:
-        """Initialize with a shared MossClient and retrieval settings.
-
-        Args:
-            client: A pre-built :class:`MossClient` instance.
-            index_name: Name of the Moss index to query.
-            tool_name: Name exposed to the LLM for tool selection.
-            tool_description: Description exposed to the LLM.  If ``None``
-                a sensible default is used.
-            top_k: Number of results to retrieve per query.
-            alpha: Blend between semantic (1.0) and keyword (0.0) scoring.
-        """
+        """Initialize with a shared MossClient and retrieval settings."""
         self._client = client
         self._index_name = index_name
         self._tool_name = tool_name
@@ -79,7 +43,7 @@ class MossSearchTool:
         self._load_lock = asyncio.Lock()
         self._tool_obj = self._build_tool()
 
-    # -- public API ---------------------------------------------------------
+
 
     async def load_index(self) -> None:
         """Pre-load the Moss index into memory for fast queries.
@@ -95,17 +59,7 @@ class MossSearchTool:
             logger.info("Moss index '%s' ready", self._index_name)
 
     async def search(self, query: str) -> str:
-        """Query the Moss index and return formatted results.
-
-        Args:
-            query: Natural-language search text.
-
-        Returns:
-            Formatted string of search results suitable for LLM context.
-
-        Raises:
-            RuntimeError: If :meth:`load_index` has not been called.
-        """
+        """Query the Moss index and return formatted results."""
         if not self._index_loaded:
             raise RuntimeError(
                 f"Index '{self._index_name}' not loaded. "
@@ -129,7 +83,7 @@ class MossSearchTool:
         """Return the ``pydantic_ai.Tool`` to pass to an Agent."""
         return self._tool_obj
 
-    # -- internals ----------------------------------------------------------
+
 
     def _build_tool(self) -> Tool:
         """Build a Pydantic AI Tool wrapping :meth:`search`."""
@@ -170,9 +124,6 @@ class MossSearchTool:
         return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Convenience helper
-# ---------------------------------------------------------------------------
 
 
 def as_tool(
@@ -184,17 +135,7 @@ def as_tool(
     top_k: int = 5,
     alpha: float = 0.8,
 ) -> tuple[MossSearchTool, Tool]:
-    """Create a ``MossSearchTool`` and return ``(instance, tool)``.
-
-    This is a shortcut when you only need the tool object for ``Agent(tools=[...])``.
-    You still need to call ``await instance.load_index()`` before running the agent.
-
-    Example::
-
-        moss, tool = as_tool(client=client, index_name="docs")
-        await moss.load_index()
-        agent = Agent("openai:gpt-4o", tools=[tool])
-    """
+    """Create a ``MossSearchTool`` and return ``(instance, tool)`` as a shortcut."""
     moss = MossSearchTool(
         client=client,
         index_name=index_name,
@@ -206,9 +147,6 @@ def as_tool(
     return moss, moss.tool
 
 
-# ---------------------------------------------------------------------------
-# Runnable demo
-# ---------------------------------------------------------------------------
 
 
 def _require_env(name: str) -> str:
