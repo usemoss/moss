@@ -1,20 +1,3 @@
-"""
-Log Ingestion Q&A Agent — MOSS + Daytona
-
-Flow:
-  1. Spin up a Daytona sandbox
-  2. Run mock_logs.py inside it to generate structured log entries
-  3. Index those logs into MOSS
-  4. Answer natural-language questions about the system (interactive or single-shot)
-
-Usage:
-  python log_agent.py                          # interactive REPL
-  python log_agent.py -q "Any DB errors?"     # single question
-
-Required env vars (or .env file):
-  MOSS_PROJECT_ID, MOSS_PROJECT_KEY, DAYTONA_API_KEY, OPENAI_API_KEY
-"""
-
 import asyncio
 import os
 from pathlib import Path
@@ -132,8 +115,17 @@ async def log_qa_agent(question: Optional[str] = None) -> None:
                     print(f"\nError: {exc}\n")
 
     finally:
-        print("Cleaning up sandbox...")
-        daytona.delete(sandbox)
+        print("\nCleaning up...")
+        try:
+            daytona.delete(sandbox)
+        except Exception as exc:
+            print(f"Warning: sandbox cleanup failed: {exc}")
+        try:
+            moss = MossClient(os.environ["MOSS_PROJECT_ID"], os.environ["MOSS_PROJECT_KEY"])
+            await moss.delete_index(index_name)
+            print(f"Index '{index_name}' deleted.")
+        except Exception as exc:
+            print(f"Warning: index cleanup failed: {exc}")
         print("Done.")
 
 

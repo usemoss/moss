@@ -7,7 +7,7 @@ Ask natural-language questions about system logs from a live sandbox.
 1. Spins up an isolated [Daytona](https://daytona.io) sandbox
 2. Runs a workload inside it that generates structured logs
 3. Indexes every log line into [MOSS](https://moss.dev) for semantic search
-4. Starts an agent (GPT-4o + LangChain) that searches MOSS to answer your questions
+4. Starts an agent that searches MOSS to answer your questions
 
 ```
 You: What errors occurred in the auth service?

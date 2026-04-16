@@ -1,13 +1,3 @@
-"""
-MOSS + Daytona Log Ingestion
-
-Three parts (mirrors moss_daytona.py structure):
-  A. Log ingester — stores raw log lines into DocumentInfo; MOSS semantic search
-     handles understanding rather than brittle regex parsing
-  B. Daytona collector — runs commands in a sandbox to harvest logs
-  C. MOSS search tool — LangChain Tool for semantic / hybrid log search
-"""
-
 import asyncio
 import hashlib
 import logging
@@ -52,7 +42,7 @@ def parse_log_line(line: str, source: str = "unknown") -> Optional[DocumentInfo]
     level = lm.group(1).upper() if lm else "INFO"
     level = _LEVEL_NORM.get(level, level)
 
-    doc_id = f"{source}::{hashlib.md5(line.encode()).hexdigest()[:12]}"
+    doc_id = f"{source}::{hashlib.md5(f'{line}:{id(line)}:{hash((line, source))}'.encode()).hexdigest()[:12]}"
     return DocumentInfo(id=doc_id, text=line, metadata={"source": source, "level": level})
 
 
@@ -65,10 +55,6 @@ def parse_log_lines(lines: List[str], source: str) -> List[DocumentInfo]:
             docs.append(doc)
     return docs
 
-
-# ============================================================================
-# Part B: Daytona Log Collector
-# ============================================================================
 
 #: Default shell commands to harvest logs from a sandbox.
 #: Each tuple is ``(source_name, shell_command)``.
