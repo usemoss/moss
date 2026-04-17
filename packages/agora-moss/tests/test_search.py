@@ -197,3 +197,21 @@ class TestCreateMcpApp:
         tools = asyncio.run(app.list_tools())
         names = [t.name for t in tools]
         assert "search_knowledge_base" in names
+
+
+class TestPublicAPI:
+    def test_package_exports_public_names(self):
+        import agora_moss
+
+        assert hasattr(agora_moss, "MossAgoraSearch")
+        assert hasattr(agora_moss, "create_mcp_app")
+        assert hasattr(agora_moss, "AgoraSearchResult")
+
+    def test_all_lists_only_public_names(self):
+        import agora_moss
+
+        assert set(agora_moss.__all__) == {
+            "AgoraSearchResult",
+            "MossAgoraSearch",
+            "create_mcp_app",
+        }
