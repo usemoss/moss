@@ -5,7 +5,8 @@ Usage:
     uv run python create_index.py
 
 Reads ``moss_docs.json`` and uploads to the index named ``$MOSS_INDEX_NAME``.
-Creates the index if it does not exist; no-ops if it does (idempotent).
+Creates the index with documents in a single call; no-ops if the index already
+exists (idempotent).
 """
 
 from __future__ import annotations
@@ -39,20 +40,23 @@ async def main() -> None:
         project_key=os.environ["MOSS_PROJECT_KEY"],
     )
 
-    logger.info("Ensuring index {!r} exists", index_name)
+    documents = [
+        DocumentInfo(id=d["id"], text=d["text"], metadata=d.get("metadata", {}))
+        for d in raw_docs
+    ]
+
+    logger.info("Creating index {!r} with {} documents", index_name, len(documents))
     try:
-        await client.create_index(index_name)
+        await client.create_index(
+            name=index_name,
+            docs=documents,
+            model_id="moss-minilm",
+        )
         logger.info("Created index {!r}", index_name)
     except Exception as e:
         # Moss raises on duplicate index creation; treat as idempotent success.
         logger.info("create_index({!r}) -> {}: assuming index already exists", index_name, e)
 
-    logger.info("Uploading {} documents to {!r}", len(raw_docs), index_name)
-    documents = [
-        DocumentInfo(id=d["id"], text=d["text"], metadata=d.get("metadata", {}))
-        for d in raw_docs
-    ]
-    await client.add_docs(index_name, documents)
     logger.info("Done. Wait a few seconds for the index to finish processing.")
 
 
