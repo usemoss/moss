@@ -219,6 +219,40 @@ class TestPublicAPI:
         }
 
 
+class TestMcpErrorMapping:
+    async def test_search_exception_is_raised_as_runtime_error_through_tool(self, monkeypatch):
+        """The tool handler must re-raise Moss exceptions as RuntimeError.
+
+        FastMCP serializes RuntimeError as an MCP tool-error with a readable
+        message. Verified by calling the tool implementation directly.
+        """
+        import agora_moss.search as search_mod
+
+        class FakeClient:
+            def __init__(self, *, project_id=None, project_key=None):
+                pass
+
+        monkeypatch.setattr(search_mod, "MossClient", FakeClient)
+
+        from agora_moss.search import MossAgoraSearch, create_mcp_app
+
+        s = MossAgoraSearch(project_id="p", project_key="k", index_name="idx")
+
+        async def broken_search(query):
+            raise ValueError("moss blew up")
+
+        s.search = broken_search  # type: ignore[method-assign]
+        app = create_mcp_app(s)
+
+        tools = await app.list_tools()
+        tool = next(t for t in tools if t.name == "search_knowledge_base")
+        # FastMCP stores the registered callable; locate it and invoke directly.
+        fn = app._tool_manager.get_tool(tool.name).fn  # type: ignore[attr-defined]
+
+        with pytest.raises(RuntimeError, match="Moss search failed"):
+            await fn(query="anything")
+
+
 _HAS_MOSS_CREDS = bool(os.environ.get("MOSS_PROJECT_ID")) and bool(
     os.environ.get("MOSS_PROJECT_KEY")
 )
