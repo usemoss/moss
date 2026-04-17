@@ -215,3 +215,94 @@ class TestPublicAPI:
             "MossAgoraSearch",
             "create_mcp_app",
         }
+
+
+import os
+
+import pytest as _pytest
+
+_HAS_MOSS_CREDS = bool(os.environ.get("MOSS_PROJECT_ID")) and bool(
+    os.environ.get("MOSS_PROJECT_KEY")
+)
+_MOSS_INDEX = os.environ.get("MOSS_INDEX_NAME", "agora-moss-test")
+
+
+@_pytest.mark.skipif(
+    not _HAS_MOSS_CREDS,
+    reason="requires MOSS_PROJECT_ID + MOSS_PROJECT_KEY env vars",
+)
+class TestMcpRoundtrip:
+    async def test_end_to_end_tool_call(self, tmp_path):
+        """Spin up the FastMCP streamable-HTTP app and call search_knowledge_base.
+
+        Assumes the index named ``MOSS_INDEX_NAME`` already exists and contains
+        at least one document. Use ``apps/agora-moss/create_index.py`` to seed.
+        """
+        import asyncio
+        import socket
+        from contextlib import asynccontextmanager
+
+        import httpx
+        import uvicorn
+        from mcp.client.session import ClientSession
+        from mcp.client.streamable_http import streamablehttp_client
+
+        from agora_moss import MossAgoraSearch, create_mcp_app
+
+        def free_port() -> int:
+            with socket.socket() as s:
+                s.bind(("127.0.0.1", 0))
+                return s.getsockname()[1]
+
+        port = free_port()
+        search = MossAgoraSearch(
+            project_id=os.environ["MOSS_PROJECT_ID"],
+            project_key=os.environ["MOSS_PROJECT_KEY"],
+            index_name=_MOSS_INDEX,
+        )
+        app = create_mcp_app(search)
+
+        config = uvicorn.Config(
+            app.streamable_http_app(),
+            host="127.0.0.1",
+            port=port,
+            log_level="warning",
+        )
+        server = uvicorn.Server(config)
+
+        @asynccontextmanager
+        async def running_server():
+            task = asyncio.create_task(server.serve())
+            # wait for /mcp to be reachable
+            for _ in range(50):
+                try:
+                    async with httpx.AsyncClient() as http:
+                        r = await http.get(f"http://127.0.0.1:{port}/mcp", timeout=0.2)
+                        if r.status_code < 500:
+                            break
+                except (httpx.ConnectError, httpx.ReadTimeout):
+                    await asyncio.sleep(0.1)
+            try:
+                yield
+            finally:
+                server.should_exit = True
+                await task
+
+        async with running_server():
+            async with streamablehttp_client(f"http://127.0.0.1:{port}/mcp") as (
+                read,
+                write,
+                _,
+            ):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    tools_response = await session.list_tools()
+                    tool_names = [t.name for t in tools_response.tools]
+                    assert "search_knowledge_base" in tool_names
+
+                    result = await session.call_tool(
+                        "search_knowledge_base",
+                        arguments={"query": "hello"},
+                    )
+                    assert result is not None
+                    assert not result.isError
