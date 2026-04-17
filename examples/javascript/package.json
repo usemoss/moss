@@ -39,7 +39,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@moss-dev/moss": "^1.0.0",
+    "@moss-dev/moss": "^1.0.1",
     "dotenv": "^17.2.3",
     "openai": "^6.17.0"
   },

@@ -11,8 +11,9 @@
  *   - Any setup where you want short-lived, rotatable credentials
  *
  * Architecture:
- *   BACKEND  — MossClient(projectId, projectKey) + a token-vending endpoint
+ *   BACKEND  — MossClient(projectId, projectKey) + a token-vending endpoint (no auth layer in this sample)
  *   CLIENT   — MossClient(projectId, customAuthenticator) — no projectKey
+ *              Token caching is handled automatically by MossClient via CachingAuthenticator
  *
  * This file contains both sides of the integration so you can run the full
  * end-to-end flow from a single script. In production you would split them
@@ -24,7 +25,7 @@
  * npx tsx custom_authenticator_sample.ts
  * ```
  *
- * @requires @moss-dev/moss ^1.0.0
+ * @requires @moss-dev/moss ^1.0.1
  * @requires dotenv ^17.2.3
  * @requires node >=20.0.0
  */
@@ -47,13 +48,8 @@ config();
 
 const BACKEND_PORT = 3456;
 
-// This is your application's own secret shared with trusted clients.
-// It is separate from the Moss projectKey and controls who can request tokens.
-const BACKEND_API_KEY = 'my-app-internal-key';
-
 /**
  * Creates a lightweight HTTP server that vends short-lived Moss auth tokens.
- * The caller must prove its identity via x-api-key before a token is issued.
  *
  * @param mossClient - A standard MossClient initialised with projectId + projectKey.
  */
@@ -62,15 +58,6 @@ function createTokenServer(mossClient: MossClient): http.Server {
     if (req.method !== 'GET' || req.url !== '/moss-token') {
       res.writeHead(404);
       res.end('Not found');
-      return;
-    }
-
-    // ── Verify caller identity ──────────────────────────────────────────────
-    // Replace this block with your own auth logic (JWT, session, OAuth, etc.)
-    const callerKey = req.headers['x-api-key'];
-    if (callerKey !== BACKEND_API_KEY) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
     }
 
@@ -99,58 +86,34 @@ function createTokenServer(mossClient: MossClient): http.Server {
 
 /**
  * Authenticator that fetches short-lived Moss tokens from your own backend.
- * Implements token caching to avoid redundant requests.
+ *
+ * No caching is needed here — MossClient wraps every IAuthenticator in a
+ * CachingAuthenticator internally, so token reuse and expiry buffering are
+ * handled automatically.
  *
  * @example
  * ```typescript
  * const authenticator = new BackendTokenAuthenticator(
  *   'https://api.myapp.com/moss-token',
- *   mySessionToken,
  * );
  * const client = new MossClient(projectId, authenticator);
  * ```
  */
 class BackendTokenAuthenticator implements IAuthenticator {
-  private cachedToken: string | null = null;
-  private cachedExpiresIn: number = 0;
-  private cacheExpiresAt: number = 0; // ms timestamp
-
   /**
    * @param tokenEndpointUrl - Your backend URL that returns { token, expiresIn }.
-   * @param callerCredential - Your app's own credential (session token, API key, etc.).
    */
-  constructor(
-    private readonly tokenEndpointUrl: string,
-    private readonly callerCredential: string,
-  ) {}
+  constructor(private readonly tokenEndpointUrl: string) {}
 
   async getAuthToken(): Promise<AuthToken> {
-    // Return cached token if it is still valid (with a 60-second safety buffer)
-    if (this.cachedToken && Date.now() < this.cacheExpiresAt) {
-      return { token: this.cachedToken, expiresIn: this.cachedExpiresIn };
-    }
-
-    const response = await fetch(this.tokenEndpointUrl, {
-      method: 'GET',
-      headers: {
-        // Replace 'x-api-key' with whatever auth scheme your backend expects
-        'x-api-key': this.callerCredential,
-      },
-    });
+    const response = await fetch(this.tokenEndpointUrl, { method: 'GET' });
 
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Token endpoint returned HTTP ${response.status}: ${text}`);
     }
 
-    const data = await response.json() as { token: string; expiresIn: number };
-
-    // Cache the token, expiring 60 seconds early to avoid using a stale token
-    this.cachedToken = data.token;
-    this.cachedExpiresIn = data.expiresIn;
-    this.cacheExpiresAt = Date.now() + (data.expiresIn - 60) * 1000;
-
-    return { token: data.token, expiresIn: data.expiresIn };
+    return response.json() as Promise<AuthToken>;
   }
 
   async getAuthHeader(): Promise<string> {
@@ -198,7 +161,7 @@ async function customAuthenticatorSample(): Promise<void> {
   console.log('\nStep 2: Creating client-side MossClient with custom authenticator...');
 
   const tokenUrl = `http://localhost:${BACKEND_PORT}/moss-token`;
-  const authenticator = new BackendTokenAuthenticator(tokenUrl, BACKEND_API_KEY);
+  const authenticator = new BackendTokenAuthenticator(tokenUrl);
   const clientWithCustomAuth = new MossClient(projectId, authenticator);
 
   console.log('   MossClient created — no projectKey in this client instance');
@@ -236,8 +199,8 @@ async function customAuthenticatorSample(): Promise<void> {
   console.log('='.repeat(50));
   console.log('Key takeaways:');
   console.log('   projectKey lives only on the backend — never sent to clients');
-  console.log('   Short-lived tokens are fetched on demand and cached locally');
-  console.log('   BackendTokenAuthenticator is drop-in replaceable (implements IAuthenticator)');
+  console.log('   MossClient internally wraps any IAuthenticator with CachingAuthenticator');
+  console.log('   BackendTokenAuthenticator stays simple — just fetch and return the token');
 }
 
 export { customAuthenticatorSample, BackendTokenAuthenticator };
