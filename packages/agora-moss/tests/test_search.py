@@ -1,8 +1,10 @@
 """Unit tests for MossAgoraSearch."""
 
+import os
 from dataclasses import dataclass
 
 import pytest
+import pytest as _pytest
 
 
 @dataclass
@@ -216,10 +218,6 @@ class TestPublicAPI:
             "create_mcp_app",
         }
 
-
-import os
-
-import pytest as _pytest
 
 _HAS_MOSS_CREDS = bool(os.environ.get("MOSS_PROJECT_ID")) and bool(
     os.environ.get("MOSS_PROJECT_KEY")

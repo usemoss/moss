@@ -25,6 +25,7 @@ REQUIRED_ENV = ("MOSS_PROJECT_ID", "MOSS_PROJECT_KEY", "MOSS_INDEX_NAME")
 
 
 async def main() -> None:
+    """Seed the configured Moss index from ``moss_docs.json`` (idempotent)."""
     load_dotenv()
     missing = [k for k in REQUIRED_ENV if not os.environ.get(k)]
     if missing:
@@ -41,8 +42,7 @@ async def main() -> None:
     )
 
     documents = [
-        DocumentInfo(id=d["id"], text=d["text"], metadata=d.get("metadata", {}))
-        for d in raw_docs
+        DocumentInfo(id=d["id"], text=d["text"], metadata=d.get("metadata", {})) for d in raw_docs
     ]
 
     logger.info("Creating index {!r} with {} documents", index_name, len(documents))

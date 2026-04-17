@@ -16,10 +16,9 @@ from __future__ import annotations
 import os
 import sys
 
+from agora_moss import MossAgoraSearch, create_mcp_app
 from dotenv import load_dotenv
 from loguru import logger
-
-from agora_moss import MossAgoraSearch, create_mcp_app
 
 REQUIRED_ENV = ("MOSS_PROJECT_ID", "MOSS_PROJECT_KEY", "MOSS_INDEX_NAME")
 

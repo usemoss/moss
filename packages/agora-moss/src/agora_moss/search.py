@@ -39,6 +39,7 @@ class MossAgoraSearch:
         top_k: int = 5,
         alpha: float = 0.8,
     ) -> None:
+        """Initialize the adapter with Moss credentials and index-query defaults."""
         self._client = MossClient(project_id=project_id, project_key=project_key)
         self._index_name = index_name
         self._top_k = top_k
@@ -55,9 +56,7 @@ class MossAgoraSearch:
     async def search(self, query: str) -> AgoraSearchResult:
         """Run a semantic search against the preloaded index."""
         if not self._index_loaded:
-            raise RuntimeError(
-                f"Index {self._index_name!r} not loaded. Call load_index() first."
-            )
+            raise RuntimeError(f"Index {self._index_name!r} not loaded. Call load_index() first.")
         options = QueryOptions(top_k=self._top_k, alpha=self._alpha)
         result = await self._client.query(self._index_name, query, options=options)
         return AgoraSearchResult(

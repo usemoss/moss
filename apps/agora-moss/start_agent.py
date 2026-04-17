@@ -31,9 +31,7 @@ def mint_token(app_id: str, app_certificate: str, channel: str, uid: int) -> str
     """Mint an Agora RTC token for the agent participant."""
     expire_ts = int(time.time()) + RTC_TOKEN_TTL_SECONDS
     # Role 1 = publisher; the ConvoAI agent publishes audio.
-    return RtcTokenBuilder.buildTokenWithUid(
-        app_id, app_certificate, channel, uid, 1, expire_ts
-    )
+    return RtcTokenBuilder.buildTokenWithUid(app_id, app_certificate, channel, uid, 1, expire_ts)
 
 
 def build_join_body(
@@ -100,6 +98,7 @@ def _require_env(keys: tuple[str, ...]) -> dict[str, str]:
 
 
 def main() -> None:
+    """Mint tokens and POST an Agora ConvoAI ``join`` body wiring in the MCP server."""
     load_dotenv()
     env = _require_env(
         (
