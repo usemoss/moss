@@ -138,6 +138,7 @@ examples/
 apps/
 ├── next-js/                 # Next.js semantic search UI
 ├── pipecat-moss/            # Pipecat voice agent with Moss retrieval
+├── agora-moss/              # Agora Conversational AI MCP server with Moss retrieval
 ├── livekit-moss-vercel/     # LiveKit voice agent on Vercel
 └── docker/                  # Dockerized examples (ECS/K8s pattern)
 ```
@@ -239,6 +240,7 @@ const results = await client.query(name, "your query", { topK: 5 });
 | [LangChain](https://github.com/langchain-ai/langchain) | Available | [`examples/cookbook/langchain/`](examples/cookbook/langchain/) |
 | [DSPy](https://github.com/stanfordnlp/dspy) | Available | [`examples/cookbook/dspy/`](examples/cookbook/dspy/) |
 | [Pipecat](https://github.com/pipecat-ai/pipecat) | Available | [`apps/pipecat-moss/`](apps/pipecat-moss/) |
+| [Agora](https://www.agora.io/) | Available | [`apps/agora-moss/`](apps/agora-moss/) |
 | [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
