@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 # Make the top-level demo modules importable when pytest runs from the package dir.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -105,3 +107,21 @@ class TestMcpServerName:
 
         assert MCP_SERVER_NAME.isalnum()
         assert 1 <= len(MCP_SERVER_NAME) <= 48
+
+    def test_build_join_body_rejects_bad_name(self, monkeypatch):
+        import start_agent
+
+        monkeypatch.setattr(start_agent, "MCP_SERVER_NAME", "has-hyphen")
+        with pytest.raises(ValueError, match="alphanumeric"):
+            start_agent.build_join_body(
+                channel="c",
+                agent_rtc_uid=1,
+                agent_rtc_token="t",
+                llm_url="x",
+                llm_api_key="y",
+                mcp_public_url="z",
+                mcp_auth_header=None,
+                deepgram_key="dg",
+                cartesia_key="ct",
+                cartesia_voice_id="v",
+            )
