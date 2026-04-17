@@ -56,9 +56,7 @@ def build_join_body(
     }
     # Agora rule: server-entry name is <=48 chars, alphanumeric only.
     if not (mcp_entry["name"].isalnum() and 1 <= len(mcp_entry["name"]) <= 48):
-        raise ValueError(
-            f"MCP server name {mcp_entry['name']!r} must be 1-48 alphanumeric chars"
-        )
+        raise ValueError(f"MCP server name {mcp_entry['name']!r} must be 1-48 alphanumeric chars")
     if mcp_auth_header:
         mcp_entry["headers"] = {"Authorization": mcp_auth_header}
 

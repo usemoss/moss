@@ -58,9 +58,7 @@ async def main() -> None:
         # Any other failure (bad creds, network, validation) should surface.
         if "already exists" not in str(e).lower():
             raise
-        logger.info(
-            "Index {!r} already exists; skipping creation", index_name
-        )
+        logger.info("Index {!r} already exists; skipping creation", index_name)
 
     logger.info("Done. Wait a few seconds for the index to finish processing.")
 
