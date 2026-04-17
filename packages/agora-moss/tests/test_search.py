@@ -172,3 +172,28 @@ class TestSearch:
         assert isinstance(result, AgoraSearchResult)
         assert result.documents == [{"content": "hit", "similarity": 0.9}]
         assert result.time_taken_ms == 12
+
+
+class TestCreateMcpApp:
+    def test_returns_fastmcp_with_search_knowledge_base_tool(self, monkeypatch):
+        import agora_moss.search as search_mod
+
+        class FakeClient:
+            def __init__(self, *, project_id=None, project_key=None):
+                pass
+
+        monkeypatch.setattr(search_mod, "MossClient", FakeClient)
+
+        from mcp.server.fastmcp import FastMCP
+
+        from agora_moss.search import MossAgoraSearch, create_mcp_app
+
+        s = MossAgoraSearch(project_id="p", project_key="k", index_name="idx")
+        app = create_mcp_app(s)
+        assert isinstance(app, FastMCP)
+
+        import asyncio
+
+        tools = asyncio.run(app.list_tools())
+        names = [t.name for t in tools]
+        assert "search_knowledge_base" in names

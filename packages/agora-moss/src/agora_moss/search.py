@@ -7,9 +7,11 @@ for use as an ``llm.mcp_servers`` entry in Agora ConvoAI's REST ``join`` body.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
+from mcp.server.fastmcp import FastMCP
 from moss import MossClient, QueryOptions
 
 
@@ -70,3 +72,31 @@ class MossAgoraSearch:
         Each doc becomes ``{"content": doc.text, "similarity": doc.score}``.
         """
         return [{"content": doc.text, "similarity": doc.score} for doc in documents]
+
+
+def create_mcp_app(search: MossAgoraSearch) -> FastMCP:
+    """Build a FastMCP server exposing ``search_knowledge_base`` over streamable HTTP.
+
+    The server awaits ``search.load_index()`` in its lifespan before accepting
+    tool calls. Exceptions from ``search.search()`` are re-raised as
+    ``RuntimeError`` with a readable message so FastMCP serializes them as
+    MCP tool-errors (this is the single exception-to-tool-error boundary).
+    """
+
+    @asynccontextmanager
+    async def lifespan(_app: FastMCP):
+        await search.load_index()
+        yield
+
+    app = FastMCP("agora-moss", lifespan=lifespan)
+
+    @app.tool()
+    async def search_knowledge_base(query: str) -> list[dict[str, Any]]:
+        """Search the configured Moss knowledge base and return matching documents."""
+        try:
+            result = await search.search(query)
+        except Exception as e:
+            raise RuntimeError(f"Moss search failed: {e}") from e
+        return result.documents
+
+    return app
