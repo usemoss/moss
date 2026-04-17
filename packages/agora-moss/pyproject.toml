@@ -1,0 +1,46 @@
+[project]
+name = "agora-moss"
+version = "0.0.1"
+description = "Moss semantic search integration for Agora Conversational AI via MCP (streamable HTTP)"
+readme = "README.md"
+license = { text = "BSD-2-Clause" }
+requires-python = ">=3.10,<3.15"
+dependencies = [
+    "moss>=1.0.0",
+    "mcp>=1.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "D"]
+ignore = ["D100", "D104"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
