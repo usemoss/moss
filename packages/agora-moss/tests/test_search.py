@@ -119,3 +119,56 @@ class TestSearchGuard:
         s._index_name = "idx"
         with pytest.raises(RuntimeError, match="not loaded"):
             await s.search("q")
+
+
+class TestSearch:
+    async def test_delegates_to_client_query_and_returns_formatted_result(self, monkeypatch):
+        import agora_moss.search as search_mod
+
+        captured = {}
+
+        class FakeQueryResult:
+            def __init__(self, docs, time_taken_ms):
+                self.docs = docs
+                self.time_taken_ms = time_taken_ms
+
+        class FakeClient:
+            def __init__(self, *, project_id=None, project_key=None):
+                pass
+
+            async def load_index(self, index_name):
+                pass
+
+            async def query(self, index_name, query, *, options):
+                captured["index_name"] = index_name
+                captured["query"] = query
+                captured["top_k"] = options.top_k
+                captured["alpha"] = options.alpha
+                return FakeQueryResult(
+                    docs=[FakeDoc(text="hit", score=0.9)],
+                    time_taken_ms=12,
+                )
+
+        monkeypatch.setattr(search_mod, "MossClient", FakeClient)
+
+        from agora_moss.search import AgoraSearchResult, MossAgoraSearch
+
+        s = MossAgoraSearch(
+            project_id="p",
+            project_key="k",
+            index_name="idx",
+            top_k=3,
+            alpha=0.5,
+        )
+        await s.load_index()
+        result = await s.search("what is moss")
+
+        assert captured == {
+            "index_name": "idx",
+            "query": "what is moss",
+            "top_k": 3,
+            "alpha": 0.5,
+        }
+        assert isinstance(result, AgoraSearchResult)
+        assert result.documents == [{"content": "hit", "similarity": 0.9}]
+        assert result.time_taken_ms == 12

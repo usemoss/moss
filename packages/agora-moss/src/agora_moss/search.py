@@ -56,8 +56,12 @@ class MossAgoraSearch:
             raise RuntimeError(
                 f"Index {self._index_name!r} not loaded. Call load_index() first."
             )
-        # Filled in by Task 4.
-        raise NotImplementedError
+        options = QueryOptions(top_k=self._top_k, alpha=self._alpha)
+        result = await self._client.query(self._index_name, query, options=options)
+        return AgoraSearchResult(
+            documents=self._format_results(result.docs),
+            time_taken_ms=result.time_taken_ms,
+        )
 
     @staticmethod
     def _format_results(documents: Sequence[Any]) -> list[dict[str, Any]]:
