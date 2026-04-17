@@ -54,8 +54,13 @@ async def main() -> None:
         )
         logger.info("Created index {!r}", index_name)
     except Exception as e:
-        # Moss raises on duplicate index creation; treat as idempotent success.
-        logger.info("create_index({!r}) -> {}: assuming index already exists", index_name, e)
+        # Moss has no named "duplicate index" error class, so match on message.
+        # Any other failure (bad creds, network, validation) should surface.
+        if "already exists" not in str(e).lower():
+            raise
+        logger.info(
+            "Index {!r} already exists; skipping creation", index_name
+        )
 
     logger.info("Done. Wait a few seconds for the index to finish processing.")
 
