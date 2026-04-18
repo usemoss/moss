@@ -4,7 +4,7 @@ A voice assistant that answers questions using your Moss knowledge base. You tal
 
 ## What you need
 
-- A [Moss](https://trymoss.com) account with a project and an index loaded with your data
+- A [Moss](https://moss.dev) account with a project and an index loaded with your data
 - A [LiveKit](https://livekit.io) account (or run it locally)
 - An [OpenAI](https://platform.openai.com) API key (for the AI responses)
 - A [Deepgram](https://deepgram.com) API key (for speech-to-text)

@@ -16,11 +16,10 @@ cp .env.example .env
 ```
 All sub-projects read from this one file.
 
-**2. Create the Moss index** (`coco-data-1k.json` is included — no download needed for the 1k tier):
+**2. Create the Moss index** (`coco-data-1k.json` is included — no download needed):
 ```bash
 cd setup-js && npm install && npx tsx createIndex.ts && cd ..
 ```
-> To use 10k, 50k, or 100k tiers, run `npx tsx downloadCoco.ts` first to generate those files.
 
 **3. Start the Python backend** (in one terminal):
 ```bash
@@ -46,30 +45,7 @@ Open [http://localhost:5173](http://localhost:5173) and start searching.
 
 > ![Moss Portal walkthrough](https://github.com/user-attachments/assets/c3db9d2d-0df5-4cec-99fd-7d49d0a30844)
 
-## 2. Download Dataset
-
-The demo uses COCO Captions images split into tiers (1k, 10k, 50k, 100k).
-
-`coco-data-1k.json` is included in the repo — no download needed for the 1k tier. To use larger tiers (10k, 50k, 100k), run the download script to generate them:
-
-**JavaScript:**
-```bash
-cd setup-js
-npm install
-npx tsx downloadCoco.ts
-```
-
-**Python:**
-```bash
-cd setup-py
-uv venv && source .venv/bin/activate
-uv sync
-python download_coco.py
-```
-
-This generates `coco-data-10k.json`, `coco-data-50k.json`, and `coco-data-100k.json` in the project root.
-
-## 3. Setup - Upload data and create index
+## 2. Setup - Upload data and create index
 
 All setup scripts read credentials from the **root `.env`** file (created in step 1). Use either the JS or Python tooling — they produce identical indexes.
 
@@ -78,9 +54,8 @@ All setup scripts read credentials from the **root `.env`** file (created in ste
 1. Navigate to the `setup-js` folder.
 2. Install Node.js and npm.
 3. Run `npm install` to install dependencies.
-4. `npx tsx createIndex.ts` to create the index for the tier set in the root `.env` (`MOSS_INDEX_TIER`, default `1k`).
-5. `npx tsx createAllIndexes.ts` to create indexes for all tiers.
-6. `npx tsx query.ts` to load the index and run sample queries.
+4. `npx tsx createIndex.ts` to create the index.
+5. `npx tsx query.ts` to load the index and run sample queries.
 
 ### Setup Python
 
@@ -91,9 +66,8 @@ All setup scripts read credentials from the **root `.env`** file (created in ste
    - On Windows: `.\venv\Scripts\activate`
    - On macOS/Linux: `source .venv/bin/activate`
 4. Run `uv sync` to install dependencies.
-5. Run `python create_index.py` to create the index for the tier set in the root `.env` (`MOSS_INDEX_TIER`, default `1k`).
-6. Run `python create_all_indexes.py` to create indexes for all tiers.
-7. Run `python query.py` to load the index and run sample queries.
+5. Run `python create_index.py` to create the index.
+6. Run `python query.py` to load the index and run sample queries.
 
 ## 4. Backend
 
