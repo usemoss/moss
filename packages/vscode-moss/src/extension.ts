@@ -35,6 +35,7 @@ export function activate(context: vscode.ExtensionContext): void {
         "moss.modelId",
         "moss.includeGlob",
         "moss.excludeGlob",
+        "moss.respectGitignore",
         "moss.maxFileSizeBytes",
         "moss.chunkMaxLines",
         "moss.chunkOverlapLines",

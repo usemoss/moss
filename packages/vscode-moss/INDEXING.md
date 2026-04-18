@@ -19,6 +19,7 @@ Before any I/O, the extension loads **`getMossConfig`** for the **first workspac
 
 - **`indexName`** — from `moss.indexName` or auto-generated from the workspace name when empty.
 - **`includeGlobs` / `excludeGlobs`** — merged with extra safe excludes (`EXTRA_SAFE_EXCLUDES`, e.g. `**/.svn/**`) so dangerous paths are always filtered.
+- **`respectGitignore`** — when true (default), apply each folder’s root `.gitignore` after the glob scan (see Step 1 below).
 - **`maxFileSizeBytes`**, **`chunkMaxLines`**, **`chunkOverlapLines`**, **`modelId`**, etc.
 
 Multi-root workspaces: **all roots are scanned**, but **settings** (globs, index name, chunk options) come from the **primary** folder only, consistent with the extension README.
@@ -32,6 +33,8 @@ Multi-root workspaces: **all roots are scanned**, but **settings** (globs, index
 - **Cap** — at most **`MAX_FILE_SCAN` (80,000)** URIs; if the scan hits the cap, indexing continues with a **warning** so users can narrow `moss.includeGlob` / `moss.excludeGlob`.
 
 Files are **deduped** and **sorted** by `fsPath` for stable ordering.
+
+When **`moss.respectGitignore`** is true (default), **`filterUrisByRootGitignore`** drops URIs that match each workspace folder’s **root** `.gitignore` (via the [`ignore`](https://www.npmjs.com/package/ignore) package, same semantics as Git for that file). **Nested** `.gitignore` files are not loaded. Set **`moss.respectGitignore`** to false to index ignored paths (for example build output).
 
 ## Step 2 — Read, filter, and chunk per file
 

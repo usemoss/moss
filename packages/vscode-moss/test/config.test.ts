@@ -174,6 +174,29 @@ describe("getMossConfig", () => {
     expect(c.indexName).toBe("vscode-moss-alpha-beta");
   });
 
+  it("defaults respectGitignore to true when unset", async () => {
+    const ws = Uri.file("/repo");
+    setMossTestConfig(ws.toString(), {
+      projectId: "p",
+      projectKey: "k",
+    });
+    const folder: WorkspaceFolder = { uri: ws, name: "r", index: 0 };
+    const c = await getMossConfig(memorySecrets(), folder);
+    expect(c.respectGitignore).toBe(true);
+  });
+
+  it("respectGitignore false when configured", async () => {
+    const ws = Uri.file("/repo");
+    setMossTestConfig(ws.toString(), {
+      projectId: "p",
+      projectKey: "k",
+      respectGitignore: false,
+    });
+    const folder: WorkspaceFolder = { uri: ws, name: "r", index: 0 };
+    const c = await getMossConfig(memorySecrets(), folder);
+    expect(c.respectGitignore).toBe(false);
+  });
+
   it("clamps invalid numeric settings to safe defaults or caps", async () => {
     const ws = Uri.file("/repo");
     setMossTestConfig(ws.toString(), {

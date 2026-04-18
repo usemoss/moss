@@ -8,6 +8,7 @@ import {
   MOSS_LAST_INDEXED_KEY,
   type LastIndexedState,
 } from "./lastIndexed.js";
+import { filterUrisByRootGitignore } from "./gitignoreFilter.js";
 import { mossLog } from "./mossLog.js";
 import { ensureLocalIndexLoaded, notifySearchIndexStale } from "./mossQueryState.js";
 import { notifyMossIndexed } from "./mossStatusBar.js";
@@ -293,7 +294,7 @@ export async function runIndexWorkspace(
 
       progress.report({ message: "Scanning files…" });
       mossLog(log, "Moss: Scanning workspace for files…");
-      const { uris, scanTruncated } = await findWorkspaceFiles(
+      let { uris, scanTruncated } = await findWorkspaceFiles(
         cfg.includeGlobs,
         excludeGlobs,
         MAX_FILE_SCAN,
@@ -303,6 +304,19 @@ export async function runIndexWorkspace(
       if (token.isCancellationRequested) {
         mossLog(log, "Moss: Indexing cancelled (after scan).");
         return;
+      }
+
+      if (cfg.respectGitignore) {
+        const before = uris.length;
+        uris = await filterUrisByRootGitignore(uris, folders);
+        const dropped = before - uris.length;
+        if (dropped > 0) {
+          mossLog(
+            log,
+            `Moss: Skipped ${dropped} file(s) matched by root .gitignore (moss.respectGitignore).`,
+            "verbose"
+          );
+        }
       }
 
       if (scanTruncated) {

@@ -45,6 +45,7 @@ File paths and file contents you index are sent to **Moss** (cloud) for embeddin
 | `indexName` | Index name (default derived from workspace folder name). |
 | `modelId` | Embedding model for `createIndex`. |
 | `includeGlob` / `excludeGlob` | Which files to crawl when indexing. |
+| `respectGitignore` | When `true` (default), skip paths matched by each workspace folder’s **root** `.gitignore`. |
 | `maxFileSizeBytes` | Skip larger files. |
 | `topK` | Number of search hits. |
 | `alpha` | Hybrid search blend: `1.0` = semantic only, `0.0` = keyword only (default `0.8`). |

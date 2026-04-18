@@ -64,6 +64,8 @@ export interface ResolvedConfig {
   alpha: number;
   chunkMaxLines: number;
   chunkOverlapLines: number;
+  /** When true, paths matching the workspace folder root `.gitignore` are excluded from indexing. */
+  respectGitignore: boolean;
   workspaceFolder: vscode.WorkspaceFolder;
 }
 
@@ -185,6 +187,9 @@ export async function getMossConfig(
     CHUNK_OVERLAP_CAP
   );
 
+  const respectGitignoreRaw = cfg.get<boolean | undefined>("respectGitignore");
+  const respectGitignore = respectGitignoreRaw !== false;
+
   return {
     projectId,
     projectKey,
@@ -197,6 +202,7 @@ export async function getMossConfig(
     alpha,
     chunkMaxLines,
     chunkOverlapLines,
+    respectGitignore,
     workspaceFolder: folder,
   };
 }

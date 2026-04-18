@@ -122,6 +122,12 @@
           "description": "Glob pattern(s) for files to exclude when indexing (merged with built-in defaults).",
           "scope": "resource"
         },
+        "moss.respectGitignore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Exclude files that match each workspace folder's root `.gitignore` when discovering files for indexing. Set false to include ignored paths (for example generated output). Nested `.gitignore` files below the root file are not applied.",
+          "scope": "resource"
+        },
         "moss.maxFileSizeBytes": {
           "type": "number",
           "default": 1048576,
@@ -169,6 +175,7 @@
   },
   "dependencies": {
     "@moss-dev/moss": "^1.0.0",
+    "ignore": "^7.0.5",
     "tree-sitter-c": "^0.24.1",
     "tree-sitter-c-sharp": "^0.23.1",
     "tree-sitter-cpp": "^0.23.4",
