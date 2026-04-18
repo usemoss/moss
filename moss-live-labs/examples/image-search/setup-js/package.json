@@ -1,0 +1,42 @@
+{
+  "name": "moss-image-search-setup-js",
+  "version": "1.0.0",
+  "description": "Moss JS SDK example",
+  "license": "ISC",
+  "author": "Your Name <email@example.com>",
+  "type": "commonjs",
+  "keywords": [
+    "moss",
+    "semantic-search",
+    "document-indexing",
+    "machine-learning",
+    "search-engine",
+    "typescript",
+    "knowledge-base",
+    "embedding"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.js",
+    "format": "prettier --write .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@moss-dev/moss": "^1.0.1",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "*.ts",
+    "*.json",
+    "README.md",
+    "LICENSE"
+  ]
+}

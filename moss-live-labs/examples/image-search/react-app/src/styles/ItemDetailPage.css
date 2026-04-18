@@ -1,0 +1,84 @@
+.item-detail-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  text-align: left;
+  padding: 32px 20px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 24px;
+  color: var(--accent-green);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: color 0.2s, opacity 0.2s;
+}
+
+.back-link:hover {
+  color: var(--accent-green);
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.image-detail-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.image-detail {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.image-detail-asset {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  border-radius: 0;
+  object-fit: contain;
+}
+
+.image-status {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.image-caption-text {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 0;
+}
+
+.image-detail-meta {
+  width: 100%;
+  max-width: 640px;
+}
+
+.image-detail-meta .image-id-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .image-detail {
+    padding: 16px;
+  }
+}

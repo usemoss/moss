@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@moss-dev/moss": "^1.0.1",
+    "dotenv": "^17.4.2"
+  }
+}
