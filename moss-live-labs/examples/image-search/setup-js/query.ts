@@ -4,7 +4,7 @@
  * Set MOSS_INDEX_TIER in .env to choose the tier (default: 1k).
  */
 
-import { MossClient } from "@inferedge/moss";
+import { MossClient } from "@moss-dev/moss";
 import * as path from "path";
 import { config } from "dotenv";
 

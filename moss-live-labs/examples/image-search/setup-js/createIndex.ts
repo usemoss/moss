@@ -5,7 +5,7 @@
  * The index name will be "${MOSS_INDEX_NAME}-${tier}".
  */
 
-import { MossClient, DocumentInfo } from "@inferedge/moss";
+import { MossClient, DocumentInfo } from "@moss-dev/moss";
 import * as fs from "fs";
 import * as path from "path";
 import { config } from "dotenv";
