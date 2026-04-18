@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "dotenv>=0.9.9",
+    "python-dotenv>=1.0.0",
     "moss>=1.0.0",
     "livekit-agents[openai,deepgram,silero,turn-detector,cartesia]>=1.0",
 ]
