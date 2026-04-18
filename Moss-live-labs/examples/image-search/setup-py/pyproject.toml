@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.10"
 dependencies = [
-    "inferedge-moss>=1.0.0b15",
+    "moss>=1.0.0",
     "python-dotenv>=1.2.1",
-    "boto3>=1.34.0",
 ]

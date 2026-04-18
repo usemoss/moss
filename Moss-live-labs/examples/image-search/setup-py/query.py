@@ -10,8 +10,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from inferedge_moss import MossClient
-from moss_core import QueryOptions
+from moss import MossClient, QueryOptions
 
 TOP_K = 10
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List
 
 from dotenv import load_dotenv
-from inferedge_moss import DocumentInfo, MossClient
+from moss import DocumentInfo, MossClient
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
