@@ -1,0 +1,20 @@
+*/node_modules/*
+.env
+*.venv
+
+# Claude
+*.claude/
+*CLAUDE.md
+
+# COCO data files
+coco-data-10k.json
+coco-data-50k.json
+coco-data-100k.json
+annotations/
+
+# Python
+*.pyc
+*__pycache__/
+
+# Misc
+*screenshots/
