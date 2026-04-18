@@ -123,6 +123,31 @@ def list_profiles() -> list[str]:
     return sorted(name for name in profiles.keys() if isinstance(name, str) and name)
 
 
+def delete_profile(profile: str) -> Tuple[bool, Optional[str]]:
+    normalized = _normalize_config(load_config())
+    profiles = normalized.get("profiles", {})
+    if not isinstance(profiles, dict) or profile not in profiles:
+        return False, None
+
+    del profiles[profile]
+
+    active_profile = normalized.get("active_profile")
+    remaining_profiles = sorted(name for name in profiles.keys() if isinstance(name, str) and name)
+    if (
+        not isinstance(active_profile, str)
+        or not active_profile
+        or active_profile == profile
+        or active_profile not in profiles
+    ):
+        active_profile = remaining_profiles[0] if remaining_profiles else None
+
+    data: dict[str, object] = {"profiles": profiles}
+    if isinstance(active_profile, str) and active_profile:
+        data["active_profile"] = active_profile
+    save_config(data)
+    return True, active_profile if isinstance(active_profile, str) and active_profile else None
+
+
 def resolve_credentials(
     project_id: Optional[str] = None,
     project_key: Optional[str] = None,

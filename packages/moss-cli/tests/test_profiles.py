@@ -159,6 +159,70 @@ def test_profile_list_json_output(monkeypatch, tmp_path):
     assert payload["profiles"] == ["default", "staging"]
 
 
+def test_profile_delete_preserves_other_active_profile(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "default",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+                "staging": {"project_id": "staging-id", "project_key": "staging-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+
+    result = runner.invoke(app, ["profile", "delete", "staging", "--force"])
+
+    assert result.exit_code == 0
+    cfg = json.loads(path.read_text(encoding="utf-8"))
+    assert cfg["active_profile"] == "default"
+    assert "staging" not in cfg["profiles"]
+
+
+def test_profile_delete_falls_back_when_active_deleted(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "staging",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+                "staging": {"project_id": "staging-id", "project_key": "staging-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+
+    result = runner.invoke(app, ["profile", "delete", "staging", "--force"])
+
+    assert result.exit_code == 0
+    cfg = json.loads(path.read_text(encoding="utf-8"))
+    assert cfg["active_profile"] == "default"
+    assert "staging" not in cfg["profiles"]
+
+
+def test_profile_delete_json_output(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "default",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+                "staging": {"project_id": "staging-id", "project_key": "staging-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+
+    result = runner.invoke(app, ["--json", "profile", "delete", "staging", "--force"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["deleted_profile"] == "staging"
+    assert payload["active_profile"] == "default"
+
+
 def test_index_list_accepts_profile_option_after_subcommand(monkeypatch, tmp_path):
     path = _write_config(
         tmp_path,

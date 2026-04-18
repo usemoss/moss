@@ -153,6 +153,9 @@ moss doc get my-index --json
 
 # List available auth profiles
 moss profile list
+
+# Delete a profile
+moss profile delete staging --force
 ```
 
 ## Document File Format
