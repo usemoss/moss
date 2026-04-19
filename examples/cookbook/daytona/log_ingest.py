@@ -2,15 +2,8 @@ import asyncio
 import hashlib
 import logging
 import re
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from pydantic import Field, PrivateAttr
-from langchain_core.retrievers import BaseRetriever
-from langchain_core.callbacks import (
-    AsyncCallbackManagerForRetrieverRun,
-    CallbackManagerForRetrieverRun,
-)
-from langchain_core.documents import Document
 from langchain_core.tools import Tool
 
 from moss import MossClient, QueryOptions, DocumentInfo
@@ -114,68 +107,6 @@ def collect_logs_from_sandbox(
 
 
 
-class LogSearchRetriever(BaseRetriever):
-    """Semantic / hybrid search retriever over indexed log entries."""
-
-    project_id: str = Field(description="Moss project ID")
-    project_key: str = Field(description="Moss project key")
-    index_name: str = Field(description="Name of the Moss log index")
-    top_k: int = Field(default=10, description="Number of results to return")
-    alpha: float = Field(default=0.7, description="Search blend (0=keyword, 1=semantic)")
-
-    _client: Any = PrivateAttr()
-    _index_loaded: bool = PrivateAttr(default=False)
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self._client = MossClient(self.project_id, self.project_key)
-
-    async def _ensure_loaded(self) -> None:
-        if not self._index_loaded:
-            await self._client.load_index(self.index_name)
-            self._index_loaded = True
-
-    def _get_relevant_documents(
-        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
-    ) -> List[Document]:
-        try:
-            return asyncio.run(self._aget_relevant_documents(query))
-        except RuntimeError as exc:
-            if "asyncio.run() cannot be called from a running event loop" in str(exc):
-                raise RuntimeError(
-                    "LogSearchRetriever cannot be called from a running event loop. "
-                    "Use 'await retriever.ainvoke()' instead."
-                ) from exc
-            raise
-
-    async def _aget_relevant_documents(
-        self,
-        query: str,
-        *,
-        run_manager: Optional[AsyncCallbackManagerForRetrieverRun] = None,
-    ) -> List[Document]:
-        await self._ensure_loaded()
-        results = await self._client.query(
-            self.index_name,
-            query,
-            QueryOptions(top_k=self.top_k, alpha=self.alpha),
-        )
-        docs = []
-        for doc in results.docs:
-            docs.append(
-                Document(
-                    page_content=doc.text,
-                    metadata={
-                        "score": doc.score,
-                        "id": doc.id,
-                        "source": doc.metadata.get("source", ""),
-                        "level": doc.metadata.get("level", ""),
-                    },
-                )
-            )
-        return docs
-
-
 def get_log_search_tool(
     project_id: str,
     project_key: str,
@@ -183,40 +114,23 @@ def get_log_search_tool(
     top_k: int = 10,
     alpha: float = 0.7,
 ) -> Tool:
-    """
-    Create a LangChain :class:`~langchain_core.tools.Tool` for querying logs.
-
-    The returned tool can be handed directly to any LangChain agent.
-
-    Args:
-        project_id:  Moss project ID.
-        project_key: Moss project key.
-        index_name:  Name of the pre-created log index.
-        top_k:       How many log entries to retrieve per query.
-        alpha:       Hybrid-search blend — 0 = pure keyword, 1 = pure semantic.
-    """
-    retriever = LogSearchRetriever(
-        project_id=project_id,
-        project_key=project_key,
-        index_name=index_name,
-        top_k=top_k,
-        alpha=alpha,
-    )
+    """Return a LangChain Tool that searches indexed log entries via MOSS."""
+    client = MossClient(project_id, project_key)
+    _loaded = False
 
     async def asearch(query: str) -> str:
-        docs = await retriever._aget_relevant_documents(query)
-        if not docs:
+        nonlocal _loaded
+        if not _loaded:
+            await client.load_index(index_name)
+            _loaded = True
+        results = await client.query(index_name, query, QueryOptions(top_k=top_k, alpha=alpha))
+        if not results.docs:
             return "No relevant log entries found."
         lines = []
-        for i, doc in enumerate(docs, 1):
-            m = doc.metadata
-            level = m.get("level", "?")
-            source = m.get("source", "?")
-            score = m.get("score", 0)
-            lines.append(
-                f"Log {i} [{level}] [{source}] (score={score:.2f}):\n"
-                f"{doc.page_content}"
-            )
+        for i, doc in enumerate(results.docs, 1):
+            level = doc.metadata.get("level", "?")
+            source = doc.metadata.get("source", "?")
+            lines.append(f"Log {i} [{level}] [{source}] (score={doc.score:.2f}):\n{doc.text}")
         return "\n\n".join(lines)
 
     def search(query: str) -> str:
