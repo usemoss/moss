@@ -1,0 +1,27 @@
+[project]
+name = "daytona-moss-log-agent"
+version = "0.1.0"
+description = "Log ingestion Q&A agent powered by MOSS + Daytona"
+requires-python = ">=3.11"
+dependencies = [
+    "moss>=1.0.0",
+    "daytona>=0.1",
+    "langchain>=0.3",
+    "langchain-core>=0.3",
+    "langchain-openai>=0.3",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest", "pytest-asyncio"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["log_agent.py", "log_ingest.py", "mock_logs.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

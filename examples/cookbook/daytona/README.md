@@ -28,8 +28,9 @@ daytona/
 ├── log_agent.py     # entrypoint — sandbox setup, indexing, Q&A loop
 ├── log_ingest.py    # log parser + MOSS LogSearchRetriever + LangChain tool
 ├── mock_logs.py     # sample workload: 1 200 log entries across 6 services
-├── requirements.txt
-└── .env             # API keys (see setup below)
+├── pyproject.toml
+├── .env.example     # copy to .env and fill in keys
+└── .env             # your keys (git-ignored)
 ```
 
 ---
@@ -39,18 +40,16 @@ daytona/
 ### 1. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
+
+> Don't have `uv`? Install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 ### 2. Set environment variables
 
-Create a `.env` file in this directory:
-
-```env
-MOSS_PROJECT_ID=your_moss_project_id
-MOSS_PROJECT_KEY=your_moss_project_key
-DAYTONA_API_KEY=your_daytona_api_key
-OPENAI_API_KEY=your_openai_api_key
+```bash
+cp .env.example .env
+# then open .env and fill in your keys
 ```
 
 | Variable | Where to get it |
@@ -66,7 +65,7 @@ OPENAI_API_KEY=your_openai_api_key
 **Interactive REPL**
 
 ```bash
-python3 log_agent.py
+uv run python log_agent.py
 ```
 
 ```
@@ -91,7 +90,7 @@ You: quit
 **Single question (non-interactive)**
 
 ```bash
-python log_agent.py -q "Is there evidence of memory pressure?"
+uv run python log_agent.py -q "Is there evidence of memory pressure?"
 ```
 
 ---
