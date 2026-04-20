@@ -1,0 +1,138 @@
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+
+html {
+	scroll-behavior: smooth;
+}
+
+::selection {
+	background-color: rgba(0, 0, 0, 0.85);
+	color: #ffffff;
+}
+
+@theme inline {
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+
+	/* Moss Precision Minimal tokens */
+	--color-moss-bg: #FAFAF8;
+	--color-moss-surface: #FFFFFF;
+	--color-moss-title: #0a0a0a;
+	--color-moss-text: #555555;
+	--color-moss-muted: #888888;
+	--color-moss-accent: #2d5016;
+	--color-moss-border: #e5e5e0;
+	--color-moss-border-light: #d0d0c8;
+	--color-moss-cta: #1a1a1a;
+	--color-moss-code-bg: #0f0f0f;
+	--color-moss-dark: #0a0a0a;
+
+	--font-sans: var(--font-geist-sans), system-ui, sans-serif;
+	--font-serif: var(--font-playfair), Georgia, serif;
+	--font-mono: var(--font-geist-mono), monospace;
+}
+
+:root {
+	--radius: 0.625rem;
+	--background: oklch(1 0 0);
+	--foreground: oklch(0.145 0 0);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.145 0 0);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.145 0 0);
+	--primary: oklch(0.205 0 0);
+	--primary-foreground: oklch(0.985 0 0);
+	--secondary: oklch(0.97 0 0);
+	--secondary-foreground: oklch(0.205 0 0);
+	--muted: oklch(0.97 0 0);
+	--muted-foreground: oklch(0.556 0 0);
+	--accent: oklch(0.97 0 0);
+	--accent-foreground: oklch(0.205 0 0);
+	--destructive: oklch(0.577 0.245 27.325);
+	--border: oklch(0.922 0 0);
+	--input: oklch(0.922 0 0);
+	--ring: oklch(0.708 0 0);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground font-sans font-light;
+	}
+}
+
+/* Score badge colors */
+.score-high {
+	color: #16a34a;
+	background: rgba(22, 163, 74, 0.1);
+}
+.score-medium {
+	color: #ca8a04;
+	background: rgba(202, 138, 4, 0.1);
+}
+.score-low {
+	color: #9ca3af;
+	background: rgba(156, 163, 175, 0.1);
+}
+
+/* Drag-over effect */
+.drag-over {
+	border-color: var(--color-moss-cta) !important;
+	background: rgba(26, 26, 26, 0.03) !important;
+}
+
+/* Scrollbar styling */
+.scrollbar-thin {
+	scrollbar-width: thin;
+	scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+/* Pulse animation for indexing */
+@keyframes pulse-slow {
+	0%, 100% { opacity: 0.4; }
+	50% { opacity: 1; }
+}
+.animate-pulse-slow {
+	animation: pulse-slow 2s ease-in-out infinite;
+}
+
+/* Shine sweep for sample PDF button */
+@keyframes shine {
+	0% { transform: translateX(-150%); }
+	40% { transform: translateX(250%); }
+	40.01%, 100% { transform: translateX(-150%); }
+}
+.animate-shine {
+	animation: shine 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Rotating border snake for sample PDF tile */
+@keyframes border-snake-dash {
+	from { stroke-dashoffset: 100; }
+	to { stroke-dashoffset: 0; }
+}
+.animate-border-snake-svg {
+	animation: border-snake-dash 3s linear infinite;
+}

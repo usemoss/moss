@@ -1,0 +1,9 @@
+{
+  "name": "moss-backend-liteparse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "liteparse CLI for local development (Docker installs it globally)",
+  "dependencies": {
+    "@llamaindex/liteparse": "^1.1.0"
+  }
+}
