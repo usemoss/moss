@@ -2,11 +2,11 @@
 title: "QueryResultDocumentInfo (JS)"
 ---
 
-[**@inferedge/moss v1.0.0-beta.7**](../README.md)
+[**@moss-dev/moss v1.0.0-beta.7**](../README.md)
 
 ***
 
-[@inferedge/moss](../globals.md) / QueryResultDocumentInfo
+[@moss-dev/moss](../globals.md) / QueryResultDocumentInfo
 
 # Interface: QueryResultDocumentInfo
 

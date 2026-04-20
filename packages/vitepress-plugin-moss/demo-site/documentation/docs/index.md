@@ -31,7 +31,7 @@ features:
 Moss is a high-performance runtime for real-time semantic search. It delivers sub-10 ms retrieval, instant index updates, and zero infrastructure overhead. It runs wherever your intelligence lives — in-browser, on-device, or in the cloud — so search feels native and effortless.
 
 ::: tip
-Head to [Moss Portal](https://usemoss.dev) to set up projects and start building with sub-10ms search.
+Head to [Moss Portal](https://moss.dev) to set up projects and start building with sub-10ms search.
 :::
 
 ## Common use cases
@@ -46,11 +46,11 @@ Head to [Moss Portal](https://usemoss.dev) to set up projects and start building
 ::: code-group
 
 ```bash [npm]
-npm install @inferedge/moss
+npm install @moss-dev/moss
 ```
 
 ```bash [pip]
-pip install inferedge-moss
+pip install moss
 ```
 
 :::
@@ -58,7 +58,7 @@ pip install inferedge-moss
 ::: code-group
 
 ```ts [JavaScript]
-import { MossClient } from '@inferedge/moss'
+import { MossClient } from '@moss-dev/moss'
 
 const client = new MossClient(process.env.PROJECT_ID!, process.env.PROJECT_KEY!)
 await client.createIndex('docs', [{ id: '1', text: 'Vector search in production' }])
@@ -68,7 +68,7 @@ const results = await client.query('docs', 'production search tips')
 ```
 
 ```py [Python]
-from inferedge_moss import MossClient, DocumentInfo
+from moss import MossClient, DocumentInfo
 
 client = MossClient("$PROJECT_ID", "$PROJECT_KEY")
 await client.create_index(

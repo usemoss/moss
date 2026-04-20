@@ -1,6 +1,6 @@
 # Moss LiveKit Voice Agent
 
-This directory contains a high-performance voice AI agent built with [LiveKit Agents](https://docs.livekit.io/agents) and [Moss](https://usemoss.dev) for real-time semantic retrieval.
+This directory contains a high-performance voice AI agent built with [LiveKit Agents](https://docs.livekit.io/agents) and [Moss](https://moss.dev) for real-time semantic retrieval.
 
 The agent acts as a customer support assistant, fetching relevant information from a knowledge base indexed in Moss to provide accurate and low-latency responses.
 

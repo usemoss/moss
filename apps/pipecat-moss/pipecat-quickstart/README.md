@@ -138,7 +138,7 @@ pipeline = Pipeline([
 
 - Tested with Pipecat `v0.0.94` and newer
 - [Support for Pipecat-Moss](https://github.com/usemoss/pipecat-moss).
-- [Moss docs](https://docs.usemoss.dev)
+- [Moss docs](https://docs.moss.dev)
 - [Moss Discord](https://discord.com/invite/eMXExuafBR)
 
 
