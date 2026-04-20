@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from inferedge_moss import MossClient, DocumentInfo, QueryOptions
+from moss import MossClient, DocumentInfo, QueryOptions
 from liteparse import LiteParse
 from nltk.tokenize import sent_tokenize
 

@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-inferedge-moss
+moss
 python-dotenv
 python-multipart
 liteparse

@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
-from inferedge_moss import MossClient, DocumentInfo
+from moss import MossClient, DocumentInfo
 from liteparse import LiteParse
 from nltk.tokenize import sent_tokenize
 
