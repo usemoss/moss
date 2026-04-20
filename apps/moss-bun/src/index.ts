@@ -58,22 +58,46 @@ const mossClient = new MossClient(MOSS_PROJECT_ID, MOSS_PROJECT_KEY);
 // Track loaded indexes
 const loadedIndexes = new Set<string>();
 
+// Track in-flight loads to prevent race conditions
+const loadingIndexes = new Map<string, Promise<boolean>>();
+
 /**
  * Load an index if not already loaded
+ * Prevents race conditions by deduplicating concurrent loads
  */
 async function ensureIndexLoaded(indexName: string): Promise<boolean> {
+  // Return immediately if already loaded
   if (loadedIndexes.has(indexName)) {
     return true;
   }
 
-  try {
-    await mossClient.loadIndex(indexName);
-    loadedIndexes.add(indexName);
-    return true;
-  } catch (error) {
-    console.error(`Failed to load index "${indexName}":`, error);
-    return false;
+  // Return existing in-flight promise if load is already in progress
+  if (loadingIndexes.has(indexName)) {
+    return loadingIndexes.get(indexName)!;
   }
+
+  // Create new load promise
+  let loadPromise: Promise<boolean>;
+  loadPromise = (async () => {
+    try {
+      await mossClient.loadIndex(indexName);
+      loadedIndexes.add(indexName);
+      return true;
+    } catch (error) {
+      console.error(`Failed to load index "${indexName}":`, error);
+      return false;
+    } finally {
+      // Only delete if this is still our entry (another operation may have overwritten it)
+      if (loadingIndexes.get(indexName) === loadPromise) {
+        loadingIndexes.delete(indexName);
+      }
+    }
+  })();
+
+  // Track in-flight load
+  loadingIndexes.set(indexName, loadPromise);
+
+  return loadPromise;
 }
 
 /**
@@ -104,7 +128,7 @@ const app = new Elysia()
   })
 
  
-  .post("/api/initialize", async ({ body }: { body: InitializeRequest }) => {
+  .post("/api/initialize", async ({ body }: any) => {
     try {
       const { indexName, documents } = body;
 
@@ -126,12 +150,43 @@ const app = new Elysia()
         `📝 Creating index "${indexName}" with ${documents.length} documents...`
       );
 
-      // Create index
-      await mossClient.createIndex(indexName, documents);
+      // Register this initialize operation in loadingIndexes so that concurrent
+      // ensureIndexLoaded calls will wait on it instead of starting their own load
+      const initPromise: Promise<boolean> = (async () => {
+        try {
+          // Invalidate cache first — createIndex changes server state, so the
+          // previously-loaded in-memory index is stale regardless of whether
+          // the subsequent loadIndex succeeds.
+          loadedIndexes.delete(indexName);
+          await mossClient.createIndex(indexName, documents);
 
-      // Load index
-      await mossClient.loadIndex(indexName);
-      loadedIndexes.add(indexName);
+          // Load index
+          await mossClient.loadIndex(indexName);
+          loadedIndexes.add(indexName);
+          return true;
+        } catch (error) {
+          console.error(`Failed to initialize index "${indexName}":`, error);
+          return false;
+        } finally {
+          // Only delete if this is still our entry (another operation may have overwritten it)
+          if (loadingIndexes.get(indexName) === initPromise) {
+            loadingIndexes.delete(indexName);
+          }
+        }
+      })();
+
+      // Register the in-flight initialize operation
+      loadingIndexes.set(indexName, initPromise);
+
+      // Wait for it to complete
+      const success = await initPromise;
+
+      if (!success) {
+        return {
+          success: false,
+          error: `Failed to create and load index "${indexName}"`,
+        };
+      }
 
       console.log(`✓ Index "${indexName}" created and loaded`);
 
@@ -157,8 +212,10 @@ const app = new Elysia()
       }
 
       console.log(`🔄 Loading index "${indexName}"...`);
-      await mossClient.loadIndex(indexName);
-      loadedIndexes.add(indexName);
+      const isLoaded = await ensureIndexLoaded(indexName);
+      if (!isLoaded) {
+        return { success: false, error: `Index "${indexName}" could not be loaded` };
+      }
 
       return { success: true, message: `Index "${indexName}" loaded successfully` };
     } catch (error) {
@@ -299,7 +356,7 @@ const app = new Elysia()
       try {
         const { indexName, documents } = body;
 
-        if (!indexName || !documents) {
+        if (!indexName || !Array.isArray(documents) || documents.length === 0) {
           return { success: false, error: "indexName and documents are required" };
         }
 
@@ -311,6 +368,16 @@ const app = new Elysia()
         console.log(`➕ Adding ${documents.length} documents to "${indexName}"`);
 
         await mossClient.addDocs(indexName, documents, { upsert: true });
+
+        // Reload index to ensure queries return updated data
+        try {
+          await mossClient.loadIndex(indexName);
+        } catch (reloadError) {
+          // Invalidate cache so subsequent requests will retry the reload
+          loadedIndexes.delete(indexName);
+          console.error(`Failed to reload index "${indexName}" after adding documents:`, reloadError);
+          throw reloadError;
+        }
 
         return {
           success: true,
@@ -328,8 +395,8 @@ const app = new Elysia()
     try {
       const { indexName, docIds } = body;
 
-      if (!indexName || !docIds) {
-        return { success: false, error: "indexName and docIds are required" };
+      if (!indexName || !Array.isArray(docIds) || docIds.length === 0) {
+        return { success: false, error: "indexName and docIds array are required" };
       }
 
       const isLoaded = await ensureIndexLoaded(indexName);
@@ -338,6 +405,16 @@ const app = new Elysia()
       }
 
       await mossClient.deleteDocs(indexName, docIds);
+
+      // Reload index to ensure queries return updated data
+      try {
+        await mossClient.loadIndex(indexName);
+      } catch (reloadError) {
+        // Invalidate cache so subsequent requests will retry the reload
+        loadedIndexes.delete(indexName);
+        console.error(`Failed to reload index "${indexName}" after deleting documents:`, reloadError);
+        throw reloadError;
+      }
 
       return {
         success: true,
@@ -396,37 +473,4 @@ const app = new Elysia()
 
   .listen(PORT);
 
-console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║           🌿 Moss Bun Server Started                      ║
-╠═══════════════════════════════════════════════════════════╣
-║ Server: http://localhost:${PORT}
-║ Health: http://localhost:${PORT}/health
-║ Docs:   http://localhost:${PORT}/api/doc
-║
-║ Default Index: ${DEFAULT_INDEX}
-╚═══════════════════════════════════════════════════════════╝
-
-📚 Available Endpoints:
-
-Health & Status:
-  GET  /health                    - Health check
-  GET  /status                    - Server status
-
-Index Management:
-  POST /api/initialize            - Create & load index
-  POST /api/load/:indexName       - Load existing index
-  GET  /api/indexes               - List loaded indexes
-  GET  /api/index/:indexName      - Get index info
-  DELETE /api/index/:indexName    - Delete index
-
-Search:
-  POST /api/search                - Single search
-  POST /api/search-batch          - Batch search
-
-Documents:
-  POST /api/docs/add              - Add documents
-  DELETE /api/docs/delete         - Delete documents
-  GET  /api/docs/:indexName/:docId - Get document
-
-`);
+console.log(`🌿 Moss Bun Server listening on http://localhost:${PORT}`);

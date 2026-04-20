@@ -37,12 +37,12 @@ async function main() {
       }
 
       try {
-        console.log(`🔍 Searching "${indexName}" for: "${query}"\n`);
+        console.log(`Searching "${indexName}" for: "${query}"\n`);
 
         await client.loadIndex(indexName);
         const results = await client.query(indexName, query, { topK });
 
-        console.log(`✓ Found ${results.docs.length} results in ${results.timeTakenInMs}ms\n`);
+        console.log(`Found ${results.docs.length} results in ${results.timeTakenInMs}ms\n`);
 
         results.docs.forEach((doc, i) => {
           console.log(`${i + 1}. [${doc.id}] Score: ${doc.score.toFixed(3)}`);
@@ -145,7 +145,7 @@ async function main() {
       try {
         console.log(`🗑️  Deleting index "${indexName}"...`);
         await client.deleteIndex(indexName);
-        console.log(`✓ Index deleted\n`);
+        console.log(` Index deleted\n`);
       } catch (error) {
         console.error("❌ Error:", error);
         process.exit(1);
@@ -206,7 +206,7 @@ async function main() {
 
     default: {
       console.log(`
-🌿 Moss Bun CLI
+Moss Bun CLI
 
 Usage: bun run cli.ts <command> [options]
 

@@ -4,11 +4,11 @@ Production-ready semantic search application built with **Moss** and **Bun**.
 
 ## What's Included
 
-- 🚀 **REST API Server** - Full-featured HTTP API for Moss operations
-- 🎯 **CLI Tool** - Command-line interface for searching and managing indexes
-- 🧪 **Test Suite** - Unit tests using Bun's built-in test runner
-- 🐳 **Docker Support** - Production-ready Docker image
-- ⚡ **High Performance** - 2-3x faster than Node.js with native TypeScript
+- **REST API Server** - Full-featured HTTP API for Moss operations
+- **CLI Tool** - Command-line interface for searching and managing indexes
+- **Test Suite** - Unit tests using Bun's built-in test runner
+- **Docker Support** - Production-ready Docker image
+- **High Performance** - 2-3x faster than Node.js with native TypeScript
 
 ## Quick Start
 
@@ -323,12 +323,12 @@ PORT=3001 bun run start
 ### Build fails
 ```bash
 # Clear cache and reinstall
-rm -rf node_modules bun.lockb
+rm -rf node_modules bun.lock
 bun install
 ```
 
 ### Tests fail
-Ensure you have valid Moss credentials in `.env` or tests will skip automatically.
+Ensure you have valid Moss credentials in `.env` before running tests. Missing or invalid credentials may cause the tests to fail.
 
 ## Performance Tips
 
@@ -338,25 +338,10 @@ Ensure you have valid Moss credentials in `.env` or tests will skip automaticall
 4. **Use topK=5** by default, increase only if needed
 5. **Cache results** in your application layer
 
-## Limitations
-
-- Session/index data is not persisted (stored in memory)
-- Each process maintains its own loaded indexes
-- For distributed setups, use a state management solution
-
-## Contributing
-
-Contributions welcome! Areas for improvement:
-- Redis-backed index caching
-- Distributed tracing
-- Metrics/monitoring
-- Authentication/rate limiting
-
 ## Resources
 
 - [Moss Documentation](https://docs.moss.dev)
 - [Bun Documentation](https://bun.sh/docs)
-- [Elysia Web Framework](https://elysia.io)
 
 ## License
 

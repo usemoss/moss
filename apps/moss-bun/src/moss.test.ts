@@ -15,9 +15,9 @@ const MOSS_PROJECT_KEY = process.env.MOSS_PROJECT_KEY || "";
 
 // Skip tests if credentials are not set
 const testIndexName = `moss-bun-test-${Date.now()}`;
+const hasMossCredentials = Boolean(MOSS_PROJECT_ID && MOSS_PROJECT_KEY);
 let client: MossClient;
-
-describe("Moss Bun Integration", () => {
+(hasMossCredentials ? describe : describe.skip)("Moss Bun Integration", () => {
   beforeAll(() => {
     client = new MossClient(MOSS_PROJECT_ID, MOSS_PROJECT_KEY);
   });
@@ -114,10 +114,10 @@ describe("Moss Bun Integration", () => {
     }, { timeout: 15000 });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     try {
       // Cleanup: delete test index
-      client.deleteIndex(testIndexName);
+      await client.deleteIndex(testIndexName);
     } catch (error) {
       // Ignore cleanup errors
     }

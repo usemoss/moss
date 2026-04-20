@@ -8,7 +8,7 @@ prefer-offline = true
 # registry = "https://registry.npmjs.org/"
 
 # Optional: set peer dependencies handling
-optional = false
+optional = true
 
 [build]
 # Entry point

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "SKU-001",
+    "name": "Wireless Noise-Cancelling Headphones",
+    "price": 199.99,
+    "stock": 34,
+    "specs": "Bluetooth 5.2, 30hr battery, foldable",
+    "category": "Electronics"
+  },
+  {
+    "id": "SKU-002",
+    "name": "Ergonomic Office Chair",
+    "price": 349.99,
+    "stock": 0,
+    "specs": "Lumbar support, adjustable armrests, mesh back",
+    "category": "Furniture"
+  },
+  {
+    "id": "SKU-003",
+    "name": "Stainless Steel Water Bottle",
+    "price": 29.99,
+    "stock": 120,
+    "specs": "750ml, double-wall insulated, BPA-free",
+    "category": "Kitchen"
+  },
+  {
+    "id": "SKU-004",
+    "name": "Mechanical Keyboard",
+    "price": 129.99,
+    "stock": 15,
+    "specs": "TKL layout, Cherry MX Red switches, RGB backlight",
+    "category": "Electronics"
+  },
+  {
+    "id": "SKU-005",
+    "name": "Yoga Mat",
+    "price": 49.99,
+    "stock": 60,
+    "specs": "6mm thick, non-slip, eco-friendly TPE",
+    "category": "Fitness"
+  },
+  {
+    "id": "SKU-006",
+    "name": "Smart Thermostat",
+    "price": 149.99,
+    "stock": 45,
+    "specs": "Wi-Fi enabled, energy saving routines",
+    "category": "Electronics"
+  },
+  {
+    "id": "SKU-007",
+    "name": "Espresso Coffee Maker",
+    "price": 89.99,
+    "stock": 20,
+    "specs": "15 bar pump, milk frother, auto-shutoff",
+    "category": "Kitchen"
+  },
+  {
+    "id": "SKU-008",
+    "name": "Adjustable Dumbbell Set",
+    "price": 199.99,
+    "stock": 0,
+    "specs": "5 to 52.5 lbs per dumbbell, quick dial",
+    "category": "Fitness"
+  },
+  {
+    "id": "SKU-009",
+    "name": "LED Desk Lamp",
+    "price": 34.99,
+    "stock": 150,
+    "specs": "Adjustable color temperature, USB charging port",
+    "category": "Furniture"
+  },
+  {
+    "id": "SKU-010",
+    "name": "Wireless Gaming Mouse",
+    "price": 69.99,
+    "stock": 85,
+    "specs": "25K DPI sensor, 70 hour battery, RGB",
+    "category": "Electronics"
+  }
+]
