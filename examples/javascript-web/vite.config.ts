@@ -1,7 +1,9 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
-
 export default defineConfig({
+  optimizeDeps: {
+    exclude: ["@moss-dev/moss-web"],
+  },
   build: {
     rollupOptions: {
       input: {

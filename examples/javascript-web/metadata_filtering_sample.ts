@@ -101,10 +101,8 @@ async function runFilteredQuery(
     log("  (no results)");
   }
   for (const doc of results.docs) {
-    const meta = doc.metadata ?? {};
-    log(
-      `  - ${doc.id} | score=${doc.score.toFixed(3)} | ${meta.category}/${meta.brand} $${meta.price} (${meta.city})`
-    );
+    const preview = doc.text.length > 70 ? doc.text.slice(0, 70) + "..." : doc.text;
+    log(`  - ${doc.id} | score=${doc.score.toFixed(3)} | ${preview}`);
   }
 }
 

@@ -96,22 +96,10 @@ const additionalDocs: DocumentInfo[] = [
   {
     id: "security-cyber-008",
     text: "Cybersecurity protects digital systems, networks, and data from cyber threats. It involves implementing security measures, monitoring for vulnerabilities, and responding to incidents to maintain data integrity and privacy.",
-    metadata: {
-      category: "security",
-      subcategory: "cybersecurity",
-      difficulty: "intermediate",
-      topic: "digital_security",
-    },
   },
   {
     id: "health-biotech-009",
     text: "Biotechnology applies biological processes and organisms to develop products and technologies that improve human health and the environment. It includes genetic engineering, drug development, and personalized medicine.",
-    metadata: {
-      category: "healthcare",
-      subcategory: "biotechnology",
-      difficulty: "advanced",
-      topic: "medical_innovation",
-    },
   },
 ];
 
@@ -180,7 +168,8 @@ async function run() {
     const specific = await client.getDocs(indexName, { docIds: targetIds });
     log(`   Retrieved ${specific.length} of ${targetIds.length} requested:`);
     for (const doc of specific) {
-      log(`   - [${doc.id}] ${doc.metadata?.category ?? "-"} / ${doc.metadata?.topic ?? "-"}`);
+      const preview = doc.text.length > 60 ? doc.text.slice(0, 60) + "..." : doc.text;
+      log(`   - [${doc.id}] ${preview}`);
     }
 
     // 7. Load index for querying
