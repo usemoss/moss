@@ -120,8 +120,8 @@ The [samples repository](https://github.com/usemoss/moss) contains working examp
 
 | Sample | Description |
 | --- | --- |
-| [`comprehensive_sample.py`](https://github.com/usemoss/moss/blob/main/python/comprehensive_sample.py) | End-to-end flow with session creation, context building, and streaming |
-| [`load_and_query_sample.py`](https://github.com/usemoss/moss/blob/main/python/load_and_query_sample.py) | Ingest domain knowledge before querying |
+| [`comprehensive_sample.py`](https://github.com/usemoss/moss/blob/main/examples/python/comprehensive_sample.py) | End-to-end flow with session creation, context building, and streaming |
+| [`load_and_query_sample.py`](https://github.com/usemoss/moss/blob/main/examples/python/load_and_query_sample.py) | Ingest domain knowledge before querying |
 
 ```bash
 pip install -r python/requirements.txt
@@ -134,8 +134,8 @@ python python/comprehensive_sample.py
 
 | Sample | Description |
 | --- | --- |
-| [`comprehensive_sample.ts`](https://github.com/usemoss/moss/blob/main/javascript/comprehensive_sample.ts) | Full workflow in TypeScript, ready for Node |
-| [`load_and_query_sample.ts`](https://github.com/usemoss/moss/blob/main/javascript/load_and_query_sample.ts) | Index FAQs and issue targeted queries |
+| [`comprehensive_sample.ts`](https://github.com/usemoss/moss/blob/main/examples/javascript/comprehensive_sample.ts) | Full workflow in TypeScript, ready for Node |
+| [`load_and_query_sample.ts`](https://github.com/usemoss/moss/blob/main/examples/javascript/load_and_query_sample.ts) | Index FAQs and issue targeted queries |
 
 ```bash
 cd javascript && npm install
