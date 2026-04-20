@@ -2,7 +2,7 @@
  * Moss Browser SDK - Metadata Filtering Sample
  *
  * Creates an index with metadata-rich documents, then demonstrates
- * $eq, $and, $in, and $near filters on queries.
+ * $eq, $and, $or, $lt, $in, and $near filters on queries.
  */
 
 import {

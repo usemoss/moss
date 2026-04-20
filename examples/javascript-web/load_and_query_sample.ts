@@ -35,8 +35,7 @@ async function run() {
 
   try {
     log("Initializing MossClient...");
-    client = await MossClient.create(projectId, projectKey);
-    log("Client ready (WASM + model loaded).\n");
+    client = new MossClient(projectId, projectKey);
 
     log(`Loading index "${indexName}"...`);
     await client.loadIndex(indexName);

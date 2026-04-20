@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { resolve } from "path";
+
 export default defineConfig({
   optimizeDeps: {
     exclude: ["@moss-dev/moss-web"],
@@ -7,13 +7,19 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, "index.html"),
-        "load-and-query": resolve(__dirname, "load_and_query_sample.html"),
-        comprehensive: resolve(__dirname, "comprehensive_sample.html"),
-        "metadata-filtering": resolve(
-          __dirname,
-          "metadata_filtering_sample.html"
-        ),
+        main: new URL("./index.html", import.meta.url).pathname,
+        "load-and-query": new URL(
+          "./load_and_query_sample.html",
+          import.meta.url
+        ).pathname,
+        comprehensive: new URL(
+          "./comprehensive_sample.html",
+          import.meta.url
+        ).pathname,
+        "metadata-filtering": new URL(
+          "./metadata_filtering_sample.html",
+          import.meta.url
+        ).pathname,
       },
     },
   },
