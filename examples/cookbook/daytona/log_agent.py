@@ -44,9 +44,9 @@ async def _index_logs(log_lines: List[str], index_name: str) -> int:
     return len(documents)
 
 
-def _build_agent(index_name: str):
+async def _build_agent(index_name: str):
     """Create a LangChain agent wired to the MOSS log search tool."""
-    search_tool = get_log_search_tool(
+    search_tool = await get_log_search_tool(
         project_id=os.environ["MOSS_PROJECT_ID"],
         project_key=os.environ["MOSS_PROJECT_KEY"],
         index_name=index_name,
@@ -87,7 +87,7 @@ async def log_qa_agent(question: Optional[str] = None) -> None:
         n = await _index_logs(log_lines, index_name)
         print(f"\nReady — {n} log entries indexed and searchable.\n")
 
-        executor = _build_agent(index_name)
+        executor = await _build_agent(index_name)
 
         async def ask(q: str) -> str:
             result = await executor.ainvoke({"messages": [("human", q)]})

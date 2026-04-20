@@ -107,22 +107,18 @@ def collect_logs_from_sandbox(
 
 
 
-def get_log_search_tool(
+async def get_log_search_tool(
     project_id: str,
     project_key: str,
     index_name: str,
     top_k: int = 10,
     alpha: float = 0.7,
 ) -> Tool:
-    """Return a LangChain Tool that searches indexed log entries via MOSS."""
+    """Load the MOSS index then return a LangChain Tool ready for querying."""
     client = MossClient(project_id, project_key)
-    _loaded = False
+    await client.load_index(index_name)
 
     async def asearch(query: str) -> str:
-        nonlocal _loaded
-        if not _loaded:
-            await client.load_index(index_name)
-            _loaded = True
         results = await client.query(index_name, query, QueryOptions(top_k=top_k, alpha=alpha))
         if not results.docs:
             return "No relevant log entries found."
