@@ -1,0 +1,20 @@
+{
+  "name": "moss-web-example",
+  "version": "1.0.0",
+  "description": "Examples for the Moss Browser SDK (@moss-dev/moss-web) - in-browser semantic search powered by WASM",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@moss-dev/moss-web": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}
