@@ -57,7 +57,10 @@ function Skeleton() {
 export default function MossDemo() {
   const [docs, setDocs] = useState<DocInput[]>(INITIAL_DOCS);
   const [modifiedIds, setModifiedIds] = useState<Set<string>>(new Set(INITIAL_DOCS.map(d => d.id)));
-  const indexName = 'demo-index';
+  const indexNameRef = useRef(
+    `demo-index-${globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)}`
+  );
+  const indexName = indexNameRef.current;
   const [isIndexLoaded, setIsIndexLoaded] = useState(false);
   const [buildState, setBuildState] = useState<'idle' | 'building' | 'done' | 'error'>('idle');
   const [buildMessage, setBuildMessage] = useState<string | null>(null);
