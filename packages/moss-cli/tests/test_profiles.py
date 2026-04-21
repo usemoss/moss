@@ -5,6 +5,7 @@ from typer.testing import CliRunner
 from moss_cli import config
 from moss_cli.commands import init_cmd
 from moss_cli.commands import index as index_cmd
+from moss_cli.commands import search as search_cmd
 from moss_cli.main import app
 
 
@@ -249,6 +250,50 @@ def test_index_list_accepts_profile_option_after_subcommand(monkeypatch, tmp_pat
     monkeypatch.setattr(index_cmd, "MossClient", FakeClient)
 
     result = runner.invoke(app, ["index", "list", "--profile", "staging"])
+
+    assert result.exit_code == 0
+    assert seen["project_id"] == "staging-id"
+    assert seen["project_key"] == "staging-key"
+
+
+def test_query_accepts_profile_option_after_subcommand(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "default",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+                "staging": {"project_id": "staging-id", "project_key": "staging-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+
+    seen = {}
+
+    class FakeClient:
+        def __init__(self, project_id, project_key):
+            seen["project_id"] = project_id
+            seen["project_key"] = project_key
+
+        async def load_index(self, index_name):
+            return None
+
+        async def query(self, index_name, query_text, options):
+            return type(
+                "_Result",
+                (),
+                {
+                    "query": query_text,
+                    "index_name": index_name,
+                    "time_taken_ms": 1,
+                    "docs": [],
+                },
+            )()
+
+    monkeypatch.setattr(search_cmd, "MossClient", FakeClient)
+
+    result = runner.invoke(app, ["query", "my-index", "hello", "--profile", "staging"])
 
     assert result.exit_code == 0
     assert seen["project_id"] == "staging-id"
