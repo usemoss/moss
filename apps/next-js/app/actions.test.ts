@@ -32,7 +32,7 @@ describe('searchMoss', () => {
       docs: [
         { id: '1', text: 'hello', score: 0.9, metadata: { title: 'Hello' } },
       ],
-      timeTakenInMs: 42,
+      timeTakenMs: 42,
     })
 
     const { searchMoss } = await import('./actions')
