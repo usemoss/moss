@@ -1,6 +1,6 @@
 """Tests for the Pydantic AI + Moss cookbook integration.
 
-All tests use mocked MossClient — no Moss credentials required.
+All tests use mocked MossClient - no Moss credentials required.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def _mock_doc(text="sample text", score=0.95, doc_id="d1", metadata=None):
 
 
 # ---------------------------------------------------------------------------
-# MossSearchTool — init
+# MossSearchTool - init
 # ---------------------------------------------------------------------------
 
 
@@ -78,7 +78,7 @@ class TestMossSearchToolInit(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# MossSearchTool — load_index
+# MossSearchTool - load_index
 # ---------------------------------------------------------------------------
 
 
@@ -107,7 +107,7 @@ class TestLoadIndex(unittest.IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# MossSearchTool — search
+# MossSearchTool - search
 # ---------------------------------------------------------------------------
 
 
@@ -204,7 +204,7 @@ class TestAsTool(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Format results — edge cases
+# Format results - edge cases
 # ---------------------------------------------------------------------------
 
 

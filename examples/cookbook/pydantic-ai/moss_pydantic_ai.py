@@ -14,8 +14,6 @@ __all__ = ["MossSearchTool", "as_tool"]
 logger = logging.getLogger("moss_pydantic_ai")
 
 
-
-
 class MossSearchTool:
     """Moss semantic search exposed as a Pydantic AI tool."""
 
@@ -43,8 +41,6 @@ class MossSearchTool:
         self._load_lock = asyncio.Lock()
         self._tool_obj = self._build_tool()
 
-
-
     async def load_index(self) -> None:
         """Pre-load the Moss index into memory for fast queries.
 
@@ -60,12 +56,6 @@ class MossSearchTool:
 
     async def search(self, query: str) -> str:
         """Query the Moss index and return formatted results."""
-        if not self._index_loaded:
-            raise RuntimeError(
-                f"Index '{self._index_name}' not loaded. "
-                "Call 'await moss_tool.load_index()' first."
-            )
-
         result = await self._client.query(
             self._index_name,
             query,
@@ -82,8 +72,6 @@ class MossSearchTool:
     def tool(self) -> Tool:
         """Return the ``pydantic_ai.Tool`` to pass to an Agent."""
         return self._tool_obj
-
-
 
     def _build_tool(self) -> Tool:
         """Build a Pydantic AI Tool wrapping :meth:`search`."""
@@ -124,8 +112,6 @@ class MossSearchTool:
         return "\n".join(lines)
 
 
-
-
 def as_tool(
     *,
     client: MossClient,
@@ -145,8 +131,6 @@ def as_tool(
         alpha=alpha,
     )
     return moss, moss.tool
-
-
 
 
 def _require_env(name: str) -> str:
@@ -184,7 +168,7 @@ async def main() -> None:
 
     question = os.getenv(
         "PYDANTIC_AI_PROMPT",
-        "What does the knowledge base say about refunds?",
+        "How to reset password?",
     )
     result = await agent.run(question)
     print(result.output)

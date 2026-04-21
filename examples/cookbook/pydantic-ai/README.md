@@ -28,6 +28,8 @@ PYDANTIC_AI_MODEL=openai:gpt-4o
 OPENAI_API_KEY=your-openai-api-key
 ```
 
+This cookbook uses `await moss.load_index()` in the demo flow. On the first run, Moss may download the local query model used for in-memory search before the agent runs.
+
 ## Quick Start
 
 ### Using MossSearchTool
@@ -88,6 +90,8 @@ uv run python moss_pydantic_ai.py
 ```
 
 The demo creates a `MossClient`, loads your index, defines a `MossSearchTool`, and runs a Pydantic AI agent against it.
+
+Because the demo preloads the index, the first run can take longer while Moss fetches the local query model cache.
 
 ## Run the Tests
 
