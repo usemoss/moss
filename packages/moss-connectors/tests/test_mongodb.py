@@ -24,8 +24,13 @@ class FakeMossClient:
         self.calls.append({"name": name, "docs": list(docs), "model_id": model_id})
 
 
-def _mongo_mock_returning(docs: list[dict[str, Any]]) -> MagicMock:
-    """Build a MagicMock that behaves like `MongoClient(...)` returning `docs`."""
+def _mongo_mock_returning(docs: list[dict[str, Any]]) -> tuple[MagicMock, MagicMock]:
+    """Build a mock `MongoClient(...)` that returns `docs` from its find() call.
+
+    Returns (client, collection) so the test can assert on either one —
+    `client` for passing to `patch("pymongo.MongoClient", return_value=...)`,
+    `collection` for inspecting how `find()` was called.
+    """
     collection = MagicMock()
     collection.find.return_value = iter(docs)
     db = MagicMock()

@@ -11,7 +11,7 @@ from .base import DocumentMapping
 
 def _row_to_document(row: dict[str, Any], mapping: DocumentMapping) -> DocumentInfo:
     metadata = {k: str(row[k]) for k in mapping.metadata} if mapping.metadata else None
-    embedding = row.get(mapping.embedding) if mapping.embedding else None
+    embedding = row[mapping.embedding] if mapping.embedding else None
     return DocumentInfo(
         id=str(row[mapping.id]),
         text=row[mapping.text],

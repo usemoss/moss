@@ -21,7 +21,6 @@ classifiers = [
 ]
 dependencies = [
     "moss>=1.0.0",
-    "pydantic>=2.0.0",
 ]
 
 # Add a new entry here when you contribute a connector that needs a driver.
@@ -62,8 +61,3 @@ select = ["E", "W", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-
-[dependency-groups]
-dev = [
-    "python-dotenv>=1.2.2",
-]
