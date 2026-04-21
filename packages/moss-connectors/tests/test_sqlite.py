@@ -1,25 +1,40 @@
-"""Unit tests for ingest() against SQLite and in-memory sources. No network."""
+"""Unit tests for ingest() against SQLite and in-memory sources. No network.
+
+We patch `moss_connectors.ingest.MossClient` so ingest() builds a fake client
+instead of a real one.
+"""
 
 from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass, field
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
-from moss_connectors import DocumentMapping, ingest
+from moss import DocumentInfo
+
+from moss_connectors import ingest
 from moss_connectors.connectors.sqlite import SQLiteConnector
 
 
 @dataclass
 class FakeMossClient:
-    """Stand-in for moss.MossClient that captures what would be uploaded."""
+    """Stand-in for moss.MossClient that records what would be uploaded."""
 
     calls: list[dict[str, Any]] = field(default_factory=list)
 
     async def create_index(self, name, docs, model_id=None):
         self.calls.append({"name": name, "docs": list(docs), "model_id": model_id})
+
+
+@pytest.fixture()
+def fake_client():
+    """Patch MossClient inside the ingest module so it returns our fake."""
+    fake = FakeMossClient()
+    with patch("moss_connectors.ingest.MossClient", return_value=fake):
+        yield fake
 
 
 @pytest.fixture()
@@ -36,16 +51,22 @@ def sqlite_db(tmp_path):
     return str(path)
 
 
-async def test_ingest_creates_index(sqlite_db):
-    source = SQLiteConnector(database=sqlite_db, query="SELECT id, title, body FROM articles")
-    mapping = DocumentMapping(id="id", text="body", metadata=["title"])
-    client = FakeMossClient()
+async def test_ingest_creates_index(sqlite_db, fake_client):
+    source = SQLiteConnector(
+        database=sqlite_db,
+        query="SELECT id, title, body FROM articles",
+        mapper=lambda r: DocumentInfo(
+            id=str(r["id"]),
+            text=r["body"],
+            metadata={"title": r["title"]},
+        ),
+    )
 
-    count = await ingest(source, mapping, client, index_name="articles")
+    count = await ingest(source, "fake_id", "fake_key", index_name="articles")
 
     assert count == 3
-    assert len(client.calls) == 1
-    call = client.calls[0]
+    assert len(fake_client.calls) == 1
+    call = fake_client.calls[0]
     assert call["name"] == "articles"
     assert len(call["docs"]) == 3
     assert call["docs"][0].id == "1"
@@ -53,27 +74,22 @@ async def test_ingest_creates_index(sqlite_db):
     assert call["docs"][0].metadata == {"title": "Title 1"}
 
 
-async def test_empty_source_skips_network_call():
-    client = FakeMossClient()
-    count = await ingest([], DocumentMapping(id="id", text="body"), client, "empty")
+async def test_empty_source_skips_network_call(fake_client):
+    count = await ingest([], "fake_id", "fake_key", "empty")
     assert count == 0
-    assert client.calls == []
+    assert fake_client.calls == []
 
 
-async def test_embedding_passthrough():
-    """A source that carries vectors (e.g. Pinecone export) routes them through."""
+async def test_embedding_passthrough(fake_client):
+    """A source of pre-built DocumentInfos (e.g. from a vector DB) works directly."""
     source = [
-        {"id": "a", "body": "hi", "vec": [0.1, 0.2, 0.3]},
-        {"id": "b", "body": "bye", "vec": [0.4, 0.5, 0.6]},
+        DocumentInfo(id="a", text="hi", embedding=[0.1, 0.2, 0.3]),
+        DocumentInfo(id="b", text="bye", embedding=[0.4, 0.5, 0.6]),
     ]
-    mapping = DocumentMapping(id="id", text="body", embedding="vec")
-    client = FakeMossClient()
 
-    await ingest(source, mapping, client, index_name="vecs")
+    await ingest(source, "fake_id", "fake_key", index_name="vecs")
 
-    docs = client.calls[0]["docs"]
+    docs = fake_client.calls[0]["docs"]
     # Moss stores embeddings as float32, so compare with tolerance.
     assert docs[0].embedding == pytest.approx([0.1, 0.2, 0.3], rel=1e-6)
     assert docs[1].embedding == pytest.approx([0.4, 0.5, 0.6], rel=1e-6)
-
-

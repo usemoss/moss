@@ -9,11 +9,10 @@ A connector is anything you can iterate over that yields one dict per row. Usual
    cp templates/new_connector.py src/moss_connectors/connectors/<source>.py
    ```
 
-2. **Implement `__iter__`**
-   - Connect to the source using its driver.
-   - Yield one `dict` per row.
-   - Each dict must include the id column named by `DocumentMapping.id`.
-   - Return everything — don't pre-filter. The caller's `DocumentMapping` decides what becomes text/metadata.
+2. **Accept a `mapper` in `__init__`** and **implement `__iter__`**
+   - `__init__` takes `mapper: Callable[[dict[str, Any]], DocumentInfo]` alongside your source-specific config.
+   - `__iter__` connects, pulls rows, and yields `self.mapper(row_as_dict)` for each one.
+   - Don't pre-filter columns — the caller's mapper decides what to use.
 
 3. **Declare the driver as an optional dep** in [pyproject.toml](pyproject.toml):
    ```toml

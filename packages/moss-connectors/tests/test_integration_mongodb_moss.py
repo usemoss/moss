@@ -32,9 +32,9 @@ try:
 except ImportError:
     pass
 
-from moss import MossClient, QueryOptions  # noqa: E402
+from moss import DocumentInfo, MossClient, QueryOptions  # noqa: E402
 
-from moss_connectors import DocumentMapping, ingest  # noqa: E402
+from moss_connectors import ingest  # noqa: E402
 from moss_connectors.connectors.mongodb import MongoDBConnector  # noqa: E402
 
 # Point this at whatever Mongo you're running locally.
@@ -119,6 +119,8 @@ def mongo_database():
 async def test_mongodb_live_ingest_to_moss(mongo_database):
     """Full round trip: MongoDB docs -> ingest() -> Moss index -> query -> delete."""
     db_name = mongo_database
+    # ingest() builds its own MossClient from the creds; we need one here too
+    # for the query + cleanup assertions below.
     client = MossClient(PROJECT_ID, PROJECT_KEY)
 
     index_name = f"moss-connectors-mongo-e2e-{uuid.uuid4().hex[:8]}"
@@ -128,14 +130,20 @@ async def test_mongodb_live_ingest_to_moss(mongo_database):
             uri=MONGODB_URI,
             database=db_name,
             collection="articles",
-        )
-        mapping = DocumentMapping(
-            id="sku",
-            text="full_text",
-            metadata=["headline", "category", "author", "word_count", "published"],
+            mapper=lambda r: DocumentInfo(
+                id=str(r["sku"]),
+                text=r["full_text"],
+                metadata={
+                    "headline": r["headline"],
+                    "category": r["category"],
+                    "author": r["author"],
+                    "word_count": str(r["word_count"]),
+                    "published": str(r["published"]),
+                },
+            ),
         )
 
-        count = await ingest(source, mapping, client, index_name=index_name)
+        count = await ingest(source, PROJECT_ID, PROJECT_KEY, index_name=index_name)
         assert count == 5
 
         await client.load_index(index_name)

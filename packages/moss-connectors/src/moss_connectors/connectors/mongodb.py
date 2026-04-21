@@ -1,27 +1,31 @@
 """MongoDB connector.
 
 Reads documents from a MongoDB collection via pymongo's `find()`. One yielded
-dict per document.
+`DocumentInfo` per document.
 
 Install with:
     pip install "moss-connectors[mongodb]"
 
-Note on ids: MongoDB's `_id` comes back as a `bson.ObjectId`. Map it with
-`DocumentMapping(id="_id", ...)` — `ingest()` calls `str()` on the id, which
-renders ObjectIds as their hex string.
+Note on ids: MongoDB's `_id` comes back as a `bson.ObjectId`. In your `mapper`,
+wrap it with `str()` to render the hex string, e.g.
+`DocumentInfo(id=str(r["_id"]), ...)`.
 """
 
 from __future__ import annotations
 
-from typing import Any, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
+
+from moss import DocumentInfo
 
 
 class MongoDBConnector:
-    """Read documents from a MongoDB collection and yield one dict per document.
+    """Read documents from a MongoDB collection and yield one `DocumentInfo` per document.
 
     By default yields every document in the collection. Pass `filter` to
     restrict results (any standard Mongo query dict). Pass `projection` to
     limit which fields come back.
+
+    `mapper` turns a Mongo document (dict) into a `DocumentInfo`.
     """
 
     def __init__(
@@ -29,16 +33,18 @@ class MongoDBConnector:
         uri: str,
         database: str,
         collection: str,
+        mapper: Callable[[dict[str, Any]], DocumentInfo],
         filter: Optional[dict[str, Any]] = None,
         projection: Optional[dict[str, Any]] = None,
     ) -> None:
         self.uri = uri
         self.database = database
         self.collection = collection
+        self.mapper = mapper
         self.filter = filter or {}
         self.projection = projection
 
-    def __iter__(self) -> Iterator[dict[str, Any]]:
+    def __iter__(self) -> Iterator[DocumentInfo]:
         # Imported inside __iter__ so users without the `mongodb` extra
         # installed don't pay the import cost when the package loads.
         from pymongo import MongoClient
@@ -49,6 +55,6 @@ class MongoDBConnector:
                 self.filter, self.projection
             )
             for doc in cursor:
-                yield doc
+                yield self.mapper(doc)
         finally:
             client.close()

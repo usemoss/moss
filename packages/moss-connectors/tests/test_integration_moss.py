@@ -35,9 +35,9 @@ try:
 except ImportError:
     pass  # dotenv is optional; env vars can also be set directly.
 
-from moss import MossClient, QueryOptions  # noqa: E402
+from moss import DocumentInfo, MossClient, QueryOptions  # noqa: E402
 
-from moss_connectors import DocumentMapping, ingest  # noqa: E402
+from moss_connectors import ingest  # noqa: E402
 from moss_connectors.connectors.sqlite import SQLiteConnector  # noqa: E402
 
 PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
@@ -72,20 +72,25 @@ def sqlite_source(tmp_path):
 
 async def test_sqlite_ingest_end_to_end(sqlite_source):
     """Full round trip: SQLite -> Moss index -> query -> delete."""
+    # ingest() builds its own MossClient from the creds; we need one here too
+    # for the query + cleanup assertions below.
     client = MossClient(PROJECT_ID, PROJECT_KEY)
 
     # Unique index name per run so concurrent runs don't collide.
     index_name = f"moss-connectors-e2e-{uuid.uuid4().hex[:8]}"
 
     try:
-        # ingest() creates the index on the fly — no separate create_index call.
         connector = SQLiteConnector(
             database=sqlite_source,
             query="SELECT id, title, body FROM articles",
+            mapper=lambda r: DocumentInfo(
+                id=str(r["id"]),
+                text=r["body"],
+                metadata={"title": r["title"]},
+            ),
         )
-        mapping = DocumentMapping(id="id", text="body", metadata=["title"])
 
-        count = await ingest(connector, mapping, client, index_name=index_name)
+        count = await ingest(connector, PROJECT_ID, PROJECT_KEY, index_name=index_name)
         assert count == 5
 
         # Query the live index. "refund" should pull back article 1.

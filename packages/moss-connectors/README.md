@@ -16,44 +16,53 @@ pip install moss-connectors
 
 ```python
 import asyncio
-from moss import MossClient
-from moss_connectors import DocumentMapping, ingest
+from moss import DocumentInfo
+from moss_connectors import ingest
 from moss_connectors.connectors.sqlite import SQLiteConnector
 
 async def main():
-    client = MossClient("your_project_id", "your_project_key")
-
     source = SQLiteConnector(
         database="./my.db",
         query="SELECT id, title, body FROM articles",
-    )
-    mapping = DocumentMapping(
-        id="id",              # which column holds the document id
-        text="body",          # which column becomes the indexed text
-        metadata=["title"],   # columns copied onto the document as metadata
+        mapper=lambda r: DocumentInfo(
+            id=str(r["id"]),
+            text=r["body"],
+            metadata={"title": r["title"]},
+        ),
     )
 
-    count = await ingest(source, mapping, client, index_name="articles")
+    count = await ingest(
+        source,
+        project_id="your_project_id",
+        project_key="your_project_key",
+        index_name="articles",
+    )
     print(f"copied {count} rows")
 
 asyncio.run(main())
 ```
 
-`ingest()` creates a fresh index from the rows it reads. If an index by that name already exists, Moss will raise — delete it first or pick a new name.
+`ingest()` creates a fresh index from the `DocumentInfo` items the source yields. If an index by that name already exists, Moss will raise — delete it first or pick a new name.
 
-Each field in `DocumentMapping` names a column in your source. Whatever's in that column is passed through to Moss as-is. If you need to combine columns or transform values, do it upstream (e.g. in the SQL query itself).
+Each connector takes a `mapper` callable that turns one source row (a dict) into a `moss.DocumentInfo`. You decide per-row how columns map onto `id`, `text`, `metadata`, and `embedding`. No config object, no hidden coercion — what you build is what gets uploaded.
 
 ### Reusing existing embeddings
 
-If your source already has vectors (Pinecone, Qdrant, Weaviate…), pass them through instead of re-embedding:
+If your source already has vectors (Pinecone, Qdrant, Weaviate…), pass them straight through instead of re-embedding:
 
 ```python
-DocumentMapping(
-    id="id",
-    text="body",
-    metadata=["title"],
-    embedding="vector",   # column holding a list[float]
+source = SQLiteConnector(
+    database="./my.db",
+    query="SELECT id, title, body, vector FROM articles",
+    mapper=lambda r: DocumentInfo(
+        id=str(r["id"]),
+        text=r["body"],
+        metadata={"title": r["title"]},
+        embedding=r["vector"],       # list[float] goes straight to Moss
+    ),
 )
+
+await ingest(source, "your_project_id", "your_project_key", index_name="articles")
 ```
 
 ## Available connectors
@@ -63,7 +72,7 @@ DocumentMapping(
 | SQLite  | `moss_connectors.connectors.sqlite`   | —          |
 | MongoDB | `moss_connectors.connectors.mongodb`  | `mongodb`  |
 
-Want Postgres, MySQL, MongoDB, Supabase, Pinecone, etc.? See [CONTRIBUTING.md](CONTRIBUTING.md) — adding one is ~20 lines.
+Want Postgres, MySQL, Supabase, Pinecone, etc.? See [CONTRIBUTING.md](CONTRIBUTING.md) — adding one is ~20 lines.
 
 ## Running tests
 

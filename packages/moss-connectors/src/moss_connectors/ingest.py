@@ -2,34 +2,26 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional
+from typing import Iterable, Optional
 
 from moss import DocumentInfo, MossClient
 
-from .base import DocumentMapping
-
-
-def _row_to_document(row: dict[str, Any], mapping: DocumentMapping) -> DocumentInfo:
-    metadata = {k: str(row[k]) for k in mapping.metadata} if mapping.metadata else None
-    embedding = row[mapping.embedding] if mapping.embedding else None
-    return DocumentInfo(
-        id=str(row[mapping.id]),
-        text=row[mapping.text],
-        metadata=metadata,
-        embedding=embedding,
-    )
-
 
 async def ingest(
-    source: Iterable[dict[str, Any]],
-    mapping: DocumentMapping,
-    client: MossClient,
+    source: Iterable[DocumentInfo],
+    project_id: str,
+    project_key: str,
     index_name: str,
     model_id: Optional[str] = None,
 ) -> int:
-    """Copy every row from `source` into a fresh Moss index and return the count."""
-    docs = [_row_to_document(row, mapping) for row in source]
+    """Copy every `DocumentInfo` from `source` into a fresh Moss index.
+
+    Builds a `MossClient` internally from `project_id` and `project_key`.
+    Returns the number of documents ingested.
+    """
+    docs = list(source)
     if not docs:
         return 0
+    client = MossClient(project_id, project_key)
     await client.create_index(index_name, docs, model_id=model_id)
     return len(docs)
