@@ -58,9 +58,10 @@ DocumentMapping(
 
 ## Available connectors
 
-| Source | Module                               | Extra  |
-| ------ | ------------------------------------ | ------ |
-| SQLite | `moss_connectors.connectors.sqlite`  | —      |
+| Source  | Module                                | Extra      |
+| ------- | ------------------------------------- | ---------- |
+| SQLite  | `moss_connectors.connectors.sqlite`   | —          |
+| MongoDB | `moss_connectors.connectors.mongodb`  | `mongodb`  |
 
 Want Postgres, MySQL, MongoDB, Supabase, Pinecone, etc.? See [CONTRIBUTING.md](CONTRIBUTING.md) — adding one is ~20 lines.
 
@@ -76,11 +77,17 @@ pytest tests/test_sqlite.py -v
 End-to-end against a real Moss project:
 
 ```bash
-# Put MOSS_PROJECT_ID and MOSS_PROJECT_KEY in .env (see repo root .env.example)
+# SQLite -> Moss
+# .env must have: MOSS_PROJECT_ID, MOSS_PROJECT_KEY
 pytest tests/test_integration_moss.py -v -s
+
+# MongoDB -> Moss (requires a local Mongo at mongodb://localhost:27017;
+#   edit MONGODB_URI at the top of the test file to change)
+# .env must have: MOSS_PROJECT_ID, MOSS_PROJECT_KEY
+pytest tests/test_integration_mongodb_moss.py -v -s
 ```
 
-The integration test creates a uniquely-named index, ingests 5 SQLite rows, runs a real semantic query, and deletes the index on exit. Auto-skipped when the env vars aren't set.
+Each integration test builds a throwaway source (SQLite DB or a MongoDB database), ingests into a uniquely-named Moss index, runs a real semantic query, and cleans both sides up on exit. Tests auto-skip when their prerequisites aren't met.
 
 ## Scope
 

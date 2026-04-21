@@ -39,7 +39,6 @@ A connector is anything you can iterate over that yields one dict per row. Usual
 
 - Postgres (`psycopg`)
 - MySQL (`pymysql`)
-- MongoDB (`pymongo`)
 - Supabase (`supabase` Python client)
 - Snowflake / BigQuery
 
