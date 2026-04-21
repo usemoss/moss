@@ -2,11 +2,11 @@
 title: "MutationResult (JS)"
 ---
 
-[**@moss-dev/moss-web v1.0.0**](../README.md)
+[**@moss-dev/moss v1.0.1**](../README.md)
 
 ***
 
-[@moss-dev/moss-web](../globals.md) / MutationResult
+[@moss-dev/moss](../globals.md) / MutationResult
 
 # Interface: MutationResult
 

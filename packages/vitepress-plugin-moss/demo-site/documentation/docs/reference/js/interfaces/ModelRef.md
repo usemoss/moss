@@ -2,11 +2,11 @@
 title: "ModelRef (JS)"
 ---
 
-[**@moss-dev/moss-web v1.0.0**](../README.md)
+[**@moss-dev/moss v1.0.1**](../README.md)
 
 ***
 
-[@moss-dev/moss-web](../globals.md) / ModelRef
+[@moss-dev/moss](../globals.md) / ModelRef
 
 # Interface: ModelRef
 
