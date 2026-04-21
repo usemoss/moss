@@ -7,13 +7,13 @@ Gives AI agents the ability to search, create indexes, and manage documents thro
 ## Install
 
 ```bash
-npm install @moss-tools/vercel-sdk @inferedge/moss ai zod
+npm install @moss-tools/vercel-sdk @moss-dev/moss ai zod
 ```
 
 ## Usage
 
 ```typescript
-import { MossClient } from '@inferedge/moss';
+import { MossClient } from '@moss-dev/moss';
 import { mossSearchTool, mossCreateIndexTool } from '@moss-tools/vercel-sdk';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
@@ -39,6 +39,7 @@ const result = await generateText({
 | `mossAddDocsTool` | Add documents to an index | Yes |
 | `mossDeleteDocsTool` | Delete documents by ID | Yes |
 | `mossCreateIndexTool` | Create a new index with documents | Yes |
+| `mossLoadIndexTool` | Load an index into memory for fast local queries | No |
 | `mossListIndexesTool` | List all indexes | No |
 
 Mutating tools set `needsApproval: true` so the AI SDK can prompt for user confirmation.
@@ -50,7 +51,7 @@ All tool factories accept:
 - `client` — a `MossClient` instance (required)
 - `description` — override the default tool description
 
-Search, addDocs, and deleteDocs also accept:
+Search, loadIndex, addDocs, and deleteDocs also accept:
 
 - `indexName` — prebind to a specific index. When omitted, the LLM must specify the index name as part of the tool input.
 
@@ -75,6 +76,7 @@ const search = mossSearchTool({ client });
 ```typescript
 import {
   mossSearchTool,
+  mossLoadIndexTool,
   mossAddDocsTool,
   mossDeleteDocsTool,
   mossCreateIndexTool,
@@ -83,6 +85,7 @@ import {
 
 const tools = {
   search: mossSearchTool({ client, indexName: 'docs' }),
+  loadIndex: mossLoadIndexTool({ client, indexName: 'docs' }),
   addDocs: mossAddDocsTool({ client, indexName: 'docs' }),
   deleteDocs: mossDeleteDocsTool({ client, indexName: 'docs' }),
   createIndex: mossCreateIndexTool({ client }),

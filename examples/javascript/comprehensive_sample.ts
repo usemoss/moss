@@ -21,12 +21,12 @@
  * npx tsx comprehensive_sample.ts
  * ```
  * 
- * @requires @inferedge/moss ^1.0.0-beta.7
+ * @requires @moss-dev/moss ^1.0.0
  * @requires dotenv ^17.2.3
- * @requires node >=16.0.0
+ * @requires node >=20.0.0
  */
 
-import { MossClient, DocumentInfo } from "@inferedge/moss";
+import { MossClient, DocumentInfo } from "@moss-dev/moss";
 import { config } from 'dotenv';
 
 // Load environment variables

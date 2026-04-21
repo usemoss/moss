@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from inferedge_moss import MossClient
+from moss import MossClient
 from loguru import logger
 
 from .moss_index_processor import MossIndexProcessor

@@ -1,7 +1,9 @@
-"""Benchmark: Qdrant — external embedding + local in-memory vector search.
+"""Benchmark: Qdrant Cloud — external embedding + cloud vector search.
 
 This measures end-to-end latency: embed the query via an external API,
-then search a local in-memory Qdrant index.
+then search a Qdrant Cloud index.
+
+Requires QDRANT_URL and QDRANT_API_KEY environment variables.
 """
 
 import os
@@ -35,8 +37,14 @@ def run():
     print(f"  queries/round  : {len(queries)}")
     print(f"  embedding      : {embed.provider} (dim={embed.dimension})")
 
-    # --- Setup Qdrant (in-memory) ---
-    client = QdrantClient(":memory:")
+    # --- Setup Qdrant Cloud ---
+    qdrant_url = os.getenv("QDRANT_URL")
+    qdrant_api_key = os.getenv("QDRANT_API_KEY")
+    if not qdrant_url or not qdrant_api_key:
+        raise ValueError("QDRANT_URL and QDRANT_API_KEY must be set in .env")
+    client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+    if client.collection_exists(COLLECTION):
+        client.delete_collection(COLLECTION)
     client.create_collection(
         collection_name=COLLECTION,
         vectors_config=VectorParams(
@@ -46,31 +54,21 @@ def run():
 
     # --- Embed and upsert documents ---
     print("  Embedding and upserting documents...")
-    BATCH = 100
-    for i in range(0, len(docs), BATCH):
-        batch = docs[i : i + BATCH]
-        texts = [d["text"] for d in batch]
-        embeddings = embed.embed_batch(texts)
-        points = [
-            PointStruct(
-                id=i + j,
-                vector=emb,
-                payload={"text": d["text"], **(d.get("metadata") or {})},
-            )
-            for j, (d, emb) in enumerate(zip(batch, embeddings))
-        ]
-        client.upsert(collection_name=COLLECTION, points=points)
+    texts = [d["text"] for d in docs]
+    embeddings = embed.embed_batch(texts)
+    points = [
+        PointStruct(
+            id=i,
+            vector=emb,
+            payload={"text": d["text"], **(d.get("metadata") or {})},
+        )
+        for i, (d, emb) in enumerate(zip(docs, embeddings))
+    ]
+    client.upload_points(collection_name=COLLECTION, points=points)
 
     print(f"  Loaded {client.count(COLLECTION).count} docs")
 
     def qdrant_search(query_vector):
-        """Compatibility wrapper for qdrant-client API changes."""
-        if hasattr(client, "search"):
-            return client.search(
-                collection_name=COLLECTION,
-                query_vector=query_vector,
-                limit=TOP_K,
-            )
         return client.query_points(
             collection_name=COLLECTION,
             query=query_vector,
@@ -101,7 +99,7 @@ def run():
             latencies.append(t.elapsed_ms)
 
     result = BenchmarkResult(
-        f"Qdrant local (external embed + in-memory search, top_k={TOP_K}, {DOC_COUNT} docs)",
+        f"Qdrant Cloud (external embed + cloud search, top_k={TOP_K}, {DOC_COUNT} docs)",
         latencies,
     )
     print(result.summary())

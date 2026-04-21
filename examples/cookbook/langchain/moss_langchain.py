@@ -5,7 +5,7 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_core.callbacks import CallbackManagerForRetrieverRun, AsyncCallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.tools import Tool
-from inferedge_moss import MossClient, QueryOptions
+from moss import MossClient, QueryOptions
 import asyncio
 
 class MossRetriever(BaseRetriever):

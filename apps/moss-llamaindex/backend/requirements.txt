@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+moss
+python-dotenv
+python-multipart
+liteparse
+nltk

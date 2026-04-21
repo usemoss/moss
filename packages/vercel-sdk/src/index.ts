@@ -8,6 +8,8 @@ export {
 export {
   mossCreateIndexTool,
   mossListIndexesTool,
+  mossLoadIndexTool,
   type MossCreateIndexToolOptions,
   type MossListIndexesToolOptions,
+  type MossLoadIndexToolOptions,
 } from './tools/indexes.js';

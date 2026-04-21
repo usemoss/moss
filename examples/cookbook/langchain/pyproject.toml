@@ -14,7 +14,7 @@ authors = [
 ]
 dependencies = [
     "langchain-core",
-    "inferedge-moss>=1.0.0b18",
+    "moss>=1.0.0",
     "pydantic",
 ]
 
