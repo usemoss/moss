@@ -2,11 +2,11 @@
 title: "JobPhase (JS)"
 ---
 
-[**@moss-dev/moss v1.0.0-beta.7**](../README.md)
+[**@moss-dev/moss-web v1.0.0**](../README.md)
 
 ***
 
-[@moss-dev/moss](../globals.md) / JobPhase
+[@moss-dev/moss-web](../globals.md) / JobPhase
 
 # Type Alias: JobPhase
 

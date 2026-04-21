@@ -46,7 +46,7 @@ Head to [Moss Portal](https://moss.dev) to set up projects and start building wi
 ::: code-group
 
 ```bash [npm]
-npm install @moss-dev/moss
+npm install @moss-dev/moss-web
 ```
 
 ```bash [pip]
@@ -58,7 +58,7 @@ pip install moss
 ::: code-group
 
 ```ts [JavaScript]
-import { MossClient } from '@moss-dev/moss'
+import { MossClient } from '@moss-dev/moss-web'
 
 const client = new MossClient(process.env.PROJECT_ID!, process.env.PROJECT_KEY!)
 await client.createIndex('docs', [{ id: '1', text: 'Vector search in production' }])
