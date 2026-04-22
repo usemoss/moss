@@ -11,7 +11,7 @@ A runnable end-to-end example of Moss semantic search inside an Agora Conversati
 ## Prerequisites
 
 - Python 3.10+ and [uv](https://docs.astral.sh/uv/).
-- Moss project credentials: `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`.
+- Moss project credentials: `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY` — sign up and grab them at [moss.dev](https://moss.dev).
 - An Agora account with Conversational AI enabled: `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `AGORA_CUSTOMER_ID`, `AGORA_CUSTOMER_SECRET`.
 - Deepgram + Cartesia API keys (or swap to any other vendors Agora ConvoAI supports).
 - An LLM endpoint that speaks OpenAI-compatible `/chat/completions` streaming (e.g. OpenAI, Groq, Together, vLLM).
