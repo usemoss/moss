@@ -41,6 +41,7 @@ def build_join_body(
     agent_rtc_token: str,
     llm_url: str,
     llm_api_key: str,
+    llm_model: str | None = None,
     mcp_public_url: str,
     mcp_auth_header: str | None,
     deepgram_key: str,
@@ -60,18 +61,34 @@ def build_join_body(
     if mcp_auth_header:
         mcp_entry["headers"] = {"Authorization": mcp_auth_header}
 
+    llm_block: dict[str, Any] = {
+        "vendor": "custom",
+        "url": llm_url,
+        "api_key": llm_api_key,
+        "mcp_servers": [mcp_entry],
+        "greeting_message": "Hi, I'm your Moss-powered support assistant. Ask me anything about the product.",
+        "system_messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a concise voice support assistant. Use the "
+                    "search_knowledge_base tool to answer product questions, "
+                    "then reply in one or two short sentences."
+                ),
+            }
+        ],
+    }
+    if llm_model:
+        llm_block["model"] = llm_model
+
     return {
         "name": f"moss-agora-{uuid.uuid4().hex[:8]}",
         "properties": {
             "channel": channel,
             "token": agent_rtc_token,
             "agent_rtc_uid": str(agent_rtc_uid),
-            "llm": {
-                "vendor": "custom",
-                "url": llm_url,
-                "api_key": llm_api_key,
-                "mcp_servers": [mcp_entry],
-            },
+            "remote_rtc_uids": os.environ.get("AGORA_REMOTE_RTC_UIDS", "2001").split(","),
+            "llm": llm_block,
             "advanced_features": {"enable_tools": True},
             "asr": {
                 "vendor": "deepgram",
@@ -131,6 +148,7 @@ def main() -> None:
         agent_rtc_token=rtc_token,
         llm_url=env["LLM_URL"],
         llm_api_key=env["LLM_API_KEY"],
+        llm_model=os.environ.get("LLM_MODEL") or None,
         mcp_public_url=env["AGORA_MCP_PUBLIC_URL"],
         mcp_auth_header=os.environ.get("AGORA_MCP_AUTH_HEADER") or None,
         deepgram_key=env["DEEPGRAM_API_KEY"],
