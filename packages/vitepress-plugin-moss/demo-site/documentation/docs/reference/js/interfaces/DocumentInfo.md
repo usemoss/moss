@@ -2,11 +2,11 @@
 title: "DocumentInfo (JS)"
 ---
 
-[**@inferedge/moss v1.0.0-beta.7**](../README.md)
+[**@moss-dev/moss v1.0.1**](../README.md)
 
 ***
 
-[@inferedge/moss](../globals.md) / DocumentInfo
+[@moss-dev/moss](../globals.md) / DocumentInfo
 
 # Interface: DocumentInfo
 

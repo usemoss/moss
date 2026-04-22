@@ -1,6 +1,6 @@
 # Moss client library for Python
 
-`inferedge-moss` enables **private, on-device semantic search** in your Python applications with cloud storage capabilities.
+`moss` enables **private, on-device semantic search** in your Python applications with cloud storage capabilities.
 
 Built for developers who want **instant, memory-efficient, privacy-first AI features** with seamless cloud integration.
 
@@ -19,14 +19,14 @@ Built for developers who want **instant, memory-efficient, privacy-first AI feat
 ## Installation
 
 ```bash
-pip install inferedge-moss
+pip install moss
 ```
 
 ## Quick start
 
 ```python
 import asyncio
-from inferedge_moss import MossClient, DocumentInfo, QueryOptions
+from moss import MossClient, DocumentInfo, QueryOptions
 
 async def main():
     # Initialize search client with project credentials
@@ -106,7 +106,7 @@ asyncio.run(main())
 Install the package:
 
 ```bash
-pip install inferedge-moss
+pip install moss
 ```
 
 Set up environment variables (optional):
@@ -120,7 +120,7 @@ export MOSS_PROJECT_KEY="your-project-key"
 
 ```python
 import asyncio
-from inferedge_moss import MossClient, DocumentInfo, QueryOptions
+from moss import MossClient, DocumentInfo, QueryOptions
 
 async def main():
     client = MossClient("your-project-id", "your-project-key")
@@ -191,7 +191,7 @@ Already using your own embedding model? Supply vectors directly when managing in
 
 ```python
 import asyncio
-from inferedge_moss import DocumentInfo, MossClient, QueryOptions
+from moss import DocumentInfo, MossClient, QueryOptions
 
 
 def my_embedding_model(text: str) -> list[float]:

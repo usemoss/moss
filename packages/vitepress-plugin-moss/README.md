@@ -27,7 +27,7 @@ Index is live on Moss cloud                     (seamless handoff, no user actio
 
 Two separate npm packages are involved:
 - **`@inferedge-rest/moss`** — Node.js REST client used **at build time** (inside `@moss-tools/md-indexer`) to upload documents
-- **`@inferedge/moss`** — WebAssembly browser SDK used **at runtime** to download the index and run local queries
+- **`@moss-dev/moss-web`** — WebAssembly browser SDK used **at runtime** to download the index and run local queries
 
 ---
 
@@ -288,7 +288,7 @@ vitepress-plugin-moss
 │   ├── @inferedge-rest/moss     REST client for uploading to Moss cloud
 │   ├── vitepress                uses resolveConfig + createMarkdownRenderer
 │   └── cheerio / gray-matter   HTML parsing, frontmatter
-└── @inferedge/moss          ← runtime only (browser WebAssembly)
+└── @moss-dev/moss-web       ← runtime only (browser WebAssembly)
     └── Queries run locally after index is downloaded
 ```
 

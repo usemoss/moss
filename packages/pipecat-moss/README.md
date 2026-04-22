@@ -104,6 +104,6 @@ This integration is provided under a permissive open source license (BSD-2 or eq
 
 ## Support
 
-- [Moss Docs](https://docs.usemoss.dev)
+- [Moss Docs](https://docs.moss.dev)
 - [Moss Discord](https://discord.com/invite/eMXExuafBR)
 - [Pipecat Docs](https://docs.pipecat.ai)

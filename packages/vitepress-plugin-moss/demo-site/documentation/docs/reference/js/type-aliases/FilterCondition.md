@@ -1,8 +1,8 @@
-[**@inferedge/moss v1.0.0-beta.7**](../README.md)
+[**@moss-dev/moss v1.0.1**](../README.md)
 
 ***
 
-[@inferedge/moss](../globals.md) / FilterCondition
+[@moss-dev/moss](../globals.md) / FilterCondition
 
 # Type Alias: FilterCondition
 

@@ -1,6 +1,6 @@
 'use server'
 
-import { MossClient } from "@inferedge/moss";
+import { MossClient } from "@moss-dev/moss-web";
 
 /**
  * Server Action to perform semantic search using Moss SDK.
@@ -33,7 +33,7 @@ export async function searchMoss(query: string) {
         score: doc.score,
         metadata: doc.metadata
       })),
-      timeTaken: results.timeTakenInMs
+      timeTaken: results.timeTakenMs
     };
   } catch (error) {
     console.error("Moss Search Error:", error);

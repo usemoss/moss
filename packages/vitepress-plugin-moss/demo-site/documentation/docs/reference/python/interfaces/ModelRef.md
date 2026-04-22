@@ -2,9 +2,9 @@
 title: "ModelRef (Python)"
 ---
 
-[inferedge-moss v1.0.0b16](../README.md)
+[moss v1.0.0](../README.md)
 
-[inferedge-moss](../globals.md) / ModelRef
+[moss](../globals.md) / ModelRef
 
 # Interface: ModelRef
 

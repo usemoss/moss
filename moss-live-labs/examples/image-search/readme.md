@@ -40,7 +40,7 @@ Open [http://localhost:5173](http://localhost:5173) and start searching.
 
 ## 1. Go to Moss Portal and Get API Keys
 
-- Visit [usemoss.dev](https://usemoss.dev/) to sign up, create an account, confirm your email, and sign in.
+- Visit [moss.dev](https://moss.dev/) to sign up, create an account, confirm your email, and sign in.
 - From the dashboard, open **View secrets** and save the values as `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` in the root `.env` file (copy `.env.example` → `.env`).
 
 > ![Moss Portal walkthrough](https://github.com/user-attachments/assets/c3db9d2d-0df5-4cec-99fd-7d49d0a30844)

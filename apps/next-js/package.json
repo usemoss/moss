@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@inferedge/moss": "^1.0.0-beta.7",
+    "@moss-dev/moss-web": "^1.0.0",
     "lucide-react": "^0.563.0",
     "next": "16.2.4",
     "react": "19.2.3",

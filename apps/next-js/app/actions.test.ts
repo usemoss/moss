@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const mockLoadIndex = vi.fn()
 const mockQuery = vi.fn()
 
-vi.mock('@inferedge/moss', () => ({
+vi.mock('@moss-dev/moss-web', () => ({
   MossClient: vi.fn().mockImplementation(() => ({
     loadIndex: mockLoadIndex,
     query: mockQuery,
@@ -32,7 +32,7 @@ describe('searchMoss', () => {
       docs: [
         { id: '1', text: 'hello', score: 0.9, metadata: { title: 'Hello' } },
       ],
-      timeTakenInMs: 42,
+      timeTakenMs: 42,
     })
 
     const { searchMoss } = await import('./actions')

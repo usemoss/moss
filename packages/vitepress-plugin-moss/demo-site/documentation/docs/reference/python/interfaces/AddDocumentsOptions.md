@@ -1,6 +1,6 @@
-[inferedge-moss v1.0.0b14](../README.md)
+[moss v1.0.0](../README.md)
 
-[inferedge-moss](../globals.md) / AddDocumentsOptions
+[moss](../globals.md) / AddDocumentsOptions
 
 # Interface: AddDocumentsOptions
 

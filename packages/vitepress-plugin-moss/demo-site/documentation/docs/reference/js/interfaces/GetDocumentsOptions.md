@@ -2,11 +2,11 @@
 title: "GetDocumentsOptions (JS)"
 ---
 
-[**@inferedge/moss v1.0.0-beta.7**](../README.md)
+[**@moss-dev/moss v1.0.1**](../README.md)
 
 ***
 
-[@inferedge/moss](../globals.md) / GetDocumentsOptions
+[@moss-dev/moss](../globals.md) / GetDocumentsOptions
 
 # Interface: GetDocumentsOptions
 

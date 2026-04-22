@@ -200,7 +200,7 @@ const ImageSearchPage = () => {
       <header className="hero-header">
         <div className="hero-header-inner">
           <img
-            src="/images/InferEdgeLogo_Dark_Icon.png"
+            src="/Moss-logo.jpeg"
             alt="Moss"
             className="hero-logo"
           />
@@ -232,7 +232,7 @@ const ImageSearchPage = () => {
               data-testid="search-input"
             />
             <div className="powered-by">
-              <img src="/images/InferEdgeLogo_Dark_Icon.png" alt="Moss" className="powered-by-logo" />
+              <img src="/Moss-logo.jpeg" alt="Moss" className="powered-by-logo" />
               <span>Powered by MOSS</span>
             </div>
           </div>

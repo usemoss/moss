@@ -1,6 +1,6 @@
-[inferedge-moss v1.0.0b16](../README.md)
+[moss v1.0.0](../README.md)
 
-[inferedge-moss](../globals.md) / IndexStatus
+[moss](../globals.md) / IndexStatus
 
 # Interface: IndexStatus
 
