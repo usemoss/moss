@@ -31,13 +31,13 @@ async def main():
         projection={"_id": 1, "title": 1, "body": 1},  # optional
     )
 
-    count = await ingest(
+    result = await ingest(
         source,
         project_id="your_project_id",
         project_key="your_project_key",
         index_name="articles",
     )
-    print(f"copied {count} rows")
+    print(f"copied {result.doc_count} rows")
 
 asyncio.run(main())
 ```

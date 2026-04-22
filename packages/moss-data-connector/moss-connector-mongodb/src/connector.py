@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any, Callable, Iterator, Optional
 
 from moss import DocumentInfo
+from pymongo import MongoClient
 
 
 class MongoDBConnector:
@@ -42,10 +43,6 @@ class MongoDBConnector:
         self.projection = projection
 
     def __iter__(self) -> Iterator[DocumentInfo]:
-        # Imported inside __iter__ so importing the package never fails just
-        # because pymongo is somehow absent in an unusual install.
-        from pymongo import MongoClient
-
         client = MongoClient(self.uri)
         try:
             cursor = client[self.database][self.collection].find(
