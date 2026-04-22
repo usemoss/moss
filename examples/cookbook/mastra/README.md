@@ -31,12 +31,12 @@ _Note_: Ensure you have populated the index specified by `MOSS_INDEX_NAME` with 
 
 ## Run the Example
 
-### 1. Seed the Index
+### 1. Create the Index
 
 Before running the agent, initialize your Moss index with sample FAQ data:
 
 ```bash
-npm run seed
+npm run create-index
 ```
 
 ### 2. Start the Agent
@@ -55,3 +55,26 @@ npm start
 4. The agent decides it needs to query the Moss tool to answer the question accurately.
 5. The `moss-search` tool executes and retrieves relevant paragraphs using the fast `MossClient`.
 6. Mastra streams the tool output back into the prompt buffer context, and returns a fully cited response!
+
+## Running Tests
+
+Unit tests mock `MossClient` and validate the tool execute functions without requiring live API credentials:
+
+```bash
+npm test
+```
+
+The test suite covers:
+
+- `executeMossSearch`: doc shape mapping (`text` → `content`), empty results, correct arguments forwarded to `client.query`
+- `executeMossIndex`: provided doc ID passthrough, auto-generated `doc_*` ID, correct arguments forwarded to `client.addDocs`
+
+## Project Structure
+
+```text
+.
+├── moss_mastra.ts      # Mastra tool definitions and agent setup
+├── create_index.ts     # One-time script to seed the Moss index with sample data
+├── seed_data.ts        # Sample FAQ documents
+└── test_mastra.ts      # Unit tests (no API credentials required)
+```
