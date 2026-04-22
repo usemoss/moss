@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
-from moss import DocumentInfo, MossClient
+from moss import DocumentInfo, MossClient, MutationResult
 
 
 async def ingest(
@@ -12,15 +12,11 @@ async def ingest(
     project_id: str,
     project_key: str,
     index_name: str,
-    model_id: Optional[str] = None,
-) -> int:
-    """Copy every `DocumentInfo` from `source` into a fresh Moss index.
-
-    Returns the number of documents ingested.
-    """
+    model_id: str | None = None,
+) -> MutationResult | None:
+    """Copy every `DocumentInfo` from `source` into a fresh Moss index."""
     docs = list(source)
     if not docs:
-        return 0
+        return None
     client = MossClient(project_id, project_key)
-    await client.create_index(index_name, docs, model_id=model_id)
-    return len(docs)
+    return await client.create_index(index_name, docs, model_id=model_id)

@@ -91,8 +91,9 @@ async def test_sqlite_ingest_end_to_end(sqlite_source):
             ),
         )
 
-        count = await ingest(connector, PROJECT_ID, PROJECT_KEY, index_name=index_name)
-        assert count == 5
+        result = await ingest(connector, PROJECT_ID, PROJECT_KEY, index_name=index_name)
+        assert result is not None
+        assert result.doc_count == 5
 
         # Query the live index. "refund" should pull back article 1.
         await client.load_index(index_name)

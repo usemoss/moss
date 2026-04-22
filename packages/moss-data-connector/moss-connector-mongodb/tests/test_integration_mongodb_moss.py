@@ -144,8 +144,9 @@ async def test_mongodb_live_ingest_to_moss(mongo_database):
             ),
         )
 
-        count = await ingest(source, PROJECT_ID, PROJECT_KEY, index_name=index_name)
-        assert count == 5
+        result = await ingest(source, PROJECT_ID, PROJECT_KEY, index_name=index_name)
+        assert result is not None
+        assert result.doc_count == 5
 
         await client.load_index(index_name)
         result = await client.query(

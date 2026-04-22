@@ -19,13 +19,22 @@ from moss_connector_sqlite import SQLiteConnector, ingest
 
 
 @dataclass
+class FakeMutationResult:
+    doc_count: int
+    job_id: str = "fake-job-id"
+    index_name: str = ""
+
+
+@dataclass
 class FakeMossClient:
     """Stand-in for moss.MossClient that records what would be uploaded."""
 
     calls: list[dict[str, Any]] = field(default_factory=list)
 
     async def create_index(self, name, docs, model_id=None):
-        self.calls.append({"name": name, "docs": list(docs), "model_id": model_id})
+        docs = list(docs)
+        self.calls.append({"name": name, "docs": docs, "model_id": model_id})
+        return FakeMutationResult(doc_count=len(docs), index_name=name)
 
 
 @pytest.fixture()
@@ -61,9 +70,10 @@ async def test_ingest_creates_index(sqlite_db, fake_client):
         ),
     )
 
-    count = await ingest(source, "fake_id", "fake_key", index_name="articles")
+    result = await ingest(source, "fake_id", "fake_key", index_name="articles")
 
-    assert count == 3
+    assert result is not None
+    assert result.doc_count == 3
     assert len(fake_client.calls) == 1
     call = fake_client.calls[0]
     assert call["name"] == "articles"
@@ -74,8 +84,8 @@ async def test_ingest_creates_index(sqlite_db, fake_client):
 
 
 async def test_empty_source_skips_network_call(fake_client):
-    count = await ingest([], "fake_id", "fake_key", "empty")
-    assert count == 0
+    result = await ingest([], "fake_id", "fake_key", "empty")
+    assert result is None
     assert fake_client.calls == []
 
 
