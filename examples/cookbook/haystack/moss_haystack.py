@@ -1,3 +1,19 @@
+"""Moss integration for Haystack pipelines.
+
+This is a cookbook example, not a full production-grade DocumentStore.
+
+Notably, ``MossDocumentStore.filter_documents`` supports the common
+``filters=None`` case (returning all documents) but does not translate
+Haystack's full filter DSL (``$eq``, ``$and``, ``$or``, ``$in``, ``$not``,
+nested combinations) into Moss queries. Implementing that fully would
+require a client-side filter evaluator, since Moss's ``get_docs`` does not
+accept filters — and that creates a footgun on large indexes.
+
+For filtered retrieval, use ``MossRetriever`` with
+``QueryOptions(filter=...)`` at query time; Moss supports this natively
+server-side.
+"""
+
 import asyncio
 import json
 import os
@@ -193,7 +209,25 @@ class MossDocumentStore(DocumentStore):
         self._index_loaded = False
 
     def filter_documents(self, filters: Optional[dict] = None) -> list[Document]:
-        raise NotImplementedError("filter_documents is not supported.")
+        """Return documents from the index.
+
+        When ``filters`` is None, returns every document in the index — the
+        common case used by Haystack writers and evaluation helpers.
+
+        Filtered retrieval is not supported through this method because Moss
+        uses its own filter syntax (``$eq``, ``$and``, ``$in``, ``$near``)
+        applied at query time. For filtered search, use ``MossRetriever``
+        with ``QueryOptions(filter=...)``.
+        """
+        if filters:
+            raise NotImplementedError(
+                "Haystack-style filter_documents(filters=...) is not supported. "
+                "For filtered retrieval, pass filters via QueryOptions to "
+                "MossRetriever.run(). Call filter_documents(filters=None) to "
+                "fetch all documents."
+            )
+        moss_docs = _run_async(self.client.get_docs(self.index_name))
+        return [_moss_doc_to_haystack(doc) for doc in moss_docs]
 
     def load_index(self) -> None:
         """Download index for fast local querying."""
