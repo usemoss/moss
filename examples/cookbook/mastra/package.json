@@ -9,7 +9,7 @@
     "test": "tsx --test test_mastra.ts"
   },
   "dependencies": {
-    "@mastra/core": "^0.1.0",
+    "@mastra/core": "^1.26.0",
     "@moss-dev/moss": "latest",
     "dotenv": "^16.4.5",
     "zod": "^3.23.8"
