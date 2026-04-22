@@ -12,6 +12,7 @@ dependencies = [
     "uvicorn[standard]>=0.30.0",
     "python-dotenv>=1.0.0",
     "loguru>=0.7.0",
+    "fastapi>=0.136.0",
 ]
 
 [dependency-groups]

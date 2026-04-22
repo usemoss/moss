@@ -19,6 +19,7 @@ import sys
 from agora_moss import MossAgoraSearch, create_mcp_app
 from dotenv import load_dotenv
 from loguru import logger
+from mcp.server.transport_security import TransportSecuritySettings
 
 REQUIRED_ENV = ("MOSS_PROJECT_ID", "MOSS_PROJECT_KEY", "MOSS_INDEX_NAME")
 
@@ -39,4 +40,15 @@ search = MossAgoraSearch(
     index_name=env["MOSS_INDEX_NAME"],
 )
 mcp = create_mcp_app(search)
+# When MCP_ALLOW_ALL_HOSTS=1, disable DNS-rebinding protection so tunnel hosts
+# (ngrok, cloudflared) can reach /mcp. Safe only for dev tunnels.
+if os.environ.get("MCP_ALLOW_ALL_HOSTS") == "1":
+    mcp.settings.transport_security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=False
+    )
 app = mcp.streamable_http_app()  # ASGI application for uvicorn
+
+from llm_proxy import app as proxy_app  # noqa: E402
+from starlette.routing import Mount  # noqa: E402
+
+app.router.routes.insert(0, Mount("/llm", app=proxy_app))
