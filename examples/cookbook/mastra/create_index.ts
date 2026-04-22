@@ -6,7 +6,7 @@ import * as path from 'path';
 config({ path: path.join(__dirname, '../../../.env') });
 config();
 
-async function seed() {
+async function createIndex() {
   const projectId = process.env.MOSS_PROJECT_ID;
   const projectKey = process.env.MOSS_PROJECT_KEY;
   const indexName = process.env.MOSS_INDEX_NAME;
@@ -16,18 +16,21 @@ async function seed() {
     process.exit(1);
   }
 
-  console.log(`Seeding index "${indexName}" with ${sampleDocs.length} documents...`);
-  
   const client = new MossClient(projectId, projectKey);
 
-  try {
-    // Create the index with the sample documents
-    await client.createIndex(indexName, sampleDocs);
-    console.log('Seeding completed successfully!');
-  } catch (error) {
-    console.error('Error seeding index:', error);
-    process.exit(1);
+  const deleted = await client.deleteIndex(indexName);
+  if (deleted) {
+    console.log(`Deleted existing index "${indexName}".`);
+  } else {
+    console.log(`Index "${indexName}" did not exist, skipping delete.`);
   }
+
+  console.log(`Creating index "${indexName}" with ${sampleDocs.length} documents...`);
+  await client.createIndex(indexName, sampleDocs);
+  console.log('Index created successfully!');
 }
 
-seed();
+createIndex().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
