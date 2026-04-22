@@ -19,11 +19,20 @@ from moss_connector_mongodb import MongoDBConnector, ingest  # noqa: E402
 
 
 @dataclass
+class FakeMutationResult:
+    doc_count: int
+    job_id: str = "fake-job-id"
+    index_name: str = ""
+
+
+@dataclass
 class FakeMossClient:
     calls: list[dict[str, Any]] = field(default_factory=list)
 
     async def create_index(self, name, docs, model_id=None):
-        self.calls.append({"name": name, "docs": list(docs), "model_id": model_id})
+        docs = list(docs)
+        self.calls.append({"name": name, "docs": docs, "model_id": model_id})
+        return FakeMutationResult(doc_count=len(docs), index_name=name)
 
 
 def _mongo_mock_returning(docs: list[dict[str, Any]]) -> tuple[MagicMock, MagicMock]:
@@ -63,9 +72,10 @@ async def test_mongodb_ingest_end_to_end():
                 metadata={"title": r["title"]},
             ),
         )
-        count = await ingest(source, "fake_id", "fake_key", index_name="articles")
+        result = await ingest(source, "fake_id", "fake_key", index_name="articles")
 
-    assert count == 2
+    assert result is not None
+    assert result.doc_count == 2
     fake_collection.find.assert_called_once_with({}, None)
 
     moss_docs = fake_moss.calls[0]["docs"]
