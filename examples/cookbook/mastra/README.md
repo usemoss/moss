@@ -49,7 +49,7 @@ npm start
 
 ### What happens?
 
-1. Mastra creates a `Knowledge Support Copilot` agent connected to GPT-4.
+1. Mastra creates a `Knowledge Support Copilot` agent connected to GPT-4.1-mini.
 2. The agent is provided with `mossSearchTool` representing Moss querying.
 3. The prompt is presented to the agent.
 4. The agent decides it needs to query the Moss tool to answer the question accurately.

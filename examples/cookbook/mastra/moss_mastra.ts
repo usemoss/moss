@@ -16,6 +16,35 @@ import * as path from 'path';
 config({ path: path.join(__dirname, '../../../.env') });
 config();
 
+// Minimal interface so execute functions can be tested without a real MossClient
+export interface MossClientLike {
+  query: (index: string, query: string, opts: { topK: number }) => Promise<{ docs: Array<{ text: string; score: number }>; timeTakenInMs: number }>;
+  addDocs: (index: string, docs: Array<{ id: string; text: string }>, opts: { upsert: boolean }) => Promise<void>;
+}
+
+export async function executeMossSearch(
+  client: MossClientLike,
+  indexName: string,
+  query: string
+): Promise<{ results: Array<{ content: string; score: number }>; timeTakenInMs: number }> {
+  const results = await client.query(indexName, query, { topK: 3 });
+  return {
+    results: results.docs.map(doc => ({ content: doc.text, score: doc.score })),
+    timeTakenInMs: results.timeTakenInMs,
+  };
+}
+
+export async function executeMossIndex(
+  client: MossClientLike,
+  indexName: string,
+  text: string,
+  id?: string
+): Promise<{ success: true; docId: string }> {
+  const docId = id || `doc_${Date.now()}`;
+  await client.addDocs(indexName, [{ id: docId, text }], { upsert: true });
+  return { success: true, docId };
+}
+
 async function runExample() {
   const projectId = process.env.MOSS_PROJECT_ID;
   const projectKey = process.env.MOSS_PROJECT_KEY;
@@ -28,6 +57,11 @@ async function runExample() {
     return;
   }
 
+  // Optimize: Reuse a single Moss client and load the index once eagerly
+  const client = new MossClient(projectId, projectKey);
+  console.log(`[moss-client] Eagerly loading index "${indexName}"...`);
+  await client.loadIndex(indexName);
+
   // 1. Create a Mastra Tool for Moss Semantic Search
   const mossSearchTool = createTool({
     id: 'moss-search',
@@ -37,23 +71,9 @@ async function runExample() {
     }),
     execute: async ({ query }) => {
       console.log(`[moss-search-tool] Searching for: "${query}"...`);
-      const client = new MossClient(projectId, projectKey);
-      
-      // Load the index before querying
-      await client.loadIndex(indexName);
-      
-      // Perform fast semantic search (sub-10 ms!)
-      const results = await client.query(indexName, query, { topK: 3 });
-      
-      console.log(`[moss-search-tool] Found ${results.docs.length} results in ${results.timeTakenInMs}ms.`);
-      
-      return {
-        results: results.docs.map(doc => ({
-          content: doc.text,
-          score: doc.score,
-        })),
-        timeTakenInMs: results.timeTakenInMs,
-      };
+      const result = await executeMossSearch(client, indexName, query);
+      console.log(`[moss-search-tool] Found ${result.results.length} results in ${result.timeTakenInMs}ms.`);
+      return result;
     },
   });
 
@@ -67,20 +87,9 @@ async function runExample() {
     }),
     execute: async ({ text, id }) => {
       console.log(`[moss-index-tool] Indexing snippet: "${text.substring(0, 50)}..."`);
-      const client = new MossClient(projectId, projectKey);
-      
-      const docId = id || `doc_${Date.now()}`;
-      
-      await client.addDocs(indexName, [
-        { id: docId, text }
-      ], { upsert: true });
-      
-      console.log(`[moss-index-tool] Successfully indexed document ID: ${docId}`);
-      
-      return {
-        success: true,
-        docId,
-      };
+      const result = await executeMossIndex(client, indexName, text, id);
+      console.log(`[moss-index-tool] Successfully indexed document ID: ${result.docId}`);
+      return result;
     },
   });
 
