@@ -3,7 +3,7 @@ import { sampleDocs } from './seed_data';
 import { config } from 'dotenv';
 import * as path from 'path';
 
-config({ path: path.join(__dirname, '../../../../.env') });
+config({ path: path.join(__dirname, '../../../.env') });
 config();
 
 async function seed() {
