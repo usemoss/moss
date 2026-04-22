@@ -1,6 +1,6 @@
 """Unit tests for ingest() against SQLite and in-memory sources. No network.
 
-We patch `moss_connectors.ingest.MossClient` so ingest() builds a fake client
+We patch `moss_connector_sqlite.ingest.MossClient` so ingest() builds a fake client
 instead of a real one.
 """
 
@@ -15,8 +15,7 @@ import pytest
 
 from moss import DocumentInfo
 
-from moss_connectors import ingest
-from moss_connectors.connectors.sqlite import SQLiteConnector
+from moss_connector_sqlite import SQLiteConnector, ingest
 
 
 @dataclass
@@ -33,7 +32,7 @@ class FakeMossClient:
 def fake_client():
     """Patch MossClient inside the ingest module so it returns our fake."""
     fake = FakeMossClient()
-    with patch("moss_connectors.ingest.MossClient", return_value=fake):
+    with patch("moss_connector_sqlite.ingest.MossClient", return_value=fake):
         yield fake
 
 

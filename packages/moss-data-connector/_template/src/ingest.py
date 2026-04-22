@@ -1,4 +1,4 @@
-"""The one public entry point: `ingest()`."""
+"""Copy rows into a Moss index."""
 
 from __future__ import annotations
 
@@ -16,7 +16,6 @@ async def ingest(
 ) -> int:
     """Copy every `DocumentInfo` from `source` into a fresh Moss index.
 
-    Builds a `MossClient` internally from `project_id` and `project_key`.
     Returns the number of documents ingested.
     """
     docs = list(source)

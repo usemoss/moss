@@ -15,8 +15,7 @@ pytest.importorskip("pymongo")
 
 from moss import DocumentInfo  # noqa: E402
 
-from moss_connectors import ingest  # noqa: E402
-from moss_connectors.connectors.mongodb import MongoDBConnector  # noqa: E402
+from moss_connector_mongodb import MongoDBConnector, ingest  # noqa: E402
 
 
 @dataclass
@@ -52,7 +51,7 @@ async def test_mongodb_ingest_end_to_end():
     fake_moss = FakeMossClient()
 
     with patch("pymongo.MongoClient", return_value=fake_mongo), patch(
-        "moss_connectors.ingest.MossClient", return_value=fake_moss
+        "moss_connector_mongodb.ingest.MossClient", return_value=fake_moss
     ):
         source = MongoDBConnector(
             uri="mongodb://localhost",
@@ -83,7 +82,7 @@ async def test_mongodb_forwards_filter_and_projection():
     my_projection = {"_id": 1, "body": 1, "title": 1}
 
     with patch("pymongo.MongoClient", return_value=fake_mongo), patch(
-        "moss_connectors.ingest.MossClient", return_value=fake_moss
+        "moss_connector_mongodb.ingest.MossClient", return_value=fake_moss
     ):
         source = MongoDBConnector(
             uri="mongodb://localhost",

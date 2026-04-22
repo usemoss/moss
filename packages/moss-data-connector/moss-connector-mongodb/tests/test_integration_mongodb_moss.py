@@ -23,9 +23,11 @@ pytest.importorskip("pymongo")
 try:
     from dotenv import load_dotenv
 
+    _here = Path(__file__).resolve()
     for candidate in (
-        Path(__file__).resolve().parents[1] / ".env",
-        Path(__file__).resolve().parents[3] / ".env",
+        _here.parents[1] / ".env",                              # this package's own .env
+        _here.parents[2] / ".env",                              # shared creds at moss-data-connector/.env
+        _here.parents[4] / ".env",                              # <repo>/.env
     ):
         if candidate.exists():
             load_dotenv(candidate, override=False)
@@ -34,8 +36,7 @@ except ImportError:
 
 from moss import DocumentInfo, MossClient, QueryOptions  # noqa: E402
 
-from moss_connectors import ingest  # noqa: E402
-from moss_connectors.connectors.mongodb import MongoDBConnector  # noqa: E402
+from moss_connector_mongodb import MongoDBConnector, ingest  # noqa: E402
 
 # Point this at whatever Mongo you're running locally.
 MONGODB_URI = "mongodb://localhost:27017"

@@ -3,9 +3,6 @@
 Reads documents from a MongoDB collection via pymongo's `find()`. One yielded
 `DocumentInfo` per document.
 
-Install with:
-    pip install "moss-connectors[mongodb]"
-
 Note on ids: MongoDB's `_id` comes back as a `bson.ObjectId`. In your `mapper`,
 wrap it with `str()` to render the hex string, e.g.
 `DocumentInfo(id=str(r["_id"]), ...)`.
@@ -45,8 +42,8 @@ class MongoDBConnector:
         self.projection = projection
 
     def __iter__(self) -> Iterator[DocumentInfo]:
-        # Imported inside __iter__ so users without the `mongodb` extra
-        # installed don't pay the import cost when the package loads.
+        # Imported inside __iter__ so importing the package never fails just
+        # because pymongo is somehow absent in an unusual install.
         from pymongo import MongoClient
 
         client = MongoClient(self.uri)

@@ -1,15 +1,10 @@
-# Python build artifacts
 build/
 dist/
 *.egg-info/
 __pycache__/
 *.py[cod]
-
-# Virtualenvs and caches
 .venv/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-
-# Local env
 .env
