@@ -4,7 +4,7 @@ This document describes how **vscode-moss** turns workspace files into a Moss in
 
 ## 1. High-level flow
 
-1. **Configure** — Resolve Moss `projectId` / `projectKey` (settings, SecretStorage, or env). **`moss.*` for indexing/search is resolved against the first workspace folder** (`workspaceFolders[0]`); multi-root workspaces still index all roots, but include/exclude, `indexName`, chunk options, and search `topK` / `alpha` come from that folder’s effective settings only (see README).
+1. **Configure** — Resolve Moss credentials (per-workspace Secret Storage blob keyed by folder URI; then env pair; legacy migration). Credentials are **not** `moss.*` settings. **`moss.*` for indexing/search is resolved against the first workspace folder** (`workspaceFolders[0]`); multi-root workspaces still index all roots, but include/exclude, `indexName`, chunk options, and search `topK` / `alpha` come from that folder’s effective settings only (see README).
 2. **Discover** — Scan the workspace with `vscode.workspace.findFiles`, merging the primary folder’s `moss.includeGlob`, `moss.excludeGlob`, and extra safe excludes (e.g. `.git`, `node_modules`). Caps apply (`MAX_FILE_SCAN`, `MAX_MOSS_DOCUMENTS`).
 3. **Filter** — Skip binary-by-extension files, oversize files, and paths that fail UTF-8 decode.
 4. **Chunk** — For each file, read text and call `chunkFileContent` (`chunking.ts`):

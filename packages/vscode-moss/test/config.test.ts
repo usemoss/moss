@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it } from "vitest";
-import type { SecretStorage, WorkspaceConfiguration } from "vscode";
+import type { SecretStorage } from "vscode";
 import {
   DEFAULT_QUERY_ALPHA,
-  MOSS_SECRET_KEY_PROJECT_KEY,
+  MOSS_LEGACY_GLOBAL_PROJECT_KEY,
   defaultIndexNameForFolder,
   getMossConfig,
   getMossLogVerbose,
+  resolveCredentialsForWorkspace,
   resolveProjectKey,
   resolveQueryAlpha,
+  workspaceCredentialsSecretKey,
 } from "../src/config.js";
 import {
   resetMossTestConfig,
@@ -30,13 +32,16 @@ function memorySecrets(initial: Record<string, string> = {}): SecretStorage {
   };
 }
 
-function cfgFrom(values: Record<string, unknown>): WorkspaceConfiguration {
-  return {
-    get: <T>(key: string) => values[key] as T,
-    has: () => false,
-    inspect: () => undefined,
-    update: async () => undefined,
-  };
+/** Seed workspace blob so getMossConfig resolves credentials without env. */
+function secretsWithWorkspaceCreds(
+  folder: WorkspaceFolder,
+  projectId: string,
+  projectKey: string
+): SecretStorage {
+  const key = workspaceCredentialsSecretKey(folder);
+  return memorySecrets({
+    [key]: JSON.stringify({ projectId, projectKey }),
+  });
 }
 
 describe("defaultIndexNameForFolder", () => {
@@ -83,31 +88,108 @@ describe("resolveProjectKey", () => {
     else process.env.MOSS_PROJECT_KEY = prevKey;
   });
 
-  it("prefers SecretStorage over settings and env", async () => {
+  it("prefers legacy global SecretStorage over MOSS_PROJECT_KEY", async () => {
     process.env.MOSS_PROJECT_KEY = "env-key";
-    const secrets = memorySecrets({ [MOSS_SECRET_KEY_PROJECT_KEY]: "secret-key" });
-    const cfg = cfgFrom({ projectKey: "cfg-key" });
-    expect(await resolveProjectKey(secrets, cfg)).toBe("secret-key");
+    const secrets = memorySecrets({
+      [MOSS_LEGACY_GLOBAL_PROJECT_KEY]: "secret-key",
+    });
+    expect(await resolveProjectKey(secrets)).toBe("secret-key");
   });
 
-  it("uses settings when no secret", async () => {
-    const secrets = memorySecrets();
-    const cfg = cfgFrom({ projectKey: "cfg-key" });
-    expect(await resolveProjectKey(secrets, cfg)).toBe("cfg-key");
-  });
-
-  it("uses MOSS_PROJECT_KEY when no secret or cfg", async () => {
+  it("uses MOSS_PROJECT_KEY when no legacy secret", async () => {
     process.env.MOSS_PROJECT_KEY = "env-only";
     const secrets = memorySecrets();
-    const cfg = cfgFrom({});
-    expect(await resolveProjectKey(secrets, cfg)).toBe("env-only");
+    expect(await resolveProjectKey(secrets)).toBe("env-only");
   });
 
   it("returns undefined when nothing set", async () => {
     delete process.env.MOSS_PROJECT_KEY;
     const secrets = memorySecrets();
-    const cfg = cfgFrom({});
-    expect(await resolveProjectKey(secrets, cfg)).toBeUndefined();
+    expect(await resolveProjectKey(secrets)).toBeUndefined();
+  });
+});
+
+describe("resolveCredentialsForWorkspace", () => {
+  const prevId = process.env.MOSS_PROJECT_ID;
+  const prevKey = process.env.MOSS_PROJECT_KEY;
+
+  afterEach(() => {
+    resetMossTestConfig();
+    if (prevId === undefined) delete process.env.MOSS_PROJECT_ID;
+    else process.env.MOSS_PROJECT_ID = prevId;
+    if (prevKey === undefined) delete process.env.MOSS_PROJECT_KEY;
+    else process.env.MOSS_PROJECT_KEY = prevKey;
+  });
+
+  it("prefers workspace blob over legacy secret and env", async () => {
+    process.env.MOSS_PROJECT_ID = "env-pid";
+    process.env.MOSS_PROJECT_KEY = "env-pkey";
+    const ws = Uri.file("/alpha");
+    const folder: WorkspaceFolder = { uri: ws, name: "alpha", index: 0 };
+    const blobKey = workspaceCredentialsSecretKey(folder);
+    const secrets = memorySecrets({
+      [blobKey]: JSON.stringify({
+        projectId: "blob-pid",
+        projectKey: "blob-pkey",
+      }),
+      [MOSS_LEGACY_GLOBAL_PROJECT_KEY]: "legacy-key",
+    });
+    const r = await resolveCredentialsForWorkspace(secrets, folder);
+    expect(r).toEqual({ projectId: "blob-pid", projectKey: "blob-pkey" });
+  });
+
+  it("migrates legacy global key + MOSS_PROJECT_ID into workspace blob", async () => {
+    delete process.env.MOSS_PROJECT_KEY;
+    process.env.MOSS_PROJECT_ID = "m-pid";
+    const ws = Uri.file("/migrate");
+    const folder: WorkspaceFolder = { uri: ws, name: "migrate", index: 0 };
+    const blobKey = workspaceCredentialsSecretKey(folder);
+    const secrets = memorySecrets({
+      [MOSS_LEGACY_GLOBAL_PROJECT_KEY]: "legacy-k",
+    });
+    const r = await resolveCredentialsForWorkspace(secrets, folder);
+    expect(r).toEqual({ projectId: "m-pid", projectKey: "legacy-k" });
+    const stored = await secrets.get(blobKey);
+    expect(stored).toBe(
+      JSON.stringify({ projectId: "m-pid", projectKey: "legacy-k" })
+    );
+  });
+
+  it("uses env pair when no blob", async () => {
+    process.env.MOSS_PROJECT_ID = "eid";
+    process.env.MOSS_PROJECT_KEY = "ekey";
+    const ws = Uri.file("/envonly");
+    const folder: WorkspaceFolder = { uri: ws, name: "envonly", index: 0 };
+    const secrets = memorySecrets();
+    const r = await resolveCredentialsForWorkspace(secrets, folder);
+    expect(r).toEqual({ projectId: "eid", projectKey: "ekey" });
+  });
+
+  it("isolates credentials by workspace folder URI", async () => {
+    delete process.env.MOSS_PROJECT_ID;
+    delete process.env.MOSS_PROJECT_KEY;
+    const wsA = Uri.file("/proj-a");
+    const wsB = Uri.file("/proj-b");
+    const folderA: WorkspaceFolder = { uri: wsA, name: "a", index: 0 };
+    const folderB: WorkspaceFolder = { uri: wsB, name: "b", index: 1 };
+    const secrets = memorySecrets({
+      [workspaceCredentialsSecretKey(folderA)]: JSON.stringify({
+        projectId: "ida",
+        projectKey: "ka",
+      }),
+      [workspaceCredentialsSecretKey(folderB)]: JSON.stringify({
+        projectId: "idb",
+        projectKey: "kb",
+      }),
+    });
+    expect(await resolveCredentialsForWorkspace(secrets, folderA)).toEqual({
+      projectId: "ida",
+      projectKey: "ka",
+    });
+    expect(await resolveCredentialsForWorkspace(secrets, folderB)).toEqual({
+      projectId: "idb",
+      projectKey: "kb",
+    });
   });
 });
 
@@ -140,11 +222,10 @@ describe("getMossConfig", () => {
     const ws = Uri.file("/repo");
     setMossTestConfig(ws.toString(), {
       indexName: "my-custom-index",
-      projectId: "pid",
-      projectKey: "pk",
     });
     const folder: WorkspaceFolder = { uri: ws, name: "repo", index: 0 };
-    const c = await getMossConfig(memorySecrets(), folder);
+    const secrets = secretsWithWorkspaceCreds(folder, "pid", "pk");
+    const c = await getMossConfig(secrets, folder);
     expect(c.indexName).toBe("my-custom-index");
     expect(c.topK).toBe(10);
     expect(c.alpha).toBe(DEFAULT_QUERY_ALPHA);
@@ -153,12 +234,11 @@ describe("getMossConfig", () => {
   it("uses configured alpha when set", async () => {
     const ws = Uri.file("/repo");
     setMossTestConfig(ws.toString(), {
-      projectId: "pid",
-      projectKey: "pk",
       alpha: 0.35,
     });
     const folder: WorkspaceFolder = { uri: ws, name: "repo", index: 0 };
-    const c = await getMossConfig(memorySecrets(), folder);
+    const secrets = secretsWithWorkspaceCreds(folder, "pid", "pk");
+    const c = await getMossConfig(secrets, folder);
     expect(c.alpha).toBe(0.35);
   });
 
@@ -166,49 +246,44 @@ describe("getMossConfig", () => {
     const ws = Uri.file("/repo");
     setMossTestConfig(ws.toString(), {
       indexName: "",
-      projectId: "p",
-      projectKey: "k",
     });
     const folder: WorkspaceFolder = { uri: ws, name: "alpha-beta", index: 0 };
-    const c = await getMossConfig(memorySecrets(), folder);
+    const secrets = secretsWithWorkspaceCreds(folder, "p", "k");
+    const c = await getMossConfig(secrets, folder);
     expect(c.indexName).toBe("vscode-moss-alpha-beta");
   });
 
   it("defaults respectGitignore to true when unset", async () => {
     const ws = Uri.file("/repo");
-    setMossTestConfig(ws.toString(), {
-      projectId: "p",
-      projectKey: "k",
-    });
+    setMossTestConfig(ws.toString(), {});
     const folder: WorkspaceFolder = { uri: ws, name: "r", index: 0 };
-    const c = await getMossConfig(memorySecrets(), folder);
+    const secrets = secretsWithWorkspaceCreds(folder, "p", "k");
+    const c = await getMossConfig(secrets, folder);
     expect(c.respectGitignore).toBe(true);
   });
 
   it("respectGitignore false when configured", async () => {
     const ws = Uri.file("/repo");
     setMossTestConfig(ws.toString(), {
-      projectId: "p",
-      projectKey: "k",
       respectGitignore: false,
     });
     const folder: WorkspaceFolder = { uri: ws, name: "r", index: 0 };
-    const c = await getMossConfig(memorySecrets(), folder);
+    const secrets = secretsWithWorkspaceCreds(folder, "p", "k");
+    const c = await getMossConfig(secrets, folder);
     expect(c.respectGitignore).toBe(false);
   });
 
   it("clamps invalid numeric settings to safe defaults or caps", async () => {
     const ws = Uri.file("/repo");
     setMossTestConfig(ws.toString(), {
-      projectId: "p",
-      projectKey: "k",
       maxFileSizeBytes: -1,
       topK: 9999,
       chunkMaxLines: 0,
       chunkOverlapLines: -5,
     });
     const folder: WorkspaceFolder = { uri: ws, name: "r", index: 0 };
-    const c = await getMossConfig(memorySecrets(), folder);
+    const secrets = secretsWithWorkspaceCreds(folder, "p", "k");
+    const c = await getMossConfig(secrets, folder);
     expect(c.maxFileSizeBytes).toBe(1_048_576);
     expect(c.topK).toBe(100);
     expect(c.chunkMaxLines).toBe(100);

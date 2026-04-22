@@ -9,7 +9,7 @@ Indexing runs when the user triggers **`Moss: Index Workspace`** (command `moss.
  Preconditions:
 
 - At least one **workspace folder** must be open; otherwise the command shows an error and returns.
-- **Credentials** must resolve via `resolveCredentials` (settings, SecretStorage, or `MOSS_PROJECT_ID` / `MOSS_PROJECT_KEY`). If missing, the user sees an error and indexing does not start.
+- **Credentials** must resolve via `resolveCredentials` / `resolveCredentialsForWorkspace`: **per-workspace credentials blob** (Secret Storage, keyed by workspace folder URI), then environment pair (`MOSS_PROJECT_ID` + `MOSS_PROJECT_KEY`), then migration from the legacy global key + `MOSS_PROJECT_ID`, then env project ID + legacy/`MOSS_PROJECT_KEY`. If missing, the user sees an error and indexing does not start.
 
 The work runs inside **`vscode.window.withProgress`** (notification area, **cancellable**).
 

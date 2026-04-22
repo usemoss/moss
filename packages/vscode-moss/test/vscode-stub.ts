@@ -32,7 +32,7 @@ export function resetMossTestConfig(): void {
   mossConfigByScope.clear();
 }
 
-/** Keys match `get("projectId")` etc. on the `moss` configuration section. */
+/** Keys match `get("indexName")` etc. on the `moss` configuration section (no credential keys). */
 export function setMossTestConfig(
   resourceUri: string | undefined,
   values: Record<string, unknown>

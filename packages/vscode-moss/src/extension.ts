@@ -1,11 +1,54 @@
 import * as vscode from "vscode";
 import {
-  MOSS_SECRET_KEY_PROJECT_KEY,
+  deleteCredentialsForWorkspace,
+  readCredentialsBlob,
+  storeCredentialsForWorkspace,
 } from "./config.js";
 import { runIndexWorkspace } from "./indexWorkspace.js";
 import { registerSearchIndexStaleHandler } from "./mossQueryState.js";
 import { registerMossStatusBar } from "./mossStatusBar.js";
 import { MossSearchViewProvider } from "./searchViewProvider.js";
+
+/**
+ * Focus the Settings UI on Moss options. Cursor (and some VS Code builds) ignore the
+ * **string** query passed to `openSettings2`; the supported shape is `{ query: string }`.
+ * See https://github.com/microsoft/vscode/issues/226071
+ * Fallback: `vscode://settings/<key>` reveals a contributed setting (same scheme in Cursor).
+ */
+async function revealMossSettings(): Promise<void> {
+  try {
+    await vscode.commands.executeCommand("workbench.action.openSettings2", {
+      query: "moss.",
+    });
+    return;
+  } catch {
+    /* fall through */
+  }
+  try {
+    await vscode.commands.executeCommand(
+      "workbench.action.openSettings2",
+      "moss."
+    );
+    return;
+  } catch {
+    /* fall through */
+  }
+  try {
+    await vscode.commands.executeCommand(
+      "workbench.action.openSettings",
+      "moss."
+    );
+    return;
+  } catch {
+    /* fall through */
+  }
+  const opened = await vscode.env.openExternal(
+    vscode.Uri.parse("vscode://settings/moss.indexName")
+  );
+  if (!opened) {
+    await vscode.commands.executeCommand("workbench.action.openSettings");
+  }
+}
 
 // ── Activation ───────────────────────────────────────────────────────
 
@@ -27,8 +70,6 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       const mossKeysAffectingSession = [
-        "moss.projectId",
-        "moss.projectKey",
         "moss.indexName",
         "moss.topK",
         "moss.alpha",
@@ -60,12 +101,8 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("moss.openSettings", async () => {
-      // Filter must match package.json publisher + name (moss-dev / vscode-moss).
-      await vscode.commands.executeCommand(
-        "workbench.action.openSettings",
-        "@ext:moss-dev.vscode-moss"
-      );
+    vscode.commands.registerCommand("moss.openSettings", () => {
+      void revealMossSettings();
     })
   );
 
@@ -79,112 +116,84 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // moss.configureCredentials — QuickPick: full setup (ID + key) or key-only (empty clears)
+  // moss.configureCredentials — prompt project ID then key (one pair per workspace blob)
   context.subscriptions.push(
     vscode.commands.registerCommand("moss.configureCredentials", async () => {
-      type CredAction = "idAndKey" | "keyOnly";
-      interface CredPick extends vscode.QuickPickItem {
-        action: CredAction;
-      }
-      const items: CredPick[] = [
-        {
-          label: "Project ID and project key",
-          description: "Save project ID to settings; optionally set a new key",
-          action: "idAndKey",
-        },
-        {
-          label: "Project key only",
-          description: "Update or clear the key in secure storage (empty input removes it)",
-          action: "keyOnly",
-        },
-      ];
-      const choice = await vscode.window.showQuickPick(items, {
-        title: "Moss",
-        placeHolder: "What do you want to configure?",
-        ignoreFocusOut: true,
-      });
-      if (!choice) return;
-
-      if (choice.action === "keyOnly") {
-        const key = await vscode.window.showInputBox({
-          title: "Moss",
-          prompt: "Project key",
-          password: true,
-          ignoreFocusOut: true,
-          placeHolder: "Leave empty to remove the key from secure storage",
-        });
-        if (key === undefined) return;
-        if (key === "") {
-          await context.secrets.delete(MOSS_SECRET_KEY_PROJECT_KEY);
-          searchProvider.resetSearchSession();
-          void vscode.window.showInformationMessage(
-            "Moss: Project key removed from secure storage."
-          );
-        } else {
-          await context.secrets.store(MOSS_SECRET_KEY_PROJECT_KEY, key);
-          searchProvider.resetSearchSession();
-          void vscode.window.showInformationMessage(
-            "Moss: Project key saved to secure storage."
-          );
-        }
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders?.length) {
+        void vscode.window.showWarningMessage(
+          "Moss: Open a folder or workspace before configuring credentials."
+        );
         return;
       }
+      const primary = folders[0]!;
 
-      const cfg = vscode.workspace.getConfiguration("moss");
-      const currentId = cfg.get<string>("projectId")?.trim() ?? "";
+      const currentId =
+        (await readCredentialsBlob(context.secrets, primary))?.projectId ??
+        process.env.MOSS_PROJECT_ID?.trim() ??
+        "";
 
       const projectId = await vscode.window.showInputBox({
-        title: "Moss",
+        title: "Moss — project credentials",
         prompt: "Project ID",
         value: currentId,
         ignoreFocusOut: true,
-        placeHolder: "Your Moss project id",
+        placeHolder: "Your Moss project ID",
       });
       if (projectId === undefined) return;
 
       const trimmedId = projectId.trim();
       if (!trimmedId) {
         void vscode.window.showWarningMessage(
-          "Moss: Project ID is required. Nothing was saved."
+          "Moss: Project ID is required."
         );
         return;
       }
 
-      const projectKey = await vscode.window.showInputBox({
-        title: "Moss",
+      const projectKeyInput = await vscode.window.showInputBox({
+        title: "Moss — project credentials",
         prompt: "Project key",
         password: true,
         ignoreFocusOut: true,
-        placeHolder: "Leave empty to keep the existing key in secure storage",
+        placeHolder: "Your Moss project key",
       });
-      if (projectKey === undefined) return;
+      if (projectKeyInput === undefined) return;
 
-      const configTarget =
-        vscode.workspace.workspaceFolders &&
-        vscode.workspace.workspaceFolders.length > 0
-          ? vscode.ConfigurationTarget.Workspace
-          : vscode.ConfigurationTarget.Global;
-
-      try {
-        await cfg.update("projectId", trimmedId, configTarget);
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        void vscode.window.showErrorMessage(
-          `Moss: Could not save project ID: ${msg}`
+      const trimmedKey = projectKeyInput.trim();
+      if (!trimmedKey) {
+        void vscode.window.showWarningMessage(
+          "Moss: Project key is required. Run “Moss: Clear credentials” to remove stored credentials."
         );
         return;
       }
 
-      if (projectKey !== "") {
-        await context.secrets.store(MOSS_SECRET_KEY_PROJECT_KEY, projectKey);
-      }
+      await storeCredentialsForWorkspace(context.secrets, primary, {
+        projectId: trimmedId,
+        projectKey: trimmedKey,
+      });
 
       searchProvider.resetSearchSession();
 
       void vscode.window.showInformationMessage(
-        projectKey !== ""
-          ? "Moss: Project ID saved to settings and project key saved to secure storage."
-          : "Moss: Project ID saved to settings. Project key unchanged."
+        "Moss: Credentials saved for this workspace (secure storage)."
+      );
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("moss.clearCredentials", async () => {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders?.length) {
+        void vscode.window.showWarningMessage(
+          "Moss: Open a folder or workspace first."
+        );
+        return;
+      }
+      const primary = folders[0]!;
+      await deleteCredentialsForWorkspace(context.secrets, primary);
+      searchProvider.resetSearchSession();
+      void vscode.window.showInformationMessage(
+        "Moss: Workspace credentials removed from secure storage."
       );
     })
   );

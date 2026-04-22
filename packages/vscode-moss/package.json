@@ -28,6 +28,7 @@
     "onCommand:moss.indexWorkspace",
     "onCommand:moss.search",
     "onCommand:moss.configureCredentials",
+    "onCommand:moss.clearCredentials",
     "onCommand:moss.openSettings"
   ],
   "contributes": {
@@ -43,6 +44,10 @@
       {
         "command": "moss.configureCredentials",
         "title": "Moss: Configure credentials"
+      },
+      {
+        "command": "moss.clearCredentials",
+        "title": "Moss: Clear credentials"
       },
       {
         "command": "moss.openSettings",
@@ -70,16 +75,6 @@
     "configuration": {
       "title": "Moss",
       "properties": {
-        "moss.projectId": {
-          "type": "string",
-          "default": "",
-          "description": "Moss project ID (required). Also accepted via MOSS_PROJECT_ID environment variable."
-        },
-        "moss.projectKey": {
-          "type": "string",
-          "default": "",
-          "description": "Moss project key. Prefer 'Moss: Configure credentials' (project key only) for secure storage. Also accepted via MOSS_PROJECT_KEY environment variable."
-        },
         "moss.indexName": {
           "type": "string",
           "default": "",
@@ -148,12 +143,12 @@
         "moss.chunkMaxLines": {
           "type": "number",
           "default": 100,
-          "description": "Maximum number of lines per chunk when indexing files."
+          "description": "Maximum lines per indexed chunk (each Moss document). Structure-aware indexing splits large logical spans into overlapping windows of at most this size; plain text and unsupported languages use sliding line windows only."
         },
         "moss.chunkOverlapLines": {
           "type": "number",
           "default": 12,
-          "description": "Number of overlapping lines between consecutive chunks."
+          "description": "Lines of overlap between consecutive windows when a span is subdivided (structure-aware split or full-file line-window fallback)."
         },
         "moss.logVerbose": {
           "type": "boolean",

@@ -23,7 +23,7 @@ VS Code extension for **semantic codebase search** with [Moss](https://moss.dev)
 
 ## Search your workspace
 
-1. Set credentials: **Moss: Configure credentials** (pick **Project ID and project key** or **Project key only**; in key-only mode, an empty field removes the stored key), or set **`moss.projectId`** / **`moss.projectKey`** in settings, or **`MOSS_PROJECT_ID`** / **`MOSS_PROJECT_KEY`** in the environment.
+1. Set credentials: **Moss: Configure credentials** (prompts for project ID and project key — stored together per workspace). To remove stored credentials, run **Moss: Clear credentials**. Alternatively set **`MOSS_PROJECT_ID`** and **`MOSS_PROJECT_KEY`** in the environment (credentials are not Moss settings — they live in Secret Storage or env).
 2. Run **Moss: Index Workspace** (crawl + chunk + upload to Moss).
 3. Open the **Moss** icon in the activity bar → **Search**, or run **Moss: Search** from the Command Palette. Type a query (search runs as you pause typing, ~320ms debounce; **Enter** or **Search** runs immediately); click a result to jump to the file and line range.
 
@@ -41,7 +41,7 @@ File paths and file contents you index are sent to **Moss** (cloud) for embeddin
 
 | Setting | Purpose |
 |--------|---------|
-| `projectId` / `projectKey` | Moss project credentials (key: prefer SecretStorage via commands). |
+| Credentials | **Moss: Configure credentials** (per-workspace Secret Storage) or **`MOSS_PROJECT_ID`** / **`MOSS_PROJECT_KEY`** env — not user settings. |
 | `indexName` | Index name (default derived from workspace folder name). |
 | `modelId` | Embedding model for `createIndex`. |
 | `includeGlob` / `excludeGlob` | Which files to crawl when indexing. |
@@ -93,10 +93,7 @@ This extension uses **`"type": "module"`** (ESM); **`out/extension.js`** is buil
 
 ### Credentials (F5 / dev)
 
-Either:
-
-- Set **`MOSS_PROJECT_ID`** and **`MOSS_PROJECT_KEY`** in the environment (recommended for F5: add `env` in **`packages/vscode-moss/.vscode/launch.json`**, or use your OS environment), or  
-- Set **`moss.projectId`** and **`moss.projectKey`** in VS Code Settings (workspace or user).
+Set **`MOSS_PROJECT_ID`** and **`MOSS_PROJECT_KEY`** in the Extension Development Host environment (recommended: `env` in **`packages/vscode-moss/.vscode/launch.json`**) or use your OS environment. Project credentials are not Moss settings keys.
 
 ### Run the extension (monorepo)
 
