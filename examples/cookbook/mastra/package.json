@@ -1,0 +1,22 @@
+{
+  "name": "moss-mastra-cookbook",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Integration of Moss with Mastra",
+  "scripts": {
+    "create-index": "tsx create_index.ts",
+    "start": "tsx moss_mastra.ts",
+    "test": "tsx --test test_mastra.ts"
+  },
+  "dependencies": {
+    "@mastra/core": "^0.1.0",
+    "@moss-dev/moss": "latest",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "@types/node": "^20.12.11"
+  }
+}
