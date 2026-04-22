@@ -1,6 +1,6 @@
 # moss-connector-template
 
-Starting point for a new connector. Not a real package — don't install it.
+Starting point for a new connector. Not a real package, don't install it.
 
 ## To create a new connector
 
@@ -27,7 +27,7 @@ Then:
 ## Rules
 
 - **One source per package.** Don't combine.
-- **Import your driver inside `__iter__`**, not at module top — so importing the package never fails just because the driver isn't installed.
+- **Declare your driver as a main dependency** in `pyproject.toml` and import it at the top of the module.
 - **No retries or rate-limit logic in `ingest.py`.** If a connector needs it, put it in the connector's own code.
 
 ## Caller shape (what users write against your connector)

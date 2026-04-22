@@ -1,6 +1,6 @@
 # moss-connector-mongodb
 
-MongoDB source connector for Moss. Self-contained — no separate core package to install.
+MongoDB source connector for Moss. Self-contained, no separate core package to install.
 
 ## Install
 
@@ -50,7 +50,7 @@ MongoDB's `_id` is a `bson.ObjectId`. Wrap it with `str()` in your mapper to ren
 src/
 ├── __init__.py      # re-exports MongoDBConnector and ingest
 ├── connector.py     # MongoDBConnector class
-└── ingest.py        # ingest() — keep in sync with the other connector packages
+└── ingest.py        # ingest() - keep in sync with the other connector packages
 ```
 
 ## Tests
@@ -61,4 +61,4 @@ pytest tests/test_mongodb.py -v                       # mocked Moss + mocked Mon
 pytest tests/test_integration_mongodb_moss.py -v -s   # live Moss + local Mongo
 ```
 
-The live integration test expects a Mongo at `mongodb://localhost:27017` — edit `MONGODB_URI` at the top of the test file to change.
+The live integration test expects a Mongo at `mongodb://localhost:27017` - edit `MONGODB_URI` at the top of the test file to change.

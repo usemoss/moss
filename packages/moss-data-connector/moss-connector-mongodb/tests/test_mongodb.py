@@ -1,4 +1,4 @@
-"""Unit tests for the MongoDB connector. No live MongoDB needed — we mock
+"""Unit tests for the MongoDB connector. No live MongoDB needed, we mock
 `pymongo.MongoClient` so the test runs anywhere pymongo is importable, and
 we patch `moss.MossClient` inside ingest so no Moss network call is made.
 """
@@ -38,7 +38,7 @@ class FakeMossClient:
 def _mongo_mock_returning(docs: list[dict[str, Any]]) -> tuple[MagicMock, MagicMock]:
     """Build a mock `MongoClient(...)` that returns `docs` from its find() call.
 
-    Returns (client, collection) so the test can assert on either one —
+    Returns (client, collection) so the test can assert on either one -
     `client` for passing to `patch("pymongo.MongoClient", return_value=...)`,
     `collection` for inspecting how `find()` was called.
     """
@@ -59,7 +59,7 @@ async def test_mongodb_ingest_end_to_end():
     fake_mongo, fake_collection = _mongo_mock_returning(docs_from_mongo)
     fake_moss = FakeMossClient()
 
-    with patch("pymongo.MongoClient", return_value=fake_mongo), patch(
+    with patch("moss_connector_mongodb.connector.MongoClient", return_value=fake_mongo), patch(
         "moss_connector_mongodb.ingest.MossClient", return_value=fake_moss
     ):
         source = MongoDBConnector(
@@ -91,7 +91,7 @@ async def test_mongodb_forwards_filter_and_projection():
     my_filter = {"status": "published"}
     my_projection = {"_id": 1, "body": 1, "title": 1}
 
-    with patch("pymongo.MongoClient", return_value=fake_mongo), patch(
+    with patch("moss_connector_mongodb.connector.MongoClient", return_value=fake_mongo), patch(
         "moss_connector_mongodb.ingest.MossClient", return_value=fake_moss
     ):
         source = MongoDBConnector(

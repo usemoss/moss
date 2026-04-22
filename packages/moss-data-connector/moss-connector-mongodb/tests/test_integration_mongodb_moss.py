@@ -169,5 +169,5 @@ async def test_mongodb_live_ingest_to_moss(mongo_database):
     finally:
         try:
             await client.delete_index(index_name)
-        except Exception as exc:  # pragma: no cover — best-effort cleanup
+        except Exception as exc:  # pragma: no cover, best-effort cleanup
             print(f"warning: failed to delete test index {index_name}: {exc}")

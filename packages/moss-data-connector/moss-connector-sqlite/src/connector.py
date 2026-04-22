@@ -1,4 +1,4 @@
-"""SQLite connector — the reference implementation.
+"""SQLite connector - the reference implementation.
 
 Uses only the stdlib so it doubles as a zero-dep test fixture.
 """
@@ -14,7 +14,7 @@ from moss import DocumentInfo
 class SQLiteConnector:
     """Run a SELECT against a SQLite database and yield one `DocumentInfo` per row.
 
-    `mapper` turns a row (dict of column -> value) into a `DocumentInfo` — the
+    `mapper` turns a row (dict of column -> value) into a `DocumentInfo`, the
     caller decides which columns become id / text / metadata / embedding.
     """
 

@@ -1,6 +1,6 @@
 # moss-connector-sqlite
 
-SQLite source connector for Moss. Self-contained — no separate core package to install.
+SQLite source connector for Moss. Self-contained - no separate core package to install.
 
 ## Install
 
@@ -8,7 +8,7 @@ SQLite source connector for Moss. Self-contained — no separate core package to
 pip install moss-connector-sqlite
 ```
 
-No driver needed — uses Python's stdlib `sqlite3`.
+No driver needed, uses Python's stdlib `sqlite3`.
 
 ## Usage
 
@@ -45,7 +45,7 @@ asyncio.run(main())
 src/
 ├── __init__.py      # re-exports SQLiteConnector and ingest
 ├── connector.py     # SQLiteConnector class
-└── ingest.py        # ingest() — keep in sync with the other connector packages
+└── ingest.py        # ingest() - keep in sync with the other connector packages
 ```
 
 ## Tests

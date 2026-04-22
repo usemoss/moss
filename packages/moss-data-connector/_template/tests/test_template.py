@@ -24,7 +24,7 @@ class FakeMossClient:
         self.calls.append({"name": name, "docs": list(docs), "model_id": model_id})
 
 
-# Example test — adapt to your source. See moss-connector-sqlite/tests/test_sqlite.py
+# Example test, adapt to your source. See moss-connector-sqlite/tests/test_sqlite.py
 # for a worked example that uses a real stdlib driver + fake MossClient.
 #
 # async def test_<source>_ingest():

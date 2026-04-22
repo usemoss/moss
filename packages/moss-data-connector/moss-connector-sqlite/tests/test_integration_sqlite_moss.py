@@ -112,5 +112,5 @@ async def test_sqlite_ingest_end_to_end(sqlite_source):
         # Always try to clean up, even if an assertion above failed.
         try:
             await client.delete_index(index_name)
-        except Exception as exc:  # pragma: no cover — best-effort cleanup
+        except Exception as exc:  # pragma: no cover, best-effort cleanup
             print(f"warning: failed to delete test index {index_name}: {exc}")
