@@ -25,6 +25,7 @@ COPY packages/agora-moss/src packages/agora-moss/src
 COPY apps/agora-moss/pyproject.toml apps/agora-moss/
 COPY apps/agora-moss/README.md apps/agora-moss/
 COPY apps/agora-moss/server.py apps/agora-moss/
+COPY apps/agora-moss/llm_proxy.py apps/agora-moss/
 COPY apps/agora-moss/start_agent.py apps/agora-moss/
 COPY apps/agora-moss/create_index.py apps/agora-moss/
 COPY apps/agora-moss/moss_docs.json apps/agora-moss/

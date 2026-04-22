@@ -48,7 +48,11 @@ if os.environ.get("MCP_ALLOW_ALL_HOSTS") == "1":
     )
 app = mcp.streamable_http_app()  # ASGI application for uvicorn
 
-from llm_proxy import app as proxy_app  # noqa: E402
-from starlette.routing import Mount  # noqa: E402
+# Optional dev-only LLM proxy: only mounted when LLM_PROXY_UPSTREAM is set.
+# Useful when the chosen LLM provider is strict about OpenAI schema (e.g.
+# Gemini's OpenAI-compat endpoint). See ``llm_proxy.py``.
+if os.environ.get("LLM_PROXY_UPSTREAM"):
+    from llm_proxy import app as proxy_app  # noqa: E402
+    from starlette.routing import Mount  # noqa: E402
 
-app.router.routes.insert(0, Mount("/llm", app=proxy_app))
+    app.router.routes.insert(0, Mount("/llm", app=proxy_app))
