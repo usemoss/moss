@@ -73,8 +73,6 @@ class MossClient:
         name: str,
         query: str,
         options: Optional[QueryOptions] = None,
-        *,
-        rerank: Optional[RerankOptions] = None,
     ) -> SearchResult: ...
 
 
@@ -188,12 +186,14 @@ class QueryOptions:
     top_k: Optional[int]
     alpha: Optional[float]
     filter: Optional[dict]
+    rerank: Optional[RerankOptions]
     def __init__(
         self,
         embedding: Optional[Sequence[float]] = ...,
         top_k: Optional[int] = ...,
         alpha: Optional[float] = ...,
         filter: Optional[dict] = ...,
+        rerank: Optional[RerankOptions] = ...,
     ) -> None: ...
 
 

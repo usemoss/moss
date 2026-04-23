@@ -17,13 +17,12 @@ from moss_core import (
     MutationOptions,
     MutationResult,
     JobStatusResponse,
-    QueryOptions,
     QueryResultDocumentInfo,
     SearchResult,
 )
 
 from ..rerankers import get_reranker
-from .models import RerankOptions
+from .models import QueryOptions
 
 logger = logging.getLogger(__name__)
 
@@ -184,8 +183,6 @@ class MossClient:
         name: str,
         query: str,
         options: Optional[QueryOptions] = None,
-        *,
-        rerank: Optional[RerankOptions] = None,
     ) -> SearchResult:
         """
         Perform a semantic similarity search.
@@ -199,33 +196,19 @@ class MossClient:
                     {"field": "city", "condition": {"$eq": "NYC"}},
                     {"field": "price", "condition": {"$lt": "50"}},
                 ]})
-            rerank: Optional RerankOptions for post-retrieval reranking.
-                Use top_k in QueryOptions to control the candidate pool size.
-
-        Example:
-
-            result = await client.query("my-index", "search query",
-                QueryOptions(top_k=20),
-                rerank=RerankOptions(provider="cohere", api_key="...", top_n=5),
-            )
         """
         is_loaded = await asyncio.to_thread(self._manager.has_index, name)
 
         if is_loaded:
-            result = await self._query_local(name, query, options)
-        else:
-            if getattr(options, "filter", None) is not None:
-                logger.warning(
-                    "Metadata filter ignored: filtering is only supported for locally loaded indexes. "
-                    "Call load_index('%s') first.",
-                    name,
-                )
-            result = await self._query_cloud(name, query, options)
+            return await self._query_local(name, query, options)
 
-        if rerank is not None:
-            result = await self._apply_rerank(query, result, rerank)
-
-        return result
+        if getattr(options, "filter", None) is not None:
+            logger.warning(
+                "Metadata filter ignored: filtering is only supported for locally loaded indexes. "
+                "Call load_index('%s') first.",
+                name,
+            )
+        return await self._query_cloud(name, query, options)
 
     # -- Internal ---------------------------------------------------
 
@@ -235,68 +218,61 @@ class MossClient:
         query: str,
         options: Optional[QueryOptions],
     ) -> SearchResult:
-        top_k = getattr(options, "top_k", None)
-        if top_k is None:
-            top_k = 5
+        top_k = getattr(options, "top_k", None) or 5
         alpha = getattr(options, "alpha", None)
         if alpha is None:
             alpha = 0.8
         query_embedding = getattr(options, "embedding", None)
         filter = getattr(options, "filter", None)
+        rerank = getattr(options, "rerank", None)
+
+        fetch_k = top_k * 4 if rerank else top_k
 
         if query_embedding is not None:
-            return await asyncio.to_thread(
+            result = await asyncio.to_thread(
                 self._manager.query,
                 name,
                 query,
                 list(query_embedding),
-                top_k,
+                fetch_k,
                 alpha,
                 filter,
             )
+        else:
+            try:
+                result = await asyncio.to_thread(
+                    self._manager.query_text,
+                    name,
+                    query,
+                    fetch_k,
+                    alpha,
+                    filter,
+                )
+            except RuntimeError as e:
+                if "requires explicit query embeddings" in str(e):
+                    raise ValueError(
+                        "This index uses custom embeddings. "
+                        "Query embeddings must be provided via QueryOptions.embedding."
+                    ) from e
+                raise
 
-        try:
-            return await asyncio.to_thread(
-                self._manager.query_text,
-                name,
-                query,
-                top_k,
-                alpha,
-                filter,
+        if rerank:
+            if rerank._instance is None:
+                rerank._instance = get_reranker(
+                    rerank.provider, **rerank.init_kwargs
+                )
+            final_n = rerank.top_n or top_k
+            reranked_docs = await rerank._instance.rerank(
+                query, result.docs, top_k=final_n
             )
-        except RuntimeError as e:
-            if "requires explicit query embeddings" in str(e):
-                raise ValueError(
-                    "This index uses custom embeddings. "
-                    "Query embeddings must be provided via QueryOptions.embedding."
-                ) from e
-            raise
-
-    @staticmethod
-    async def _apply_rerank(
-        query: str,
-        result: SearchResult,
-        rerank_opts: RerankOptions,
-    ) -> SearchResult:
-        """Rerank search results.
-
-        Note: time_taken_ms reflects retrieval time only, not reranking.
-        """
-        if rerank_opts._instance is None:
-            rerank_opts._instance = get_reranker(
-                rerank_opts.provider, **rerank_opts.init_kwargs
+            result = SearchResult(
+                docs=reranked_docs,
+                query=result.query,
+                index_name=result.index_name,
+                time_taken_ms=result.time_taken_ms,
             )
 
-        reranked_docs = await rerank_opts._instance.rerank(
-            query, result.docs, top_k=rerank_opts.top_n
-        )
-
-        return SearchResult(
-            docs=reranked_docs,
-            query=result.query,
-            index_name=result.index_name,
-            time_taken_ms=result.time_taken_ms,
-        )
+        return result
 
     async def _query_cloud(
         self,

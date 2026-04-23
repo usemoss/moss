@@ -57,11 +57,14 @@ async def main():
     results = await client.query(
         INDEX_NAME,
         "How to get discount?",
-        QueryOptions(top_k=20, alpha=0.8),
-        rerank=RerankOptions(
-            provider="cohere",
-            api_key=os.getenv("COHERE_API_KEY"),
-            top_n=5,
+        QueryOptions(
+            top_k=10,
+            alpha=0.8,
+            rerank=RerankOptions(
+                provider="cohere",
+                api_key=os.getenv("COHERE_API_KEY"),
+                top_n=5,
+            ),
         ),
     )
     for i, doc in enumerate(results.docs):
