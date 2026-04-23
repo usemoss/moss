@@ -22,7 +22,7 @@ from moss_core import (
 )
 
 from ..rerankers import get_reranker
-from .models import QueryOptions
+from .models import QueryOptions, RerankOptions
 
 logger = logging.getLogger(__name__)
 
@@ -191,24 +191,35 @@ class MossClient:
         Otherwise, falls back to the cloud query API.
 
         Args:
-            options: Query options (top_k, alpha, embedding, filter). Example filter:
-                QueryOptions(filter={"$and": [
-                    {"field": "city", "condition": {"$eq": "NYC"}},
-                    {"field": "price", "condition": {"$lt": "50"}},
-                ]})
+            options: Query options (top_k, alpha, embedding, filter, rerank).
+                Reranking is applied client-side after retrieval and works on
+                both the local and cloud paths. Example filter:
+                    QueryOptions(filter={"$and": [
+                        {"field": "city", "condition": {"$eq": "NYC"}},
+                        {"field": "price", "condition": {"$lt": "50"}},
+                    ]})
         """
         is_loaded = await asyncio.to_thread(self._manager.has_index, name)
 
         if is_loaded:
-            return await self._query_local(name, query, options)
+            result = await self._query_local(name, query, options)
+        else:
+            if getattr(options, "filter", None) is not None:
+                logger.warning(
+                    "Metadata filter ignored: filtering is only supported for locally loaded indexes. "
+                    "Call load_index('%s') first.",
+                    name,
+                )
+            result = await self._query_cloud(name, query, options)
 
-        if getattr(options, "filter", None) is not None:
-            logger.warning(
-                "Metadata filter ignored: filtering is only supported for locally loaded indexes. "
-                "Call load_index('%s') first.",
-                name,
-            )
-        return await self._query_cloud(name, query, options)
+        rerank = getattr(options, "rerank", None)
+        if rerank:
+            top_k = getattr(options, "top_k", None)
+            if top_k is None:
+                top_k = 5
+            result = await self._apply_rerank(query, result, rerank, top_k)
+
+        return result
 
     # -- Internal ---------------------------------------------------
 
@@ -218,7 +229,9 @@ class MossClient:
         query: str,
         options: Optional[QueryOptions],
     ) -> SearchResult:
-        top_k = getattr(options, "top_k", None) or 5
+        top_k = getattr(options, "top_k", None)
+        if top_k is None:
+            top_k = 5
         alpha = getattr(options, "alpha", None)
         if alpha is None:
             alpha = 0.8
@@ -229,7 +242,7 @@ class MossClient:
         fetch_k = top_k * 4 if rerank else top_k
 
         if query_embedding is not None:
-            result = await asyncio.to_thread(
+            return await asyncio.to_thread(
                 self._manager.query,
                 name,
                 query,
@@ -238,41 +251,46 @@ class MossClient:
                 alpha,
                 filter,
             )
-        else:
-            try:
-                result = await asyncio.to_thread(
-                    self._manager.query_text,
-                    name,
-                    query,
-                    fetch_k,
-                    alpha,
-                    filter,
-                )
-            except RuntimeError as e:
-                if "requires explicit query embeddings" in str(e):
-                    raise ValueError(
-                        "This index uses custom embeddings. "
-                        "Query embeddings must be provided via QueryOptions.embedding."
-                    ) from e
-                raise
 
-        if rerank:
-            if rerank._instance is None:
-                rerank._instance = get_reranker(
-                    rerank.provider, **rerank.init_kwargs
-                )
-            final_n = rerank.top_n or top_k
-            reranked_docs = await rerank._instance.rerank(
-                query, result.docs, top_k=final_n
+        try:
+            return await asyncio.to_thread(
+                self._manager.query_text,
+                name,
+                query,
+                fetch_k,
+                alpha,
+                filter,
             )
-            result = SearchResult(
-                docs=reranked_docs,
-                query=result.query,
-                index_name=result.index_name,
-                time_taken_ms=result.time_taken_ms,
-            )
+        except RuntimeError as e:
+            if "requires explicit query embeddings" in str(e):
+                raise ValueError(
+                    "This index uses custom embeddings. "
+                    "Query embeddings must be provided via QueryOptions.embedding."
+                ) from e
+            raise
 
-        return result
+    @staticmethod
+    async def _apply_rerank(
+        query: str,
+        result: SearchResult,
+        rerank_opts: RerankOptions,
+        default_top_k: Optional[int],
+    ) -> SearchResult:
+        """Rerank search results. Works on both local and cloud paths."""
+        if rerank_opts._instance is None:
+            rerank_opts._instance = get_reranker(
+                rerank_opts.provider, **rerank_opts.init_kwargs
+            )
+        final_n = rerank_opts.top_n or default_top_k
+        reranked_docs = await rerank_opts._instance.rerank(
+            query, result.docs, top_k=final_n
+        )
+        return SearchResult(
+            docs=reranked_docs,
+            query=result.query,
+            index_name=result.index_name,
+            time_taken_ms=result.time_taken_ms,
+        )
 
     async def _query_cloud(
         self,
@@ -281,7 +299,11 @@ class MossClient:
         options: Optional[QueryOptions],
     ) -> SearchResult:
         """Fallback: query via the cloud API when the index is not loaded locally."""
-        top_k = getattr(options, "top_k", None) or 10
+        top_k = getattr(options, "top_k", None)
+        if top_k is None:
+            top_k = 5
+        rerank = getattr(options, "rerank", None)
+        fetch_k = top_k * 4 if rerank else top_k
         query_embedding = getattr(options, "embedding", None)
 
         request_body: Dict[str, Any] = {
@@ -289,7 +311,7 @@ class MossClient:
             "indexName": name,
             "projectId": self._project_id,
             "projectKey": self._project_key,
-            "topK": top_k,
+            "topK": fetch_k,
         }
         if query_embedding is not None:
             request_body["queryEmbedding"] = list(query_embedding)

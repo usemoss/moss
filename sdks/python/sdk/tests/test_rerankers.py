@@ -73,9 +73,7 @@ class TestRerankOptions(unittest.TestCase):
         opts = RerankOptions(
             provider="cohere", api_key="k", model="rerank-v3.5", top_n=3
         )
-        self.assertEqual(
-            opts.init_kwargs, {"api_key": "k", "model": "rerank-v3.5"}
-        )
+        self.assertEqual(opts.init_kwargs, {"api_key": "k", "model": "rerank-v3.5"})
 
 
 class TestCohereRerankerProtocol(unittest.TestCase):
@@ -132,7 +130,9 @@ class TestCohereReranker(unittest.IsolatedAsyncioTestCase):
 
         mock_result_1 = type("Result", (), {"index": 1, "relevance_score": 0.95})()
         mock_result_2 = type("Result", (), {"index": 0, "relevance_score": 0.72})()
-        mock_response = type("Response", (), {"results": [mock_result_1, mock_result_2]})()
+        mock_response = type(
+            "Response", (), {"results": [mock_result_1, mock_result_2]}
+        )()
         reranker._client.rerank = AsyncMock(return_value=mock_response)
 
         docs = [
@@ -177,9 +177,7 @@ class TestCohereReranker(unittest.IsolatedAsyncioTestCase):
     async def test_rerank_sdk_error(self):
         reranker = CohereReranker(api_key="bad-key")
         reranker._client = AsyncMock()
-        reranker._client.rerank = AsyncMock(
-            side_effect=Exception("Unauthorized")
-        )
+        reranker._client.rerank = AsyncMock(side_effect=Exception("Unauthorized"))
 
         docs = [QueryResultDocumentInfo(id="d1", text="doc", score=0.5)]
 

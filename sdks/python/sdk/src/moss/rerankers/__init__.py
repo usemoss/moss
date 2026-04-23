@@ -6,6 +6,8 @@ from .base import Reranker
 
 _REGISTRY: Dict[str, Type[Reranker]] = {}
 
+_MISSING_PROVIDERS: Dict[str, str] = {}
+
 
 def register_reranker(name: str, cls: Type[Reranker]) -> None:
     """Register a reranker class under a provider name.
@@ -24,8 +26,17 @@ def get_reranker(name: str, **kwargs: Any) -> Reranker:
     """Instantiate a reranker by provider name.
 
     Raises:
-        ValueError: If the provider name is not registered.
+        ImportError: If the provider is built-in but its optional dependency
+            isn't installed (e.g. "cohere" without `pip install cohere`).
+        ValueError: If the provider name is not registered and not a known
+            built-in.
     """
+    if name in _MISSING_PROVIDERS:
+        package = _MISSING_PROVIDERS[name]
+        raise ImportError(
+            f"The '{name}' reranker requires the '{package}' package. "
+            f"Install it with: pip install {package}"
+        )
     if name not in _REGISTRY:
         available = list(_REGISTRY) or ["(none registered)"]
         raise ValueError(
@@ -43,4 +54,5 @@ try:
 
     register_reranker("cohere", CohereReranker)
 except ImportError:
-    pass
+    # `pip install cohere` to enable the Cohere reranker.
+    _MISSING_PROVIDERS["cohere"] = "cohere"
