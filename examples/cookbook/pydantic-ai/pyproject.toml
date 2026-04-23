@@ -19,4 +19,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["moss_pydantic_ai", "test_integration"]
+py-modules = ["example", "moss_pydantic_ai", "test_integration"]

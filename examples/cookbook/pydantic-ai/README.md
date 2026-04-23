@@ -86,7 +86,7 @@ asyncio.run(main())
 ## Run the Demo
 
 ```bash
-uv run python moss_pydantic_ai.py
+uv run python example.py
 ```
 
 The demo creates a `MossClient`, loads your index, defines a `MossSearchTool`, and runs a Pydantic AI agent against it.
@@ -107,7 +107,8 @@ Pydantic AI inspects the tool function's signature and docstring to derive the i
 
 | File | Description |
 |------|-------------|
-| `moss_pydantic_ai.py` | `MossSearchTool` class, `as_tool()` helper, and runnable demo |
+| `moss_pydantic_ai.py` | `MossSearchTool` class and `as_tool()` helper |
+| `example.py` | Runnable cookbook demo using the helper module |
 | `test_integration.py` | Unit tests (mocked, no credentials required) |
 | `pyproject.toml` | Package metadata |
 | `.env.example` | Template for required environment variables |
