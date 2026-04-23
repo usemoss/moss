@@ -4,8 +4,8 @@
 __pycache__
 node_modules/
 .env
-.env.*
 !.env.template
+!.env.example
 .env.local
 dist/
 .next/

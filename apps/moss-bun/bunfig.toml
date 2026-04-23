@@ -1,0 +1,49 @@
+# Bun Configuration File
+
+[install]
+# Use prefer offline for faster installs in CI/CD
+prefer-offline = true
+
+# Optional: use a custom package registry
+# registry = "https://registry.npmjs.org/"
+
+# Optional: set peer dependencies handling
+optional = true
+
+[build]
+# Entry point
+entrypoint = "src/index.ts"
+
+# Output directory
+outdir = "dist"
+
+# Target (bun, browser, node)
+target = "bun"
+
+# Enable minification
+minify = true
+
+# Source maps
+sourcemap = "external"
+
+[test]
+# Test root
+root = "."
+
+# Show test names
+show-progress = true
+
+[dev]
+# Hot module replacement
+hmr = true
+
+# Port for HMR
+hmr-port = 3001
+
+[bun]
+# version = "1.3.11"
+
+# Optional: define custom environment variables
+# [env]
+# NODE_ENV = "production"
+# LOG_LEVEL = "info"

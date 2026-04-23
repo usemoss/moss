@@ -1,0 +1,17 @@
+[
+  {
+    "id": "moss-overview",
+    "text": "Moss is a real-time semantic search runtime built for conversational AI. It returns results in under 10 milliseconds so voice agents can ground responses without blowing their latency budget.",
+    "metadata": { "section": "overview" }
+  },
+  {
+    "id": "agora-integration",
+    "text": "Moss integrates with Agora Conversational AI by exposing a single MCP tool, search_knowledge_base, over streamable HTTP. Agora's orchestrator calls this tool during a conversation whenever the LLM decides to search.",
+    "metadata": { "section": "integrations" }
+  },
+  {
+    "id": "hybrid-search",
+    "text": "Moss supports hybrid search: a tunable alpha parameter controls the blend between dense vector similarity and sparse keyword matching. Higher alpha means more weight on dense embeddings.",
+    "metadata": { "section": "features" }
+  }
+]

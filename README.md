@@ -9,10 +9,10 @@
 ### Real-time semantic search for AI agents. Sub-10 ms.
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
-[![PyPI](https://img.shields.io/pypi/v/moss?color=blue)](https://pypi.org/project/moss/)
-[![PyPI downloads](https://static.pepy.tech/personalized-badge/inferedge-moss-core?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=pypi+downloads)](https://pepy.tech/project/inferedge-moss-core)
-[![npm](https://img.shields.io/npm/v/@moss-dev/moss?color=blue)](https://www.npmjs.com/package/@moss-dev/moss)
-[![npm downloads](https://img.shields.io/npm/dt/@inferedge/moss?label=npm+downloads)](https://www.npmjs.com/package/@inferedge/moss)
+[![PyPI](https://img.shields.io/pypi/v/moss?color=deepgreen)](https://pypi.org/project/moss/)
+[![PyPI downloads](https://static.pepy.tech/personalized-badge/inferedge-moss-core?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi+downloads)](https://pepy.tech/project/inferedge-moss-core)
+[![npm](https://img.shields.io/npm/v/@moss-dev/moss?color=deepgreen)](https://www.npmjs.com/package/@moss-dev/moss)
+[![npm downloads](https://img.shields.io/npm/dt/@inferedge/moss?label=npm+downloads&color=blue)](https://www.npmjs.com/package/@inferedge/moss)
 [![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=white&label=Discord&color=7B2FBE)](https://moss.link/discord)
 
 [Website](https://moss.dev) · [Docs](https://docs.moss.dev) · [Discord](https://moss.link/discord) · [Blog](https://moss.dev/blog)
@@ -138,6 +138,7 @@ examples/
 apps/
 ├── next-js/                 # Next.js semantic search UI
 ├── pipecat-moss/            # Pipecat voice agent with Moss retrieval
+├── agora-moss/              # Agora Conversational AI MCP server with Moss retrieval
 ├── livekit-moss-vercel/     # LiveKit voice agent on Vercel
 └── docker/                  # Dockerized examples (ECS/K8s pattern)
 ```
@@ -239,10 +240,11 @@ const results = await client.query(name, "your query", { topK: 5 });
 | [LangChain](https://github.com/langchain-ai/langchain) | Available | [`examples/cookbook/langchain/`](examples/cookbook/langchain/) |
 | [DSPy](https://github.com/stanfordnlp/dspy) | Available | [`examples/cookbook/dspy/`](examples/cookbook/dspy/) |
 | [Pipecat](https://github.com/pipecat-ai/pipecat) | Available | [`apps/pipecat-moss/`](apps/pipecat-moss/) |
+| [Agora](https://www.agora.io/) | Available | [`apps/agora-moss/`](apps/agora-moss/) |
 | [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
-| [Vercel AI SDK](https://sdk.vercel.ai) | Coming soon | — |
+| [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`packages/vercel-sdk/`](packages/vercel-sdk/) |
 | [CrewAI](https://github.com/crewAIInc/crewAI) | Coming soon | — |
 
 ## Architecture
@@ -280,7 +282,7 @@ Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
 We welcome contributions! Here's where the community can have the most impact:
 
 - **New SDK bindings** — Swift, Go, Elixir,...
-- **Framework integrations** — Vercel AI SDK, CrewAI, Haystack, AutoGen
+- **Framework integrations** — CrewAI, Haystack, AutoGen
 - **Reranking support** — plug in cross-encoder rerankers
 - **Doc-parsing connectors** — PDF, DOCX, HTML, Markdown ingestion
 - **Examples and tutorials** — if you build something with Moss, we'd love to feature it
@@ -288,6 +290,10 @@ We welcome contributions! Here's where the community can have the most impact:
 See our [Contributing Guide](CONTRIBUTING.md) for setup instructions and our [Roadmap](ROADMAP.md) for what's planned.
 
 Check out issues labeled [`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue) to get started.
+
+## Contributors
+
+[![Contributors](https://contrib.rocks/image?repo=usemoss/moss)](https://github.com/usemoss/moss/graphs/contributors)
 
 ## Community
 

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Moss Browser SDK - Load &amp; Query</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; border-radius: 4px; white-space: pre-wrap; font-size: 0.85rem; min-height: 4rem; }
+    label { display: block; margin-bottom: 0.5rem; }
+    input { padding: 0.4rem 0.5rem; width: 300px; }
+    button { padding: 0.5rem 1rem; margin-top: 0.75rem; cursor: pointer; }
+    a { color: #2563eb; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <p><a href="index.html">&larr; All examples</a></p>
+  <h1>Load &amp; Query Sample</h1>
+  <p>Load an existing index and perform semantic searches entirely in-browser.</p>
+
+  <label>Project ID <input id="projectId" placeholder="your-project-id" /></label>
+  <label>Project Key <input id="projectKey" placeholder="your-project-key" type="password" /></label>
+  <label>Index Name <input id="indexName" placeholder="my-index" /></label>
+  <button id="run">Run</button>
+
+  <pre id="log"></pre>
+
+  <script type="module" src="./load_and_query_sample.ts"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+[project]
+name = "vapi-moss-demo"
+version = "0.1.0"
+description = "VAPI Custom Knowledge Base webhook server with Moss semantic retrieval"
+requires-python = ">=3.10"
+dependencies = [
+    "vapi-moss>=0.0.1",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",
+]
+
+[tool.uv.sources]
+vapi-moss = { path = "../../packages/vapi-moss" }
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["I"]
