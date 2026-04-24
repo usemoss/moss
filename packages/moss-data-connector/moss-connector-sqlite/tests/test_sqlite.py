@@ -109,7 +109,7 @@ async def test_auto_id_replaces_mapper_id(sqlite_db, fake_client):
         database=sqlite_db,
         query="SELECT id, title, body FROM articles",
         mapper=lambda r: DocumentInfo(
-            id="",
+            id=str(r["id"]),
             text=r["body"],
             metadata={"title": r["title"]},
         ),
@@ -126,10 +126,21 @@ async def test_auto_id_replaces_mapper_id(sqlite_db, fake_client):
     assert len(fake_client.calls) == 1
     docs = fake_client.calls[0]["docs"]
     assert len(docs) == 3
+    original_ids = {"1", "2", "3"}
     for doc in docs:
         assert doc.id
         assert uuid.UUID(doc.id)
-        assert doc.id != ""
+        assert doc.id not in original_ids
+    assert [doc.text for doc in docs] == [
+        "Body for article 1",
+        "Body for article 2",
+        "Body for article 3",
+    ]
+    assert [doc.metadata for doc in docs] == [
+        {"title": "Title 1"},
+        {"title": "Title 2"},
+        {"title": "Title 3"},
+    ]
 
 
 async def test_empty_source_skips_network_call(fake_client):

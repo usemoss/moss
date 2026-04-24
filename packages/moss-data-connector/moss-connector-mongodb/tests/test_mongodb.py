@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import MagicMock, patch
+import uuid
 
 import pytest
 
@@ -82,6 +83,73 @@ async def test_mongodb_ingest_end_to_end():
     assert moss_docs[0].id == "a1"
     assert moss_docs[0].text == "Refunds take 3–5 days."
     assert moss_docs[0].metadata == {"title": "Refund policy"}
+
+
+async def test_mongodb_auto_id_defaults_to_false():
+    docs_from_mongo = [
+        {"_id": "a1", "title": "Refund policy", "body": "Refunds take 3-5 days."},
+        {"_id": "a2", "title": "Shipping", "body": "We ship within 24 hours."},
+    ]
+    fake_mongo, _ = _mongo_mock_returning(docs_from_mongo)
+    fake_moss = FakeMossClient()
+
+    with patch("moss_connector_mongodb.connector.MongoClient", return_value=fake_mongo), patch(
+        "moss_connector_mongodb.ingest.MossClient", return_value=fake_moss
+    ):
+        source = MongoDBConnector(
+            uri="mongodb://localhost",
+            database="shop",
+            collection="articles",
+            mapper=lambda r: DocumentInfo(
+                id=str(r["_id"]),
+                text=r["body"],
+                metadata={"title": r["title"]},
+            ),
+        )
+        await ingest(source, "fake_id", "fake_key", index_name="articles")
+
+    moss_docs = fake_moss.calls[0]["docs"]
+    assert [doc.id for doc in moss_docs] == ["a1", "a2"]
+    assert [doc.text for doc in moss_docs] == ["Refunds take 3-5 days.", "We ship within 24 hours."]
+    assert [doc.metadata for doc in moss_docs] == [
+        {"title": "Refund policy"},
+        {"title": "Shipping"},
+    ]
+
+
+async def test_mongodb_auto_id_replaces_mapper_id():
+    docs_from_mongo = [
+        {"_id": "a1", "title": "Refund policy", "body": "Refunds take 3-5 days."},
+        {"_id": "a2", "title": "Shipping", "body": "We ship within 24 hours."},
+    ]
+    fake_mongo, _ = _mongo_mock_returning(docs_from_mongo)
+    fake_moss = FakeMossClient()
+
+    with patch("moss_connector_mongodb.connector.MongoClient", return_value=fake_mongo), patch(
+        "moss_connector_mongodb.ingest.MossClient", return_value=fake_moss
+    ):
+        source = MongoDBConnector(
+            uri="mongodb://localhost",
+            database="shop",
+            collection="articles",
+            mapper=lambda r: DocumentInfo(
+                id=str(r["_id"]),
+                text=r["body"],
+                metadata={"title": r["title"]},
+            ),
+        )
+        await ingest(source, "fake_id", "fake_key", index_name="articles", auto_id=True)
+
+    moss_docs = fake_moss.calls[0]["docs"]
+    assert len(moss_docs) == 2
+    assert all(doc.id not in {"a1", "a2"} for doc in moss_docs)
+    for doc in moss_docs:
+        assert uuid.UUID(doc.id)
+    assert [doc.text for doc in moss_docs] == ["Refunds take 3-5 days.", "We ship within 24 hours."]
+    assert [doc.metadata for doc in moss_docs] == [
+        {"title": "Refund policy"},
+        {"title": "Shipping"},
+    ]
 
 
 async def test_mongodb_forwards_filter_and_projection():

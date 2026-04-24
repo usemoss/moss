@@ -36,7 +36,6 @@ async def main():
         project_id="your_project_id",
         project_key="your_project_key",
         index_name="articles",
-        auto_id=False,
     )
     print(f"copied {result.doc_count} rows")
 

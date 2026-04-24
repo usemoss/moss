@@ -29,7 +29,6 @@ await ingest(
     project_id="...",
     project_key="...",
     index_name="articles",
-    auto_id=False,
 )
 ```
 
