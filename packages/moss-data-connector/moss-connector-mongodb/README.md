@@ -42,6 +42,8 @@ async def main():
 asyncio.run(main())
 ```
 
+Use `auto_id=True` when your mapper does not have a stable primary key and you want Moss to generate UUID document IDs.
+
 MongoDB's `_id` is a `bson.ObjectId`. Wrap it with `str()` in your mapper to render the hex string.
 
 ## Layout

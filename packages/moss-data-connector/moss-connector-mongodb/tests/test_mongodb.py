@@ -5,10 +5,10 @@ we patch `moss.MossClient` inside ingest so no Moss network call is made.
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import MagicMock, patch
-import uuid
 
 import pytest
 

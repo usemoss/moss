@@ -24,13 +24,10 @@ source = SQLiteConnector(
     mapper=lambda r: DocumentInfo(id=str(r["id"]), text=r["body"], metadata={"title": r["title"]}),
 )
 
-await ingest(
-    source,
-    project_id="...",
-    project_key="...",
-    index_name="articles",
-)
+await ingest(source, project_id="...", project_key="...", index_name="articles")
 ```
+
+Use `auto_id=True` when your mapper does not have a stable primary key and you want Moss to generate UUID document IDs.
 
 
 ## Available connectors

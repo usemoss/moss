@@ -39,6 +39,8 @@ async def main():
 asyncio.run(main())
 ```
 
+Use `auto_id=True` when your mapper does not have a stable primary key and you want Moss to generate UUID document IDs.
+
 ## Layout
 
 ```

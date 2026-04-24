@@ -25,12 +25,7 @@ async def ingest(
     model_id: str | None = None,
     auto_id: bool = False,
 ) -> MutationResult | None:
-    """Copy every `DocumentInfo` from `source` into a fresh Moss index.
-
-    When `auto_id=True`, ingest() replaces mapper-provided IDs with fresh
-    UUID strings. This allows ingestion of sources without a natural primary
-    key while preserving the original document text, metadata, and embeddings.
-    """
+    """Copy every `DocumentInfo` from `source` into a fresh Moss index."""
     docs = list(source)
     if not docs:
         return None
