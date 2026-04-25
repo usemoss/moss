@@ -1,13 +1,13 @@
-# Claude Code + Cognee + Moss on Daytona — Shared Memory Demo
+# Claude Code + Cognee + Moss on Daytona: Shared Memory Demo
 
-Three Claude Code agents explore a Git repository in sequence, sharing a persistent memory graph powered by [Cognee](https://github.com/topoteretes/cognee) and [Moss](https://moss.dev), all running inside isolated [Daytona](https://daytona.io) sandboxes.
+Three Claude Code agents explore a Git repository in sequence, sharing a persistent memory graph powered by [Cognee](https://github.com/topoteretes/cognee) and in-process vector search [Moss](https://moss.dev), all running inside isolated [Daytona](https://daytona.io) sandboxes.
 
 **What happens:**
 
 1. A shared Daytona volume is created as a snapshot bucket
-2. Three agents run sequentially — `arch`, `api`, `tests` — each in its own sandbox
+2. Three agents run sequentially: `arch`, `api`, `tests`: each in its own sandbox
 3. Each agent syncs in the previous snapshot, runs Claude Code with the Cognee plugin, then syncs its updated state back out
-4. Vectors are stored and searched in Moss (cloud); SQLite/Kuzu graph DBs live on local sandbox block storage
+4. Vectors are stored and searched in Moss; SQLite/Kuzu graph DBs live on local sandbox block storage
 5. After all agents finish, an inspector sandbox reads the shared graph and prints row counts
 
 ```
@@ -25,13 +25,13 @@ edges: 189
 
 ---
 
-## Why this architecture
+## How it works
 
-**No separate Cognee sandbox:** Daytona's public preview proxy rejects sandbox-to-sandbox traffic (`Connection reset by peer`), even with `public=True`.
+**Cognee runs in-process per agent.** Each Daytona sandbox runs Cognee locally, keeping graph extraction fast and self-contained. Cognee's knowledge graph (SQLite/Kuzu) lives on the sandbox's block storage for reliable read/write performance.
 
-**No volume-mounted databases:** Daytona volumes use mountpoint-s3 (FUSE). SQLite, Kuzu, and LanceDB all require random writes and file locking — mountpoint-s3 explicitly doesn't support these (`disk I/O error` on `CREATE TABLE`).
+**Moss provides the shared vector layer.** All agents point at the same Moss project. Vectors written by the `arch` agent are immediately queryable by `api` and `tests` — no extra infrastructure needed. Moss is what makes search genuinely cross-agent.
 
-**What works:** Each agent runs Cognee in-process against local block storage. After the agent finishes, the state directory is tar'd into the volume as a single object (whole-object S3 writes are exactly what mountpoint-s3 is built for). The next agent extracts it before starting.
+**Daytona volumes carry the graph snapshot.** After each agent finishes, the local Cognee state is archived to a Daytona volume as a single tar. The next agent extracts it before starting, so the full knowledge graph (not just vectors) is preserved across sandboxes. Daytona's S3-backed volumes are ideal for this whole-object handoff pattern.
 
 ---
 
@@ -82,7 +82,7 @@ python main.py --keep-volume
 
 ## How Moss is used
 
-Each agent stores and retrieves memories via the [cognee-community-vector-adapter-moss](https://pypi.org/project/cognee-community-vector-adapter-moss/) package, which registers Moss as Cognee's vector database backend:
+Each agent stores and retrieves data via the [cognee-community-vector-adapter-moss](https://pypi.org/project/cognee-community-vector-adapter-moss/) package, which registers Moss as Cognee's vector database backend:
 
 ```python
 # Registered automatically in every sandbox via sitecustomize.py
@@ -104,8 +104,8 @@ Vectors are stored in Moss and persist across agent sandboxes. The SQLite/Kuzu g
 
 Each agent runs with the [cognee-memory Claude Code plugin](https://github.com/topoteretes/cognee-integrations/tree/main/integrations/claude-code) via `--plugin-dir`. Agents use two slash commands:
 
-- `/cognee-memory:cognee-remember` — store findings in the shared graph
-- `/cognee-memory:cognee-search` — recall what earlier agents stored
+- `/cognee-memory:cognee-remember`: store findings in the shared graph
+- `/cognee-memory:cognee-search`: recall what earlier agents stored
 
 The plugin's `SessionStart` hook timeout is bumped to 90 seconds (from the default 15) to accommodate Cognee's cold-import time on first run.
 
@@ -115,7 +115,7 @@ The plugin's `SessionStart` hook timeout is bumped to 90 seconds (from the defau
 
 ```
 moss-cognee-daytona/
-└── main.py     # entrypoint — volume setup, sandbox orchestration, agent tasks, graph inspection
+└── main.py     # entrypoint: volume setup, sandbox orchestration, agent tasks, graph inspection
 ```
 
 ---
