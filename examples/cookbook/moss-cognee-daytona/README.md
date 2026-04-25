@@ -117,3 +117,7 @@ The plugin's `SessionStart` hook timeout is bumped to 90 seconds (from the defau
 moss-cognee-daytona/
 └── main.py     # entrypoint — volume setup, sandbox orchestration, agent tasks, graph inspection
 ```
+
+---
+
+New to Moss? See the [Moss Portal Quickstart](PORTAL_QUICKSTART.md) to get from zero to your first query in under 5 minutes.
