@@ -1,0 +1,19 @@
+[project]
+name = "moss-cognee-daytona"
+version = "0.1.0"
+description = "Claude Code + Cognee + Moss on Daytona: shared memory demo"
+requires-python = ">=3.11"
+dependencies = [
+    "daytona>=0.168.0",
+    "python-dotenv>=1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["main.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
