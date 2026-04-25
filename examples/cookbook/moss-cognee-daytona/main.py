@@ -37,7 +37,7 @@ Prerequisites:
         MOSS_PROJECT_KEY    - https://moss.dev
 
 Usage:
-    python distributed/deploy/daytona_onboarding_demo.py \\
+    python examples/cookbook/moss-cognee-daytona/main.py \\
         --repo https://github.com/topoteretes/cognee
 """
 
