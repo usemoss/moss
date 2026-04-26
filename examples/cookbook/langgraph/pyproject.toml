@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["create_index.py", "moss_langgraph.py", "test_integration.py"]
+packages = ["create_index.py", "moss_langgraph.py"]
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -28,5 +28,4 @@ include = [
     "README.md",
     "create_index.py",
     "moss_langgraph.py",
-    "test_integration.py",
 ]

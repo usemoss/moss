@@ -254,9 +254,13 @@ async def run_langgraph_agent(
             print("Goodbye!")
             break
 
-        raw_filter = input(
-            "Metadata filter (optional, field=value): "
-        ).strip()
+        try:
+            raw_filter = input(
+                "Metadata filter (optional, field=value): "
+            ).strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nGoodbye!")
+            break
 
         try:
             metadata_filter = _parse_filter_eq(raw_filter or None)
