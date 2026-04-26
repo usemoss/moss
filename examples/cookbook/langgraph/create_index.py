@@ -82,11 +82,11 @@ async def main() -> None:
 
     print("Suggested live tests:")
     print(
-        "python .\\examples\\cookbook\\langgraph\\moss_langgraph.py "
+        "python examples/cookbook/langgraph/moss_langgraph.py "
         '--question "What is the refund policy?"'
     )
     print(
-        "python .\\examples\\cookbook\\langgraph\\moss_langgraph.py "
+        "python examples/cookbook/langgraph/moss_langgraph.py "
         '--question "What is the refund policy?" --filter-eq category=returns'
     )
 
