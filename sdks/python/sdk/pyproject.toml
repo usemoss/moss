@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moss"
-version = "1.0.0b19"
+version = "1.0.0"
 description = "Python SDK for semantic search with on-device AI capabilities"
 readme = "README.md"
 license-files = ["LICENSE"]
@@ -13,7 +13,7 @@ authors = [
 ]
 keywords = ["search", "semantic", "embeddings", "vector", "usemoss", "moss"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

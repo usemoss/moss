@@ -109,7 +109,7 @@ Moss isn't a database! It's a **search runtime**. You don't manage clusters, tun
 
 ## Features
 
-- **Sub-10 ms semantic search** - p99 of 8 ms
+- **Sub-10 ms semantic search** - p99 of 5.4 ms (see benchmarks above)
 - **Built-in embedding models** - no OpenAI key required (or bring your own)
 - **Metadata filtering** - filter by `$eq`, `$and`, `$in`, `$near` operators
 - **Document management** - add, upsert, retrieve, and delete documents
