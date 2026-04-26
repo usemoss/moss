@@ -19,3 +19,13 @@
 **Context:** The Python plugin (`semantic-kernel-moss`) is the reference implementation. The .NET version would follow the same pattern: single `Search` kernel function, constructor-configured `MossClient`, pre-loaded index. Key decisions: whether to use the .NET Moss SDK (if it exists) or wrap the Python SDK, and how to handle the async index loading lifecycle in C#.
 
 **Depends on:** Python plugin shipped and validated by users.
+
+## Streaming/batched ingest for large tables
+
+**What:** Change shared `ingest.py` to pass iterables directly or batch in chunks instead of `list(source)`.
+
+**Why:** Current `list()` call loads entire dataset into memory. For 1M+ row tables, that's 1GB+ RAM.
+
+**Context:** The connector `__iter__` already streams correctly. The bottleneck is the shared `ingest.py` doing eager collection. Fix would be ~5 lines but affects all connectors (SQLite, MongoDB, DynamoDB).
+
+**Depends on:** Checking if `MossClient.create_index()` accepts iterables.
