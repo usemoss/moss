@@ -21,7 +21,7 @@ doc_app = typer.Typer(name="doc", help="Manage documents in an index")
 
 def _client(ctx: typer.Context) -> MossClient:
     pid, pkey = resolve_credentials(
-        ctx.obj.get("project_id"), ctx.obj.get("project_key")
+        ctx.obj.get("project_id"), ctx.obj.get("project_key"), ctx.obj.get("profile")
     )
     return MossClient(pid, pkey)
 
@@ -31,12 +31,17 @@ def add(
     ctx: typer.Context,
     index_name: str = typer.Argument(..., help="Index name"),
     file: str = typer.Option(..., "--file", "-f", help="Path to JSON/CSV document file, or '-' for stdin"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
     upsert: bool = typer.Option(False, "--upsert", "-u", help="Update existing documents"),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
 ) -> None:
     """Add documents to an index."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
     client = _client(ctx)
     docs = load_documents(file)
 
@@ -60,11 +65,16 @@ def delete(
     ctx: typer.Context,
     index_name: str = typer.Argument(..., help="Index name"),
     ids: str = typer.Option(..., "--ids", "-i", help="Comma-separated document IDs"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
 ) -> None:
     """Delete documents from an index by ID."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
     client = _client(ctx)
     doc_ids = [i.strip() for i in ids.split(",") if i.strip()]
 
@@ -87,9 +97,14 @@ def get(
     ctx: typer.Context,
     index_name: str = typer.Argument(..., help="Index name"),
     ids: Optional[str] = typer.Option(None, "--ids", "-i", help="Comma-separated document IDs (omit for all)"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
 ) -> None:
     """Retrieve documents from an index."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
     client = _client(ctx)
 
     options = None

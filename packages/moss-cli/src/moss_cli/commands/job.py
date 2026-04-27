@@ -17,7 +17,7 @@ job_app = typer.Typer(name="job", help="Track background jobs")
 
 def _client(ctx: typer.Context) -> MossClient:
     pid, pkey = resolve_credentials(
-        ctx.obj.get("project_id"), ctx.obj.get("project_key")
+        ctx.obj.get("project_id"), ctx.obj.get("project_key"), ctx.obj.get("profile")
     )
     return MossClient(pid, pkey)
 
@@ -26,11 +26,16 @@ def _client(ctx: typer.Context) -> MossClient:
 def status(
     ctx: typer.Context,
     job_id: str = typer.Argument(..., help="Job ID"),
+    profile: str | None = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
     wait: bool = typer.Option(False, "--wait", "-w", help="Poll until job completes"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
 ) -> None:
     """Get the status of a background job."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
     client = _client(ctx)
 
     if wait:

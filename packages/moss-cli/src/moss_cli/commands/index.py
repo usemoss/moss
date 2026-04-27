@@ -21,7 +21,7 @@ index_app = typer.Typer(name="index", help="Manage indexes")
 
 def _client(ctx: typer.Context) -> MossClient:
     pid, pkey = resolve_credentials(
-        ctx.obj.get("project_id"), ctx.obj.get("project_key")
+        ctx.obj.get("project_id"), ctx.obj.get("project_key"), ctx.obj.get("profile")
     )
     return MossClient(pid, pkey)
 
@@ -32,11 +32,16 @@ def create(
     name: str = typer.Argument(..., help="Index name"),
     file: str = typer.Option(..., "--file", "-f", help="Path to JSON/CSV document file, or '-' for stdin"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Model ID (default: moss-minilm)"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
 ) -> None:
     """Create a new index with documents."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
     client = _client(ctx)
     docs = load_documents(file)
 
@@ -51,9 +56,16 @@ def create(
 
 
 @index_app.command(name="list")
-def list_indexes(ctx: typer.Context) -> None:
+def list_indexes(
+    ctx: typer.Context,
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
+) -> None:
     """List all indexes."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
     client = _client(ctx)
     indexes = asyncio.run(client.list_indexes())
     output.print_index_table(indexes, json_mode=json_mode)
@@ -63,9 +75,14 @@ def list_indexes(ctx: typer.Context) -> None:
 def get(
     ctx: typer.Context,
     name: str = typer.Argument(..., help="Index name"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
 ) -> None:
     """Get details of an index."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
     client = _client(ctx)
     info = asyncio.run(client.get_index(name))
     output.print_index_detail(info, json_mode=json_mode)
@@ -75,10 +92,15 @@ def get(
 def delete(
     ctx: typer.Context,
     name: str = typer.Argument(..., help="Index name"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
 ) -> None:
     """Delete an index."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
     if not confirm and not json_mode:
         typer.confirm(f"Delete index '{name}'?", abort=True)
 

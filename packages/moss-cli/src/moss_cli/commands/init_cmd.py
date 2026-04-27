@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -10,24 +11,36 @@ from rich.prompt import Prompt
 
 from moss import MossClient
 
-from ..config import get_config_path, load_config, save_config
+from ..config import (
+    get_config_path,
+    get_profile_credentials,
+    get_selected_profile,
+    set_profile_credentials,
+)
 
 console = Console()
 
 
 def init_command(
+    ctx: typer.Context,
     force: bool = typer.Option(False, "--force", help="Overwrite existing config"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Profile name to save credentials under"
+    ),
 ) -> None:
     """Save project credentials to ~/.moss/config.json."""
     path = get_config_path()
-    if path.exists() and not force:
-        existing = load_config()
-        if existing.get("project_id"):
-            console.print(f"[yellow]Config already exists at {path}[/yellow]")
-            console.print(f"  Project ID: {existing['project_id'][:8]}...")
-            overwrite = Prompt.ask("Overwrite?", choices=["y", "n"], default="n")
-            if overwrite != "y":
-                raise typer.Abort()
+    selected_profile = profile or ctx.obj.get("profile") or get_selected_profile()
+
+    existing_pid, _ = get_profile_credentials(selected_profile)
+    if path.exists() and existing_pid and not force:
+        console.print(f"[yellow]Config already exists at {path}[/yellow]")
+        console.print(
+            f"  Profile '{selected_profile}' Project ID: {existing_pid[:8]}..."
+        )
+        overwrite = Prompt.ask("Overwrite?", choices=["y", "n"], default="n")
+        if overwrite != "y":
+            raise typer.Abort()
 
     project_id = Prompt.ask("Project ID")
     project_key = Prompt.ask("Project Key", password=True)
@@ -48,5 +61,7 @@ def init_command(
         if save_anyway != "y":
             raise typer.Exit(1)
 
-    save_config({"project_id": project_id, "project_key": project_key})
-    console.print(f"[green]Config saved to {path}[/green]")
+    set_profile_credentials(selected_profile, project_id, project_key)
+    console.print(
+        f"[green]Config saved to {path}[/green] (profile: [cyan]{selected_profile}[/cyan])"
+    )

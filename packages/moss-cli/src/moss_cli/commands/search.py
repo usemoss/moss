@@ -49,6 +49,9 @@ def query_command(
     ctx: typer.Context,
     index_name: str = typer.Argument(..., help="Index name"),
     query_text: Optional[str] = typer.Argument(None, help="Search query (reads from stdin if omitted)"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Credential profile name"
+    ),
     top_k: int = typer.Option(10, "--top-k", "-k", help="Number of results"),
     alpha: float = typer.Option(0.8, "--alpha", "-a", help="Semantic weight (0.0=keyword, 1.0=semantic)"),
     filter_json: Optional[str] = typer.Option(None, "--filter", help="Metadata filter as JSON string"),
@@ -62,6 +65,8 @@ def query_command(
 ) -> None:
     """Query an index. Downloads the index and queries on-device by default. Use --cloud to skip the download and query via the cloud API."""
     json_mode = ctx.obj.get("json_output", False)
+    if profile:
+        ctx.obj["profile"] = profile
 
     # Resolve query text from stdin when piped.
     # In interactive mode this becomes the initial query before entering the prompt loop.
@@ -88,7 +93,7 @@ def query_command(
             raise typer.Exit(1)
 
     pid, pkey = resolve_credentials(
-        ctx.obj.get("project_id"), ctx.obj.get("project_key")
+        ctx.obj.get("project_id"), ctx.obj.get("project_key"), ctx.obj.get("profile")
     )
     if cloud and parsed_filter:
         output.print_error(

@@ -47,18 +47,24 @@ Credentials are resolved in this order:
 
 1. **CLI flags**: `--project-id` and `--project-key`
 2. **Environment variables**: `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY`
-3. **Config file**: `~/.moss/config.json` (created by `moss init`)
+3. **Config profile**: selected by `--profile`, `MOSS_PROFILE`, or the active profile in `~/.moss/config.json`
 
 ```bash
 # Option 1: Interactive setup (recommended)
 moss init
+moss init --profile staging
 
 # Option 2: Environment variables
 export MOSS_PROJECT_ID="your-project-id"
 export MOSS_PROJECT_KEY="your-project-key"
+export MOSS_PROFILE="staging"
 
 # Option 3: Inline flags
 moss index list --project-id "..." --project-key "..."
+
+# Option 4: Profile-based usage
+moss index list --profile staging
+moss profile list
 ```
 
 ## Commands
@@ -74,6 +80,7 @@ moss index create my-index -f documents.json --wait
 
 # List all indexes
 moss index list
+moss index list --profile staging
 
 # Get index details
 moss index get my-index
@@ -157,6 +164,12 @@ moss version
 # Global JSON output
 moss index list --json
 moss doc get my-index --json
+
+# List available auth profiles
+moss profile list
+
+# Delete a profile
+moss profile delete staging --force
 ```
 
 ## Document File Format
@@ -195,6 +208,7 @@ cat docs.json | moss doc add my-index -f -
 |---|---|---|
 | `--project-id` | `-p` | Project ID (overrides env/config) |
 | `--project-key` | | Project key (overrides env/config) |
+| `--profile` | | Credential profile name (overrides `MOSS_PROFILE`) |
 | `--json` | | Machine-readable JSON output |
 | `--verbose` | `-v` | Enable debug logging |
 
