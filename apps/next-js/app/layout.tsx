@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Moss - Real-time Semantic Search",
@@ -18,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={plusJakartaSans.variable}>
+    <html lang="en" className={GeistSans.variable}>
+      <body>
         {children}
       </body>
     </html>
