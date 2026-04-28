@@ -1,21 +1,13 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react';
+import { useState, useTransition, useRef, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Plus, Trash2, CheckCircle2, Loader2,
-  Search, Zap, Database, AlertCircle, Ghost, Upload,
+  Search, Zap, Database, AlertCircle, Ghost, Upload, Settings,
 } from 'lucide-react';
 import { MossClient, DocumentInfo, SearchResult } from '@moss-dev/moss-web';
 
-
-const projectId = process.env.NEXT_PUBLIC_MOSS_PROJECT_ID ?? '';
-const projectKey = process.env.NEXT_PUBLIC_MOSS_PROJECT_KEY ?? '';
-
-if (!projectId || !projectKey) {
-  throw new Error('Missing NEXT_PUBLIC_MOSS_PROJECT_ID or NEXT_PUBLIC_MOSS_PROJECT_KEY');
-}
-const client = new MossClient(projectId, projectKey);
 
 const INITIAL_DOCS: DocumentInfo[] = [
   { id: 'doc-1', text: 'Moss is a semantic search runtime for conversational AI agents with sub-10ms retrieval latency at production scale.' },
@@ -39,6 +31,28 @@ function Skeleton() {
 }
 
 export default function MossDemo() {
+  // ── Credentials ────────────────────────────────────────────────────────────
+  const [credentials, setCredentials] = useState({ projectId: '', projectKey: '' });
+  const [credInput, setCredInput] = useState({ projectId: '', projectKey: '' });
+  const [showCreds, setShowCreds] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('moss_credentials');
+      if (saved) {
+        const p = JSON.parse(saved) as { projectId: string; projectKey: string };
+        if (p.projectId && p.projectKey) { setCredentials(p); setCredInput(p); setShowCreds(false); }
+      }
+    } catch {}
+  }, []);
+
+  const client = useMemo(() =>
+    credentials.projectId && credentials.projectKey
+      ? new MossClient(credentials.projectId, credentials.projectKey)
+      : null,
+    [credentials.projectId, credentials.projectKey]
+  );
+
   const [docs, setDocs] = useState<DocumentInfo[]>(INITIAL_DOCS);
   const [modifiedIds, setModifiedIds] = useState<Set<string>>(new Set(INITIAL_DOCS.map(d => d.id)));
   const indexNameRef = useRef(
@@ -50,6 +64,8 @@ export default function MossDemo() {
   const [buildMessage, setBuildMessage] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [topK, setTopK] = useState(5);
+  const [alpha, setAlpha] = useState(0.5);
   const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -99,6 +115,7 @@ export default function MossDemo() {
     setBuildMessage(null);
 
     startBuild(async () => {
+      if (!client) return;
       try {
         // Delete existing index first to avoid conflicts
         try { await client.deleteIndex(indexName); } catch {}
@@ -126,6 +143,7 @@ export default function MossDemo() {
     if (isIndexLoaded || isLoadingIndex) return;
 
     startLoadingIndex(async () => {
+      if (!client) return;
       try {
         await client.loadIndex(indexName);
         setIsIndexLoaded(true);
@@ -137,16 +155,11 @@ export default function MossDemo() {
 
   // ── Search ─────────────────────────────────────────────────────────────────
 
-  const handleSearch = async (e: { preventDefault(): void }) => {
-    e.preventDefault();
-    if (!searchQuery.trim() || isSearching || !isIndexLoaded) return;
-
-    setSearchError(null);
-    setHasSearched(true);
-
+  const runSearch = (query: string) => {
     startSearch(async () => {
+      if (!client) return;
       try {
-        const results = await client.query(indexName, searchQuery, { topK: 5 });
+        const results = await client.query(indexName, query, { topK, alpha });
         setSearchResults(results);
       } catch (error) {
         console.error('Moss Search Error:', error);
@@ -154,6 +167,29 @@ export default function MossDemo() {
         setSearchResults(null);
       }
     });
+  };
+
+  const handleSearch = async (e: { preventDefault(): void }) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || isSearching || !isIndexLoaded) return;
+    setSearchError(null);
+    setHasSearched(true);
+    runSearch(searchQuery);
+  };
+
+  useEffect(() => {
+    if (hasSearched && searchQuery.trim() && isIndexLoaded) runSearch(searchQuery);
+  }, [topK, alpha]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveCredentials = () => {
+    try { localStorage.setItem('moss_credentials', JSON.stringify(credInput)); } catch {}
+    setCredentials(credInput);
+    setBuildState('idle');
+    setBuildMessage(null);
+    setIsIndexLoaded(false);
+    setSearchResults(null);
+    setHasSearched(false);
+    setShowCreds(false);
   };
 
   const validDocCount = docs.filter(d => d.text.trim()).length;
@@ -187,6 +223,80 @@ export default function MossDemo() {
           </p>
         </header>
 
+        {!client ? (
+          // ── Connect screen ───────────────────────────────────────────────
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}>
+            <div className="panel" style={{ width: '100%', maxWidth: '460px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h2 className="panel-title">Connect your Moss account</h2>
+              <p style={{ fontSize: '0.875rem', opacity: 0.65, margin: 0 }}>
+                Enter your Project ID and Project Key to get started.
+              </p>
+              <input
+                className="doc-textarea"
+                style={{ padding: '0.5rem 0.75rem', borderRadius: '0.375rem' }}
+                placeholder="Project ID"
+                value={credInput.projectId}
+                onChange={e => setCredInput(p => ({ ...p, projectId: e.target.value }))}
+              />
+              <input
+                className="doc-textarea"
+                style={{ padding: '0.5rem 0.75rem', borderRadius: '0.375rem' }}
+                placeholder="Project Key"
+                type="password"
+                value={credInput.projectKey}
+                onChange={e => setCredInput(p => ({ ...p, projectKey: e.target.value }))}
+              />
+              <button
+                className="btn btn-primary build-button"
+                onClick={saveCredentials}
+                disabled={!credInput.projectId || !credInput.projectKey}
+              >
+                Connect
+              </button>
+              <p style={{ fontSize: '0.72rem', opacity: 0.45, margin: 0, textAlign: 'center' }}>
+                Stored in your browser only — never sent to any server.
+              </p>
+            </div>
+          </div>
+        ) : (
+          // ── Demo ─────────────────────────────────────────────────────────
+          <>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowCreds(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <Settings size={13} />
+                {showCreds ? 'Cancel' : 'Change credentials'}
+              </button>
+            </div>
+            {showCreds && (
+              <div className="panel" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+                <input
+                  className="doc-textarea"
+                  style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '0.375rem' }}
+                  placeholder="Project ID"
+                  value={credInput.projectId}
+                  onChange={e => setCredInput(p => ({ ...p, projectId: e.target.value }))}
+                />
+                <input
+                  className="doc-textarea"
+                  style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '0.375rem' }}
+                  placeholder="Project Key"
+                  type="password"
+                  value={credInput.projectKey}
+                  onChange={e => setCredInput(p => ({ ...p, projectKey: e.target.value }))}
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={saveCredentials}
+                  disabled={!credInput.projectId || !credInput.projectKey}
+                >
+                  Save
+                </button>
+              </div>
+            )}
         {/* Main grid */}
         <div className="demo-grid">
           {/* Left: Document editor */}
@@ -339,6 +449,36 @@ export default function MossDemo() {
               </div>
             </form>
 
+            {/* Query options */}
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', padding: '0.75rem 0', fontSize: '0.8rem', opacity: isIndexLoaded ? 1 : 0.4 }}>
+              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ opacity: 0.6, whiteSpace: 'nowrap' }}>Top K</span>
+                <input
+                  type="number"
+                  min={1} max={20}
+                  value={topK}
+                  onChange={e => setTopK(Math.max(1, Math.min(20, Number(e.target.value))))}
+                  disabled={!isIndexLoaded}
+                  style={{ width: '3.5rem', padding: '0.2rem 0.4rem', borderRadius: '0.25rem', border: '1px solid var(--border)', background: 'var(--input-bg, transparent)', color: 'inherit', textAlign: 'center' }}
+                />
+              </label>
+              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flex: 1 }}>
+                <span style={{ opacity: 0.6, whiteSpace: 'nowrap' }}>Keyword</span>
+                <input
+                  type="range"
+                  min={0} max={1} step={0.05}
+                  value={alpha}
+                  onChange={e => setAlpha(Number(e.target.value))}
+                  disabled={!isIndexLoaded}
+                  style={{ flex: 1, accentColor: 'var(--color-primary, #6366f1)' }}
+                />
+                <span style={{ opacity: 0.6, whiteSpace: 'nowrap' }}>Semantic</span>
+              </label>
+              <span style={{ opacity: 0.4, minWidth: '2.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                α {alpha.toFixed(2)}
+              </span>
+            </div>
+
             {/* Results */}
             <div className="results-container" aria-live="polite">
               {searchError && (
@@ -388,6 +528,8 @@ export default function MossDemo() {
             </div>
           </section>
         </div>
+          </>
+        )}
       </div>
 
       <footer>Made with ⚡ Moss</footer>
