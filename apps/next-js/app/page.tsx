@@ -169,17 +169,26 @@ export default function MossDemo() {
     });
   };
 
-  const handleSearch = async (e: { preventDefault(): void }) => {
+  // Keystroke search
+  useEffect(() => {
+    if (!isIndexLoaded || !searchQuery.trim()) return;
+    setSearchError(null);
+    setHasSearched(true);
+    runSearch(searchQuery);
+  }, [searchQuery, isIndexLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-run immediately when topK/alpha change (no debounce needed)
+  useEffect(() => {
+    if (hasSearched && searchQuery.trim() && isIndexLoaded) runSearch(searchQuery);
+  }, [topK, alpha]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSearch = (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!searchQuery.trim() || isSearching || !isIndexLoaded) return;
     setSearchError(null);
     setHasSearched(true);
     runSearch(searchQuery);
   };
-
-  useEffect(() => {
-    if (hasSearched && searchQuery.trim() && isIndexLoaded) runSearch(searchQuery);
-  }, [topK, alpha]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveCredentials = () => {
     try { localStorage.setItem('moss_credentials', JSON.stringify(credInput)); } catch {}
@@ -436,16 +445,12 @@ export default function MossDemo() {
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder={isIndexLoaded ? 'What would you like to know?' : 'Load index first…'}
+                  placeholder={isIndexLoaded ? 'Type to search…' : 'Load index first…'}
                   disabled={!isIndexLoaded}
                 />
-                <button
-                  type="submit"
-                  className="search-btn"
-                  disabled={isSearching || !isIndexLoaded || !searchQuery.trim()}
-                >
+                <div className="search-btn" style={{ pointerEvents: 'none' }}>
                   {isSearching ? <Loader2 className="spinner" size={14} /> : <Search size={14} />}
-                </button>
+                </div>
               </div>
             </form>
 

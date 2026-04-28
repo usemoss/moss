@@ -163,7 +163,7 @@ describe('MossDemo', () => {
       render(<MossDemo />)
       await doBuildIndex(user)
       await doLoadIndex(user)
-      expect(screen.getByPlaceholderText('What would you like to know?')).toBeEnabled()
+      expect(screen.getByPlaceholderText('Type to search…')).toBeEnabled()
     })
 
     it('disables the Load Index button after successful load', async () => {
@@ -190,8 +190,7 @@ describe('MossDemo', () => {
       render(<MossDemo />)
       await doBuildIndex(user)
       await doLoadIndex(user)
-      await user.type(screen.getByPlaceholderText('What would you like to know?'), 'latency')
-      await user.keyboard('{Enter}')
+      await user.type(screen.getByPlaceholderText('Type to search…'), 'latency')
       await waitFor(() =>
         expect(mockClient.query).toHaveBeenCalledWith(expect.any(String), 'latency', { topK: 5, alpha: 0.5 })
       )
@@ -208,8 +207,7 @@ describe('MossDemo', () => {
       render(<MossDemo />)
       await doBuildIndex(user)
       await doLoadIndex(user)
-      await user.type(screen.getByPlaceholderText('What would you like to know?'), 'latency')
-      await user.keyboard('{Enter}')
+      await user.type(screen.getByPlaceholderText('Type to search…'), 'latency')
       await waitFor(() => expect(screen.getByText('Moss is fast')).toBeInTheDocument())
       expect(screen.getByText('Vector search')).toBeInTheDocument()
       expect(screen.getByText(/95%/)).toBeInTheDocument()
@@ -220,8 +218,7 @@ describe('MossDemo', () => {
       render(<MossDemo />)
       await doBuildIndex(user)
       await doLoadIndex(user)
-      await user.type(screen.getByPlaceholderText('What would you like to know?'), 'xyz')
-      await user.keyboard('{Enter}')
+      await user.type(screen.getByPlaceholderText('Type to search…'), 'xyz')
       await waitFor(() =>
         expect(screen.getByText('No results found. Try a different query.')).toBeInTheDocument()
       )
@@ -233,8 +230,7 @@ describe('MossDemo', () => {
       render(<MossDemo />)
       await doBuildIndex(user)
       await doLoadIndex(user)
-      await user.type(screen.getByPlaceholderText('What would you like to know?'), 'latency')
-      await user.keyboard('{Enter}')
+      await user.type(screen.getByPlaceholderText('Type to search…'), 'latency')
       await waitFor(() =>
         expect(screen.getByText('search service unavailable')).toBeInTheDocument()
       )
