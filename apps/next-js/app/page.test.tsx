@@ -225,12 +225,12 @@ describe('MossDemo', () => {
     })
 
     it('shows error message when query rejects', async () => {
-      mockClient.query.mockRejectedValueOnce(new Error('search service unavailable'))
+      mockClient.query.mockRejectedValue(new Error('search service unavailable'))
       const user = userEvent.setup()
       render(<MossDemo />)
       await doBuildIndex(user)
       await doLoadIndex(user)
-      await user.type(screen.getByPlaceholderText('Type to search…'), 'latency')
+      await user.type(screen.getByPlaceholderText('Type to search…'), 'x')
       await waitFor(() =>
         expect(screen.getByText('search service unavailable')).toBeInTheDocument()
       )
