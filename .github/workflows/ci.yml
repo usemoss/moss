@@ -106,6 +106,9 @@ jobs:
       run: npm ci
     - name: Build
       working-directory: apps/next-js
+      env:
+        NEXT_PUBLIC_MOSS_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_MOSS_PROJECT_ID }}
+        NEXT_PUBLIC_MOSS_PROJECT_KEY: ${{ secrets.NEXT_PUBLIC_MOSS_PROJECT_KEY }}
       run: npm run build
     - name: Run tests
       working-directory: apps/next-js
