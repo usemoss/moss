@@ -1,28 +1,27 @@
 import '@testing-library/jest-dom'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi, describe, it, expect, beforeAll, beforeEach } from 'vitest'
+import { vi, describe, it, expect, beforeEach } from 'vitest'
 import MossDemo from './page'
 
 vi.mock('next/image', () => ({
   default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
 }))
 
-const mockClient = {
-  deleteIndex: vi.fn(),
-  createIndex: vi.fn(),
-  loadIndex: vi.fn(),
-  query: vi.fn(),
-}
-
-vi.mock('@moss-dev/moss-web', () => ({
-  MossClient: { create: vi.fn().mockResolvedValue(mockClient) },
-}))
-
-beforeAll(() => {
+const mockClient = vi.hoisted(() => {
   process.env.NEXT_PUBLIC_MOSS_PROJECT_ID = 'test-pid'
   process.env.NEXT_PUBLIC_MOSS_PROJECT_KEY = 'test-pkey'
+  return {
+    deleteIndex: vi.fn(),
+    createIndex: vi.fn(),
+    loadIndex: vi.fn(),
+    query: vi.fn(),
+  }
 })
+
+vi.mock('@moss-dev/moss-web', () => ({
+  MossClient: vi.fn().mockImplementation(() => mockClient),
+}))
 
 beforeEach(() => {
   vi.clearAllMocks()

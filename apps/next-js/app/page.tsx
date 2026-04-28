@@ -17,7 +17,6 @@ if (!projectId || !projectKey) {
 }
 const client = new MossClient(projectId, projectKey);
 
-
 const INITIAL_DOCS: DocumentInfo[] = [
   { id: 'doc-1', text: 'Moss is a semantic search runtime for conversational AI agents with sub-10ms retrieval latency at production scale.' },
   { id: 'doc-2', text: 'Vector embeddings transform text into high-dimensional vectors that capture semantic meaning and context relationships.' },
