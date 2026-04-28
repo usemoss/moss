@@ -8,23 +8,31 @@ vi.mock('next/image', () => ({
   default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
 }))
 
-const mockClient = vi.hoisted(() => {
-  process.env.NEXT_PUBLIC_MOSS_PROJECT_ID = 'test-pid'
-  process.env.NEXT_PUBLIC_MOSS_PROJECT_KEY = 'test-pkey'
-  return {
-    deleteIndex: vi.fn(),
-    createIndex: vi.fn(),
-    loadIndex: vi.fn(),
-    query: vi.fn(),
-  }
-})
+const mockClient = vi.hoisted(() => ({
+  deleteIndex: vi.fn(),
+  createIndex: vi.fn(),
+  loadIndex: vi.fn(),
+  query: vi.fn(),
+}))
 
 vi.mock('@moss-dev/moss-web', () => ({
   MossClient: vi.fn().mockImplementation(() => mockClient),
 }))
 
+const localStorageMock = (() => {
+  let store: Record<string, string> = {}
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => { store[key] = value },
+    removeItem: (key: string) => { delete store[key] },
+    clear: () => { store = {} },
+  }
+})()
+vi.stubGlobal('localStorage', localStorageMock)
+
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorageMock.setItem('moss_credentials', JSON.stringify({ projectId: 'test-pid', projectKey: 'test-pkey' }))
   mockClient.deleteIndex.mockResolvedValue(undefined)
   mockClient.createIndex.mockResolvedValue(undefined)
   mockClient.loadIndex.mockResolvedValue(undefined)
@@ -177,7 +185,7 @@ describe('MossDemo', () => {
   })
 
   describe('handleSearch', () => {
-    it('calls query with the search term and topK: 5', async () => {
+    it('calls query with the search term, topK: 5, and alpha: 0.5', async () => {
       const user = userEvent.setup()
       render(<MossDemo />)
       await doBuildIndex(user)
@@ -185,7 +193,7 @@ describe('MossDemo', () => {
       await user.type(screen.getByPlaceholderText('What would you like to know?'), 'latency')
       await user.keyboard('{Enter}')
       await waitFor(() =>
-        expect(mockClient.query).toHaveBeenCalledWith(expect.any(String), 'latency', { topK: 5 })
+        expect(mockClient.query).toHaveBeenCalledWith(expect.any(String), 'latency', { topK: 5, alpha: 0.5 })
       )
     })
 
