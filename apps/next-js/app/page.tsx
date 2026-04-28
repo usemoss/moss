@@ -6,34 +6,19 @@ import {
   Plus, Trash2, CheckCircle2, Loader2,
   Search, Zap, Database, AlertCircle, Ghost, Upload,
 } from 'lucide-react';
-import type { DocInput } from './actions';
-import type { MossClient } from '@moss-dev/moss-web';
+import { MossClient, DocumentInfo, SearchResult } from '@moss-dev/moss-web';
 
-// ── Moss client singleton (browser-only, lazy) ─────────────────────────────
 
-let _clientPromise: Promise<MossClient> | null = null;
+const projectId = process.env.NEXT_PUBLIC_MOSS_PROJECT_ID ?? '';
+const projectKey = process.env.NEXT_PUBLIC_MOSS_PROJECT_KEY ?? '';
 
-function getMossClient(): Promise<MossClient> {
-  if (!_clientPromise) {
-    _clientPromise = (async () => {
-      const { MossClient } = await import('@moss-dev/moss-web');
-      const projectId = process.env.NEXT_PUBLIC_MOSS_PROJECT_ID ?? '';
-      const projectKey = process.env.NEXT_PUBLIC_MOSS_PROJECT_KEY ?? '';
-      if (!projectId || !projectKey) {
-        throw new Error('Missing NEXT_PUBLIC_MOSS_PROJECT_ID or NEXT_PUBLIC_MOSS_PROJECT_KEY');
-      }
-      return MossClient.create(projectId, projectKey);
-    })().catch(err => {
-      _clientPromise = null; // allow retry on next call
-      throw err;
-    });
-  }
-  return _clientPromise;
+if (!projectId || !projectKey) {
+  throw new Error('Missing NEXT_PUBLIC_MOSS_PROJECT_ID or NEXT_PUBLIC_MOSS_PROJECT_KEY');
 }
+const client = new MossClient(projectId, projectKey);
 
-// ── Constants ──────────────────────────────────────────────────────────────
 
-const INITIAL_DOCS: DocInput[] = [
+const INITIAL_DOCS: DocumentInfo[] = [
   { id: 'doc-1', text: 'Moss is a semantic search runtime for conversational AI agents with sub-10ms retrieval latency at production scale.' },
   { id: 'doc-2', text: 'Vector embeddings transform text into high-dimensional vectors that capture semantic meaning and context relationships.' },
   { id: 'doc-3', text: 'Retrieval-Augmented Generation combines vector search with large language models for accurate, grounded responses.' },
@@ -55,7 +40,7 @@ function Skeleton() {
 }
 
 export default function MossDemo() {
-  const [docs, setDocs] = useState<DocInput[]>(INITIAL_DOCS);
+  const [docs, setDocs] = useState<DocumentInfo[]>(INITIAL_DOCS);
   const [modifiedIds, setModifiedIds] = useState<Set<string>>(new Set(INITIAL_DOCS.map(d => d.id)));
   const indexNameRef = useRef(
     `demo-index-${globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)}`
@@ -66,7 +51,7 @@ export default function MossDemo() {
   const [buildMessage, setBuildMessage] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -116,10 +101,9 @@ export default function MossDemo() {
 
     startBuild(async () => {
       try {
-        const c = await getMossClient();
         // Delete existing index first to avoid conflicts
-        try { await c.deleteIndex(indexName); } catch {}
-        await c.createIndex(indexName, docsToBuild, { modelId: 'moss-minilm' });
+        try { await client.deleteIndex(indexName); } catch {}
+        await client.createIndex(indexName, docsToBuild, { modelId: 'moss-minilm' });
         setBuildState('done');
         setModifiedIds(prev => {
           const next = new Set(prev);
@@ -127,7 +111,7 @@ export default function MossDemo() {
           return next;
         });
         setIsIndexLoaded(false);
-        setSearchResults([]);
+        setSearchResults(null);
         setHasSearched(false);
       } catch (error) {
         console.error('Build index error:', error);
@@ -144,8 +128,7 @@ export default function MossDemo() {
 
     startLoadingIndex(async () => {
       try {
-        const c = await getMossClient();
-        await c.loadIndex(indexName);
+        await client.loadIndex(indexName);
         setIsIndexLoaded(true);
       } catch (error) {
         setSearchError(error instanceof Error ? error.message : 'Failed to load index');
@@ -164,18 +147,12 @@ export default function MossDemo() {
 
     startSearch(async () => {
       try {
-        const c = await getMossClient();
-        const results = await c.query(indexName, searchQuery, { topK: 5 });
-        setSearchResults(results.docs.map(doc => ({
-          id: doc.id,
-          text: doc.text,
-          score: doc.score,
-          metadata: doc.metadata,
-        })));
+        const results = await client.query(indexName, searchQuery, { topK: 5 });
+        setSearchResults(results);
       } catch (error) {
         console.error('Moss Search Error:', error);
         setSearchError(error instanceof Error ? error.message : 'An unknown error occurred');
-        setSearchResults([]);
+        setSearchResults(null);
       }
     });
   };
@@ -380,7 +357,7 @@ export default function MossDemo() {
                 </div>
               )}
 
-              {!isSearching && searchResults.map((result) => (
+              {!isSearching && searchResults?.docs.map((result) => (
                 <div
                   key={result.id}
                   className="result-item"
@@ -396,7 +373,7 @@ export default function MossDemo() {
                 </div>
               ))}
 
-              {!isSearching && hasSearched && searchResults.length === 0 && !searchError && (
+              {!isSearching && hasSearched && !searchResults?.docs.length && !searchError && (
                 <div className="empty-state">
                   <Ghost size={40} />
                   <p className="empty-text">No results found. Try a different query.</p>
