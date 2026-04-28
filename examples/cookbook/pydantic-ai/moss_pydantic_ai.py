@@ -1,16 +1,10 @@
 from __future__ import annotations
-
-import asyncio
-import logging
 from collections.abc import Sequence
 from typing import Any
-
 from moss import MossClient, QueryOptions
 from pydantic_ai import Tool
 
 __all__ = ["MossSearchTool", "as_tool"]
-
-logger = logging.getLogger("moss_pydantic_ai")
 
 
 class MossSearchTool:
@@ -36,22 +30,11 @@ class MossSearchTool:
         )
         self._top_k = top_k
         self._alpha = alpha
-        self._index_loaded = False
-        self._load_lock = asyncio.Lock()
         self._tool_obj = self._build_tool()
 
     async def load_index(self) -> None:
-        """Pre-load the Moss index into memory for fast queries.
-
-        Safe to call multiple times; only the first call triggers loading.
-        """
-        async with self._load_lock:
-            if self._index_loaded:
-                return
-            logger.info("Loading Moss index '%s'", self._index_name)
-            await self._client.load_index(self._index_name)
-            self._index_loaded = True
-            logger.info("Moss index '%s' ready", self._index_name)
+        """Pre-load the Moss index into memory for fast queries."""
+        await self._client.load_index(self._index_name)
 
     async def search(self, query: str) -> str:
         """Query the Moss index and return formatted results."""
@@ -59,11 +42,6 @@ class MossSearchTool:
             self._index_name,
             query,
             QueryOptions(top_k=self._top_k, alpha=self._alpha),
-        )
-        logger.info(
-            "Moss query returned %d docs in %sms",
-            len(result.docs),
-            result.time_taken_ms,
         )
         return self._format_results(result.docs)
 

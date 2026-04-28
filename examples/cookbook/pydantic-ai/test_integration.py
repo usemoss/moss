@@ -50,7 +50,6 @@ class TestMossSearchToolInit(unittest.TestCase):
         self.assertEqual(tool._top_k, 5)
         self.assertAlmostEqual(tool._alpha, 0.8)
         self.assertEqual(tool._tool_name, "moss_search")
-        self.assertFalse(tool._index_loaded)
 
     @patch("moss_pydantic_ai.MossClient")
     def test_custom_values(self, mock_client_cls):
@@ -85,7 +84,7 @@ class TestMossSearchToolInit(unittest.TestCase):
 class TestLoadIndex(unittest.IsolatedAsyncioTestCase):
     """Tests for load_index()."""
 
-    async def test_load_index_sets_flag(self):
+    async def test_load_index_calls_client(self):
         client = MagicMock()
         client.load_index = AsyncMock()
         tool = MossSearchTool(client=client, index_name="idx")
@@ -93,9 +92,8 @@ class TestLoadIndex(unittest.IsolatedAsyncioTestCase):
         await tool.load_index()
 
         client.load_index.assert_awaited_once_with("idx")
-        self.assertTrue(tool._index_loaded)
 
-    async def test_load_index_only_loads_once(self):
+    async def test_load_index_calls_client_each_time(self):
         client = MagicMock()
         client.load_index = AsyncMock()
         tool = MossSearchTool(client=client, index_name="idx")
@@ -103,7 +101,7 @@ class TestLoadIndex(unittest.IsolatedAsyncioTestCase):
         await tool.load_index()
         await tool.load_index()
 
-        client.load_index.assert_awaited_once()
+        self.assertEqual(client.load_index.await_count, 2)
 
 
 # ---------------------------------------------------------------------------
@@ -146,13 +144,17 @@ class TestSearch(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(output, "No relevant results found.")
 
-    async def test_search_raises_if_not_loaded(self):
+    async def test_search_queries_without_preload(self):
         client = MagicMock()
+        client.query = AsyncMock(
+            return_value=_mock_search_result([_mock_doc("fallback result", 0.88, "d1")])
+        )
         tool = MossSearchTool(client=client, index_name="idx")
 
-        with self.assertRaises(RuntimeError) as ctx:
-            await tool.search("test")
-        self.assertIn("not loaded", str(ctx.exception))
+        output = await tool.search("test")
+
+        client.query.assert_awaited_once()
+        self.assertIn("fallback result", output)
 
     async def test_search_includes_metadata_source(self):
         client = MagicMock()
