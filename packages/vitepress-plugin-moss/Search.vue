@@ -3,9 +3,9 @@ import { ref, shallowRef, computed, nextTick, watch, onBeforeUnmount, onMounted 
 import { useData, useRouter } from 'vitepress'
 import { onKeyStroke, useScrollLock, useInfiniteScroll } from '@vueuse/core'
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap'
-import type { SearchResult, QueryResultDocumentInfo } from '@inferedge/moss'
+import type { SearchResult, QueryResultDocumentInfo } from '@moss-dev/moss-web'
 import SearchButton from './SearchButton.vue'
-import mossLogo from './InferEdgeLogo_Dark_Icon.png'
+import mossLogo from './MossLogo_Dark_Icon.png'
 
 // --------- Metadata structure for Search Results ---------
 interface MossMetadata {
@@ -292,7 +292,7 @@ async function initMoss() {
   status.value = 'initializing'
   initPromise = (async () => {
     try {
-      const { MossClient } = await import(/* @vite-ignore */ '@inferedge/moss')
+      const { MossClient } = await import(/* @vite-ignore */ '@moss-dev/moss-web')
       const client = new MossClient((options.value as any).projectId, (options.value as any).projectKey)
       mossClient.value = client
       status.value = 'ready'

@@ -2,11 +2,11 @@
 title: "MossClient (JS)"
 ---
 
-[**@inferedge/moss v1.0.0-beta.7**](../README.md)
+[**@moss-dev/moss-web v1.0.0**](../README.md)
 
 ***
 
-[@inferedge/moss](../globals.md) / MossClient
+[@moss-dev/moss-web](../globals.md) / MossClient
 
 # Class: MossClient
 
@@ -18,7 +18,7 @@ that run server-side and poll until complete.
 ## Example
 
 ```typescript
-import { MossClient } from '@inferedge/moss';
+import { MossClient } from '@moss-dev/moss-web';
 
 const client = new MossClient('your-project-id', 'your-project-key');
 

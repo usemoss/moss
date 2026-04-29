@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.0-beta.2] - 2026-04-28
+
+### Changed
+- Swapped runtime browser SDK from `@inferedge/moss` to `@moss-dev/moss-web
+
+---
+
 ## [1.0.0-beta.1] - 2026-03-05
 
 ### Added

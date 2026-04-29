@@ -2,9 +2,9 @@
 title: "JobPhase (Python)"
 ---
 
-[inferedge-moss v1.0.0b16](../README.md)
+[moss v1.0.0](../README.md)
 
-[inferedge-moss](../globals.md) / JobPhase
+[moss](../globals.md) / JobPhase
 
 # Interface: JobPhase
 

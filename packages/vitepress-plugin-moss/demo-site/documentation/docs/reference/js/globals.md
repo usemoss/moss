@@ -2,11 +2,11 @@
 search: false
 ---
 
-[**@inferedge/moss v1.0.0-beta.7**](README.md)
+[**@moss-dev/moss-web v1.0.0**](README.md)
 
 ***
 
-# @inferedge/moss v1.0.0-beta.7
+# @moss-dev/moss-web v1.0.0
 
 ## Classes
 
