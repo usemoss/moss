@@ -391,9 +391,12 @@ export default function MossDemo() {
               )}
 
               {buildState === 'done' && (
-                <div className="status-box status-success">
-                  <CheckCircle2 size={14} />
-                  <span>Index ready to search</span>
+                <div className="status-box status-success" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <CheckCircle2 size={14} />
+                    Index ready to search
+                  </span>
+                  <span style={{ fontSize: '0.72rem', opacity: 0.6, fontFamily: 'monospace' }}>{indexName}</span>
                 </div>
               )}
             </div>
