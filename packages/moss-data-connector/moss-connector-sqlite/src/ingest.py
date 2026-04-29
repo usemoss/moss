@@ -10,7 +10,7 @@ from moss import DocumentInfo, MossClient, MutationResult
 
 def _replace_doc_id(doc: DocumentInfo) -> DocumentInfo:
     return DocumentInfo(
-        id=str(uuid.uuid4())[:8],
+        id=str(uuid.uuid4()),
         text=doc.text,
         metadata=getattr(doc, "metadata", None),
         embedding=getattr(doc, "embedding", None),

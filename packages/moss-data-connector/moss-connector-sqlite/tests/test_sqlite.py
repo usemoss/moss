@@ -128,7 +128,8 @@ async def test_auto_id_replaces_mapper_id(sqlite_db, fake_client):
     assert len(docs) == 3
     original_ids = {"1", "2", "3"}
     for doc in docs:
-        assert len(doc.id) == 8
+        assert doc.id
+        assert uuid.UUID(doc.id)
         assert doc.id not in original_ids
     assert [doc.text for doc in docs] == [
         "Body for article 1",
