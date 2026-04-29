@@ -59,12 +59,13 @@ class TestLangGraphIntegration(unittest.IsolatedAsyncioTestCase):
             user_question="What is the refund policy?",
             metadata_filter={"field": "category", "condition": {"$eq": "returns"}},
             top_k=2,
+            alpha=0.6,
         )
 
         self.assertEqual(result["answer"], "Grounded answer")
         self.assertEqual(result["retrieval_time_ms"], 7)
-        self.assertEqual(len(result["retrieval_results"]), 1)
-        self.assertEqual(result["retrieval_results"][0]["id"], "faq-returns-1")
+        self.assertEqual(len(result["retrieval_results"].docs), 1)
+        self.assertEqual(result["retrieval_results"].docs[0].id, "faq-returns-1")
         self.assertIn("Refunds take 3 to 5 business days.", result["retrieval_context"])
 
         client.query.assert_awaited_once()
@@ -72,6 +73,7 @@ class TestLangGraphIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call_args[0], "idx")
         self.assertEqual(call_args[1], "What is the refund policy?")
         self.assertEqual(call_args[2].top_k, 2)
+        self.assertAlmostEqual(call_args[2].alpha, 0.6)
         self.assertEqual(
             call_args[2].filter,
             {"field": "category", "condition": {"$eq": "returns"}},
@@ -115,10 +117,12 @@ class TestLangGraphIntegration(unittest.IsolatedAsyncioTestCase):
             question="What is the refund policy?",
             filter_eq="category=returns",
             top_k=1,
+            alpha=0.7,
         )
 
         mock_client.load_index.assert_awaited_once_with("demo-index")
         mock_client.query.assert_awaited_once()
+        self.assertAlmostEqual(mock_client.query.await_args.args[2].alpha, 0.7)
         mock_groq_cls.assert_called_once_with(
             model="llama-3.3-70b-versatile",
             api_key="groq-key",

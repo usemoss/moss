@@ -11,7 +11,7 @@ from typing import Any, NotRequired, TypedDict
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langgraph.graph import END, START, StateGraph
-from moss import MossClient, QueryOptions
+from moss import MossClient, QueryOptions, SearchResult
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
@@ -22,22 +22,14 @@ SYSTEM_PROMPT = (
 )
 
 
-class RetrievedDoc(TypedDict):
-    """Minimal document shape stored in graph state after retrieval."""
-
-    id: str
-    text: str
-    score: float
-    metadata: dict[str, str]
-
-
 class LangGraphMossState(TypedDict):
     """State shared across the LangGraph nodes."""
 
     query: str
     metadata_filter: NotRequired[dict[str, Any] | None]
     top_k: NotRequired[int]
-    retrieval_results: NotRequired[list[RetrievedDoc]]
+    alpha: NotRequired[float | None]
+    retrieval_results: NotRequired[SearchResult]
     retrieval_context: NotRequired[str]
     retrieval_time_ms: NotRequired[int | None]
     answer: NotRequired[str]
@@ -68,16 +60,16 @@ def _parse_filter_eq(raw: str | None) -> dict[str, Any] | None:
     return {"field": field, "condition": {"$eq": value}}
 
 
-def _format_context(results: list[RetrievedDoc]) -> str:
-    if not results:
+def _format_context(result: SearchResult) -> str:
+    if not result.docs:
         return "No relevant Moss results were returned."
 
     blocks: list[str] = []
-    for idx, result in enumerate(results, start=1):
-        metadata = json.dumps(result["metadata"], sort_keys=True)
+    for idx, doc in enumerate(result.docs, start=1):
+        metadata = json.dumps(doc.metadata or {}, sort_keys=True)
         blocks.append(
-            f"[{idx}] id={result['id']} score={result['score']:.3f} "
-            f"metadata={metadata}\n{result['text']}"
+            f"[{idx}] id={doc.id} score={doc.score:.3f} "
+            f"metadata={metadata}\n{doc.text}"
         )
     return "\n\n".join(blocks)
 
@@ -126,30 +118,21 @@ def build_moss_graph(
         query = state["query"]
         metadata_filter = state.get("metadata_filter")
         top_k = state.get("top_k", 4)
+        alpha = state.get("alpha")
 
         result = await client.query(
             index_name,
             query,
             QueryOptions(
                 top_k=top_k,
-                alpha=0.8,
+                alpha=alpha,
                 filter=metadata_filter,
             ),
         )
 
-        retrieval_results: list[RetrievedDoc] = [
-            {
-                "id": doc.id,
-                "text": doc.text,
-                "score": doc.score,
-                "metadata": doc.metadata or {},
-            }
-            for doc in result.docs
-        ]
-
         return {
-            "retrieval_results": retrieval_results,
-            "retrieval_context": _format_context(retrieval_results),
+            "retrieval_results": result,
+            "retrieval_context": _format_context(result),
             "retrieval_time_ms": result.time_taken_ms,
         }
 
@@ -184,6 +167,7 @@ async def ask_question(
     user_question: str,
     metadata_filter: dict[str, Any] | None,
     top_k: int,
+    alpha: float | None,
 ) -> LangGraphMossState:
     """Run a single LangGraph invocation."""
     result = await graph.ainvoke(
@@ -191,20 +175,22 @@ async def ask_question(
             "query": user_question,
             "metadata_filter": metadata_filter,
             "top_k": top_k,
+            "alpha": alpha,
         }
     )
     return result
 
 
 def _print_response(result: LangGraphMossState) -> None:
-    docs = result.get("retrieval_results", [])
+    search_result = result.get("retrieval_results")
+    docs = search_result.docs if search_result is not None else []
     time_taken_ms = result.get("retrieval_time_ms")
     latency = f"{time_taken_ms}ms" if time_taken_ms is not None else "unknown time"
 
     print(f"\n[Moss returned {len(docs)} docs in {latency}]")
     if docs:
         for doc in docs:
-            print(f"- {doc['id']} (score={doc['score']:.3f})")
+            print(f"- {doc.id} (score={doc.score:.3f})")
     print(f"\nAssistant: {result.get('answer', 'No answer generated.')}\n")
 
 
@@ -212,6 +198,7 @@ async def run_langgraph_agent(
     question: str | None = None,
     filter_eq: str | None = None,
     top_k: int = 4,
+    alpha: float | None = None,
 ) -> None:
     """Run the LangGraph example in single-shot or interactive mode."""
     project_id = _require_env("MOSS_PROJECT_ID")
@@ -233,6 +220,7 @@ async def run_langgraph_agent(
             user_question=question,
             metadata_filter=metadata_filter,
             top_k=top_k,
+            alpha=alpha,
         )
         _print_response(result)
         return
@@ -269,6 +257,7 @@ async def run_langgraph_agent(
                 user_question=user_question,
                 metadata_filter=metadata_filter,
                 top_k=top_k,
+                alpha=alpha,
             )
             _print_response(result)
         except Exception as exc:
@@ -293,6 +282,15 @@ def main() -> None:
         default=4,
         help="Number of Moss results to retrieve per question.",
     )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=None,
+        help=(
+            "Optional Moss hybrid search blend from 0.0 keyword-only to "
+            "1.0 semantic-only. Omit to use the SDK default."
+        ),
+    )
     args = parser.parse_args()
 
     asyncio.run(
@@ -300,6 +298,7 @@ def main() -> None:
             question=args.question,
             filter_eq=args.filter_eq,
             top_k=args.top_k,
+            alpha=args.alpha,
         )
     )
 

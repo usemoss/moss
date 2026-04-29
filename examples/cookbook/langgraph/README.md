@@ -49,12 +49,15 @@ The graph uses a simple typed state:
 - `query`: user query passed into the graph
 - `metadata_filter`: optional Moss metadata filter dict passed through state
 - `top_k`: optional retrieval depth override
-- `retrieval_results`: docs written by the `retrieve` node
+- `alpha`: optional Moss hybrid search blend override
+- `retrieval_results`: Moss `SearchResult` written by the `retrieve` node
 - `retrieval_context`: formatted context written by the `retrieve` node
 - `retrieval_time_ms`: retrieval latency reported by Moss
 - `answer`: grounded final answer written by the `generate` node
 
-The `retrieve` node reads `query` and `metadata_filter` from state, calls `client.query()`, and writes the retrieved results back into state for the `generate` node.
+The `retrieve` node reads `query`, `metadata_filter`, `top_k`, and optional
+`alpha` from state, calls `client.query()`, and writes the returned Moss
+`SearchResult` back into state for the `generate` node.
 
 ## Why `load_index()` Happens First
 
@@ -84,6 +87,12 @@ Single question with a metadata filter carried through graph state:
 
 ```bash
 python examples/cookbook/langgraph/moss_langgraph.py --question "What is the refund policy?" --filter-eq category=returns
+```
+
+Single question with an explicit hybrid-search blend:
+
+```bash
+python examples/cookbook/langgraph/moss_langgraph.py --question "What is the refund policy?" --alpha 0.6
 ```
 
 Interactive loop:

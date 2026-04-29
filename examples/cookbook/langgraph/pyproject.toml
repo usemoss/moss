@@ -15,7 +15,7 @@ authors = [
 dependencies = [
     "langgraph>=0.2",
     "langchain-groq",
-    "moss>=1.0.0b19",
+    "moss>=1.0.0",
     "python-dotenv",
 ]
 
