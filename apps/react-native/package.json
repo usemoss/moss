@@ -1,0 +1,27 @@
+{
+  "name": "moss-emoji-search",
+  "version": "1.0.0",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "seed": "tsx seed.ts"
+  },
+  "dependencies": {
+    "@moss-dev/moss-web": "^1.0.0",
+    "expo": "~54.0.0",
+    "expo-status-bar": "~3.0.9",
+    "onnxruntime-react-native": "^1.24.3",
+    "react": "^19.1.0",
+    "react-native": "^0.81.5",
+    "react-native-safe-area-context": "~5.6.0"
+  },
+  "devDependencies": {
+    "@moss-dev/moss": "^1.0.1",
+    "@types/react": "~19.1.10",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.3.3"
+  }
+}

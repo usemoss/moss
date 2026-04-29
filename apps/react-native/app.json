@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Emoji Search",
+    "slug": "moss-emoji-search",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "dev.moss.emojisearch"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#030712"
+      },
+      "package": "dev.moss.emojisearch"
+    },
+    "plugins": [
+      "onnxruntime-react-native"
+    ]
+  }
+}
