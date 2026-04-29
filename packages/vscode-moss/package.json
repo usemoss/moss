@@ -1,0 +1,196 @@
+{
+  "name": "vscode-moss",
+  "displayName": "Moss",
+  "description": "Semantic codebase search powered by Moss — index your workspace and search from the sidebar.",
+  "version": "0.0.1",
+  "publisher": "moss-dev",
+  "license": "BSD-2-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/usemoss/moss.git",
+    "directory": "packages/vscode-moss"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#2B1843",
+    "theme": "dark"
+  },
+  "type": "module",
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onView:moss.searchView",
+    "onCommand:moss.indexWorkspace",
+    "onCommand:moss.search",
+    "onCommand:moss.configureCredentials",
+    "onCommand:moss.clearCredentials",
+    "onCommand:moss.openSettings"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "moss.indexWorkspace",
+        "title": "Moss: Index Workspace"
+      },
+      {
+        "command": "moss.search",
+        "title": "Moss: Search"
+      },
+      {
+        "command": "moss.configureCredentials",
+        "title": "Moss: Configure credentials"
+      },
+      {
+        "command": "moss.clearCredentials",
+        "title": "Moss: Clear credentials"
+      },
+      {
+        "command": "moss.openSettings",
+        "title": "Moss: Open Settings"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mossContainer",
+          "title": "Moss",
+          "icon": "media/moss-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mossContainer": [
+        {
+          "type": "webview",
+          "id": "moss.searchView",
+          "name": "Search"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Moss",
+      "properties": {
+        "moss.indexName": {
+          "type": "string",
+          "default": "",
+          "description": "Moss index name for this workspace. Leave empty to auto-generate from the workspace name.",
+          "scope": "resource"
+        },
+        "moss.modelId": {
+          "type": "string",
+          "default": "moss-minilm",
+          "description": "Embedding model ID used when creating a Moss index."
+        },
+        "moss.includeGlob": {
+          "type": [
+            "string",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "default": "**/*",
+          "description": "Glob pattern(s) for files to include when indexing the workspace.",
+          "scope": "resource"
+        },
+        "moss.excludeGlob": {
+          "type": [
+            "string",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/out/**",
+            "**/.next/**",
+            "**/build/**"
+          ],
+          "description": "Glob pattern(s) for files to exclude when indexing (merged with built-in defaults).",
+          "scope": "resource"
+        },
+        "moss.respectGitignore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Exclude files that match each workspace folder's root `.gitignore` when discovering files for indexing. Set false to include ignored paths (for example generated output). Nested `.gitignore` files below the root file are not applied.",
+          "scope": "resource"
+        },
+        "moss.maxFileSizeBytes": {
+          "type": "number",
+          "default": 1048576,
+          "description": "Maximum file size in bytes to index (default 1 MB). Larger files are skipped."
+        },
+        "moss.topK": {
+          "type": "number",
+          "default": 10,
+          "description": "Number of results to return for each search query."
+        },
+        "moss.alpha": {
+          "type": "number",
+          "default": 0.8,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Hybrid search blend: 1.0 = semantic (embedding) only, 0.0 = keyword only; values in between mix both. Default 0.8 is semantic-heavy."
+        },
+        "moss.chunkMaxLines": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum lines per indexed chunk (each Moss document). Structure-aware indexing splits large logical spans into overlapping windows of at most this size; plain text and unsupported languages use sliding line windows only."
+        },
+        "moss.chunkOverlapLines": {
+          "type": "number",
+          "default": 12,
+          "description": "Lines of overlap between consecutive windows when a span is subdivided (structure-aware split or full-file line-window fallback)."
+        },
+        "moss.logVerbose": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, the Moss output channel includes extra detail for indexing and search (default is a short summary)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p ./",
+    "compile": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "vsce package",
+    "package:ci": "vsce package --out /tmp/vscode-moss-ci.vsix",
+    "vscode:prepublish": "npm run check && npm run compile"
+  },
+  "dependencies": {
+    "@moss-dev/moss": "^1.0.0",
+    "ignore": "^7.0.5",
+    "tree-sitter-c": "^0.24.1",
+    "tree-sitter-c-sharp": "^0.23.1",
+    "tree-sitter-cpp": "^0.23.4",
+    "tree-sitter-go": "^0.25.0",
+    "tree-sitter-java": "^0.23.5",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-php": "^0.24.2",
+    "tree-sitter-python": "^0.25.0",
+    "tree-sitter-ruby": "^0.23.1",
+    "tree-sitter-rust": "^0.24.0",
+    "tree-sitter-typescript": "^0.23.2",
+    "web-tree-sitter": "^0.26.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "3.7.1",
+    "esbuild": "^0.27.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4",
+    "vscode-uri": "^3.1.0"
+  }
+}

@@ -21,3 +21,6 @@ venv/
 
 *.egg-info
 .moss-cache
+
+.docs/
+.vscode/settings.json

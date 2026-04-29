@@ -244,6 +244,7 @@ const results = await client.query(name, "your query", { topK: 5 });
 | [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
+| VS Code / Cursor | Available | [`packages/vscode-moss/`](packages/vscode-moss/) (semantic search sidebar; install from VSIX) |
 | [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`packages/vercel-sdk/`](packages/vercel-sdk/) |
 | [CrewAI](https://github.com/crewAIInc/crewAI) | Coming soon | — |
 
