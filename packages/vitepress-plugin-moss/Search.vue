@@ -5,7 +5,7 @@ import { onKeyStroke, useScrollLock, useInfiniteScroll } from '@vueuse/core'
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap'
 import type { SearchResult, QueryResultDocumentInfo } from '@moss-dev/moss-web'
 import SearchButton from './SearchButton.vue'
-import mossLogo from './InferEdgeLogo_Dark_Icon.png'
+import mossLogo from './MossLogo_Dark_Icon.png'
 
 // --------- Metadata structure for Search Results ---------
 interface MossMetadata {

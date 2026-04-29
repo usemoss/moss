@@ -25,7 +25,7 @@
     "Search.vue",
     "SearchButton.vue",
     "types.ts",
-    "InferEdgeLogo_Dark_Icon.png"
+    "MossLogo_Dark_Icon.png"
   ],
   "scripts": {
     "build": "vite build",

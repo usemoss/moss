@@ -28,11 +28,11 @@ Enter valid card details to start the free trial, then select **Create Index** t
 ::: code-group
 
 ```bash [JavaScript]
-npm install @inferedge/moss
+npm install @moss-dev/moss-web
 ```
 
 ```bash [Python]
-pip install inferedge-moss
+pip install moss
 ```
 
 :::
@@ -59,7 +59,7 @@ export MOSS_PROJECT_KEY="your-project-key"
 ::: code-group
 
 ```ts [JavaScript]
-import { MossClient, DocumentInfo } from '@inferedge/moss'
+import { MossClient, DocumentInfo } from '@moss-dev/moss-web'
 
 const client = new MossClient(
   process.env.MOSS_PROJECT_ID!,
@@ -82,7 +82,7 @@ console.log(response.docs[0])
 
 ```py [Python]
 import asyncio
-from inferedge_moss import MossClient, DocumentInfo
+from moss import MossClient, DocumentInfo
 
 client = MossClient("$MOSS_PROJECT_ID", "$MOSS_PROJECT_KEY")
 

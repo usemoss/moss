@@ -4,7 +4,7 @@ title: JavaScript SDK
 
 # Moss client library for JavaScript
 
-`@inferedge/moss` enables **private, on-device semantic search** in your web, mobile, and edge applications — without cloud dependencies.
+`@moss-dev/moss-web` enables **private, on-device semantic search** in your web, mobile, and edge applications — without cloud dependencies.
 
 Built for developers who want **instant, memory-efficient, privacy-first AI features** inside their apps.
 
@@ -21,13 +21,13 @@ Built for developers who want **instant, memory-efficient, privacy-first AI feat
 ## Installation
 
 ```bash
-npm install @inferedge/moss
+npm install @moss-dev/moss-web
 ```
 
 ## Quick start
 
 ```typescript
-import { MossClient, DocumentInfo } from "@inferedge/moss";
+import { MossClient, DocumentInfo } from "@moss-dev/moss-web";
 
 async function main() {
   // Initialize search client with project credentials
