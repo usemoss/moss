@@ -8,7 +8,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from moss_pydantic_ai import MossSearchTool, as_tool
+from moss_pydantic_ai import MossSearchTool
 
 
 # ---------------------------------------------------------------------------
@@ -58,12 +58,10 @@ class TestMossSearchToolInit(unittest.TestCase):
             client=client,
             index_name="idx",
             tool_name="custom_search",
-            tool_description="Custom desc",
             top_k=10,
             alpha=0.5,
         )
         self.assertEqual(tool._tool_name, "custom_search")
-        self.assertEqual(tool._tool_description, "Custom desc")
         self.assertEqual(tool._top_k, 10)
         self.assertAlmostEqual(tool._alpha, 0.5)
 
@@ -170,39 +168,6 @@ class TestSearch(unittest.IsolatedAsyncioTestCase):
         output = await tool.search("q")
 
         self.assertIn("source=faq.md", output)
-
-
-# ---------------------------------------------------------------------------
-# as_tool helper
-# ---------------------------------------------------------------------------
-
-
-class TestAsTool(unittest.TestCase):
-    """Tests for the as_tool() convenience helper."""
-
-    @patch("moss_pydantic_ai.MossClient")
-    def test_returns_tuple(self, mock_client_cls):
-        client = mock_client_cls.return_value
-        moss, tool = as_tool(client=client, index_name="idx")
-
-        self.assertIsInstance(moss, MossSearchTool)
-        from pydantic_ai import Tool
-
-        self.assertIsInstance(tool, Tool)
-
-    @patch("moss_pydantic_ai.MossClient")
-    def test_forwards_parameters(self, mock_client_cls):
-        client = mock_client_cls.return_value
-        moss, _ = as_tool(
-            client=client,
-            index_name="idx",
-            tool_name="custom",
-            top_k=3,
-            alpha=0.5,
-        )
-        self.assertEqual(moss._tool_name, "custom")
-        self.assertEqual(moss._top_k, 3)
-        self.assertAlmostEqual(moss._alpha, 0.5)
 
 
 # ---------------------------------------------------------------------------

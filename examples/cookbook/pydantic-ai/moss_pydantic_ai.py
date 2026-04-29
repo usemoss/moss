@@ -4,11 +4,17 @@ from typing import Any
 from moss import MossClient, QueryOptions
 from pydantic_ai import Tool
 
-__all__ = ["MossSearchTool", "as_tool"]
+__all__ = ["MossSearchTool"]
 
 
 class MossSearchTool:
     """Moss semantic search exposed as a Pydantic AI tool."""
+
+    _TOOL_DESCRIPTION = (
+        "Use this tool whenever the user asks for information that should come from the Moss "
+        "knowledge base, such as refunds, account help, support policies, or product facts. "
+        "Pass the user's question as the query and use the returned results to answer."
+    )
 
     def __init__(
         self,
@@ -16,7 +22,6 @@ class MossSearchTool:
         client: MossClient,
         index_name: str,
         tool_name: str = "moss_search",
-        tool_description: str | None = None,
         top_k: int = 5,
         alpha: float = 0.8,
     ) -> None:
@@ -24,10 +29,6 @@ class MossSearchTool:
         self._client = client
         self._index_name = index_name
         self._tool_name = tool_name
-        self._tool_description = tool_description or (
-            "Search the knowledge base using Moss semantic search. "
-            "Returns the most relevant documents for a given query."
-        )
         self._top_k = top_k
         self._alpha = alpha
         self._tool_obj = self._build_tool()
@@ -66,7 +67,7 @@ class MossSearchTool:
             moss_search,
             takes_ctx=False,
             name=self._tool_name,
-            description=self._tool_description,
+            description=self._TOOL_DESCRIPTION,
         )
 
     @staticmethod
@@ -87,24 +88,3 @@ class MossSearchTool:
             text = getattr(doc, "text", "") or ""
             lines.append(f"{idx}. {text}{suffix}")
         return "\n".join(lines)
-
-
-def as_tool(
-    *,
-    client: MossClient,
-    index_name: str,
-    tool_name: str = "moss_search",
-    tool_description: str | None = None,
-    top_k: int = 5,
-    alpha: float = 0.8,
-) -> tuple[MossSearchTool, Tool]:
-    """Create a ``MossSearchTool`` and return ``(instance, tool)`` as a shortcut."""
-    moss = MossSearchTool(
-        client=client,
-        index_name=index_name,
-        tool_name=tool_name,
-        tool_description=tool_description,
-        top_k=top_k,
-        alpha=alpha,
-    )
-    return moss, moss.tool

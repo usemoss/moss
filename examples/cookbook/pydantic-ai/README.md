@@ -4,10 +4,7 @@ This cookbook shows how to expose [Moss](https://moss.dev) semantic search as a 
 
 ## Overview
 
-Moss is a semantic search platform that delivers sub-10ms retrieval by loading vector indices into local memory. This cookbook provides:
-
-1. **MossSearchTool** - a class that wraps `MossClient` and exposes a `.tool` property for Pydantic AI agents.
-2. **as_tool(...)** - a convenience helper that creates the tool in one call.
+Moss is a semantic search platform that delivers sub-10ms retrieval by loading vector indices into local memory. This cookbook provides `MossSearchTool`, a small wrapper around `MossClient` that exposes a `.tool` property for Pydantic AI agents.
 
 ## Installation
 
@@ -53,26 +50,6 @@ async def main():
 asyncio.run(main())
 ```
 
-### Using the as_tool helper
-
-```python
-import asyncio
-from moss import MossClient
-from pydantic_ai import Agent
-from moss_pydantic_ai import as_tool
-
-async def main():
-    client = MossClient("your-project-id", "your-project-key")
-    moss, tool = as_tool(client=client, index_name="my-index")
-    await moss.load_index()
-
-    agent = Agent("openai:gpt-4o", tools=[tool])
-    result = await agent.run("What is the refund policy?")
-    print(result.output)
-
-asyncio.run(main())
-```
-
 ## Configuration
 
 | Parameter | Default | Description |
@@ -80,7 +57,6 @@ asyncio.run(main())
 | `client` | (required) | A `MossClient` instance |
 | `index_name` | (required) | Name of the Moss index to query |
 | `tool_name` | `moss_search` | Tool name exposed to the LLM |
-| `tool_description` | *(auto)* | Tool description exposed to the LLM |
 | `top_k` | `5` | Number of results to retrieve per query |
 | `alpha` | `0.8` | Blend: 1.0 = semantic only, 0.0 = keyword only |
 
@@ -108,7 +84,7 @@ Pydantic AI inspects the tool function's signature and docstring to derive the i
 
 | File | Description |
 |------|-------------|
-| `moss_pydantic_ai.py` | `MossSearchTool` class and `as_tool()` helper |
+| `moss_pydantic_ai.py` | `MossSearchTool` class |
 | `example.py` | Runnable cookbook demo using the helper module |
 | `test_integration.py` | Unit tests (mocked, no credentials required) |
 | `pyproject.toml` | Package metadata |
