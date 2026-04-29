@@ -1,4 +1,4 @@
-[moss v1.0.0b14](../README.md)
+[moss v1.0.0](../README.md)
 
 [moss](../globals.md) / AddDocumentsOptions
 

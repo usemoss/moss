@@ -2,7 +2,7 @@
 title: "QueryOptions (Python)"
 ---
 
-[moss v1.0.0b16](../README.md)
+[moss v1.0.0](../README.md)
 
 [moss](../globals.md) / QueryOptions
 
