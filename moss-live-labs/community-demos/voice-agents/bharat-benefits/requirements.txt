@@ -1,0 +1,24 @@
+# Bharat Benefits Voice Agent – Python dependencies
+# Install with: pip install -r requirements.txt or uv pip install -r requirements.txt
+
+# Moss semantic search SDK (usemoss / InferEdge)
+inferedge-moss>=1.0.0b19
+
+# Environment variable loading
+python-dotenv>=1.0.0
+
+# HTTP requests (Sarvam API calls)
+httpx>=0.27.0
+
+# Audio recording from microphone (optional – graceful fallback if unavailable)
+sounddevice>=0.4.6
+
+# Audio file I/O (read WAV input, write TTS WAV output)
+soundfile>=0.12.1
+
+# Audio playback – simpleaudio is cross-platform and has no extra system deps
+# pip may skip it on some systems; the bot falls back to saving the file only
+simpleaudio>=1.0.4
+
+# NumPy is pulled in by sounddevice/soundfile but listed explicitly for clarity
+numpy>=1.26.0
