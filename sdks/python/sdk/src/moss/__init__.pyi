@@ -1,6 +1,21 @@
 from __future__ import annotations
 
-from typing import ClassVar, Dict, List, Optional, Sequence
+from typing import Any, ClassVar, Dict, List, Optional, Sequence
+
+
+class RerankOptions:
+    """Configuration for reranking passed to query()."""
+
+    provider: str
+    top_n: Optional[int]
+    init_kwargs: Dict[str, Any]
+
+    def __init__(
+        self,
+        provider: str,
+        top_n: Optional[int] = None,
+        **kwargs: Any,
+    ) -> None: ...
 
 
 class MossClient:
@@ -171,12 +186,14 @@ class QueryOptions:
     top_k: Optional[int]
     alpha: Optional[float]
     filter: Optional[dict]
+    rerank: Optional[RerankOptions]
     def __init__(
         self,
         embedding: Optional[Sequence[float]] = ...,
         top_k: Optional[int] = ...,
         alpha: Optional[float] = ...,
         filter: Optional[dict] = ...,
+        rerank: Optional[RerankOptions] = ...,
     ) -> None: ...
 
 
@@ -230,6 +247,7 @@ __version__: str
 
 __all__ = [
     "MossClient",
+    "RerankOptions",
     "DocumentInfo",
     "GetDocumentsOptions",
     "IndexInfo",
