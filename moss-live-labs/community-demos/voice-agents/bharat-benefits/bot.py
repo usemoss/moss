@@ -144,9 +144,9 @@ def transcribe(audio_path: Path) -> str:
 async def retrieve(question: str, moss_client) -> str:
     """Query Moss index for relevant context."""
     try:
-        from inferedge_moss import QueryOptions
+        from moss import QueryOptions
     except ImportError:
-        print("ERROR: run: pip install inferedge-moss", file=sys.stderr)
+        print("ERROR: run: pip install moss", file=sys.stderr)
         sys.exit(1)
 
     print("   searching ...")
