@@ -7,12 +7,8 @@ from typing import Optional
 
 import typer
 
-from .commands.doc import doc_app
-from .commands.index import index_app
-from .commands.init_cmd import init_command
-from .commands.job import job_app
+from .commands.completions import completions_command
 from .commands.profile import profile_app
-from .commands.search import query_command
 from .commands.version import version_command
 from .output import print_error
 
@@ -23,16 +19,25 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-# Register subgroups
-app.add_typer(index_app, name="index", help="Manage indexes")
-app.add_typer(doc_app, name="doc", help="Manage documents")
-app.add_typer(job_app, name="job", help="Track background jobs")
+# Register commands that do not depend on the moss SDK
+app.command(name="version")(version_command)
+app.command(name="completions")(completions_command)
 app.add_typer(profile_app, name="profile", help="Manage auth profiles")
 
-# Register top-level commands
-app.command(name="query")(query_command)
-app.command(name="init")(init_command)
-app.command(name="version")(version_command)
+
+def _register_moss_commands() -> None:
+    """Import and register commands that require the moss SDK."""
+    from .commands.doc import doc_app
+    from .commands.index import index_app
+    from .commands.init_cmd import init_command
+    from .commands.job import job_app
+    from .commands.search import query_command
+
+    app.add_typer(index_app, name="index", help="Manage indexes")
+    app.add_typer(doc_app, name="doc", help="Manage documents")
+    app.add_typer(job_app, name="job", help="Track background jobs")
+    app.command(name="query")(query_command)
+    app.command(name="init")(init_command)
 
 
 @app.callback()
@@ -70,6 +75,10 @@ def main(
 
 def run() -> None:
     """Entry point for the console script."""
+    try:
+        _register_moss_commands()
+    except Exception:
+        pass  # moss SDK unavailable; SDK-dependent commands will be absent
     try:
         app()
     except (typer.Exit, typer.Abort, SystemExit):
