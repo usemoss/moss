@@ -80,10 +80,14 @@ async def search(
     try:
         await _ensure_index_loaded(index_name)
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Failed to load index: {exc}") from exc
+        raise HTTPException(
+            status_code=503, detail=f"Failed to load index: {exc}"
+        ) from exc
 
     try:
-        result = await client.query(index_name, query.lower(), QueryOptions(top_k=top_k))
+        result = await client.query(
+            index_name, query.lower(), QueryOptions(top_k=top_k)
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Query failed: {exc}") from exc
 

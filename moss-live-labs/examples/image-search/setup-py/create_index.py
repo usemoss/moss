@@ -104,7 +104,9 @@ async def create_index_for_tier(tier: str) -> None:
     except RuntimeError:
         pass  # Index doesn't exist, proceed with creation
 
-    print(f"Creating index '{index_name}' with {len(documents)} documents using {model_id}...")
+    print(
+        f"Creating index '{index_name}' with {len(documents)} documents using {model_id}..."
+    )
     await client.create_index(index_name, documents, model_id)
     print(f"Index '{index_name}' created successfully.")
 

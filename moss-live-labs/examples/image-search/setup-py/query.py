@@ -53,7 +53,7 @@ async def load_and_query_sample() -> None:
         print("=" * 40)
 
         for query in SAMPLE_QUERIES:
-            print(f"\nPerforming search for: \"{query}\"\n")
+            print(f'\nPerforming search for: "{query}"\n')
             results = await client.query(index_name, query, QueryOptions(top_k=TOP_K))
 
             print(f"Found {len(results.docs)} results in {results.time_taken_ms}ms\n")
