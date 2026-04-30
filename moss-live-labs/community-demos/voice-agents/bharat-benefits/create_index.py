@@ -94,7 +94,7 @@ async def main() -> None:
 
     # Import Moss SDK
     try:
-        from inferedge_moss import DocumentInfo, MossClient
+        from moss import DocumentInfo, MossClient
     except ImportError:
         print(
             "\n[ERROR] inferedge-moss is not installed.\n"

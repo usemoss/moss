@@ -272,7 +272,7 @@ async def retrieve_context(question: str) -> str:
     Returns a formatted context string for the LLM prompt.
     """
     try:
-        from inferedge_moss import MossClient, QueryOptions
+        from moss import MossClient, QueryOptions
     except ImportError:
         print(
             "\n[ERROR] inferedge-moss is not installed.\n"
