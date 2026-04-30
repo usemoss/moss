@@ -363,7 +363,9 @@ def record_from_microphone(seconds: int) -> Path:
         sys.exit(1)
 
     tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    sf.write(tmp.name, audio, sample_rate, subtype="PCM_16")
+    tmp_path = tmp.name
+    tmp.close()
+    sf.write(tmp_path, audio, sample_rate, subtype="PCM_16")
     print(f"   Saved recording -> {tmp.name}")
     return Path(tmp.name)
 
