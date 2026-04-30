@@ -181,7 +181,7 @@ python bot.py --record-seconds 5
 python bot.py
 ```
 
-The bot will prompt you to type a question.
+The bot will start recording from your microphone. Use `--text-mode` to type questions instead.
 
 ---
 
