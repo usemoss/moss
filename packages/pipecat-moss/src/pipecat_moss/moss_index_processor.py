@@ -17,12 +17,11 @@ from pipecat.frames.frames import (
     ErrorFrame,
     Frame,
     LLMContextFrame,
-    LLMMessagesFrame,
+    LLMMessagesUpdateFrame,
     MetricsFrame,
 )
 from pipecat.metrics.metrics import ProcessingMetricsData
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContextFrame
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 __all__ = ["MossIndexProcessor"]
@@ -88,9 +87,9 @@ class MossIndexProcessor(FrameProcessor):
         context = None
         messages = None
 
-        if isinstance(frame, (LLMContextFrame, OpenAILLMContextFrame)):
+        if isinstance(frame, LLMContextFrame):
             context = frame.context
-        elif isinstance(frame, LLMMessagesFrame):
+        elif isinstance(frame, LLMMessagesUpdateFrame):
             messages = frame.messages
             context = LLMContext(messages)
 
@@ -128,9 +127,9 @@ class MossIndexProcessor(FrameProcessor):
                     self._last_query = latest_user_message
 
             if messages is not None:
-                await self.push_frame(LLMMessagesFrame(context.get_messages()))
-            elif isinstance(frame, (LLMContextFrame, OpenAILLMContextFrame)):
-                await self.push_frame(type(frame)(context=context))  # type: ignore[arg-type]
+                await self.push_frame(LLMMessagesUpdateFrame(messages=context.get_messages()))
+            elif isinstance(frame, LLMContextFrame):
+                await self.push_frame(LLMContextFrame(context=context))
             else:
                 await self.push_frame(frame)
 

@@ -1,0 +1,28 @@
+[project]
+name = "shoplabs-voice-agent"
+version = "0.1.0"
+description = "Community demo: ecommerce voice support agent with Moss retrieval"
+requires-python = ">=3.10"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "pipecat-ai[webrtc,deepgram,openai,cartesia,runner]",
+    "pipecat-ai-cli",
+    "pipecat-moss>=0.0.3",
+    "moss>=1.0.0",
+    "loguru>=0.7.2",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.404,<2",
+    "ruff>=0.12.11,<1",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["I"]
+
+[tool.uv.sources]
+pipecat-moss = { path = "../../../../packages/pipecat-moss", editable = true }
