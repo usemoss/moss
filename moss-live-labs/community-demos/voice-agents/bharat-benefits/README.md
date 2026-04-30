@@ -172,7 +172,7 @@ python bot.py --audio path/to/question.wav
 Record live from your default microphone:
 
 ```bash
-python bot.py --record-seconds 5
+python bot.py --seconds 5
 ```
 
 ### Interactive mode (no arguments)
