@@ -55,6 +55,14 @@ def init_command(
         client = MossClient(project_id, project_key)
         indexes = asyncio.run(client.list_indexes())
         console.print(f"[green]Authenticated. Found {len(indexes)} index(es).[/green]")
+    except RuntimeError as e:
+        if "moss_core" in str(e) and "not available" in str(e):
+            pass  # management API unavailable; save without validation
+        else:
+            console.print(f"[red]Authentication failed: {e}[/red]")
+            save_anyway = Prompt.ask("Save anyway?", choices=["y", "n"], default="n")
+            if save_anyway != "y":
+                raise typer.Exit(1)
     except Exception as e:
         console.print(f"[red]Authentication failed: {e}[/red]")
         save_anyway = Prompt.ask("Save anyway?", choices=["y", "n"], default="n")
