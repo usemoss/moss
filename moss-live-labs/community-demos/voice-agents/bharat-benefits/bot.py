@@ -47,9 +47,9 @@ load_dotenv(dotenv_path=SCRIPT_DIR / ".env")
 
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
 STT_MODEL = os.getenv("SARVAM_STT_MODEL", "saaras:v3")
-CHAT_MODEL = os.getenv("SARVAM_CHAT_MODEL", "sarvam-m")
-TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v1")
-TTS_SPEAKER = os.getenv("SARVAM_TTS_SPEAKER", "anushka")
+CHAT_MODEL = os.getenv("SARVAM_CHAT_MODEL", "sarvam-105b")
+TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3")
+TTS_SPEAKER = os.getenv("SARVAM_TTS_SPEAKER", "priya")
 
 MOSS_PROJECT_ID = os.getenv("MOSS_PROJECT_ID", "")
 MOSS_PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY", "")
