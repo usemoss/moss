@@ -254,9 +254,9 @@ def speak(answer: str) -> None:
 async def live_loop(record_seconds: int = 5, text_mode: bool = False):
     """Continuous voice-to-voice loop."""
     try:
-        from inferedge_moss import MossClient
+        from moss import MossClient
     except ImportError:
-        print("ERROR: run: pip install inferedge-moss", file=sys.stderr)
+        print("ERROR: run: pip install moss", file=sys.stderr)
         sys.exit(1)
 
     _check_env()
