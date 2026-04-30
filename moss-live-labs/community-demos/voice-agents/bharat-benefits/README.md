@@ -149,27 +149,14 @@ Expected output:
 
 ## Running the Bot
 
-### Text mode (recommended for reviewers)
+# Live mic mode (default 5 seconds per turn)
+python live_agent.py
 
-```bash
-python bot.py --text "I am a small farmer. Which scheme can help me?"
-```
+# Longer recording window
+python live_agent.py --seconds 8
 
-```bash
-python bot.py --text "What documents are needed for Ayushman Bharat?"
-```
-
-```bash
-python bot.py --text "Explain PM Vishwakarma in simple Hindi-English."
-```
-
-```bash
-python bot.py --text "Which scheme is useful for skill training?"
-```
-
-```bash
-python bot.py --text "I am a student looking for scholarship support. Where should I start?"
-```
+# Debug without mic (type questions)
+python live_agent.py --text-mode
 
 ### Audio file mode
 
