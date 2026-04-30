@@ -148,6 +148,18 @@ def delete_profile(profile: str) -> Tuple[bool, Optional[str]]:
     return True, active_profile if isinstance(active_profile, str) and active_profile else None
 
 
+def set_active_profile(profile: str) -> bool:
+    """Set the active profile if it exists. Returns True on success."""
+    normalized = _normalize_config(load_config())
+    profiles = normalized.get("profiles", {})
+    if not isinstance(profiles, dict) or profile not in profiles:
+        return False
+
+    data: dict[str, object] = {"profiles": profiles, "active_profile": profile}
+    save_config(data)
+    return True
+
+
 def resolve_credentials(
     project_id: Optional[str] = None,
     project_key: Optional[str] = None,

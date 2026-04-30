@@ -7,7 +7,12 @@ import json
 import typer
 from rich.console import Console
 
-from ..config import delete_profile, get_selected_profile, list_profiles
+from ..config import (
+    delete_profile,
+    get_selected_profile,
+    list_profiles,
+    set_active_profile,
+)
 
 console = Console()
 profile_app = typer.Typer(name="profile", help="Manage auth profiles")
@@ -83,3 +88,45 @@ def delete_command(
         console.print(f"[dim]Active profile is now '{new_active}'.[/dim]")
     else:
         console.print("[dim]No active profile is set.[/dim]")
+
+
+    @profile_app.command(name="set-default")
+    def set_default_command(
+        ctx: typer.Context, profile: str = typer.Argument(..., help="Profile name to set as default")
+    ) -> None:
+        """Set the active/default credential profile."""
+        json_mode = ctx.obj.get("json_output", False)
+
+        ok = set_active_profile(profile)
+        if not ok:
+            message = f"Profile '{profile}' not found."
+            if json_mode:
+                print(json.dumps({"error": message}))
+            else:
+                console.print(f"[red]{message}[/red]")
+            raise typer.Exit(1)
+
+        if json_mode:
+            print(json.dumps({"status": "ok", "active_profile": profile}, indent=2))
+            return
+
+        console.print(f"[green]Active profile set to '{profile}'.[/green]")
+
+
+    @profile_app.command(name="use")
+    def use_command(ctx: typer.Context, profile: str = typer.Argument(..., help="Profile to use")) -> None:
+        """Alias for set-default."""
+        return set_default_command(ctx, profile)
+
+
+    @profile_app.command(name="current")
+    def current_command(ctx: typer.Context) -> None:
+        """Show the currently selected credential profile."""
+        json_mode = ctx.obj.get("json_output", False)
+        selected = get_selected_profile(ctx.obj.get("profile"))
+
+        if json_mode:
+            print(json.dumps({"active_profile": selected}, indent=2))
+            return
+
+        console.print(selected)

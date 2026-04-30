@@ -5,20 +5,31 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
-    # Resolve query text from stdin when piped.
-    # In interactive mode this becomes the initial query before entering the prompt loop.
-    if query_text is None and not sys.stdin.isatty():
-        piped_query = sys.stdin.read().strip()
-        if piped_query:
-            query_text = piped_query
-        elif not interactive:
-            output.print_error("Empty query from stdin.", json_mode)
-            raise typer.Exit(1)
+from typing import Optional
 
-    # Non-interactive mode still requires either arg query or piped stdin input.
-    if not interactive and query_text is None:
-        output.print_error("No query provided. Pass as argument or pipe via stdin.", json_mode)
-        raise typer.Exit(1)
+import typer
+from rich.console import Console
+
+from moss import MossClient, QueryOptions
+
+from .. import output
+from ..config import resolve_credentials
+
+console = Console()
+
+
+def _parse_set_command(line: str) -> tuple[Optional[str], Optional[str]]:
+    parts = line.strip().split()
+    if len(parts) != 3 or parts[0] != "/set":
+        return None, "Usage: /set <alpha|top-k> <value>"
+
+    key = parts[1].lower()
+    if key not in {"alpha", "top-k", "topk"}:
+        return None, "Unknown setting. Supported: alpha, top-k"
+
+    if key == "alpha":
+        try:
+            alpha = float(parts[2])
         except ValueError:
             return None, "Invalid alpha. Must be a number between 0.0 and 1.0."
         if not 0.0 <= alpha <= 1.0:
@@ -56,30 +67,18 @@ def query_command(
     json_mode = ctx.obj.get("json_output", False)
     if profile:
         ctx.obj["profile"] = profile
-
-<<<<<<< HEAD
-=======
     # Resolve query text from stdin when piped.
     # In interactive mode this becomes the initial query before entering the prompt loop.
->>>>>>> 913cdfb (feat(moss-cli): add interactive mode for query (#127) (#129))
     if query_text is None and not sys.stdin.isatty():
         piped_query = sys.stdin.read().strip()
         if piped_query:
             query_text = piped_query
-<<<<<<< HEAD
-        else:
-            output.print_error("Empty query from stdin.", json_mode)
-            raise typer.Exit(1)
-
-    if query_text is None:
-=======
         elif not interactive:
             output.print_error("Empty query from stdin.", json_mode)
             raise typer.Exit(1)
 
     # Non-interactive mode still requires either arg query or piped stdin input.
     if not interactive and query_text is None:
->>>>>>> 913cdfb (feat(moss-cli): add interactive mode for query (#127) (#129))
         output.print_error("No query provided. Pass as argument or pipe via stdin.", json_mode)
         raise typer.Exit(1)
 

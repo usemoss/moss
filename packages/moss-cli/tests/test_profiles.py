@@ -300,6 +300,63 @@ def test_query_accepts_profile_option_after_subcommand(monkeypatch, tmp_path):
     assert seen["project_key"] == "staging-key"
 
 
+def test_profile_set_default_sets_active_profile(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "default",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+                "staging": {"project_id": "staging-id", "project_key": "staging-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+
+    result = runner.invoke(app, ["profile", "set-default", "staging"])
+
+    assert result.exit_code == 0
+    cfg = json.loads(path.read_text(encoding="utf-8"))
+    assert cfg["active_profile"] == "staging"
+
+
+def test_profile_set_default_nonexistent_profile(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "default",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+
+    result = runner.invoke(app, ["profile", "set-default", "nope"])
+
+    assert result.exit_code != 0
+    assert "not found" in result.stdout
+
+
+def test_profile_current_shows_active(monkeypatch, tmp_path):
+    path = _write_config(
+        tmp_path,
+        {
+            "active_profile": "staging",
+            "profiles": {
+                "default": {"project_id": "default-id", "project_key": "default-key"},
+                "staging": {"project_id": "staging-id", "project_key": "staging-key"},
+            },
+        },
+    )
+    monkeypatch.setattr(config, "get_config_path", lambda: path)
+
+    result = runner.invoke(app, ["profile", "current"])
+
+    assert result.exit_code == 0
+    assert "staging" in result.stdout
+
+
 def test_global_profile_overrides_environment(monkeypatch, tmp_path):
     path = _write_config(
         tmp_path,
