@@ -40,6 +40,8 @@ async def main():
 asyncio.run(main())
 ```
 
+Use `auto_id=True` when your mapper does not have a stable primary key and you want Moss to generate UUID document IDs.
+
 ## Data requirements
 
 The connector doesn't impose a schema — it reads each row as a dict and passes it to your `mapper`. The constraints come from `DocumentInfo`, not the connector.

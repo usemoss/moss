@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -92,6 +93,97 @@ async def test_supabase_ingest_end_to_end():
     assert moss_docs[0].text == "Refunds take 3–5 days."
     assert moss_docs[0].metadata == {"title": "Refund policy"}
     assert moss_docs[2].id == "3"
+
+
+async def test_auto_id_defaults_to_false():
+    rows_from_supabase = [
+        {"id": 1, "title": "T1", "body": "B1"},
+        {"id": 2, "title": "T2", "body": "B2"},
+        {"id": 3, "title": "T3", "body": "B3"},
+    ]
+    fake_client = _supabase_mock_paginating([rows_from_supabase])
+    fake_moss = FakeMossClient()
+
+    with (
+        patch(
+            "moss_connector_supabase.connector.create_client",
+            return_value=fake_client,
+        ),
+        patch(
+            "moss_connector_supabase.ingest.MossClient",
+            return_value=fake_moss,
+        ),
+    ):
+        source = SupabaseConnector(
+            url="https://x.supabase.co",
+            key="anon",
+            table="articles",
+            mapper=lambda r: DocumentInfo(
+                id=str(r["id"]),
+                text=r["body"],
+                metadata={"title": r["title"]},
+            ),
+        )
+        await ingest(source, "fake_id", "fake_key", index_name="articles")
+
+    assert len(fake_moss.calls) == 1
+    docs = fake_moss.calls[0]["docs"]
+    assert docs[0].id == "1"
+    assert docs[1].id == "2"
+    assert docs[2].id == "3"
+
+
+async def test_auto_id_replaces_mapper_id():
+    rows_from_supabase = [
+        {"id": 1, "title": "T1", "body": "B1"},
+        {"id": 2, "title": "T2", "body": "B2"},
+        {"id": 3, "title": "T3", "body": "B3"},
+    ]
+    fake_client = _supabase_mock_paginating([rows_from_supabase])
+    fake_moss = FakeMossClient()
+
+    with (
+        patch(
+            "moss_connector_supabase.connector.create_client",
+            return_value=fake_client,
+        ),
+        patch(
+            "moss_connector_supabase.ingest.MossClient",
+            return_value=fake_moss,
+        ),
+    ):
+        source = SupabaseConnector(
+            url="https://x.supabase.co",
+            key="anon",
+            table="articles",
+            mapper=lambda r: DocumentInfo(
+                id=str(r["id"]),
+                text=r["body"],
+                metadata={"title": r["title"]},
+            ),
+        )
+        await ingest(
+            source,
+            "fake_id",
+            "fake_key",
+            index_name="articles",
+            auto_id=True,
+        )
+
+    assert len(fake_moss.calls) == 1
+    docs = fake_moss.calls[0]["docs"]
+    assert len(docs) == 3
+    original_ids = {"1", "2", "3"}
+    for doc in docs:
+        assert doc.id
+        assert uuid.UUID(doc.id)
+        assert doc.id not in original_ids
+    assert [doc.text for doc in docs] == ["B1", "B2", "B3"]
+    assert [doc.metadata for doc in docs] == [
+        {"title": "T1"},
+        {"title": "T2"},
+        {"title": "T3"},
+    ]
 
 
 async def test_pagination_advances_range_cursor():
