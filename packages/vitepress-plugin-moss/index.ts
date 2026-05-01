@@ -105,7 +105,9 @@ export function mossIndexerPlugin(): Plugin {
           indexName
         }
 
-        const { buildJsonDocs, uploadDocuments } = await import('@moss-tools/md-indexer')
+        const mdIndexer = await import('@moss-tools/md-indexer')
+        const buildJsonDocs = mdIndexer.buildJsonDocs
+        const uploadDocuments = mdIndexer.uploadDocuments
 
         // Build chunks
         const allDocs = await buildJsonDocs(siteConfig.root) as any[]
