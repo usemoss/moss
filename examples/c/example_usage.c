@@ -13,14 +13,15 @@
  *     -framework Security -framework SystemConfiguration
  *
  * Run:
- *   DYLD_LIBRARY_PATH=lib ./example_usage <project_id> <project_key>
+ *   export MOSS_PROJECT_ID=...
+ *   export MOSS_PROJECT_KEY=...
+ *   DYLD_LIBRARY_PATH=lib ./example_usage
  */
 
 #include "libmoss.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
 
 static void check(MossResult r, const char *context) {
@@ -32,13 +33,15 @@ static void check(MossResult r, const char *context) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <project_id> <project_key>\n", argv[0]);
+    const char *project_id  = getenv("MOSS_PROJECT_ID");
+    const char *project_key = getenv("MOSS_PROJECT_KEY");
+    if (argc > 1) project_id  = argv[1];
+    if (argc > 2) project_key = argv[2];
+    if (!project_id || !project_key) {
+        fprintf(stderr, "Usage: %s [<project_id> <project_key>]\n", argv[0]);
+        fprintf(stderr, "Or set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.\n");
         return 1;
     }
-
-    const char *project_id  = argv[1];
-    const char *project_key = argv[2];
 
     printf("Moss C SDK Complete Example\n");
     printf("SDK version: %s\n\n", moss_sdk_version());
@@ -257,7 +260,7 @@ int main(int argc, char *argv[]) {
 
     /* ── 12. Cleanup ──────────────────────────────────────────── */
 
-    printf("\n12. Cleaning up — deleting the test index...\n");
+    printf("\n12. Cleaning up: deleting the test index...\n");
     bool deleted = false;
     check(moss_client_delete_index(client, index_name, &deleted), "delete_index");
     printf("   Index deleted: %s\n", deleted ? "true" : "false");

@@ -13,13 +13,15 @@
  *     -framework Security -framework SystemConfiguration
  *
  * Run:
- *   DYLD_LIBRARY_PATH=lib ./session_usage <project_id> <project_key>
+ *   export MOSS_PROJECT_ID=...
+ *   export MOSS_PROJECT_KEY=...
+ *   DYLD_LIBRARY_PATH=lib ./session_usage
  */
 
 #include "libmoss.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 static void check(MossResult r, const char *context) {
     if (r != OK) {
@@ -30,13 +32,15 @@ static void check(MossResult r, const char *context) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <project_id> <project_key>\n", argv[0]);
+    const char *project_id  = getenv("MOSS_PROJECT_ID");
+    const char *project_key = getenv("MOSS_PROJECT_KEY");
+    if (argc > 1) project_id  = argv[1];
+    if (argc > 2) project_key = argv[2];
+    if (!project_id || !project_key) {
+        fprintf(stderr, "Usage: %s [<project_id> <project_key>]\n", argv[0]);
+        fprintf(stderr, "Or set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.\n");
         return 1;
     }
-
-    const char *project_id  = argv[1];
-    const char *project_key = argv[2];
 
     printf("Moss SDK version: %s\n\n", moss_sdk_version());
 
@@ -92,7 +96,7 @@ int main(int argc, char *argv[]) {
     MossSearchResult *result = NULL;
     check(moss_session_query(session, "billing refund", NULL, &result), "query");
 
-    printf("Query: \"%s\" — %zu results in %llu ms\n",
+    printf("Query: \"%s\" - %zu results in %llu ms\n",
            result->query, result->doc_count, (unsigned long long)result->time_taken_ms);
     for (size_t i = 0; i < result->doc_count; i++) {
         MossQueryResultDoc *doc = &result->docs[i];
@@ -114,7 +118,7 @@ int main(int argc, char *argv[]) {
     MossSearchResult *filtered = NULL;
     check(moss_session_query(session, "refund", &opts, &filtered), "query_filtered");
 
-    printf("Filtered query: \"%s\" — %zu results\n", filtered->query, filtered->doc_count);
+    printf("Filtered query: \"%s\" - %zu results\n", filtered->query, filtered->doc_count);
     for (size_t i = 0; i < filtered->doc_count; i++) {
         printf("  [%zu] id=%s  score=%.4f\n",
                i, filtered->docs[i].id, filtered->docs[i].score);
@@ -143,7 +147,13 @@ int main(int argc, char *argv[]) {
            push->job_id, push->status, push->doc_count);
     moss_free_push_index_result(push);
 
-    /* ── 8. Cleanup ───────────────────────────────────────────── */
+    /* ── 8. Delete the cloud index ────────────────────────────── */
+
+    bool deleted = false;
+    check(moss_client_delete_index(client, "c-sdk-demo", &deleted), "delete_index");
+    printf("Cloud index deleted: %s\n", deleted ? "true" : "false");
+
+    /* ── 9. Free handles ──────────────────────────────────────── */
 
     moss_session_free(session);
     moss_client_free(client);

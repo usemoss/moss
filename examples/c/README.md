@@ -4,7 +4,7 @@ This project demonstrates the usage of the Moss C SDK (`libmoss`) for semantic s
 
 ## Setup
 
-From this directory (`examples/c`), download the `libmoss` archive for your platform from the [latest release](https://github.com/usemoss/moss/releases) and extract it so that `include/` and `lib/` sit alongside the `.c` files.
+From this directory (`examples/c`), download the `libmoss` archive for your platform from the [`c-sdk-v0.9.0` release](https://github.com/usemoss/moss/releases/tag/c-sdk-v0.9.0) and extract it so that `include/` and `lib/` sit alongside the `.c` files.
 
 | Archive | OS | Arch |
 | --- | --- | --- |
@@ -38,6 +38,13 @@ examples/c/
 
 ## Running Samples
 
+Each sample reads `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` from the environment. You can also pass them as positional arguments (`./<sample> <id> <key>`), but env vars are preferred so the key doesn't end up in shell history or `ps` output.
+
+```bash
+export MOSS_PROJECT_ID=...
+export MOSS_PROJECT_KEY=...
+```
+
 ### macOS
 
 Build and run any sample (replace `<sample>` with `session_usage`, `example_usage`, or `metadata_filtering`):
@@ -47,7 +54,7 @@ clang <sample>.c -o <sample> \
   -Iinclude -Llib -lmoss \
   -framework Security -framework SystemConfiguration
 
-DYLD_LIBRARY_PATH=lib ./<sample> <project_id> <project_key>
+DYLD_LIBRARY_PATH=lib ./<sample>
 ```
 
 `DYLD_LIBRARY_PATH=lib` is required at runtime: the prebuilt `libmoss.dylib` has a build-server install path baked in, and this env var redirects the dynamic loader to your local copy.
@@ -59,7 +66,7 @@ gcc <sample>.c -o <sample> \
   -Iinclude -Llib -lmoss \
   -lpthread -lm -ldl
 
-LD_LIBRARY_PATH=lib ./<sample> <project_id> <project_key>
+LD_LIBRARY_PATH=lib ./<sample>
 ```
 
 ## What each sample does

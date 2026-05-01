@@ -13,7 +13,9 @@
  *     -framework Security -framework SystemConfiguration
  *
  * Run:
- *   DYLD_LIBRARY_PATH=lib ./metadata_filtering <project_id> <project_key>
+ *   export MOSS_PROJECT_ID=...
+ *   export MOSS_PROJECT_KEY=...
+ *   DYLD_LIBRARY_PATH=lib ./metadata_filtering
  */
 
 #include "libmoss.h"
@@ -47,13 +49,15 @@ static void print_results(MossSearchResult *res) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <project_id> <project_key>\n", argv[0]);
+    const char *project_id  = getenv("MOSS_PROJECT_ID");
+    const char *project_key = getenv("MOSS_PROJECT_KEY");
+    if (argc > 1) project_id  = argv[1];
+    if (argc > 2) project_key = argv[2];
+    if (!project_id || !project_key) {
+        fprintf(stderr, "Usage: %s [<project_id> <project_key>]\n", argv[0]);
+        fprintf(stderr, "Or set MOSS_PROJECT_ID and MOSS_PROJECT_KEY environment variables.\n");
         return 1;
     }
-
-    const char *project_id  = argv[1];
-    const char *project_key = argv[2];
 
     printf("Moss Metadata Filtering Sample (C)\n\n");
 
