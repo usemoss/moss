@@ -6,10 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 sys.path.insert(0, os.path.dirname(__file__))
 
 from moss_langgraph import (
-    _parse_filter_eq,
     ask_question,
     build_moss_graph,
-    load_index_before_graph_runs,
+)
+from example_usage import (
+    _load_index_before_graph_runs,
+    _parse_filter_eq,
     run_langgraph_agent,
 )
 
@@ -31,7 +33,7 @@ class TestLangGraphIntegration(unittest.IsolatedAsyncioTestCase):
         client = MagicMock()
         client.load_index = AsyncMock()
 
-        await load_index_before_graph_runs(client, "idx")
+        await _load_index_before_graph_runs(client, "idx")
 
         client.load_index.assert_awaited_once_with("idx")
 
@@ -90,9 +92,9 @@ class TestLangGraphIntegration(unittest.IsolatedAsyncioTestCase):
         },
         clear=False,
     )
-    @patch("moss_langgraph._print_response")
-    @patch("moss_langgraph.ChatGroq")
-    @patch("moss_langgraph.MossClient")
+    @patch("example_usage._print_response")
+    @patch("example_usage.ChatGroq")
+    @patch("example_usage.MossClient")
     async def test_run_langgraph_agent_single_shot(self, mock_client_cls, mock_groq_cls, mock_print):
         mock_client = mock_client_cls.return_value
         mock_client.load_index = AsyncMock()

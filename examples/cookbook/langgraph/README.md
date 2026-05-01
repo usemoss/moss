@@ -2,6 +2,9 @@
 
 Use [Moss](https://moss.dev) as the retrieval step inside a [LangGraph](https://www.langchain.com/langgraph) stateful agent graph.
 
+> **Note:** This is a cookbook example, not a packaged integration.
+> `moss_langgraph.py` is a self-contained module you can adapt into your own project.
+
 This cookbook keeps the graph intentionally small:
 
 ```text
@@ -14,8 +17,11 @@ The key detail is that the Moss index is loaded locally with `load_index()` befo
 
 ```bash
 cd examples/cookbook/langgraph
-pip install -e .
+pip install "moss>=1.0.0" "langgraph>=0.2" langchain-groq python-dotenv
 ```
+
+No editable install is required. The runnable example imports the core helpers
+directly from `moss_langgraph.py` in this directory.
 
 ## Setup
 
@@ -32,7 +38,7 @@ GROQ_MODEL=llama-3.3-70b-versatile
 If you do not already have a Moss index for testing, create one with:
 
 ```bash
-python examples/cookbook/langgraph/create_index.py
+python create_index.py
 ```
 
 That script creates a small FAQ-style index with metadata like `category=returns`
@@ -61,7 +67,7 @@ The `retrieve` node reads `query`, `metadata_filter`, `top_k`, and optional
 
 ## Why `load_index()` Happens First
 
-`moss_langgraph.py` explicitly runs:
+The example explicitly runs:
 
 ```python
 await client.load_index(index_name)
@@ -80,27 +86,35 @@ That matters because:
 Single question:
 
 ```bash
-python examples/cookbook/langgraph/moss_langgraph.py --question "What is the refund policy?"
+python example_usage.py --question "What is the refund policy?"
 ```
 
 Single question with a metadata filter carried through graph state:
 
 ```bash
-python examples/cookbook/langgraph/moss_langgraph.py --question "What is the refund policy?" --filter-eq category=returns
+python example_usage.py --question "What is the refund policy?" --filter-eq category=returns
 ```
 
 Single question with an explicit hybrid-search blend:
 
 ```bash
-python examples/cookbook/langgraph/moss_langgraph.py --question "What is the refund policy?" --alpha 0.6
+python example_usage.py --question "What is the refund policy?" --alpha 0.6
 ```
 
 Interactive loop:
 
 ```bash
-python examples/cookbook/langgraph/moss_langgraph.py
+python example_usage.py
 ```
 
-The script loads `.env` from the same directory as `moss_langgraph.py`, so you can run it from the repo root or from inside the example folder.
+The script loads `.env` from this directory.
 
 In interactive mode, each turn lets you optionally provide a metadata filter in `field=value` form before the graph runs.
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `moss_langgraph.py` | Core LangGraph + Moss helpers that can be imported into your own code |
+| `example_usage.py` | Groq-backed CLI example that imports from `moss_langgraph.py` |
+| `create_index.py` | Creates a small FAQ-style Moss index for local testing |
