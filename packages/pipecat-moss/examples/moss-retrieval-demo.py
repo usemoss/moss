@@ -89,7 +89,6 @@ Guidelines:
   acknowledge this and offer to connect them with a human agent
 - Ask clarifying questions if the customer's request is unclear
 - Always prioritize customer satisfaction and be empathetic
-- When the conversation begins, warmly greet the customer and ask how you can help them today.
 
 When relevant knowledge base information is provided,
 use it to give accurate and detailed responses."""
@@ -139,7 +138,13 @@ use it to give accurate and detailed responses."""
         # Kick off the conversation with a customer support greeting
         await task.queue_frames(
             [LLMMessagesAppendFrame(
-                messages=[{"role": "user", "content": "Hello"}],
+                messages=[{
+                    "role": "system",
+                    "content": (
+                        "A customer has just connected to customer support. "
+                        "Greet them warmly and ask how you can help them today."
+                    ),
+                }],
                 run_llm=True,
             )]
         )

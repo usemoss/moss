@@ -60,8 +60,3 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = false
-
-[tool.uv]
-required-environments = [
-    "sys_platform == 'win32' and platform_machine == 'AMD64'",
-]
