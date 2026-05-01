@@ -1,9 +1,9 @@
 [project]
 name = "pipecat-moss"
-version = "0.1.0"
+version = "0.0.4"
 description = "Moss vector search integration for Pipecat"
 readme = "README.md"
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.11,<3.15"
 dependencies = [
     "moss>=1.0.0",
     "loguru>=0.7.0",
@@ -16,7 +16,7 @@ dependencies = [
 dev = [
     "aiortc>=1.14.0",
     "cartesia>=2.0.17",
-    "daily-python~=0.27.0",
+    "daily-python~=0.27.0; sys_platform != 'win32'",
     "deepgram-sdk>=6.0.1,<7.0.0",
     "fastapi>=0.121.2",
     "opencv-python>=4.11.0.86",
@@ -60,3 +60,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = false
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+]
