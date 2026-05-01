@@ -1,18 +1,19 @@
 /**
- * session_usage.c — Session workflow example for the Moss C SDK.
+ * session_usage.c: Session workflow example for the Moss C SDK.
  *
  * Demonstrates: create client, open session, add docs with metadata,
  * query, query with filter, get docs, push to cloud.
  *
+ * See README.md for setup. After extracting the libmoss release archive
+ * so that include/ and lib/ sit next to this file:
+ *
  * Build (macOS):
- *   cargo build --release
- *   clang examples/session_usage.c -o examples/session_usage \
- *     -I. -Ltarget/release -lmoss \
+ *   clang session_usage.c -o session_usage \
+ *     -Iinclude -Llib -lmoss \
  *     -framework Security -framework SystemConfiguration
  *
  * Run:
- *   export DYLD_LIBRARY_PATH=target/release
- *   ./examples/session_usage <project_id> <project_key>
+ *   DYLD_LIBRARY_PATH=lib ./session_usage <project_id> <project_key>
  */
 
 #include "libmoss.h"

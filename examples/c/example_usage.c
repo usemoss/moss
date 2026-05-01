@@ -1,18 +1,19 @@
 /**
- * example_usage.c — Complete cloud workflow example for the Moss C SDK.
+ * example_usage.c: Complete cloud workflow example for the Moss C SDK.
  *
  * Demonstrates: create index, get index, list indexes, add docs,
  * get docs, load index, query, delete docs, delete index.
  *
+ * See README.md for setup. After extracting the libmoss release archive
+ * so that include/ and lib/ sit next to this file:
+ *
  * Build (macOS):
- *   cargo build --release
- *   clang examples/example_usage.c -o examples/example_usage \
- *     -I. -Ltarget/release -lmoss \
+ *   clang example_usage.c -o example_usage \
+ *     -Iinclude -Llib -lmoss \
  *     -framework Security -framework SystemConfiguration
  *
  * Run:
- *   export DYLD_LIBRARY_PATH=target/release
- *   ./examples/example_usage <project_id> <project_key>
+ *   DYLD_LIBRARY_PATH=lib ./example_usage <project_id> <project_key>
  */
 
 #include "libmoss.h"

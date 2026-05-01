@@ -1,18 +1,19 @@
 /**
- * metadata_filtering.c — Metadata filtering example for the Moss C SDK.
+ * metadata_filtering.c: Metadata filtering example for the Moss C SDK.
  *
  * Demonstrates: $eq, $and, $in, and $near filter operators
  * on a cloud index loaded locally.
  *
+ * See README.md for setup. After extracting the libmoss release archive
+ * so that include/ and lib/ sit next to this file:
+ *
  * Build (macOS):
- *   cargo build --release
- *   clang examples/metadata_filtering.c -o examples/metadata_filtering \
- *     -I. -Ltarget/release -lmoss \
+ *   clang metadata_filtering.c -o metadata_filtering \
+ *     -Iinclude -Llib -lmoss \
  *     -framework Security -framework SystemConfiguration
  *
  * Run:
- *   export DYLD_LIBRARY_PATH=target/release
- *   ./examples/metadata_filtering <project_id> <project_key>
+ *   DYLD_LIBRARY_PATH=lib ./metadata_filtering <project_id> <project_key>
  */
 
 #include "libmoss.h"
