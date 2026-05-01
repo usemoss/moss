@@ -164,6 +164,7 @@ int main(int argc, char *argv[]) {
     printf("\n5. $in filter: city in [new-york]\n");
     MossQueryOptions in_opts = {
         .top_k       = 5,
+        .alpha       = 0.5f,
         .filter_json = "{\"field\": \"city\", \"condition\": {\"$in\": [\"new-york\"]}}",
     };
     MossSearchResult *in_res = NULL;
@@ -176,6 +177,7 @@ int main(int argc, char *argv[]) {
     printf("\n6. $near filter: within 5km of Times Square\n");
     MossQueryOptions near_opts = {
         .top_k       = 5,
+        .alpha       = 0.5f,
         .filter_json = "{\"field\": \"location\", \"condition\": {\"$near\": \"40.7580,-73.9855,5000\"}}",
     };
     MossSearchResult *near_res = NULL;

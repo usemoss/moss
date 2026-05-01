@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
     /* ── 11. Final search ─────────────────────────────────────── */
 
     printf("\n11. Final search to verify everything works...\n");
-    MossQueryOptions final_opts = { .top_k = 2 };
+    MossQueryOptions final_opts = { .top_k = 2, .alpha = 0.5f };
     MossSearchResult *final_search = NULL;
     check(moss_client_query(client, index_name, "machine learning algorithms", &final_opts, &final_search), "query_final");
     for (size_t i = 0; i < final_search->doc_count; i++) {
