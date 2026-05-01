@@ -30,5 +30,15 @@
     "gray-matter": "^4.0.3",
     "p-limit": "^7.2.0",
     "picocolors": "^1.0.0"
+  },
+  "overrides": {
+    "undici": "^7.24.0",
+    "rollup": "^4.59.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "undici": "^7.24.0",
+      "rollup": "^4.59.0"
+    }
   }
 }
