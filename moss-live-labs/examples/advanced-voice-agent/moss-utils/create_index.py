@@ -10,7 +10,7 @@ from moss import MossClient, ParseFileInput
 
 PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
 PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
-PDF_PATH = "Harry-Potter.pdf"
+PDF_PATH = "Harry-Potter-Resume.pdf"
 INDEX_NAME = "Harry-Potter-Persona"
 
 
@@ -25,4 +25,5 @@ async def main():
     print(f"Index created: {result.index_name} ({result.doc_count} chunks)")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

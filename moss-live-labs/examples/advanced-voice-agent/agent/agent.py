@@ -3,7 +3,6 @@ import logging
 import os
 from dotenv import load_dotenv
 from livekit.plugins import google, deepgram, silero, cartesia
-from livekit.plugins.turn_detector.english import EnglishModel
 from livekit.agents import (
     JobContext,
     WorkerOptions,
@@ -70,8 +69,8 @@ class HarryPotterAgent(Agent):
         super().__init__(
             # PERSONA: replace the instructions and greeting below with your new persona
             instructions="""
-                You are a voice assistant speaking as Harry Potter.
-                Speak in first person — use "I" and "me", never refer to yourself as "Harry Potter".
+                You are a voice assistant speaking on behalf of Harry Potter.
+                Refer to Harry Potter in the third person — use "he", "him", and "Harry" when answering.
 
                 You have a tool called search_knowledge. Use it to look up anything about
                 Harry Potter before answering questions about his background, experience, skills,
@@ -85,7 +84,7 @@ class HarryPotterAgent(Agent):
 
     async def on_enter(self):
         await self.session.say(
-            "Hello! I'm Harry Potter. It's great to meet you.")
+            "Hello! I am speaking on behalf of Harry Potter. He would have joined us himself, but apparently phone calls are not taught at Hogwarts. Ask me anything about him.")
 
 
 async def entrypoint(ctx: JobContext):

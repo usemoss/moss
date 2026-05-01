@@ -16,7 +16,14 @@ uv sync
 
 ### 2. Configure environment
 
-Copy `.env.example` to `.env` and fill in your keys:
+Copy each `.env.example` to `.env` in the same folder:
+
+```bash
+cp agent/.env.example agent/.env
+cp moss-utils/.env.example moss-utils/.env
+```
+
+Fill in your keys in `agent/.env`:
 
 ```env
 LIVEKIT_URL=ws://localhost:7880
@@ -31,6 +38,13 @@ GOOGLE_API_KEY=your-google-key
 CARTESIA_API_KEY=your-cartesia-key
 ```
 
+And your Moss credentials in `moss-utils/.env`:
+
+```env
+MOSS_PROJECT_ID=your-moss-project-id
+MOSS_PROJECT_KEY=your-moss-project-key
+```
+
 ### 3. Parse your PDF and build the index
 
 Place your PDF in the `moss-utils/` folder, then update `PDF_PATH` and `INDEX_NAME` in [moss-utils/create_index.py](moss-utils/create_index.py) to match.
@@ -40,7 +54,7 @@ cd moss-utils
 uv run create_index.py
 ```
 
-This uses the Moss parse pipeline to chunk the PDF into searchable documents and create a named index. The index name must match `MOSS_INDEX_NAME` in your `.env` (defaults to `harry-potter`).
+This uses the Moss parse pipeline to chunk the PDF into searchable documents and create a named index. The index name must match `MOSS_INDEX_NAME` in your `.env` (defaults to `Harry-Potter-Persona`).
 
 ### 4. Run the agent
 
@@ -89,5 +103,4 @@ agent/
   agent.py          # Voice agent, LiveKit session, Moss tool
 moss-utils/
   create_index.py   # Parse PDF and create Moss index
-  summary.json      # Sample indexed document structure
 ```
