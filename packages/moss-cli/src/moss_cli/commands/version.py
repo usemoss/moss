@@ -11,19 +11,14 @@ console = Console()
 def version_command(ctx: typer.Context) -> None:
     """Print CLI and SDK version information."""
     import moss_cli
-
-    try:
-        import moss
-        sdk_version = moss.__version__
-    except Exception:
-        sdk_version = "unavailable"
+    import moss
 
     json_mode = ctx.obj.get("json_output", False)
 
     if json_mode:
         import json
 
-        print(json.dumps({"cli": moss_cli.__version__, "sdk": sdk_version}))
+        print(json.dumps({"cli": moss_cli.__version__, "sdk": moss.__version__}))
     else:
         console.print(f"moss-cli  {moss_cli.__version__}")
-        console.print(f"moss SDK  {sdk_version}")
+        console.print(f"moss SDK  {moss.__version__}")

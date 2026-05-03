@@ -39,6 +39,11 @@ def _register_moss_commands() -> None:
     app.command(name="query")(query_command)
     app.command(name="init")(init_command)
 
+try:
+    _register_moss_commands()
+except Exception:
+    pass  # moss SDK unavailable; SDK-dependent commands will be absent
+
 
 @app.callback()
 def main(
@@ -75,10 +80,6 @@ def main(
 
 def run() -> None:
     """Entry point for the console script."""
-    try:
-        _register_moss_commands()
-    except Exception:
-        pass  # moss SDK unavailable; SDK-dependent commands will be absent
     try:
         app()
     except (typer.Exit, typer.Abort, SystemExit):
