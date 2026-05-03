@@ -24,6 +24,6 @@ export default defineConfig({
     },
   },
   plugins: [
-    dts({ insertTypesEntry: true, rollupTypes: true }),
+    dts({ insertTypesEntry: true, bundleTypes: true }),
   ],
 });
