@@ -27,6 +27,54 @@ MOSS_PROJECT_KEY=your-project-key
 3. Set `urls` to the pages you want to ingest.
 4. Run `await build_and_query_knowledge_base(urls)` to crawl, index, and query the content.
 
+## Workflow
+
+The notebook is structured for efficiency:
+
+1. **Prepare** (one-time): Crawl URLs → normalize markdown → index into Moss
+2. **Query** (repeated): Run semantic queries against the indexed knowledge base without re-crawling
+
+This design lets you crawl once (which can be slow/expensive) and then iterate on queries quickly.
+
+## Architecture
+
+```
+┌─────────────┐
+│   URLs      │
+└──────┬──────┘
+       │
+       ├──> Firecrawl (crawl + scrape)
+       │
+┌──────▼─────────────────┐
+│  Crawled Pages         │
+│  (raw HTML/markdown)   │
+└──────┬─────────────────┘
+       │
+       ├──> Markdown Normalization
+       │    (clean text, remove chrome)
+       │
+┌──────▼─────────────────┐
+│  Cleaned Markdown      │
+│  (one DocumentInfo     │
+│   per page)            │
+└──────┬─────────────────┘
+       │
+       ├──> Moss Create Index
+       │
+┌──────▼─────────────────┐
+│  Indexed Knowledge     │
+│  Base (local or cloud) │
+└──────┬─────────────────┘
+       │
+       ├──> Semantic Query (reusable)
+       │    (no re-crawling needed)
+       │
+┌──────▼─────────────────┐
+│  Top-K Results         │
+│  (scored passages)     │
+└─────────────────────────┘
+```
+
 ## What the notebook does
 
 ```python
