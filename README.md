@@ -249,29 +249,7 @@ const results = await client.query(name, "your query", { topK: 5 });
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│                  Your Application               │
-│         (Voice bot, Copilot, Chat agent)        │
-└────────────────────┬────────────────────────────┘
-                     │
-          ┌──────────▼──────────┐
-          │     Moss SDK        │
-          │(Python / TypeScript)│
-          └──────────┬──────────┘
-                     │  HTTPS
-          ┌──────────▼──────────┐
-          │   Moss Runtime      │
-          │  ┌───────────────┐  │
-          │  │  Embedding    │  │
-          │  │  Engine       │  │
-          │  └───────┬───────┘  │
-          │  ┌───────▼───────┐  │
-          │  │  Search       │  │
-          │  │  Runtime      │◄─┼── Sub-10 ms queries
-          │  └───────────────┘  │
-          └─────────────────────┘
-```
+![Moss runtime architecture](./assets/moss-architecture.svg)
 
 The SDKs in this repo are thin clients that talk to the Moss runtime over HTTPS. The runtime handles embedding, indexing, and search — you don't need to manage any infrastructure.
 
