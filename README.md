@@ -251,7 +251,7 @@ const results = await client.query(name, "your query", { topK: 5 });
 
 ![Moss runtime architecture](./assets/moss-architecture.svg)
 
-The SDKs in this repo are thin clients that talk to the Moss runtime over HTTPS. The runtime handles embedding, indexing, and search — you don't need to manage any infrastructure.
+The runtime keeps that index synced with Moss Cloud over HTTPS, where ingestion, embedding, and distribution are handled for you, so there's no infrastructure to manage.
 
 Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
 
