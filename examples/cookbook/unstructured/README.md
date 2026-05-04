@@ -54,7 +54,7 @@ Each Moss document is one Unstructured chunk:
 
 ```python
 DocumentInfo(
-    id="docs/handbook.pdf::chunk-0003::a1b2c3d4e5f6",
+    id="docs/handbook.pdf::chunk-0003",
     text="Extracted chunk text...",
     metadata={
         "source_path": "docs/handbook.pdf",
@@ -63,8 +63,9 @@ DocumentInfo(
         "chunk_index": "3",
         "category": "CompositeElement",
         "page_number": "4",
+        "text_hash": "a1b2c3d4e5f6",
     },
 )
 ```
 
-Chunk IDs are deterministic from the relative file path, chunk index, and chunk text. Rerunning the same ingestion uses `MutationOptions(upsert=True)`, so changed chunks are updated in place.
+Chunk IDs are deterministic from the relative file path and chunk index. Rerunning the same ingestion uses `MutationOptions(upsert=True)`, so chunks are updated in place.
