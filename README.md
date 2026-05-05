@@ -51,7 +51,7 @@ await client.create_index("support-docs", [
     {"id": "3", "text": "We offer 24/7 live chat support."},
 ])
 
-# Load and query - results in <10 ms
+# Load and query — results in <10 ms
 await client.load_index("support-docs")
 results = await client.query("support-docs", "how long do refunds take?", QueryOptions(top_k=3))
 
@@ -77,7 +77,7 @@ await client.createIndex("support-docs", [
   { id: "3", text: "We offer 24/7 live chat support." },
 ]);
 
-// Load and query - results in <10 ms
+// Load and query — results in <10 ms
 await client.loadIndex("support-docs");
 const results = await client.query("support-docs", "how long do refunds take?", { topK: 3 });
 
@@ -162,7 +162,7 @@ npm run dev                  # Open http://localhost:3000
 
 ### Run the Pipecat voice agent
 
-Sub-10 ms retrieval plugged into [Pipecat's](https://github.com/pipecat-ai/pipecat) real-time voice pipeline - a customer support agent that actually keeps up with conversation.
+Sub-10 ms retrieval plugged into [Pipecat's](https://github.com/pipecat-ai/pipecat) real-time voice pipeline — a customer support agent that actually keeps up with conversation.
 
 ```bash
 cd apps/pipecat-moss/pipecat-quickstart
@@ -277,11 +277,11 @@ Full Python SDK source: [`sdks/python/`](sdks/python/).
 
 We welcome contributions! Here's where the community can have the most impact:
 
-- **New SDK bindings** - Swift, Go, Elixir,...
-- **Framework integrations** - CrewAI, Haystack, AutoGen
-- **Reranking support** - plug in cross-encoder rerankers
-- **Doc-parsing connectors** - PDF, DOCX, HTML, Markdown ingestion
-- **Examples and tutorials** - if you build something with Moss, we'd love to feature it
+- **New SDK bindings** — Swift, Go, Rust, Kotlin
+- **Framework integrations** — CrewAI, Haystack, AutoGen
+- **Reranking support** — plug in cross-encoder rerankers
+- **Doc-parsing connectors** — PDF, DOCX, HTML, Markdown ingestion
+- **Examples and tutorials** — if you build something with Moss, we'd love to feature it
 
 See our [Contributing Guide](CONTRIBUTING.md) for setup instructions and our [Roadmap](ROADMAP.md) for what's planned.
 
