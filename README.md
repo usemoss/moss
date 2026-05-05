@@ -306,7 +306,8 @@ Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
 
 We welcome contributions! Here's where the community can have the most impact:
 
-- **New SDK bindings** — Swift, Go, Elixir,...- **Framework integrations** — CrewAI, Haystack, AutoGen
+- **New SDK bindings** — Swift, Go, Elixir,...
+- **Framework integrations** — CrewAI, Haystack, AutoGen
 - **Reranking support** — plug in cross-encoder rerankers
 - **Doc-parsing connectors** — PDF, DOCX, HTML, Markdown ingestion
 - **Examples and tutorials** — if you build something with Moss, we'd love to feature it
