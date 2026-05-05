@@ -10,9 +10,9 @@
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![PyPI](https://img.shields.io/pypi/v/moss?color=deepgreen)](https://pypi.org/project/moss/)
-[![PyPI downloads](https://static.pepy.tech/personalized-badge/inferedge-moss-core?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi+downloads)](https://pepy.tech/project/inferedge-moss-core)
+[![PyPI downloads](https://static.pepy.tech/badge/moss)](https://pepy.tech/project/moss)
 [![npm](https://img.shields.io/npm/v/@moss-dev/moss?color=deepgreen)](https://www.npmjs.com/package/@moss-dev/moss)
-[![npm downloads](https://img.shields.io/npm/dt/@inferedge/moss?label=npm+downloads&color=blue)](https://www.npmjs.com/package/@inferedge/moss)
+[![npm downloads](https://img.shields.io/npm/dt/@moss-dev/moss?label=npm+downloads&color=blue)](https://www.npmjs.com/package/@moss-dev/moss)
 [![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=white&label=Discord&color=7B2FBE)](https://moss.link/discord)
 
 [Website](https://moss.dev) · [Docs](https://docs.moss.dev) · [Discord](https://moss.link/discord) · [Blog](https://moss.dev/blog)
@@ -21,7 +21,7 @@
 
 ---
 
-Moss is the search runtime that lives inside your Conversational AI agent.
+Moss is the search runtime that lives inside your conversational AI agent.
 
 Index documents, query them semantically, and get results back **in under 10 ms** - fast enough for real-time conversation.
 
@@ -30,6 +30,8 @@ If you find Moss useful, [star the repo](https://github.com/usemoss/moss) ⭐
 ![Moss Python walkthrough](https://github.com/user-attachments/assets/d826023d-92d6-49ac-8e5e-81cf04d409c5)
 
 ## Quickstart
+
+**Before you start:** sign up at [moss.dev](https://moss.dev) for a free `project_id` and `project_key` — you'll need them for the snippets below.
 
 ### Python
 
@@ -84,17 +86,21 @@ results.docs.forEach((doc) => {
 });
 ```
 
-> Get your project credentials at [moss.dev](https://moss.dev) - free tier available.
-
 ## Why Moss?
 
-**Vector databases were built for batch analytics. Moss was built for real-time agents.**
+**Most retrieval stacks call out to a remote vector database. The round trip alone runs 200–500 ms — enough to break a real-time conversation.**
 
-If you're building a voice bot, a copilot, or any AI system that talks to humans, you need retrieval that keeps up with conversation. A 200-500 ms round trip to a vector database kills the experience. Moss delivers results in single-digit milliseconds - fast enough that retrieval disappears from the latency budget.
+Moss runs search and embedding *inside* your process. There's no network hop on the hot path, so query latency lands in the single digits — fast enough that retrieval disappears from the latency budget. If you're building a voice bot, a copilot, or any agent that talks to humans, that's the difference between a tool that feels alive and one that feels laggy.
+
+### Moss is a search runtime, not a database
+
+You don't manage clusters, tune HNSW parameters, or worry about sharding. You index documents, the runtime loads them into your application, and you query. Ingestion, storage, and distribution happen in Moss Cloud — the runtime keeps your indexes in sync over HTTPS.
 
 ### Benchmarks
 
-End-to-end query latency (embedding + search) on 100,000 documents, 750 measured queries, top_k=5. Tested with Macbook pro (M4 Pro, 24GB).
+End-to-end query latency (embedding + search) on 100,000 documents, 750 measured queries, top_k=5.
+
+**How we measured.** Moss numbers include query embedding latency, which runs locally inside the runtime. Pinecone, Qdrant, and ChromaDB use an external embedding service ([Modal Text Embeddings Inference](https://modal.com/docs/examples/text_embeddings_inference)) and are queried against their cloud APIs. Hardware: MacBook Pro M4 Pro (24 GB).
 
 | System | P50 | P95 | P99 | Mean |
 |--------|-----|-----|-----|------|
@@ -103,15 +109,11 @@ End-to-end query latency (embedding + search) on 100,000 documents, 750 measured
 | Qdrant | 597.6 ms | 682.0 ms | 771.4 ms | 596.5 ms |
 | ChromaDB | 351.8 ms | 423.5 ms | 538.5 ms | 358.0 ms |
 
-Moss includes embedding in the measurement — competitors use an external embedding service ([modal](https://modal.com/docs/examples/text_embeddings_inference)). Pinecone and Qdrant use cloud search.
-
 > [Reproduce these benchmarks →](./benchmarks/)
-
-Moss isn't a database! It's a **search runtime**. You don't manage clusters, tune HNSW parameters, or worry about sharding. You index documents, load them into the runtime, and query. That's it.
 
 ## Features
 
-- **Sub-10 ms semantic search** - p99 of 8 ms
+- **Sub-10 ms semantic search** — single-digit-ms p99 in our [benchmarks](#benchmarks)
 - **Built-in embedding models** - no OpenAI key required (or bring your own)
 - **Metadata filtering** - filter by `$eq`, `$and`, `$in`, `$near` operators
 - **Document management** - add, upsert, retrieve, and delete documents
@@ -253,9 +255,15 @@ const results = await client.query(name, "your query", { topK: 5 });
 
 ![Moss runtime architecture](./assets/moss-architecture.svg)
 
-The runtime keeps that index synced with Moss Cloud over HTTPS, where ingestion, embedding, and distribution are handled for you, so there's no infrastructure to manage.
+Three parts:
 
-Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
+- **Moss Cloud** — handles ingestion, document embedding, storage, and distribution. You point the SDK at it with a project ID and key.
+- **Index** — your documents and their vectors, packaged as a single artifact that lives on Moss Cloud.
+- **Runtime** — embedded in your application via the Python or TypeScript SDK. It pulls indexes over HTTPS, holds them in memory, and serves queries locally.
+
+Once an index is loaded, queries don't leave your process — that's where the sub-10 ms latency comes from. Document changes flow through Moss Cloud and the runtime stays in sync.
+
+Full Python SDK source: [`sdks/python/`](sdks/python/).
 
 ## Contributing
 
