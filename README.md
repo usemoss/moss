@@ -208,59 +208,7 @@ cd apps/pipecat-moss/ollama-local
 docker compose up
 ```
 
-## SDK Reference
-
-### Python (`moss`)
-
-```python
-from moss import MossClient, DocumentInfo, QueryOptions, MutationOptions, GetDocumentsOptions
-
-client = MossClient(project_id, project_key)
-
-# Index management
-await client.create_index(name, documents, model_id="moss-minilm")
-await client.get_index(name)
-await client.list_indexes()
-await client.delete_index(name)
-
-# Document operations
-await client.add_docs(name, documents, MutationOptions(upsert=True))
-await client.get_docs(name)
-await client.get_docs(name, GetDocumentsOptions(doc_ids=["id1", "id2"]))
-await client.delete_docs(name, ["id1", "id2"])
-
-# Search
-await client.load_index(name)
-results = await client.query(name, "your query", QueryOptions(top_k=5))
-# results.docs[0].id, .text, .score, .metadata
-# results.time_taken_ms
-```
-
-### TypeScript (`@moss-dev/moss`)
-
-```typescript
-import { MossClient, DocumentInfo } from "@moss-dev/moss";
-
-const client = new MossClient(projectId, projectKey);
-
-// Index management
-await client.createIndex(name, documents, { modelId: "moss-minilm" });
-await client.getIndex(name);
-await client.listIndexes();
-await client.deleteIndex(name);
-
-// Document operations
-await client.addDocs(name, documents, { upsert: true });
-await client.getDocs(name);
-await client.getDocs(name, { docIds: ["id1", "id2"] });
-await client.deleteDocs(name, ["id1", "id2"]);
-
-// Search
-await client.loadIndex(name);
-const results = await client.query(name, "your query", { topK: 5 });
-// results.docs[0].id, .text, .score, .metadata
-// results.timeTakenInMs
-```
+Full API reference: [docs.moss.dev](https://docs.moss.dev).
 
 ## Integrations
 
@@ -302,6 +250,7 @@ Once an index is loaded, queries don't leave your process - that's where the sub
 - **Browser** - `@moss-dev/moss-web` is a WebAssembly build that downloads the index and runs queries entirely client-side, no server required. Use this for static sites, browser extensions, and offline-first apps. See [`examples/javascript-web/`](examples/javascript-web/).
 
 Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
+
 ## Contributing
 
 We welcome contributions! Here's where the community can have the most impact:
