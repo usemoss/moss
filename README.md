@@ -118,35 +118,20 @@ End-to-end query latency (embedding + search) on 100,000 documents, 750 measured
 - **Built-in embedding models** — no OpenAI key required (or bring your own)
 - **Metadata filtering** — `$eq`, `$and`, `$in`, `$near` operators
 - **Runs in the browser too** — separate WebAssembly SDK ([`@moss-dev/moss-web`](https://www.npmjs.com/package/@moss-dev/moss-web)) for client-side semantic search with no server
-- **Python + TypeScript SDKs** — async-first, type-safe (Python 3.10+, Node.js 20+)
+- **Database connectors** — ingest directly from SQLite, MongoDB, MySQL, and Supabase ([`packages/moss-data-connector/`](packages/moss-data-connector/))
+- **CLI** — manage indexes and query from the terminal ([`packages/moss-cli/`](packages/moss-cli/))
+- **SDKs** — Python (3.10+), TypeScript / Node.js (20+), Elixir, and C ([`libmoss`](https://github.com/usemoss/moss/releases))
 - **Framework integrations** — LangChain, DSPy, LlamaIndex, Pipecat, LiveKit, Vapi, ElevenLabs, Strands Agents
 
 ## Examples
 
 This repo contains working examples you can copy straight into your project:
 
-```text
-examples/
-├── python/                  # Python SDK samples
-│   ├── load_and_query_sample.py
-│   ├── comprehensive_sample.py
-│   ├── custom_embedding_sample.py
-│   └── metadata_filtering.py
-├── javascript/              # TypeScript SDK samples
-│   ├── load_and_query_sample.ts
-│   ├── comprehensive_sample.ts
-│   └── custom_embedding_sample.ts
-└── cookbook/                # Framework integrations
-    ├── langchain/           # LangChain retriever
-    └── dspy/                # DSPy module
-
-apps/
-├── next-js/                 # Next.js semantic search UI
-├── pipecat-moss/            # Pipecat voice agent with Moss retrieval
-├── agora-moss/              # Agora Conversational AI MCP server with Moss retrieval
-├── livekit-moss-vercel/     # LiveKit voice agent on Vercel
-└── docker/                  # Dockerized examples (ECS/K8s pattern)
-```
+- **SDK samples** — [`examples/python/`](examples/python/), [`examples/javascript/`](examples/javascript/), [`examples/javascript-web/`](examples/javascript-web/) (browser/WASM), [`examples/c/`](examples/c/), [`examples/python-classification/`](examples/python-classification/)
+- **Framework cookbook** — [`examples/cookbook/`](examples/cookbook/) covers LangChain, DSPy, LlamaIndex, CrewAI, Haystack, AutoGen, Mastra, Pydantic AI, and Daytona
+- **Voice agents** — [`apps/pipecat-moss/`](apps/pipecat-moss/), [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/), [`apps/vapi-moss/`](apps/vapi-moss/), [`apps/elevenlabs-moss/`](apps/elevenlabs-moss/), [`apps/agora-moss/`](apps/agora-moss/)
+- **Web apps** — [`apps/next-js/`](apps/next-js/) (semantic search UI), [`apps/moss-llamaindex/`](apps/moss-llamaindex/) (RAG backend + frontend)
+- **Deployment** — [`apps/docker/`](apps/docker/) (ECS / K8s patterns), [`apps/moss-bun/`](apps/moss-bun/) (Bun runtime)
 
 ### Run the Python examples
 
@@ -182,6 +167,15 @@ Sub-10 ms retrieval plugged into [Pipecat's](https://github.com/pipecat-ai/pipec
 ```bash
 cd apps/pipecat-moss/pipecat-quickstart
 # See README for setup and Pipecat Cloud deployment
+```
+
+### Run the fully-local voice agent (Ollama + Moss + Pipecat)
+
+A privacy-first voice AI stack: **Ollama** for LLM inference, **Moss** for retrieval, **Pipecat** for real-time audio — the LLM and retrieval both run on your machine.
+
+```bash
+cd apps/pipecat-moss/ollama-local
+docker compose up
 ```
 
 ## SDK Reference
@@ -245,6 +239,11 @@ const results = await client.query(name, "your query", { topK: 5 });
 | [LangChain](https://github.com/langchain-ai/langchain) | Available | [`examples/cookbook/langchain/`](examples/cookbook/langchain/) |
 | [DSPy](https://github.com/stanfordnlp/dspy) | Available | [`examples/cookbook/dspy/`](examples/cookbook/dspy/) |
 | [LlamaIndex](https://github.com/run-llama/llama_index) | Available | [`apps/moss-llamaindex/`](apps/moss-llamaindex/) |
+| [CrewAI](https://github.com/crewAIInc/crewAI) | Available | [`examples/cookbook/crewai/`](examples/cookbook/crewai/) |
+| [AutoGen](https://github.com/microsoft/autogen) | Available | [`examples/cookbook/autogen/`](examples/cookbook/autogen/) |
+| [Haystack](https://github.com/deepset-ai/haystack) | Available | [`examples/cookbook/haystack/`](examples/cookbook/haystack/) |
+| [Mastra](https://mastra.ai) | Available | [`examples/cookbook/mastra/`](examples/cookbook/mastra/) |
+| [Pydantic AI](https://ai.pydantic.dev) | Available | [`examples/cookbook/pydantic-ai/`](examples/cookbook/pydantic-ai/) |
 | [Pipecat](https://github.com/pipecat-ai/pipecat) | Available | [`apps/pipecat-moss/`](apps/pipecat-moss/) |
 | [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
 | [Vapi](https://vapi.ai) | Available | [`apps/vapi-moss/`](apps/vapi-moss/) |
@@ -254,7 +253,6 @@ const results = await client.query(name, "your query", { topK: 5 });
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
 | [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`packages/vercel-sdk/`](packages/vercel-sdk/) |
-| [CrewAI](https://github.com/crewAIInc/crewAI) | Coming soon | — |
 
 ## Architecture
 
