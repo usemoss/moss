@@ -21,7 +21,7 @@
 
 ---
 
-Moss is a sub-10 ms semantic search runtime built for AI agents. Hybrid retrieval (semantic + Keyword Search), built-in embeddings, metadata filtering, and a WebAssembly build that runs in the browser - all from a single SDK that embeds in your application.
+Moss is a sub-10 ms semantic search runtime built for Conversational AI agents. Hybrid retrieval (semantic + Keyword Search), built-in embeddings, metadata filtering, and a WebAssembly build that runs in the browser - all from a single SDK that embeds in your application.
 
 No network hop on the hot path. No clusters to tune. Point the SDK at Moss Cloud, load your index, and query it in **under 10 ms**. Python, TypeScript, Elixir, and C.
 
@@ -31,7 +31,9 @@ If you find Moss useful, [star the repo](https://github.com/usemoss/moss) ⭐
 
 ## Quickstart
 
-**Before you start:** sign up at [moss.dev](https://moss.dev) for a free `project_id` and `project_key`. The snippets below need Python 3.10+ or Node.js 20+.
+**Before you start:** sign up at [moss.dev](https://moss.dev) for `project_id` and `project_key` - free tier available.
+
+The snippets below need Python 3.10+ or Node.js 20+.
 
 ### Python
 
@@ -92,15 +94,9 @@ results.docs.forEach((doc) => {
 
 Moss runs search and embedding *inside* your process. There's no network hop on the hot path, so query latency lands in the single digits - fast enough that retrieval disappears from the latency budget. If you're building a voice bot, a copilot, or any agent that talks to humans, that's the difference between a tool that feels alive and one that feels laggy.
 
-### Moss is a search runtime, not a database
-
-You don't manage clusters, tune HNSW parameters, or worry about sharding. You index documents, the runtime loads them into your application, and you query. Ingestion, storage, and distribution happen in Moss Cloud - the runtime keeps your indexes in sync over HTTPS.
-
 ### Benchmarks
 
-End-to-end query latency (embedding + search) on 100,000 documents, 750 measured queries, top_k=5.
-
-**How we measured.** Moss numbers include query embedding latency, which runs locally inside the runtime. Pinecone, Qdrant, and ChromaDB use an external embedding service ([Modal Text Embeddings Inference](https://modal.com/docs/examples/text_embeddings_inference)) and are queried against their cloud APIs. Hardware: MacBook Pro M4 Pro (24 GB).
+End-to-end query latency (embedding + search) on 100,000 documents, 750 measured queries, top_k=5. Tested with Macbook pro (M4 Pro, 24GB).
 
 | System | P50 | P95 | P99 | Mean |
 |--------|-----|-----|-----|------|
@@ -109,12 +105,16 @@ End-to-end query latency (embedding + search) on 100,000 documents, 750 measured
 | Qdrant | 597.6 ms | 682.0 ms | 771.4 ms | 596.5 ms |
 | ChromaDB | 351.8 ms | 423.5 ms | 538.5 ms | 358.0 ms |
 
+Moss includes embedding in the measurement — competitors use an external embedding service ([modal](https://modal.com/docs/examples/text_embeddings_inference)). Pinecone and Qdrant use cloud search.
+
 > [Reproduce these benchmarks →](./benchmarks/)
+
+Moss isn't a database! It's a **search runtime**. You don't manage clusters, tune HNSW parameters, or worry about sharding. You index documents, load them into the runtime, and query. That's it.
 
 ## Features
 
 - **Sub-10 ms semantic search** - single-digit-ms p99 in our [benchmarks](#benchmarks)
-- **Hybrid search** - semantic + BM25 keyword in a single query
+- **Hybrid search** - semantic + keyword in a single query
 - **Built-in embedding models** - no OpenAI key required (or bring your own)
 - **Metadata filtering** - `$eq`, `$and`, `$in`, `$near` operators
 - **Runs in the browser too** - separate WebAssembly SDK ([`@moss-dev/moss-web`](https://www.npmjs.com/package/@moss-dev/moss-web)) for client-side semantic search with no server
@@ -127,11 +127,41 @@ End-to-end query latency (embedding + search) on 100,000 documents, 750 measured
 
 This repo contains working examples you can copy straight into your project:
 
-- **SDK samples** - [`examples/python/`](examples/python/), [`examples/javascript/`](examples/javascript/), [`examples/javascript-web/`](examples/javascript-web/) (browser/WASM), [`examples/c/`](examples/c/), [`examples/python-classification/`](examples/python-classification/)
-- **Framework cookbook** - [`examples/cookbook/`](examples/cookbook/) covers LangChain, DSPy, LlamaIndex, CrewAI, Haystack, AutoGen, Mastra, Pydantic AI, and Daytona
-- **Voice agents** - [`apps/pipecat-moss/`](apps/pipecat-moss/), [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/), [`apps/vapi-moss/`](apps/vapi-moss/), [`apps/elevenlabs-moss/`](apps/elevenlabs-moss/), [`apps/agora-moss/`](apps/agora-moss/)
-- **Web apps** - [`apps/next-js/`](apps/next-js/) (semantic search UI), [`apps/moss-llamaindex/`](apps/moss-llamaindex/) (RAG backend + frontend)
-- **Deployment** - [`apps/docker/`](apps/docker/) (ECS / K8s patterns), [`apps/moss-bun/`](apps/moss-bun/) (Bun runtime)
+```text
+examples/
+├── python/                  # Python SDK samples
+│   ├── load_and_query_sample.py
+│   ├── comprehensive_sample.py
+│   ├── custom_embedding_sample.py
+│   └── metadata_filtering.py
+├── python-classification/   # Classification example
+├── javascript/              # TypeScript SDK samples
+│   ├── load_and_query_sample.ts
+│   ├── comprehensive_sample.ts
+│   └── custom_embedding_sample.ts
+├── javascript-web/          # Browser / WASM SDK samples
+├── c/                       # C SDK samples (libmoss)
+└── cookbook/                # Framework integrations
+    ├── langchain/           # LangChain retriever
+    ├── dspy/                # DSPy module
+    ├── crewai/              # CrewAI integration
+    ├── haystack/            # Haystack retriever
+    ├── autogen/             # AutoGen integration
+    ├── mastra/              # Mastra retriever
+    ├── pydantic-ai/         # Pydantic AI integration
+    └── daytona/             # Daytona sandbox example
+
+apps/
+├── next-js/                 # Next.js semantic search UI
+├── pipecat-moss/            # Pipecat voice agent with Moss retrieval
+├── vapi-moss/               # Vapi voice agent with Moss retrieval
+├── elevenlabs-moss/         # ElevenLabs voice agent with Moss retrieval
+├── livekit-moss-vercel/     # LiveKit voice agent on Vercel
+├── agora-moss/              # Agora Conversational AI MCP server with Moss retrieval
+├── moss-llamaindex/         # LlamaIndex RAG backend + frontend
+├── moss-bun/                # Bun runtime example
+└── docker/                  # Dockerized examples (ECS/K8s pattern)
+```
 
 ### Run the Python examples
 
@@ -271,14 +301,12 @@ Once an index is loaded, queries don't leave your process - that's where the sub
 - **Server-side** - `moss` (Python) and `@moss-dev/moss` (Node.js 20+) embed the runtime in your backend. Use this when your agent runs on a server.
 - **Browser** - `@moss-dev/moss-web` is a WebAssembly build that downloads the index and runs queries entirely client-side, no server required. Use this for static sites, browser extensions, and offline-first apps. See [`examples/javascript-web/`](examples/javascript-web/).
 
-Full Python SDK source: [`sdks/python/`](sdks/python/).
-
+Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
 ## Contributing
 
 We welcome contributions! Here's where the community can have the most impact:
 
-- **New SDK bindings** — Swift, Go, Rust, Kotlin
-- **Framework integrations** — CrewAI, Haystack, AutoGen
+- **New SDK bindings** — Swift, Go, Elixir,...- **Framework integrations** — CrewAI, Haystack, AutoGen
 - **Reranking support** — plug in cross-encoder rerankers
 - **Doc-parsing connectors** — PDF, DOCX, HTML, Markdown ingestion
 - **Examples and tutorials** — if you build something with Moss, we'd love to feature it
