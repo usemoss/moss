@@ -31,7 +31,7 @@ If you find Moss useful, [star the repo](https://github.com/usemoss/moss) ⭐
 
 ## Quickstart
 
-**Before you start:** sign up at [moss.dev](https://moss.dev) for a free `project_id` and `project_key` — you'll need them for the snippets below.
+**Before you start:** sign up at [moss.dev](https://moss.dev) for a free `project_id` and `project_key`. The snippets below need Python 3.10+ or Node.js 20+.
 
 ### Python
 
@@ -114,11 +114,12 @@ End-to-end query latency (embedding + search) on 100,000 documents, 750 measured
 ## Features
 
 - **Sub-10 ms semantic search** — single-digit-ms p99 in our [benchmarks](#benchmarks)
-- **Built-in embedding models** - no OpenAI key required (or bring your own)
-- **Metadata filtering** - filter by `$eq`, `$and`, `$in`, `$near` operators
-- **Document management** - add, upsert, retrieve, and delete documents
-- **Python + TypeScript SDKs** - async-first, type-safe
-- **Framework integrations** - LangChain, DSPy, Pipecat, LiveKit, LlamaIndex
+- **Hybrid search** — semantic + BM25 keyword in a single query
+- **Built-in embedding models** — no OpenAI key required (or bring your own)
+- **Metadata filtering** — `$eq`, `$and`, `$in`, `$near` operators
+- **Runs in the browser too** — separate WebAssembly SDK ([`@moss-dev/moss-web`](https://www.npmjs.com/package/@moss-dev/moss-web)) for client-side semantic search with no server
+- **Python + TypeScript SDKs** — async-first, type-safe (Python 3.10+, Node.js 20+)
+- **Framework integrations** — LangChain, DSPy, LlamaIndex, Pipecat, LiveKit, Vapi, ElevenLabs, Strands Agents
 
 ## Examples
 
@@ -243,9 +244,13 @@ const results = await client.query(name, "your query", { topK: 5 });
 |-----------|--------|---------|
 | [LangChain](https://github.com/langchain-ai/langchain) | Available | [`examples/cookbook/langchain/`](examples/cookbook/langchain/) |
 | [DSPy](https://github.com/stanfordnlp/dspy) | Available | [`examples/cookbook/dspy/`](examples/cookbook/dspy/) |
+| [LlamaIndex](https://github.com/run-llama/llama_index) | Available | [`apps/moss-llamaindex/`](apps/moss-llamaindex/) |
 | [Pipecat](https://github.com/pipecat-ai/pipecat) | Available | [`apps/pipecat-moss/`](apps/pipecat-moss/) |
-| [Agora](https://www.agora.io/) | Available | [`apps/agora-moss/`](apps/agora-moss/) |
 | [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
+| [Vapi](https://vapi.ai) | Available | [`apps/vapi-moss/`](apps/vapi-moss/) |
+| [ElevenLabs](https://elevenlabs.io) | Available | [`apps/elevenlabs-moss/`](apps/elevenlabs-moss/) |
+| [Agora](https://www.agora.io/) | Available | [`apps/agora-moss/`](apps/agora-moss/) |
+| [Strands Agents](https://github.com/strands-agents/sdk-python) | Available | [`packages/strands-agents-moss/`](packages/strands-agents-moss/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
 | [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`packages/vercel-sdk/`](packages/vercel-sdk/) |
@@ -257,11 +262,16 @@ const results = await client.query(name, "your query", { topK: 5 });
 
 Three parts:
 
-- **Moss Cloud** — handles ingestion, document embedding, storage, and distribution. You point the SDK at it with a project ID and key.
+- **Moss Cloud** — handles ingestion, document embedding, storage, and distribution. Point the SDK at it with a project ID and key.
 - **Index** — your documents and their vectors, packaged as a single artifact that lives on Moss Cloud.
-- **Runtime** — embedded in your application via the Python or TypeScript SDK. It pulls indexes over HTTPS, holds them in memory, and serves queries locally.
+- **Runtime** — embedded in your application. It pulls indexes over HTTPS, holds them in memory, and serves queries locally.
 
 Once an index is loaded, queries don't leave your process — that's where the sub-10 ms latency comes from. Document changes flow through Moss Cloud and the runtime stays in sync.
+
+### Two ways to run the runtime
+
+- **Server-side** — `moss` (Python) and `@moss-dev/moss` (Node.js 20+) embed the runtime in your backend. Use this when your agent runs on a server.
+- **Browser** — `@moss-dev/moss-web` is a WebAssembly build that downloads the index and runs queries entirely client-side, no server required. Use this for static sites, browser extensions, and offline-first apps. See [`examples/javascript-web/`](examples/javascript-web/).
 
 Full Python SDK source: [`sdks/python/`](sdks/python/).
 
