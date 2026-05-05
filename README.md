@@ -21,9 +21,9 @@
 
 ---
 
-Moss is the search runtime that lives inside your conversational AI agent.
+Moss is a sub-10 ms semantic search runtime built for AI agents. Hybrid retrieval (semantic + Keyword Search), built-in embeddings, metadata filtering, and a WebAssembly build that runs in the browser - all from a single SDK that embeds in your application.
 
-Index documents, query them semantically, and get results back **in under 10 ms** - fast enough for real-time conversation.
+No network hop on the hot path. No clusters to tune. Point the SDK at Moss Cloud, load your index, and query it in **under 10 ms**. Python, TypeScript, Elixir, and C.
 
 If you find Moss useful, [star the repo](https://github.com/usemoss/moss) ⭐
 
@@ -293,13 +293,13 @@ Check out issues labeled [`good first issue`](https://github.com/usemoss/moss/la
 
 ## Community
 
-- [Discord](https://moss.link/discord) - ask questions, share what you're building
-- [GitHub Issues](https://github.com/usemoss/moss/issues) - bug reports and feature requests
-- [Twitter](https://x.com/usemoss) - announcements and updates
+- [Discord](https://moss.link/discord) — ask questions, share what you're building
+- [GitHub Issues](https://github.com/usemoss/moss/issues) — bug reports and feature requests
+- [Twitter](https://x.com/usemoss) — announcements and updates
 
 ## License
 
-[BSD 2-Clause License](LICENSE) - the SDKs, examples, and integrations in this repo are fully open source.
+[BSD 2-Clause License](LICENSE) — the SDKs, examples, and integrations in this repo are fully open source.
 
 ---
 
