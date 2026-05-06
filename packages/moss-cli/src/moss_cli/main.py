@@ -15,7 +15,7 @@ from .output import print_error
 app = typer.Typer(
     name="moss",
     help="Moss Semantic Search CLI",
-    add_completion=True,
+    add_completion=False,
     no_args_is_help=True,
 )
 
