@@ -25,8 +25,6 @@ Moss is a sub-10 ms semantic search runtime built for Conversational AI agents. 
 
 No network hop on the hot path. No clusters to tune. Point the SDK at Moss Cloud, load your index, and query it in **under 10 ms**. Python, TypeScript, Elixir, and C.
 
-If you find Moss useful, [star the repo](https://github.com/usemoss/moss) ⭐
-
 ![Moss Python walkthrough](https://github.com/user-attachments/assets/d826023d-92d6-49ac-8e5e-81cf04d409c5)
 
 ## Quickstart
