@@ -17,11 +17,10 @@ The key detail is that the Moss index is loaded locally with `load_index()` befo
 
 ```bash
 cd examples/cookbook/langgraph
-pip install "moss>=1.0.0" "langgraph>=0.2" langchain-groq python-dotenv
+uv sync
 ```
 
-No editable install is required. The runnable example imports the core helpers
-directly from `moss_langgraph.py` in this directory.
+> Don't have `uv`? Install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 ## Setup
 
@@ -38,7 +37,7 @@ GROQ_MODEL=llama-3.3-70b-versatile
 If you do not already have a Moss index for testing, create one with:
 
 ```bash
-python create_index.py
+uv run python create_index.py
 ```
 
 That script creates a small FAQ-style index with metadata like `category=returns`
@@ -86,25 +85,25 @@ That matters because:
 Single question:
 
 ```bash
-python example_usage.py --question "What is the refund policy?"
+uv run python example_usage.py --question "What is the refund policy?"
 ```
 
 Single question with a metadata filter carried through graph state:
 
 ```bash
-python example_usage.py --question "What is the refund policy?" --filter-eq category=returns
+uv run python example_usage.py --question "What is the refund policy?" --filter-eq category=returns
 ```
 
 Single question with an explicit hybrid-search blend:
 
 ```bash
-python example_usage.py --question "What is the refund policy?" --alpha 0.6
+uv run python example_usage.py --question "What is the refund policy?" --alpha 0.6
 ```
 
 Interactive loop:
 
 ```bash
-python example_usage.py
+uv run python example_usage.py
 ```
 
 The script loads `.env` from this directory.

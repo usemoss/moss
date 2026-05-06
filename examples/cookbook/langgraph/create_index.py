@@ -82,11 +82,11 @@ async def main() -> None:
 
     print("Suggested live tests:")
     print(
-        "python example_usage.py "
+        "uv run python example_usage.py "
         '--question "What is the refund policy?"'
     )
     print(
-        "python example_usage.py "
+        "uv run python example_usage.py "
         '--question "What is the refund policy?" --filter-eq category=returns'
     )
 
