@@ -1,1 +1,1 @@
-AGENTS.md
+This repository's agent guidance is documented in [AGENTS.md](AGENTS.md).

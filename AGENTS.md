@@ -116,7 +116,7 @@ When adding examples or cookbook integrations, follow the existing patterns:
 ## Testing Notes
 
 - E2E and integration tests require `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY`; they auto-skip gracefully when credentials are absent
-- CI runs Python tests across versions 3.10–3.14 using tox
+- CI runs Python SDK tests across versions 3.10–3.14 in a GitHub Actions matrix using `pytest` directly
 - CI lints Python with `ruff` and type-checks with `mypy`; format locally with `black` + `isort`
 - JS tests use Vitest; CI runs on Node 20
 
