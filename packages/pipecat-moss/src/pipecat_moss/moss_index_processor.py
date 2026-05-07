@@ -136,6 +136,7 @@ class MossIndexProcessor(FrameProcessor):
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.exception(f"{self}: error while running retrieval: {exc}")
             await self.push_error(ErrorFrame(error=f"{self} retrieval error: {exc}"))
+            await self.push_frame(frame, direction)
 
     @staticmethod
     def _get_latest_user_text(messages: Sequence[dict[str, Any]]) -> str | None:
