@@ -294,9 +294,9 @@ async function initMoss() {
     try {
       const { MossClient } = await import(/* @vite-ignore */ '@moss-dev/moss-web')
       const client = new MossClient((options.value as any).projectId, (options.value as any).projectKey)
+      await client.loadIndex((options.value as any).indexName)
       mossClient.value = client
       status.value = 'ready'
-      client.loadIndex((options.value as any).indexName).catch(() => {})
     } catch (e) {
       status.value = 'error'
       errorMessage.value = `Failed to initialize search: ${e instanceof Error ? e.message : String(e)}`
@@ -325,7 +325,12 @@ const performSearch = async (q: string) => {
     rawResults.value = Array.isArray(response?.docs) ? response.docs : []
     updateDisplayGroups()
     selectedIndex.value = 0
-  } catch { status.value = 'error'; errorMessage.value = 'Search failed.' }
+  } catch (e) {
+    status.value = 'error'
+    const msg = e instanceof Error ? e.message : String(e)
+    errorMessage.value = `Search failed: ${msg}`
+    console.error('[Moss search] query failed', e)
+  }
 }
 
 function onInput() {

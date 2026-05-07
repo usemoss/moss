@@ -9,10 +9,9 @@
  *   pnpm index:docs documentation --inspect  <- dump chunks to JSON without uploading
  */
 
-import { buildJsonDocs, createIndex } from '@moss-tools/md-indexer'
+import { buildJsonDocs, uploadDocuments } from '@moss-tools/md-indexer'
 import dotenv from 'dotenv'
 import path from 'node:path'
-import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -61,25 +60,18 @@ const projectId = process.env.MOSS_PROJECT_ID
 const projectKey = process.env.MOSS_PROJECT_KEY
 const indexName = process.env.MOSS_INDEX_NAME
 
-if (!inspect && (!projectId || !projectKey || !indexName)) {
+if (inspect) {
+  console.log('\nSample (first 3 chunks):')
+  console.log(JSON.stringify(filtered.slice(0, 3), null, 2))
+  process.exit(0)
+}
+
+if (!projectId || !projectKey || !indexName) {
   console.error('Missing env vars: MOSS_PROJECT_ID, MOSS_PROJECT_KEY, MOSS_INDEX_NAME')
   process.exit(1)
 }
 
-// Write filtered chunks to temp file (used for inspect and upload)
-// fs.writeFileSync(tempFile, JSON.stringify(filtered, null, 2))
-
-if (inspect) {
-  console.log('\nSample (first 3 chunks):')
-  console.log(JSON.stringify(filtered.slice(0, 3), null, 2))
-  console.log(`\nFull output written to .index-preview.json`)
-  process.exit(0)
-}
-
 console.log(`Uploading to index: ${indexName}`)
-await createIndex(tempFile, { projectId, projectKey, indexName, modelName: 'moss-minilm', alpha: 0.2 })
-
-// Clean up temp file
-// fs.unlinkSync(tempFile)
+await uploadDocuments(filtered, { projectId, projectKey, indexName, modelName: 'moss-minilm' })
 
 console.log('Done.')
