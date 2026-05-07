@@ -1,13 +1,27 @@
 import { defineConfig } from 'vitepress'
 import { mossIndexerPlugin } from 'vitepress-plugin-moss'
 import dotenv from 'dotenv'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 dotenv.config({ path: '../.env' })
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   vite: {
-    plugins: [mossIndexerPlugin()]
+    plugins: [mossIndexerPlugin()],
+    optimizeDeps: {
+      exclude: ['@moss-dev/moss-web', '@moss-dev/moss-wasm', 'onnxruntime-web']
+    },
+    server: {
+      fs: {
+        // Wasm lives in the plugin package's node_modules, outside demo-site root.
+        allow: [path.resolve(__dirname, '../../../..')]
+      }
+    },
+    assetsInclude: ['**/*.wasm']
   },
   srcDir: "docs",
 
