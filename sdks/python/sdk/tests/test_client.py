@@ -354,6 +354,7 @@ class TestQueryLocal:
         opts.alpha = 0.9
         opts.embedding = [0.1, 0.2, 0.3]
         opts.filter = None
+        opts.rerank = None
 
         result = await client.query("idx", "search text", opts)
 
@@ -377,6 +378,7 @@ class TestQueryLocal:
         opts.alpha = None
         opts.embedding = [0.5]
         opts.filter = None
+        opts.rerank = None
 
         await client.query("idx", "q", opts)
 
@@ -394,6 +396,8 @@ class TestQueryLocal:
         opts.embedding = None
         opts.top_k = 5
         opts.alpha = 0.8
+        opts.filter = None
+        opts.rerank = None
 
         with pytest.raises(ValueError, match="custom embeddings"):
             await client.query("idx", "q", opts)
@@ -418,6 +422,7 @@ class TestQueryLocal:
         opts.top_k = 5
         opts.alpha = 0.8
         opts.embedding = [0.1]
+        opts.rerank = None
 
         metadata_filter = {"field": "city", "condition": {"$eq": "NYC"}}
         opts.filter = metadata_filter
@@ -443,6 +448,7 @@ class TestQueryLocal:
         opts.alpha = 0.8
         opts.embedding = [0.1]
         opts.filter = None
+        opts.rerank = None
 
         await client.query("idx", "q", opts)
 
@@ -464,6 +470,7 @@ class TestQueryLocal:
         opts.top_k = 10
         opts.alpha = 0.8
         opts.embedding = [0.5]
+        opts.rerank = None
 
         metadata_filter = {
             "$and": [
@@ -561,6 +568,8 @@ class TestQueryCloudFallback:
         opts.top_k = 5
         opts.alpha = 0.8
         opts.embedding = [0.1]
+        opts.filter = None
+        opts.rerank = None
 
         result = await client.query("idx", "q", opts)
 

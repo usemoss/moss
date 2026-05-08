@@ -32,7 +32,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+cohere = [
+    "cohere>=5.0.0",
+]
 dev = [
+    "cohere>=5.0.0",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "tox>=4.0.0",

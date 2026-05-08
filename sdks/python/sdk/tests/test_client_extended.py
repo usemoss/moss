@@ -100,6 +100,7 @@ class TestCloudFallbackErrors:
             opts.top_k = 5
             opts.embedding = [0.1, 0.2, 0.3]
             opts.filter = None
+            opts.rerank = None
 
             result = await unloaded_client.query("idx", "test query", opts)
 
@@ -263,6 +264,7 @@ class TestQueryOptionsBehavior:
         opts.alpha = None
         opts.embedding = None
         opts.filter = None
+        opts.rerank = None
 
         await client.query("idx", "test", opts)
 
@@ -278,6 +280,7 @@ class TestQueryOptionsBehavior:
         opts.alpha = 0.5
         opts.embedding = None
         opts.filter = None
+        opts.rerank = None
 
         await client.query("idx", "test", opts)
 
@@ -293,6 +296,7 @@ class TestQueryOptionsBehavior:
         opts.alpha = 0
         opts.embedding = None
         opts.filter = None
+        opts.rerank = None
 
         await client.query("idx", "test", opts)
 
@@ -308,6 +312,7 @@ class TestQueryOptionsBehavior:
         opts.alpha = 1
         opts.embedding = None
         opts.filter = None
+        opts.rerank = None
 
         await client.query("idx", "test", opts)
 
@@ -333,6 +338,7 @@ class TestMetadataFilterWarning:
 
             opts = MagicMock()
             opts.filter = {"field": "city", "condition": {"$eq": "NYC"}}
+            opts.rerank = None
 
             with caplog.at_level("WARNING"):
                 await unloaded_client.query("idx", "test", opts)

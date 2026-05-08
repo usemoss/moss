@@ -20,6 +20,7 @@ class TestQueryOptionsUsage:
         opts.alpha = 0.8
         opts.embedding = None
         opts.filter = {"field": "city", "condition": {"$eq": "NYC"}}
+        opts.rerank = None
 
         await client.query("idx", "test", opts)
 
@@ -38,6 +39,7 @@ class TestQueryOptionsUsage:
         opts.alpha = 0.5
         opts.embedding = embedding
         opts.filter = None
+        opts.rerank = None
 
         await client.query("idx", "test", opts)
 
