@@ -7,10 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.4] - 2026-05-01
 
-### Fixed
-
-- Updated compatibility with `pipecat-ai>=1.1.0`. Replaced removed `LLMMessagesFrame` with `LLMMessagesUpdateFrame` and removed deleted `OpenAILLMContextFrame` import (now unified into base `LLMContextFrame`).
-- Bumped `pipecat-ai` dependency constraint from `>=0.0.99` to `>=1.1.0`.
+### Changed
 - Updated `requires-python` from `>=3.10` to `>=3.11` to match `pipecat-ai 1.1.0` requirements.
 
 ## [0.0.3] - 2026-03-24
