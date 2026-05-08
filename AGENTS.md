@@ -6,7 +6,7 @@ This file provides guidance to AI agents when working with code in this reposito
 
 Moss is a real-time semantic search runtime for AI agents targeting sub-10ms query latency. The runtime runs on-device using bundled embedding models (`moss-minilm`) — no external embedding API calls are needed. The cloud layer handles project management and index distribution; the local layer handles querying.
 
-This repository contains the **multi-language SDKs**, **framework integrations** (cookbooks), and **application examples**. It is NOT the core Rust engine — that ships as pre-compiled native bindings (`inferedge-moss-core` / `@moss-dev/moss-core` / `moss_core`).
+This repository contains the **multi-language SDKs**, **framework integrations** (cookbooks), and **application examples**.
 
 ## Repository Layout
 
@@ -18,17 +18,115 @@ sdks/
 examples/
   python/          — Standalone Python usage examples
   javascript/      — Standalone TS usage examples
-  cookbook/        — Framework integrations (LangChain, DSPy, Pipecat, etc.)
+  javascript-web/  — Browser/Vite examples (no Node runtime)
+  c/               — C binding examples
+  bun/             — Bun runtime example
+  python-classification/ — Text classification with Moss
+  cookbook/        — Framework integrations (one subdirectory per framework)
+    autogen/       — AutoGen multi-agent e-commerce support
+    crewai/        — CrewAI retrieval tool
+    daytona/       — Log Ingestion Q&A Agent on Daytona sandboxes
+    dspy/          — DSPy notebook
+    haystack/      — Haystack RAG pipeline integration
+    langchain/     — LangChain retriever + tool integration
+    mastra/        — Mastra agent createTool() integration
+    moss-cognee-daytona/ — Claude Code + Cognee + Moss on Daytona (shared memory)
 apps/
-  next-js/         — Next.js semantic search UI
-  pipecat-moss/    — Pipecat voice agent integration
-  livekit-moss-vercel/ — LiveKit + Vercel voice agent
+  agora-moss/      — Agora Conversational AI voice agent (MCP server demo)
+  docker/          — Dockerized Python + JS SDK examples (ECS/K8s pattern)
+  elevenlabs-moss/ — ElevenLabs voice agent with Moss knowledge base
+  livekit-moss-vercel/ — LiveKit voice agent + React frontend on Vercel
+  moss-bun/        — Production Bun semantic search application
+  moss-llamaindex/ — LlamaIndex + Liteparse full-stack PDF search demo
+  next-js/         — Next.js 15 semantic search UI (Server Actions)
+  pipecat-moss/    — Pipecat voice agent (three variants below)
+    pipecat-quickstart/  — Cloud-deployable quickstart bot
+    ollama-local/        — Local LLM + Moss + Pipecat via docker compose
+    hume-ollama-local/   — Local LLM + Hume AI TTS + Moss + Pipecat
+  vapi-moss/       — VAPI Custom Tool webhook server
 packages/
-  vitepress-plugin-moss/ — VitePress search plugin
-  vercel-sdk/            — Vercel AI SDK integration
-  pipecat-moss/          — Pipecat Python package
-  moss-cli/              — CLI tools for index management
+  agora-moss/            — Agora Conversational AI MCP server package
+  elevenlabs-moss/       — ElevenLabs integration package
+  moss-cli/              — CLI for index/document management (no-code workflows)
+  moss-data-connector/   — Database source connectors
+    moss-connector-mongodb/  — MongoDB connector
+    moss-connector-mysql/    — MySQL / MariaDB connector
+    moss-connector-sqlite/   — SQLite connector
+    moss-connector-supabase/ — Supabase (PostgREST) connector
+  moss-md-indexer/       — Markdown docs → Moss index builder
+  pipecat-moss/          — Pipecat Python integration package
+  strands-agents-moss/   — AWS Strands Agents integration package
+  vapi-moss/             — VAPI Custom Knowledge Base webhook adapter
+  vercel-sdk/            — Vercel AI SDK tool wrappers (@moss-tools/vercel-sdk)
+  vitepress-plugin-moss/ — VitePress search plugin (on-device fallback after cloud)
+  zo-computer/           — Zo computer skill for Moss search
 ```
+
+## Integrations & Cookbooks
+
+### Framework Cookbooks (`examples/cookbook/`)
+
+| Directory | Framework | What it demonstrates |
+| --------- | --------- | -------------------- |
+| `autogen/` | Microsoft AutoGen | Multi-agent e-commerce support with intelligent routing; Moss provides sub-10ms context retrieval |
+| `crewai/` | CrewAI | Moss as a retrieval tool for CrewAI agents; travel-planning demo with structured JSON data |
+| `daytona/` | Daytona | Log ingestion Q&A agent — runs Moss search and code execution inside isolated Daytona sandboxes |
+| `dspy/` | DSPy | Notebook-based DSPy + Moss integration |
+| `haystack/` | Haystack | `MossDocumentStore` and `MossRetriever` drop-in components for Haystack RAG pipelines |
+| `langchain/` | LangChain | `MossRetriever` (BaseRetriever) + `get_moss_tool()` factory; the canonical pattern for new Python cookbook integrations |
+| `mastra/` | Mastra | Moss wrapped as a `createTool()` primitive for Mastra conversational agents (TypeScript) |
+| `moss-cognee-daytona/` | Claude Code + Cognee + Daytona | Three Claude Code agents share a persistent Cognee memory graph backed by Moss, each running in an isolated Daytona sandbox |
+
+### Voice Agent Apps (`apps/`)
+
+| Directory | Integration | What it demonstrates |
+| --------- | ----------- | -------------------- |
+| `agora-moss/` | Agora Conversational AI | Moss as an MCP tool (`search_knowledge_base`) mounted on an Agora voice agent |
+| `elevenlabs-moss/` | ElevenLabs | Knowledge-base-backed ElevenLabs Conversational AI bot with live Moss retrieval |
+| `livekit-moss-vercel/` | LiveKit + Vercel | LiveKit voice agent with React frontend deployed to Vercel; Moss powers RAG |
+| `pipecat-moss/pipecat-quickstart/` | Pipecat Cloud | Minimal Pipecat bot — local dev → Pipecat Cloud deployment |
+| `pipecat-moss/ollama-local/` | Pipecat + Ollama | Full-stack local voice AI: Ollama LLM + Moss RAG + Pipecat audio, one `docker compose up` |
+| `pipecat-moss/hume-ollama-local/` | Pipecat + Ollama + Hume | Same as above with Hume AI (Octave) expressive TTS |
+| `vapi-moss/` | VAPI | Webhook server connecting VAPI Custom Tool calls to Moss search; LLM-directed retrieval |
+
+### Other Apps
+
+| Directory | What it demonstrates |
+| --------- | -------------------- |
+| `apps/docker/` | Python + JS SDK usage inside Docker containers (ECS / Kubernetes pattern) |
+| `apps/moss-bun/` | Production Bun + Moss application |
+| `apps/moss-llamaindex/` | Full-stack PDF → LlamaIndex + Liteparse + Moss semantic search demo |
+| `apps/next-js/` | Next.js 15 Server Actions + Moss SDK; reference UI for semantic search |
+
+### Reusable Packages (`packages/`)
+
+| Package | PyPI / npm | What it provides |
+| ------- | ---------- | ---------------- |
+| `agora-moss/` | (internal) | MCP server exposing Moss search to Agora Conversational AI |
+| `elevenlabs-moss/` | `elevenlabs-moss` | `MossElevenLabsTool` — drop-in knowledge-base tool for ElevenLabs agents |
+| `moss-cli/` | `moss-cli` | CLI: `moss index`, `moss query`, `moss documents` — no-code index management |
+| `moss-connector-mongodb/` | `moss-connector-mongodb` | Sync MongoDB collections → Moss index |
+| `moss-connector-mysql/` | `moss-connector-mysql` | Sync MySQL / MariaDB tables → Moss index |
+| `moss-connector-sqlite/` | `moss-connector-sqlite` | Sync SQLite tables → Moss index |
+| `moss-connector-supabase/` | `moss-connector-supabase` | Sync Supabase tables → Moss index via PostgREST |
+| `moss-md-indexer/` | `moss-md-indexer` | Parse Markdown docs, chunk, upload to Moss (used by VitePress plugin) |
+| `pipecat-moss/` | `pipecat-moss` | `MossPipecatTool` — retrieval tool for Pipecat pipeline services |
+| `strands-agents-moss/` | `strands-agents-moss` | Moss tool for AWS Strands Agents |
+| `vapi-moss/` | `vapi-moss` | `MossVapiSearch` adapter + HMAC webhook verification for VAPI |
+| `vercel-sdk/` | `@moss-tools/vercel-sdk` | Vercel AI SDK 6 `tool()` wrappers: search, create index, manage documents |
+| `vitepress-plugin-moss/` | `vitepress-plugin-moss` | VitePress plugin: cloud search on first keystroke, on-device after index download |
+| `zo-computer/` | (internal) | Zo computer skill backed by Moss search |
+
+### Standalone Language Examples (`examples/`)
+
+| Directory | Language / Runtime | Key files |
+| --------- | ------------------ | --------- |
+| `python/` | Python | `comprehensive_sample.py`, `metadata_filtering.py`, `custom_embedding_sample.py` |
+| `javascript/` | TypeScript (Node) | `comprehensive_sample.ts`, `cached_load_sample.ts`, `custom_authenticator_sample.ts` |
+| `javascript-web/` | TypeScript (browser/Vite) | `comprehensive_sample.ts`, `metadata_filtering_sample.ts` |
+| `c/` | C | `example_usage.c`, `metadata_filtering.c`, `session_usage.c` |
+| `bun/` | Bun | Bun-native runtime example |
+| `python-classification/` | Python | `classify_sample.py` — zero-shot text classification via Moss |
 
 ## Commands
 
