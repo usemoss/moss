@@ -42,9 +42,23 @@ from moss import MossClient, QueryOptions
 
 load_dotenv()
 
-MOSS_PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
-MOSS_PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
 INDEX_NAME = os.getenv("MOSS_INDEX_NAME", "mortgage-lending-kb")
+
+
+def _require_env(name: str) -> str:
+    """Read a required env var or fail fast with a friendly message.
+
+    Module-level usage of ``os.getenv`` returns ``Optional[str]``; passing
+    ``None`` into ``MossClient(...)`` later would surface as an opaque
+    error from inside the SDK. Validate at the call site instead.
+    """
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable: {name}. "
+            f"See .env.example for the full list of keys this agent needs."
+        )
+    return value
 
 logging.getLogger("livekit").setLevel(logging.WARNING)
 logging.getLogger("livekit.agents").setLevel(logging.WARNING)
@@ -164,7 +178,7 @@ class MortgageRetrievalAgent(Agent):
         """
         data: MortgageSessionData = self.session.userdata
         data.loan_number = loan_number.strip()
-        logger.info(f"{YELLOW}Captured loan number: {data.loan_number}{RESET}")
+        logger.info(f"{YELLOW}Captured loan number.{RESET}")
         return f"Saved loan number {data.loan_number}."
 
     @function_tool
@@ -303,10 +317,7 @@ class PaymentFlowAgent(Agent):
         if missing:
             return f"Cannot submit — missing: {', '.join(missing)}."
 
-        logger.info(
-            f"{GREEN}Payment submitted: loan={data.loan_number} "
-            f"amount=${data.payment_amount:,.2f} method={data.payment_method}{RESET}"
-        )
+        logger.info(f"{GREEN}Payment submitted successfully.{RESET}")
         # Replace this stub with your real payment processor call.
         confirmation = f"MOSS-{abs(hash(data.loan_number)) % 10_000_000:07d}"
         return (
@@ -337,7 +348,10 @@ class PaymentFlowAgent(Agent):
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
 
-    moss_client = MossClient(MOSS_PROJECT_ID, MOSS_PROJECT_KEY)
+    moss_client = MossClient(
+        _require_env("MOSS_PROJECT_ID"),
+        _require_env("MOSS_PROJECT_KEY"),
+    )
     try:
         await moss_client.load_index(INDEX_NAME)
         logger.info(f"Loaded Moss index: {INDEX_NAME}")
