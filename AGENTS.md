@@ -4,7 +4,7 @@ This file provides guidance to AI agents when working with code in this reposito
 
 ## What This Repo Is
 
-Moss is a real-time semantic search runtime for AI agents targeting sub-10ms query latency. The runtime runs on-device using bundled embedding models (`moss-minilm`) — no external embedding API calls are needed. The cloud layer handles project management and index distribution; the local layer handles querying.
+Moss is a real-time semantic search runtime for AI agents targeting sub-10ms query latency. The runtime runs on-device using bundled embedding models (`moss-minilm`) no external embedding API calls are needed. The cloud layer handles project management and index distribution; the local layer handles querying.
 
 This repository contains the **multi-language SDKs**, **framework integrations** (cookbooks), and **application examples**.
 
@@ -185,7 +185,7 @@ SDK layer (pure language, open source)
    ↓
 Native bindings (Rust, pre-compiled, published as separate package)
    └─ ManageClient / IndexManager — handles embedding, indexing, local search
-   └─ Imported as: inferedge-moss-core (Python), @moss-dev/moss-core (JS), moss_core (Elixir)
+   └─ Imported as: moss-core (Python), @moss-dev/moss-core (JS), moss_core (Elixir)
 ```
 
 The Python `MossClient` in [sdks/python/sdk/src/moss/client/moss_client.py](sdks/python/sdk/src/moss/client/moss_client.py) re-exports types from `moss_core` and wraps `ManageClient` + `IndexManager` from the native layer. The JS SDK follows the same pattern in [sdks/javascript/sdk/src/client/](sdks/javascript/sdk/src/client/).
@@ -197,8 +197,6 @@ The Python `MossClient` in [sdks/python/sdk/src/moss/client/moss_client.py](sdks
 ```bash
 MOSS_PROJECT_ID=...          # required for all SDK usage
 MOSS_PROJECT_KEY=...          # required for all SDK usage
-MOSS_CLOUD_API_MANAGE_URL=... # optional, override for local dev
-MOSS_CLOUD_QUERY_URL=...      # optional, override for local dev
 ```
 
 Copy `.env.example` to `.env` in the relevant example/app directory.
