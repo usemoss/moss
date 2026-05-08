@@ -178,7 +178,7 @@ class MortgageRetrievalAgent(Agent):
         """
         data: MortgageSessionData = self.session.userdata
         data.loan_number = loan_number.strip()
-        logger.info(f"{YELLOW}Captured loan number.{RESET}")
+        logger.info(f"{YELLOW}Captured loan number: {data.loan_number}{RESET}")
         return f"Saved loan number {data.loan_number}."
 
     @function_tool
@@ -317,7 +317,10 @@ class PaymentFlowAgent(Agent):
         if missing:
             return f"Cannot submit — missing: {', '.join(missing)}."
 
-        logger.info(f"{GREEN}Payment submitted successfully.{RESET}")
+        logger.info(
+            f"{GREEN}Payment submitted: loan={data.loan_number} "
+            f"amount=${data.payment_amount:,.2f} method={data.payment_method}{RESET}"
+        )
         # Replace this stub with your real payment processor call.
         confirmation = f"MOSS-{abs(hash(data.loan_number)) % 10_000_000:07d}"
         return (
