@@ -18,7 +18,7 @@ export default defineConfig({
     server: {
       fs: {
         // Wasm lives in the plugin package's node_modules, outside demo-site root.
-        allow: [path.resolve(__dirname, '../../../..')]
+        allow: [path.resolve(__dirname, '../../../node_modules')]
       }
     },
     assetsInclude: ['**/*.wasm']

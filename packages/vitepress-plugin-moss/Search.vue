@@ -319,7 +319,19 @@ const performSearch = async (q: string) => {
     const searchStart = getTime()
     if (ENABLE_PROFILING && currentProfile) currentProfile.searchStartTime = searchStart
     const topk = (options.value as any).topk ?? 20
-    const response = (await mossClient.value.query((options.value as any).indexName, currentQuery, topk)) as SearchResult
+    const indexName = (options.value as any).indexName
+    let response: SearchResult
+    try {
+      response = (await mossClient.value.query(indexName, currentQuery, topk)) as SearchResult
+    } catch (e) {
+      // Index was re-uploaded — refresh local copy and retry once.
+      if (e instanceof Error && e.message.includes('Session mismatch')) {
+        await mossClient.value.refreshIndex(indexName)
+        response = (await mossClient.value.query(indexName, currentQuery, topk)) as SearchResult
+      } else {
+        throw e
+      }
+    }
     if (token !== lastQueryToken || currentQuery !== searchQuery.value.trim()) return
     if (ENABLE_PROFILING && currentProfile) currentProfile.searchEndTime = getTime()
     rawResults.value = Array.isArray(response?.docs) ? response.docs : []
@@ -330,6 +342,9 @@ const performSearch = async (q: string) => {
     const msg = e instanceof Error ? e.message : String(e)
     errorMessage.value = `Search failed: ${msg}`
     console.error('[Moss search] query failed', e)
+    rawResults.value = []
+    displayGroups.value = []
+    flatNavigationList.value = []
   }
 }
 
