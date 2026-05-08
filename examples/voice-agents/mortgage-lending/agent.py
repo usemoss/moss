@@ -159,6 +159,9 @@ class MortgageRetrievalAgent(Agent):
                 f"{GREEN}Moss returned {len(results.docs)} docs in "
                 f"{results.time_taken_ms}ms{RESET}"
             )
+            for i, doc in enumerate(results.docs, 1):
+                preview = doc.text[:140] + "..." if len(doc.text) > 140 else doc.text
+                logger.info(f"{GREEN}  [{i}] {preview}{RESET}")
 
             # Track what's been asked so the payment agent can skip re-asking
             data: MortgageSessionData = self.session.userdata
