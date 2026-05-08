@@ -64,7 +64,12 @@ RESET = "\033[0m"
 
 @dataclass
 class MortgageSessionData:
-    """Facts gathered during the call, shared across agent handoffs."""
+    """Facts gathered during the call, shared across agent handoffs.
+
+    `moss_client` carries the already-loaded MossClient so handoffs can
+    reuse the warm in-process index instead of constructing a fresh client
+    (which would silently fall back to the slow cloud query API).
+    """
 
     loan_number: Optional[str] = None
     customer_name: Optional[str] = None
@@ -72,6 +77,7 @@ class MortgageSessionData:
     payment_amount: Optional[float] = None
     payment_method: Optional[str] = None
     questions_answered: list[str] = field(default_factory=list)
+    moss_client: Optional[MossClient] = None
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +257,7 @@ class PaymentFlowAgent(Agent):
             return "Please ask the customer to repeat the last four digits clearly."
         data: MortgageSessionData = self.session.userdata
         data.last_four_ssn = digits
-        logger.info(f"{YELLOW}Verified identity (last 4): {digits}{RESET}")
+        logger.info(f"{YELLOW}Verified identity (last 4) captured.{RESET}")
         return "Identity captured."
 
     @function_tool
@@ -316,10 +322,11 @@ class PaymentFlowAgent(Agent):
         (e.g., a new mortgage question).
         """
         logger.info(f"{YELLOW}Handoff -> MortgageRetrievalAgent{RESET}")
-        # Reach the same Moss client created in entrypoint via session.userdata
-        # would also work; here we re-construct cheaply.
-        moss_client = MossClient(MOSS_PROJECT_ID, MOSS_PROJECT_KEY)
-        return MortgageRetrievalAgent(moss_client), "Sure, let me get you back to the advisor."
+        data: MortgageSessionData = self.session.userdata
+        # Reuse the already-loaded MossClient so retrieval stays in-process.
+        # Constructing a fresh client here would silently fall back to the
+        # cloud query API on every search.
+        return MortgageRetrievalAgent(data.moss_client), "Sure, let me get you back to the advisor."
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +348,7 @@ async def entrypoint(ctx: JobContext):
         )
 
     session: AgentSession[MortgageSessionData] = AgentSession[MortgageSessionData](
-        userdata=MortgageSessionData(),
+        userdata=MortgageSessionData(moss_client=moss_client),
         stt=deepgram.STT(model="nova-2"),
         llm=openai.LLM(model="gpt-4o"),
         tts=cartesia.TTS(model="sonic-3-2026-01-12"),
