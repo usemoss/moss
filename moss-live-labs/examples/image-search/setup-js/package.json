@@ -38,5 +38,13 @@
     "*.json",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "overrides": {
+    "onnxruntime-node": {
+      "tar": "^7.5.13"
+    },
+    "onnxruntime-web": {
+      "protobufjs": "^7.5.5"
+    }
+  }
 }

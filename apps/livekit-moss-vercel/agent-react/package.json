@@ -50,5 +50,10 @@
     "tw-animate-css": "^1.3.0",
     "typescript": "^5"
   },
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.13"
+    }
+  },
   "packageManager": "pnpm@9.15.9"
 }
