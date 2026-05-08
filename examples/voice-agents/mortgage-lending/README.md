@@ -47,11 +47,12 @@ like one continuous thread to the customer.
 - Python 3.10+
 - [uv](https://github.com/astral-sh/uv) (or `pip` + `venv`)
 - A [Moss](https://moss.dev) project (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`)
-- A [LiveKit](https://livekit.io) server (or run `livekit-server --dev` locally)
 - API keys for your voice providers:
   - [OpenAI](https://platform.openai.com) — LLM
   - [Deepgram](https://deepgram.com) — speech-to-text
   - [Cartesia](https://play.cartesia.ai) — text-to-speech
+- For browser-based testing only: a [LiveKit](https://livekit.io) project
+  (cloud or `livekit-server --dev` locally). **Not required for console mode.**
 
 ## Setup
 
@@ -75,19 +76,44 @@ like one continuous thread to the customer.
    uv run python create_index.py
    ```
 
-   This loads ~15 mortgage-domain documents into a Moss index named
-   `mortgage-lending-kb`. Replace `DOCS` in `create_index.py` with your own
-   product sheet to use this in production.
+   This loads the 41 mortgage-domain documents from `mortgage_kb.json`
+   into a Moss index named `mortgage-lending-kb`. Edit the JSON to swap in
+   your own product sheet — no code changes needed.
 
-4. **Run the agent**
+4. **Run the agent — pick one of two modes**
+
+   ### A) Console mode — talk in your terminal (fastest)
+
+   ```bash
+   uv run python agent.py console
+   ```
+
+   The agent grabs your mic and speakers directly. Start talking as soon
+   as you see the prompt. No LiveKit server, no browser, no frontend —
+   ideal for trying it out, demoing on the go, or iterating on prompts.
+
+   Press `Ctrl+C` to stop. Logs (Moss queries, handoff events) print to
+   the same terminal.
+
+   > Console mode does **not** use LiveKit at all, so you can leave the
+   > `LIVEKIT_*` variables blank in `.env` if you only plan to use console.
+
+   ### B) Dev mode — connect from a browser
 
    ```bash
    uv run python agent.py dev
    ```
 
-   Connect from the [LiveKit Agents Playground](https://agents-playground.livekit.io)
-   or [agent-starter-react](https://github.com/livekit-examples/agent-starter-react)
-   and start talking.
+   The agent registers as a worker against your LiveKit project and waits
+   for room dispatches. Connect a frontend to talk to it:
+
+   - [LiveKit Agents Playground](https://agents-playground.livekit.io) —
+     paste your LiveKit URL + key + secret, click Connect.
+   - [agent-starter-react](https://github.com/livekit-examples/agent-starter-react) —
+     a ready-made React UI you can fork.
+
+   Use this when you want to test the full WebRTC path or share a
+   browser link with someone else.
 
 ## Try this conversation
 
@@ -132,8 +158,10 @@ state survives the switch without any extra plumbing.
 ```text
 mortgage-lending/
 ├── agent.py            # Both agents, shared dataclass, entrypoint
-├── create_index.py     # Build the Moss knowledge base
+├── create_index.py     # Read mortgage_kb.json, push to Moss
+├── mortgage_kb.json    # 41 seed documents — edit to customize
 ├── pyproject.toml      # uv-managed dependencies
+├── uv.lock             # Locked dependency versions
 ├── .env.example        # Required environment variables
 └── README.md           # This file
 ```
