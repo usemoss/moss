@@ -119,16 +119,17 @@ async def multi_index_search_sample() -> None:
 
         # load_indexes is best-effort: failures on individual names do not
         # roll back the others. Inspect ``load_result.failed`` to see
-        # which (if any) names failed and why.
+        # which (if any) names failed and why; downstream ops should use
+        # ``load_result.loaded`` rather than the original list.
         print("\n2. Bulk-loading all three with load_indexes...")
         load_result: LoadIndexesResult = await client.load_indexes(all_indexes)
         print(f"   loaded: {load_result.loaded}")
         print(f"   failed: {load_result.failed}")
 
-        print("\n3. Querying across all three indexes in one call.")
+        print("\n3. Querying across all loaded indexes in one call.")
         print("   Each result is tagged with its source index_name.")
         results = await client.query_multi_index(
-            all_indexes,
+            load_result.loaded,
             "wireless headphones battery life",
             QueryOptions(top_k=6),
         )
@@ -139,8 +140,8 @@ async def multi_index_search_sample() -> None:
             print(f"   {i}. [{doc.index_name}] [{doc.id}] score={doc.score:.3f}")
             print(f"      {preview}")
 
-        print("\n4. Bulk-unloading all three with unload_indexes...")
-        await client.unload_indexes(all_indexes)
+        print("\n4. Bulk-unloading with unload_indexes...")
+        await client.unload_indexes(load_result.loaded)
         print("   unloaded.")
 
         print("\n✅ Multi-index search sample completed")
@@ -149,8 +150,8 @@ async def multi_index_search_sample() -> None:
         for name in all_indexes:
             try:
                 await client.delete_index(name)
-            except Exception:
-                pass
+            except Exception as err:
+                print(f"   warning: failed to delete '{name}': {err}")
 
 
 __all__ = ["multi_index_search_sample"]
