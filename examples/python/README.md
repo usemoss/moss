@@ -65,6 +65,16 @@ Requires `moss>=1.0.0`.
 python metadata_filtering.py
 ```
 
+### Multi-Index Search Sample
+
+Create three related indexes (products, reviews, faqs), bulk-load them with `load_indexes`, search across all three in one call with `query_multi_index`, and inspect the per-result `index_name` tagging.
+
+Requires `moss>=1.1.0`.
+
+```bash
+python multi_index_search.py
+```
+
 ## Requirements
 
 - Python 3.7+
