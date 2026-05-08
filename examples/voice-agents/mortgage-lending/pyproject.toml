@@ -1,0 +1,11 @@
+[project]
+name = "mortgage-lending-voice-agent"
+version = "0.1.0"
+description = "Multi-agent mortgage lending voice agent with Moss retrieval and a payment flow handoff."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "moss>=1.0.1",
+    "livekit-agents[openai,deepgram,silero,turn-detector,cartesia]>=1.0",
+]

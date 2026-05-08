@@ -1,0 +1,202 @@
+"""Build the Moss knowledge base for the mortgage lending voice agent.
+
+The retrieval agent queries this index for sub-10ms answers about loan
+products, eligibility, documentation, and closing costs.
+
+Run once before starting the agent:
+
+    uv run python create_index.py
+"""
+
+import asyncio
+import os
+
+from dotenv import load_dotenv
+from moss import DocumentInfo, MossClient
+
+load_dotenv()
+
+
+def _require_env(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+
+# Realistic mortgage lending knowledge base. Numbers and rules are illustrative
+# defaults — replace with your own product sheet before going to production.
+DOCS: list[DocumentInfo] = [
+    DocumentInfo(
+        id="conventional-down-payment",
+        text=(
+            "Conventional loan down payment: most conventional loans require a "
+            "minimum 5 percent down payment. First-time buyers may qualify for "
+            "a 3 percent program. Putting 20 percent down removes private "
+            "mortgage insurance."
+        ),
+        metadata={"topic": "down_payment", "loan_type": "conventional"},
+    ),
+    DocumentInfo(
+        id="fha-down-payment",
+        text=(
+            "FHA loan down payment: FHA loans allow a minimum down payment of "
+            "3.5 percent for borrowers with a credit score of 580 or higher. "
+            "Borrowers with a score between 500 and 579 must put at least "
+            "10 percent down."
+        ),
+        metadata={"topic": "down_payment", "loan_type": "fha"},
+    ),
+    DocumentInfo(
+        id="va-loan-eligibility",
+        text=(
+            "VA loans are available to eligible active-duty service members, "
+            "veterans, and surviving spouses. They typically require zero down "
+            "payment and have no private mortgage insurance, but a one-time "
+            "VA funding fee applies and can be financed into the loan."
+        ),
+        metadata={"topic": "eligibility", "loan_type": "va"},
+    ),
+    DocumentInfo(
+        id="jumbo-loan-thresholds",
+        text=(
+            "Jumbo loans exceed the conforming loan limit set by the Federal "
+            "Housing Finance Agency. In most U.S. counties the 2026 conforming "
+            "limit is $806,500 for a single-family home. Jumbo loans usually "
+            "require a credit score of 700 or higher and a down payment of "
+            "10 to 20 percent."
+        ),
+        metadata={"topic": "loan_limits", "loan_type": "jumbo"},
+    ),
+    DocumentInfo(
+        id="credit-score-thresholds",
+        text=(
+            "Credit score guidelines: conventional loans typically require a "
+            "minimum FICO of 620. FHA goes as low as 500 with a higher down "
+            "payment. VA has no formal minimum but most lenders require 580 "
+            "to 620. Higher scores unlock lower interest rates."
+        ),
+        metadata={"topic": "credit_score"},
+    ),
+    DocumentInfo(
+        id="dti-ratios",
+        text=(
+            "Debt-to-income ratio: most conventional lenders prefer a DTI of "
+            "43 percent or lower, calculated as total monthly debt payments "
+            "divided by gross monthly income. FHA may allow up to 50 percent "
+            "with compensating factors such as cash reserves or strong credit."
+        ),
+        metadata={"topic": "dti"},
+    ),
+    DocumentInfo(
+        id="pmi-rules",
+        text=(
+            "Private mortgage insurance applies to conventional loans with "
+            "less than 20 percent down. PMI typically costs 0.3 to 1.5 percent "
+            "of the original loan amount per year. Borrowers can request PMI "
+            "removal at 80 percent loan-to-value, and the lender must "
+            "auto-cancel at 78 percent LTV."
+        ),
+        metadata={"topic": "pmi"},
+    ),
+    DocumentInfo(
+        id="fha-mip",
+        text=(
+            "FHA mortgage insurance: FHA loans require both an upfront "
+            "mortgage insurance premium of 1.75 percent of the loan amount and "
+            "an annual MIP. Annual MIP usually lasts the full life of the loan "
+            "for borrowers who put less than 10 percent down."
+        ),
+        metadata={"topic": "pmi", "loan_type": "fha"},
+    ),
+    DocumentInfo(
+        id="closing-costs",
+        text=(
+            "Closing costs typically run 2 to 5 percent of the loan amount and "
+            "include the lender origination fee, appraisal, title insurance, "
+            "recording fees, and prepaid escrow for taxes and homeowner's "
+            "insurance. The lender provides a Loan Estimate within three "
+            "business days of application."
+        ),
+        metadata={"topic": "closing"},
+    ),
+    DocumentInfo(
+        id="documents-needed",
+        text=(
+            "Documents needed for a mortgage application: two most recent pay "
+            "stubs, two years of W-2s or 1099s, two years of federal tax "
+            "returns, two months of bank statements, photo identification, "
+            "and a signed purchase contract. Self-employed borrowers also "
+            "provide a year-to-date profit and loss statement."
+        ),
+        metadata={"topic": "documents"},
+    ),
+    DocumentInfo(
+        id="prequalification-vs-preapproval",
+        text=(
+            "Pre-qualification is an informal estimate based on self-reported "
+            "income and assets. Pre-approval is a formal review where the "
+            "lender pulls credit and verifies documents, resulting in a "
+            "pre-approval letter that sellers take seriously. Pre-approval is "
+            "stronger for offers."
+        ),
+        metadata={"topic": "process"},
+    ),
+    DocumentInfo(
+        id="rate-lock",
+        text=(
+            "Rate locks: borrowers can lock an interest rate for 30, 45, or "
+            "60 days while underwriting completes. Longer locks usually cost "
+            "more in points. If the lock expires before closing, the rate may "
+            "need to be re-locked at current market levels."
+        ),
+        metadata={"topic": "rates"},
+    ),
+    DocumentInfo(
+        id="escrow-account",
+        text=(
+            "Escrow accounts: most mortgages collect property taxes and "
+            "homeowners insurance monthly along with the principal and "
+            "interest payment, then disburse them when due. Lenders perform "
+            "an annual escrow analysis and may adjust the monthly payment if "
+            "tax or insurance amounts change."
+        ),
+        metadata={"topic": "escrow"},
+    ),
+    DocumentInfo(
+        id="payment-options",
+        text=(
+            "Payment options on an active mortgage include one-time payments "
+            "via bank transfer or debit card, scheduled autopay, and bi-weekly "
+            "accelerated programs. Late payments after a 15-day grace period "
+            "incur a fee, typically 4 to 5 percent of the principal and "
+            "interest portion."
+        ),
+        metadata={"topic": "payments"},
+    ),
+    DocumentInfo(
+        id="hardship-options",
+        text=(
+            "Hardship support: borrowers facing temporary financial hardship "
+            "can request forbearance, a repayment plan, or a loan "
+            "modification. The first step is to contact the servicer's "
+            "hardship line so they can review the borrower's situation."
+        ),
+        metadata={"topic": "hardship"},
+    ),
+]
+
+
+async def main() -> None:
+    project_id = _require_env("MOSS_PROJECT_ID")
+    project_key = _require_env("MOSS_PROJECT_KEY")
+    index_name = os.getenv("MOSS_INDEX_NAME", "mortgage-lending-kb")
+
+    client = MossClient(project_id, project_key)
+    print(f"Creating Moss index '{index_name}' with {len(DOCS)} documents...")
+    await client.create_index(index_name, DOCS)
+    print(f"Done. Index '{index_name}' is ready for the voice agent.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
