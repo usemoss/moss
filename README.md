@@ -2,11 +2,7 @@
 
 <div align="center">
 
-<img src="assets/moss-logo.png" alt="Moss" width="80" />
-
-# Moss
-
-### Real-time semantic search for AI agents. Sub-10 ms.
+<img src="https://github.com/user-attachments/assets/2e1fb567-c003-49b5-a07e-eb687ad20d68" alt="Moss — Real-time semantic search for AI agents. Sub-10 ms." width="1200" />
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![PyPI](https://img.shields.io/pypi/v/moss?color=deepgreen)](https://pypi.org/project/moss/)
@@ -251,7 +247,11 @@ Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
 
 ## Contributing
 
-We welcome contributions! Here's where the community can have the most impact:
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/ebf1c972-7f8c-451c-8f67-58dbec3954e8" alt="We welcome contributions!" width="1200" />
+</div>
+
+Here's where the community can have the most impact:
 
 - **New SDK bindings** — Swift, Go, Elixir,...
 - **Framework integrations** — CrewAI, Haystack, AutoGen

@@ -23,13 +23,13 @@ import os
 from dotenv import load_dotenv
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import LLMRunFrame
+from pipecat.frames.frames import LLMMessagesAppendFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
-from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIObserver, RTVIProcessor
+from pipecat.processors.frameworks.rtvi import RTVIObserver, RTVIObserverParams, RTVIProcessor
 from pipecat.runner.run import main as runner_main
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
@@ -37,7 +37,6 @@ from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
-from pipecat.transports.daily.transport import DailyParams
 
 from pipecat_moss import MossRetrievalService
 
@@ -105,7 +104,7 @@ use it to give accurate and detailed responses."""
 
     context = LLMContext(messages)
     context_aggregator = LLMContextAggregatorPair(context)
-    rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
+    rtvi = RTVIProcessor()
 
     # Build the processing pipeline with Moss Information injection
     pipeline = Pipeline(
@@ -130,7 +129,7 @@ use it to give accurate and detailed responses."""
             enable_usage_metrics=True,
             report_only_initial_ttfb=True,
         ),
-        observers=[RTVIObserver(rtvi)],
+        observers=[RTVIObserver(rtvi, params=RTVIObserverParams())],
     )
 
     # Define transport event handlers
@@ -138,12 +137,18 @@ use it to give accurate and detailed responses."""
     async def on_client_connected(transport, client):
         logger.debug("Customer connected to support")
         # Kick off the conversation with a customer support greeting
-        greeting = (
-            "A customer has just connected to customer support. Greet them warmly and ask how you "
-            "can help them today."
+        await task.queue_frames(
+            [LLMMessagesAppendFrame(
+                messages=[{
+                    "role": "system",
+                    "content": (
+                        "A customer has just connected to customer support. "
+                        "Greet them warmly and ask how you can help them today."
+                    ),
+                }],
+                run_llm=True,
+            )]
         )
-        messages.append({"role": "system", "content": greeting})
-        await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
@@ -178,11 +183,6 @@ async def bot(runner_args: RunnerArguments):
         return
 
     transport_params = {
-        "daily": lambda: DailyParams(
-            audio_in_enabled=True,
-            audio_out_enabled=True,
-            vad_analyzer=SileroVADAnalyzer(),
-        ),
         "webrtc": lambda: TransportParams(
             audio_in_enabled=True,
             audio_out_enabled=True,

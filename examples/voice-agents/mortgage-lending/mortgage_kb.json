@@ -1,0 +1,299 @@
+[
+    {
+        "id": "conventional-down-payment",
+        "text": "Conventional loan down payment: most conventional loans require a minimum 5 percent down payment. First-time buyers may qualify for a 3 percent program. Putting 20 percent down removes private mortgage insurance.",
+        "metadata": {
+            "topic": "down_payment",
+            "loan_type": "conventional"
+        }
+    },
+    {
+        "id": "fha-down-payment",
+        "text": "FHA loan down payment: FHA loans allow a minimum down payment of 3.5 percent for borrowers with a credit score of 580 or higher. Borrowers with a score between 500 and 579 must put at least 10 percent down.",
+        "metadata": {
+            "topic": "down_payment",
+            "loan_type": "fha"
+        }
+    },
+    {
+        "id": "va-loan-eligibility",
+        "text": "VA loans are available to eligible active-duty service members, veterans, and surviving spouses. They typically require zero down payment and have no private mortgage insurance, but a one-time VA funding fee applies and can be financed into the loan.",
+        "metadata": {
+            "topic": "eligibility",
+            "loan_type": "va"
+        }
+    },
+    {
+        "id": "usda-loan-eligibility",
+        "text": "USDA Rural Development loans offer zero down payment financing for eligible borrowers buying in designated rural and suburban areas. Borrowers must meet income limits, typically capped at 115 percent of the area median income, and the property must be the primary residence.",
+        "metadata": {
+            "topic": "eligibility",
+            "loan_type": "usda"
+        }
+    },
+    {
+        "id": "jumbo-loan-thresholds",
+        "text": "Jumbo loans exceed the conforming loan limit set by the Federal Housing Finance Agency. In most U.S. counties the 2026 conforming limit is $806,500 for a single-family home. Jumbo loans usually require a credit score of 700 or higher and a down payment of 10 to 20 percent.",
+        "metadata": {
+            "topic": "loan_limits",
+            "loan_type": "jumbo"
+        }
+    },
+    {
+        "id": "fixed-rate-vs-arm",
+        "text": "Fixed-rate mortgages keep the same interest rate for the life of the loan, with 15-year and 30-year terms most common. Adjustable-rate mortgages, or ARMs, start with a lower fixed rate for an initial period such as 5, 7, or 10 years, then adjust periodically based on a market index plus a margin.",
+        "metadata": {
+            "topic": "loan_products"
+        }
+    },
+    {
+        "id": "credit-score-thresholds",
+        "text": "Credit score guidelines: conventional loans typically require a minimum FICO of 620. FHA goes as low as 500 with a higher down payment. VA has no formal minimum but most lenders require 580 to 620. Higher scores unlock lower interest rates.",
+        "metadata": {
+            "topic": "credit_score"
+        }
+    },
+    {
+        "id": "dti-ratios",
+        "text": "Debt-to-income ratio: most conventional lenders prefer a DTI of 43 percent or lower, calculated as total monthly debt payments divided by gross monthly income. FHA may allow up to 50 percent with compensating factors such as cash reserves or strong credit.",
+        "metadata": {
+            "topic": "dti"
+        }
+    },
+    {
+        "id": "ltv-ratio",
+        "text": "Loan-to-value ratio is the loan amount divided by the home's appraised value, expressed as a percentage. Most conventional lenders cap LTV at 97 percent for purchases. Higher LTV means higher risk and usually requires private mortgage insurance until the LTV drops to 80 percent.",
+        "metadata": {
+            "topic": "ltv"
+        }
+    },
+    {
+        "id": "pmi-rules",
+        "text": "Private mortgage insurance applies to conventional loans with less than 20 percent down. PMI typically costs 0.3 to 1.5 percent of the original loan amount per year. Borrowers can request PMI removal at 80 percent loan-to-value, and the lender must auto-cancel at 78 percent LTV.",
+        "metadata": {
+            "topic": "pmi"
+        }
+    },
+    {
+        "id": "fha-mip",
+        "text": "FHA mortgage insurance: FHA loans require both an upfront mortgage insurance premium of 1.75 percent of the loan amount and an annual MIP. Annual MIP usually lasts the full life of the loan for borrowers who put less than 10 percent down.",
+        "metadata": {
+            "topic": "pmi",
+            "loan_type": "fha"
+        }
+    },
+    {
+        "id": "va-funding-fee",
+        "text": "VA funding fee: the one-time fee for VA loans ranges from 1.25 to 3.3 percent of the loan amount, depending on down payment and whether it is a first or subsequent VA loan. Veterans receiving VA disability compensation are exempt from the funding fee.",
+        "metadata": {
+            "topic": "fees",
+            "loan_type": "va"
+        }
+    },
+    {
+        "id": "discount-points",
+        "text": "Discount points: each point costs one percent of the loan amount and typically lowers the interest rate by 0.25 percentage points. Buying points makes sense when the borrower plans to keep the loan long enough to recoup the upfront cost through monthly savings.",
+        "metadata": {
+            "topic": "rates"
+        }
+    },
+    {
+        "id": "closing-costs",
+        "text": "Closing costs typically run 2 to 5 percent of the loan amount and include the lender origination fee, appraisal, title insurance, recording fees, and prepaid escrow for taxes and homeowner's insurance. The lender provides a Loan Estimate within three business days of application.",
+        "metadata": {
+            "topic": "closing"
+        }
+    },
+    {
+        "id": "seller-concessions",
+        "text": "Seller concessions: sellers can pay a portion of the buyer's closing costs, capped at 3 percent for conventional loans with less than 10 percent down, 6 percent with 10 to 25 percent down, and 9 percent with 25 percent or more down. FHA caps concessions at 6 percent and VA at 4 percent.",
+        "metadata": {
+            "topic": "closing"
+        }
+    },
+    {
+        "id": "gift-funds",
+        "text": "Gift funds for down payment: family members can gift money toward the down payment on most loan types. The lender requires a signed gift letter stating the funds are not a loan, plus documentation showing the transfer from the donor's account.",
+        "metadata": {
+            "topic": "down_payment"
+        }
+    },
+    {
+        "id": "down-payment-assistance",
+        "text": "Down payment assistance: state and local programs offer grants, forgivable loans, or low-interest second mortgages to help with down payment and closing costs. Eligibility usually depends on income, location, and first-time buyer status. Many programs are layered on top of an FHA or conventional loan.",
+        "metadata": {
+            "topic": "down_payment"
+        }
+    },
+    {
+        "id": "documents-needed",
+        "text": "Documents needed for a mortgage application: two most recent pay stubs, two years of W-2s or 1099s, two years of federal tax returns, two months of bank statements, photo identification, and a signed purchase contract. Self-employed borrowers also provide a year-to-date profit and loss statement.",
+        "metadata": {
+            "topic": "documents"
+        }
+    },
+    {
+        "id": "self-employed-income",
+        "text": "Self-employed income verification: lenders typically require two years of personal and business tax returns, year-to-date profit and loss statements, and bank statements. Some lenders offer bank statement loans that qualify borrowers based on 12 to 24 months of deposits instead of tax returns.",
+        "metadata": {
+            "topic": "documents",
+            "borrower_type": "self_employed"
+        }
+    },
+    {
+        "id": "reserves-requirement",
+        "text": "Cash reserves: lenders may require borrowers to have two to six months of mortgage payments in liquid reserves after closing. Reserve requirements are higher for investment properties, jumbo loans, and borrowers with marginal credit or income.",
+        "metadata": {
+            "topic": "underwriting"
+        }
+    },
+    {
+        "id": "prequalification-vs-preapproval",
+        "text": "Pre-qualification is an informal estimate based on self-reported income and assets. Pre-approval is a formal review where the lender pulls credit and verifies documents, resulting in a pre-approval letter that sellers take seriously. Pre-approval is stronger for offers.",
+        "metadata": {
+            "topic": "process"
+        }
+    },
+    {
+        "id": "underwriting-timeline",
+        "text": "Underwriting timeline: from application to closing typically takes 30 to 45 days. Underwriting itself usually takes 5 to 10 business days once all documents are submitted. Delays are common when income, asset, or appraisal documentation is missing or unclear.",
+        "metadata": {
+            "topic": "process"
+        }
+    },
+    {
+        "id": "appraisal",
+        "text": "Home appraisal: the lender orders a licensed appraiser to determine the property's market value. The loan amount cannot exceed the appraised value times the maximum LTV for the loan program. If the appraisal comes in low, the buyer can renegotiate, bring extra cash, or walk away under most contract appraisal contingencies.",
+        "metadata": {
+            "topic": "process"
+        }
+    },
+    {
+        "id": "title-insurance",
+        "text": "Title insurance: lender's title insurance is required and protects the lender against title defects. Owner's title insurance is optional but recommended; it protects the buyer's equity. Both are paid as a one-time premium at closing and last as long as you own the home.",
+        "metadata": {
+            "topic": "closing"
+        }
+    },
+    {
+        "id": "rate-lock",
+        "text": "Rate locks: borrowers can lock an interest rate for 30, 45, or 60 days while underwriting completes. Longer locks usually cost more in points. If the lock expires before closing, the rate may need to be re-locked at current market levels.",
+        "metadata": {
+            "topic": "rates"
+        }
+    },
+    {
+        "id": "escrow-account",
+        "text": "Escrow accounts: most mortgages collect property taxes and homeowners insurance monthly along with the principal and interest payment, then disburse them when due. Lenders perform an annual escrow analysis and may adjust the monthly payment if tax or insurance amounts change.",
+        "metadata": {
+            "topic": "escrow"
+        }
+    },
+    {
+        "id": "homeowners-insurance",
+        "text": "Homeowners insurance: lenders require a policy in force at closing, with the lender named as mortgagee. Coverage must be at least equal to the loan amount or replacement cost of the home. The first year's premium is typically paid at closing, with subsequent renewals paid through escrow.",
+        "metadata": {
+            "topic": "insurance"
+        }
+    },
+    {
+        "id": "flood-insurance",
+        "text": "Flood insurance: required for properties in FEMA-designated Special Flood Hazard Areas. Coverage is typically purchased through the National Flood Insurance Program or a private carrier. Lenders escrow flood premiums alongside taxes and homeowners insurance.",
+        "metadata": {
+            "topic": "insurance"
+        }
+    },
+    {
+        "id": "payment-options",
+        "text": "Payment options on an active mortgage include one-time payments via bank transfer or debit card, scheduled autopay, and bi-weekly accelerated programs. Late payments after a 15-day grace period incur a fee, typically 4 to 5 percent of the principal and interest portion.",
+        "metadata": {
+            "topic": "payments"
+        }
+    },
+    {
+        "id": "biweekly-payments",
+        "text": "Bi-weekly payment programs: paying half the monthly mortgage every two weeks results in 26 half-payments per year, equal to 13 monthly payments. Over a 30-year loan this can shorten the term by roughly 4 to 6 years and save tens of thousands in interest.",
+        "metadata": {
+            "topic": "payments"
+        }
+    },
+    {
+        "id": "extra-principal-payments",
+        "text": "Extra principal payments: borrowers can pay additional principal anytime to reduce the loan balance and total interest paid. Most modern conventional, FHA, and VA loans have no prepayment penalty. Always specify on the payment that the extra amount is for principal only.",
+        "metadata": {
+            "topic": "payments"
+        }
+    },
+    {
+        "id": "amortization-schedule",
+        "text": "Amortization schedule: shows how each monthly payment splits between principal and interest over the life of the loan. Early payments are mostly interest; later payments are mostly principal. Servicers provide an amortization schedule on request and after any loan modification.",
+        "metadata": {
+            "topic": "loan_products"
+        }
+    },
+    {
+        "id": "rate-and-term-refinance",
+        "text": "Rate and term refinance: replaces the existing mortgage with a new one to lower the interest rate, change the term, or switch from an ARM to a fixed-rate. Closing costs are typically 2 to 5 percent of the new loan and the borrower must qualify based on current income, credit, and home value.",
+        "metadata": {
+            "topic": "refinance"
+        }
+    },
+    {
+        "id": "cash-out-refinance",
+        "text": "Cash-out refinance: borrowers refinance for more than the current loan balance and receive the difference as cash, drawing on home equity. Most lenders cap cash-out LTV at 80 percent for primary residences. Funds are commonly used for renovations, debt consolidation, or large expenses.",
+        "metadata": {
+            "topic": "refinance"
+        }
+    },
+    {
+        "id": "fha-streamline-refinance",
+        "text": "FHA Streamline Refinance: simplified refinance for borrowers with an existing FHA loan. No appraisal or income verification is required in most cases, but the new loan must result in a net tangible benefit such as a lower rate or switch from ARM to fixed.",
+        "metadata": {
+            "topic": "refinance",
+            "loan_type": "fha"
+        }
+    },
+    {
+        "id": "va-irrrl",
+        "text": "VA Interest Rate Reduction Refinance Loan, or IRRRL: a streamlined VA-to-VA refinance to lower the rate or move from an ARM to a fixed rate. No appraisal, no income verification, and reduced funding fee. The borrower must already have a VA loan and be current on payments.",
+        "metadata": {
+            "topic": "refinance",
+            "loan_type": "va"
+        }
+    },
+    {
+        "id": "heloc-vs-equity-loan",
+        "text": "HELOC vs home equity loan: a HELOC is a revolving line of credit secured by the home with a variable rate, drawing as needed during a 10-year draw period. A home equity loan is a one-time lump sum at a fixed rate with set monthly payments. Both are second liens behind the primary mortgage.",
+        "metadata": {
+            "topic": "home_equity"
+        }
+    },
+    {
+        "id": "loan-recast",
+        "text": "Loan recast: after making a large lump-sum principal payment, some lenders will re-amortize the loan over the remaining term, lowering the monthly payment without changing the rate. Recasting typically costs $250 to $500 and requires a minimum lump-sum payment. Not available on FHA or VA loans.",
+        "metadata": {
+            "topic": "loan_modifications"
+        }
+    },
+    {
+        "id": "hardship-options",
+        "text": "Hardship support: borrowers facing temporary financial hardship can request forbearance, a repayment plan, or a loan modification. The first step is to contact the servicer's hardship line so they can review the borrower's situation.",
+        "metadata": {
+            "topic": "hardship"
+        }
+    },
+    {
+        "id": "loan-payoff",
+        "text": "Loan payoff: to fully pay off a mortgage, borrowers request a payoff statement from the servicer good through a specified date. After payment is received and applied, the servicer files a release of lien with the county recorder, typically within 30 to 60 days.",
+        "metadata": {
+            "topic": "payments"
+        }
+    },
+    {
+        "id": "servicer-transfer",
+        "text": "Servicer transfer: lenders may sell or transfer servicing rights to another company. Borrowers receive a Notice of Servicing Transfer at least 15 days before the transfer date. Loan terms do not change. The borrower has a 60-day grace period after transfer where late fees from misdirected payments must be waived.",
+        "metadata": {
+            "topic": "servicing"
+        }
+    }
+]

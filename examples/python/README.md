@@ -5,7 +5,7 @@ This project demonstrates the usage of the Moss Python SDK for semantic search a
 ## Setup
 
 1. **Set up Python environment:**
-   - Ensure you have Python 3.7+ installed
+   - Ensure you have Python 3.10+ installed
    - Create a virtual environment (recommended):
 
      ```bash
@@ -65,7 +65,17 @@ Requires `moss>=1.0.0`.
 python metadata_filtering.py
 ```
 
+### Multi-Index Search Sample
+
+Create three related indexes (products, reviews, faqs), bulk-load them with `load_indexes`, search across all three in one call with `query_multi_index`, and inspect the per-result `index_name` tagging.
+
+Requires `moss>=1.1.0`.
+
+```bash
+python multi_index_search.py
+```
+
 ## Requirements
 
-- Python 3.7+
+- Python 3.10+
 - Valid Moss project credentials
