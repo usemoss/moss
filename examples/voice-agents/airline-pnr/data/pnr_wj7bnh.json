@@ -1,0 +1,77 @@
+[
+    {
+        "id": "booking-summary",
+        "text": "Booking reference WJ7BNH, booked on 2026-03-04. Passenger Max Lee. Round trip from Chicago O'Hare to Frankfurt on Aurora Air. Outbound 2026-07-05, return 2026-07-19. Cabin: business class.",
+        "metadata": {"section": "summary", "pnr": "WJ7BNH"}
+    },
+    {
+        "id": "passenger-name",
+        "text": "Passenger of record: Max P Lee. The agent must verify a partial name match before disclosing booking details. No additional passengers on this PNR.",
+        "metadata": {"section": "passenger"}
+    },
+    {
+        "id": "flight-segment-outbound",
+        "text": "Outbound flight Aurora Air AUR108 from Chicago O'Hare ORD to Frankfurt FRA on 2026-07-05. Scheduled departure 6:40 PM Central, scheduled arrival 10:15 AM local Frankfurt time on 2026-07-06. Aircraft is a Boeing 787-9 Dreamliner. Flight time approximately 8 hours 35 minutes. Currently on-time.",
+        "metadata": {"section": "flight", "segment": 1, "flight_number": "AUR108"}
+    },
+    {
+        "id": "flight-segment-return",
+        "text": "Return flight Aurora Air AUR109 from Frankfurt FRA to Chicago O'Hare ORD on 2026-07-19. Scheduled departure 11:30 AM local Frankfurt time, scheduled arrival 2:45 PM Central. Aircraft is a Boeing 787-9 Dreamliner. Flight time approximately 9 hours 15 minutes. Currently on-time.",
+        "metadata": {"section": "flight", "segment": 2, "flight_number": "AUR109"}
+    },
+    {
+        "id": "seat-assignment-outbound",
+        "text": "Outbound seat assignment: 3K, business class window seat in the second row. Lie-flat seat with direct aisle access. Selected at booking at no extra cost given the business cabin and Aurora Gold status.",
+        "metadata": {"section": "seat", "segment": 1, "seat": "3K"}
+    },
+    {
+        "id": "seat-assignment-return",
+        "text": "Return seat assignment: 3K, business class window seat in the second row, mirror of the outbound. Lie-flat seat with direct aisle access.",
+        "metadata": {"section": "seat", "segment": 2, "seat": "3K"}
+    },
+    {
+        "id": "meal-preference",
+        "text": "Special meal pre-ordered: vegetarian Asian (AVML) on both segments. Pre-departure beverage and full business-class menu service apply. Special meal preferences can be updated up to 24 hours before each segment's scheduled departure.",
+        "metadata": {"section": "meal", "meal_code": "AVML"}
+    },
+    {
+        "id": "baggage-allowance",
+        "text": "Baggage allowance for business class: 2 checked bags up to 70 pounds each, included. Plus 1 personal item and 1 carry-on with no weight limit posted at the gate. Aurora Gold tier adds priority bag handling on both segments.",
+        "metadata": {"section": "baggage"}
+    },
+    {
+        "id": "loyalty-tier",
+        "text": "Aurora Air loyalty status: Aurora Gold. Member since 2021. Current account balance 142,300 AuroraMiles. Gold tier benefits include lounge access on the day of departure, priority boarding, complimentary upgrades when available on domestic, and a dedicated phone support line.",
+        "metadata": {"section": "loyalty", "tier": "gold"}
+    },
+    {
+        "id": "lounge-access",
+        "text": "Lounge access: business class on this itinerary plus Aurora Gold tier each independently grant access to Aurora Air lounges and partner Star Alliance lounges on the day of departure for the cardholder.",
+        "metadata": {"section": "amenities"}
+    },
+    {
+        "id": "fare-rules-changes",
+        "text": "Fare class Business Flexible. Date changes are permitted at no fee, with any fare difference payable. Cancellations refund to original payment method minus a $250 service fee, up to 24 hours before departure.",
+        "metadata": {"section": "fare_rules"}
+    },
+    {
+        "id": "check-in-window",
+        "text": "Check-in opens 24 hours before each segment's scheduled departure. Aurora Gold tier passengers can check in at any priority counter. Recommended international airport arrival is 3 hours before scheduled departure.",
+        "metadata": {"section": "check_in"}
+    },
+    {
+        "id": "travel-document-requirements",
+        "text": "Travel document requirements for this itinerary: a passport valid for at least 6 months beyond the return date is required for entry to Germany. US citizens do not need a Schengen visa for stays under 90 days. ETIAS authorization may be required from late 2026 onward; this trip falls before its enforcement.",
+        "metadata": {"section": "documents"}
+    },
+    {
+        "id": "payment-summary",
+        "text": "Total fare paid: $4,182.50, charged to a co-branded Aurora Air Mastercard ending in 8814 on the booking date. The total includes $3,950 base fare, $186 international taxes, and $46.50 fees. The booking earned a 50 percent miles bonus from the co-branded card promotion.",
+        "metadata": {"section": "payment"}
+    },
+    {
+        "id": "contact-on-file",
+        "text": "Contact information on file: a corporate email address ending in @ledgerlane.io, and a US mobile number ending in 9032. Notifications enabled for delays, gate changes, and upgrade availability.",
+        "metadata": {"section": "contact"}
+    }
+]
