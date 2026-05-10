@@ -30,16 +30,27 @@ retrieval forces the LLM to decide-to-retrieve, wait, then respond -
 two round-trips per turn. With ambient retrieval the LLM responds in
 one shot. The latency floor of the call drops by an LLM call per turn.
 
-## How the three voice-agent examples differ
+## Ambient retrieval vs tool-driven retrieval
 
-| Example | Retrieval pattern | When the LLM gets context |
+The other voice-agent example in this folder
+([`../mortgage-lending/`](../mortgage-lending/)) uses **tool-driven
+retrieval**: the LLM decides when to call a `search_*` function, waits
+for the result, and then responds. That is two LLM round-trips per
+user turn.
+
+This example uses **ambient retrieval**: every user turn fires a Moss
+query automatically before the LLM is invoked, with the result
+injected as a system message. The LLM responds in a single round-trip.
+
+| | Tool-driven retrieval | Ambient retrieval (this example) |
 |---|---|---|
-| [`mortgage-lending/`](../mortgage-lending/) | Tool-driven, single index, multi-agent handoff | When the LLM calls `search_mortgage_kb` |
-| [`candidate-screening/`](../candidate-screening/) | Tool-driven, two indexes (JD + resume) | When the LLM calls `lookup_*` |
-| `airline-pnr/` (this example) | **Ambient**, per-PNR index | Always - injected as a system message before each LLM turn |
+| Who triggers the query | LLM via a tool call | Hook on every user turn |
+| LLM round-trips per turn | 2 (decide -> use result) | 1 |
+| Misses retrieval if LLM forgets | Yes | No |
+| Pays retrieval cost when not needed | No | Yes (cheap when Moss runs in-process) |
 
-Same Moss SDK underneath; three different ways to wire it into a voice
-agent.
+Same Moss SDK underneath; the difference is where the query is
+triggered from.
 
 ## What this example demonstrates
 
@@ -50,7 +61,7 @@ agent.
 | Mid-call index swap (companion bookings) | `agent.py` - `load_booking` invalidates verification |
 | Identity verification gating ambient retrieval | `agent.py` - `verify_caller`, gated on `caller_verified` |
 | Three-strikes verification + escalation | `agent.py` - `verification_attempts` |
-| IVR preload via env var | `agent.py` - `INITIAL_PNR` / `BOOKING_PNR` |
+| IVR preload via env var | `agent.py` - `BOOKING_PNR` |
 | Change request capture | `agent.py` - `record_change_request`, `ChangeRequest` |
 | Structured call summary as the output artifact | `agent.py` - `_build_summary`, `submit_call_summary` |
 | Deterministic eval suite | `evals/test_call_summary.py` |
@@ -173,9 +184,9 @@ size of the customer base.
 
 | PNR | Passenger | Itinerary | Why it's interesting |
 |---|---|---|---|
-| `XKQ4P2` | Meera Patel | One-way SFO -> ORD economy, no status | Simple happy path |
-| `WJ7BNH` | Jide Okafor | Round trip ORD -> FRA business, Aurora Gold tier | Multi-segment, premium cabin, status benefits, international docs |
-| `MR5XBP` | Aiko Tanaka (+ infant) | One-way LAX -> HNL economy plus, wheelchair, bassinet | Special service requests, infant policies |
+| `XKQ4P2` | Maya Singh | One-way SFO -> ORD economy, no status | Simple happy path |
+| `WJ7BNH` | Max Lee | Round trip ORD -> FRA business, Aurora Gold tier | Multi-segment, premium cabin, status benefits, international docs |
+| `MR5XBP` | Sam Park (+ infant Leo) | One-way LAX -> HNL economy plus, wheelchair, bassinet | Special service requests, infant policies |
 
 All three are fictional. Every name, route, and price is invented.
 
@@ -191,9 +202,9 @@ Caller:  Yeah, it's WJ7BNH.
 
 Agent:   [load_booking("WJ7BNH") -> loaded in 12ms]
          Thanks. And could you confirm the first name on the booking?
-Caller:  Jide.
+Caller:  Max.
 
-Agent:   [verify_caller("Jide") -> verified - ambient retrieval ON]
+Agent:   [verify_caller("Max") -> verified - ambient retrieval ON]
          Great, how can I help?
 Caller:  When does my Frankfurt flight leave?
 

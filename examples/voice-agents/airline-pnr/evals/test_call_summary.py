@@ -23,6 +23,7 @@ from agent import (  # noqa: E402
     CallSessionData,
     ChangeRequest,
     _build_summary,
+    _first_name_matches,
     _index_name_for,
 )
 
@@ -46,6 +47,38 @@ def test_index_name_lowercases_pnr():
 
 def test_index_name_handles_already_lowercased():
     assert _index_name_for("xkq4p2") == "booking-xkq4p2"
+
+
+# -- first-name verification (security-critical, privacy gate) -------------
+
+
+def test_first_name_matches_exact():
+    assert _first_name_matches("Max", "Passenger of record: Max P Lee.") is True
+
+
+def test_first_name_matches_case_insensitive():
+    assert _first_name_matches("MAYA", "Passenger of record: Maya R Singh.") is True
+
+
+def test_first_name_matches_rejects_single_letter():
+    # Substring matching would have let "a" or "e" through against almost any record.
+    assert _first_name_matches("a", "Passenger of record: Max P Lee.") is False
+    assert _first_name_matches("e", "Passenger of record: Max P Lee.") is False
+
+
+def test_first_name_matches_rejects_empty():
+    assert _first_name_matches("", "Passenger of record: Max P Lee.") is False
+    assert _first_name_matches("   ", "Passenger of record: Max P Lee.") is False
+
+
+def test_first_name_matches_rejects_unrelated():
+    assert _first_name_matches("Alice", "Passenger of record: Max P Lee.") is False
+
+
+def test_first_name_matches_handles_record_punctuation():
+    # The record text often has commas, periods, etc. The matcher must
+    # still find the name as a clean token.
+    assert _first_name_matches("Sam", "Passengers on this PNR: Sam J Park, adult.") is True
 
 
 # -- summary shape -----------------------------------------------------------

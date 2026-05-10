@@ -93,7 +93,7 @@ async def build_all(only_pnr: str | None = None) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build per-PNR Moss indexes for the airline customer screening demo."
+        description="Build per-PNR Moss indexes for the airline customer voice agent example."
     )
     parser.add_argument("--pnr", help="Build a single PNR (e.g. WJ7BNH).")
     parser.add_argument("--list", action="store_true", help="List available fixtures and exit.")
