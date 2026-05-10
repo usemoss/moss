@@ -10,7 +10,7 @@ shot.
 
 ```
               tool-driven retrieval                 ambient retrieval
-              (mortgage, screening)                 (this example)
+              (the conventional pattern)            (this example)
               ─────────────────────                 ─────────────────────
    user ─►   STT ─► LLM ─► tool decision           STT ─► [Moss query]   ┐
                               │                            │             │ in
@@ -32,11 +32,9 @@ one shot. The latency floor of the call drops by an LLM call per turn.
 
 ## Ambient retrieval vs tool-driven retrieval
 
-The other voice-agent example in this folder
-([`../mortgage-lending/`](../mortgage-lending/)) uses **tool-driven
-retrieval**: the LLM decides when to call a `search_*` function, waits
-for the result, and then responds. That is two LLM round-trips per
-user turn.
+The conventional pattern is **tool-driven retrieval**: the LLM
+decides when to call a `search_*` function, waits for the result, and
+then responds. That is two LLM round-trips per user turn.
 
 This example uses **ambient retrieval**: every user turn fires a Moss
 query automatically before the LLM is invoked, with the result
@@ -314,8 +312,8 @@ It's a poor fit for:
   wasteful (not the case for Moss, but might matter with a remote
   vector DB at 200ms+).
 
-The mortgage and candidate-screening examples in this folder are
-intentional contrasts - they need the LLM in the driver's seat.
+In those cases, prefer the conventional tool-driven pattern: the LLM
+stays in the driver's seat and explicitly decides when to retrieve.
 
 ## Resources
 

@@ -10,12 +10,12 @@ as a system message in the chat context, and the LLM responds in a
 single round-trip - no `lookup_*` tool, no two-step "decide to call
 tool then call tool" dance.
 
-Compare with the tool-driven pattern (e.g. `mortgage-lending/` in
-this folder): there, the LLM decides when to call a `search_*` tool
-and waits for the result. That is two LLM round-trips per user turn.
-This example uses ambient retrieval: every user turn fires a Moss
-query automatically before the LLM is invoked, with the result
-injected as a system message. The LLM responds in one round-trip.
+Compare with the conventional tool-driven pattern: there, the LLM
+decides when to call a `search_*` tool and waits for the result.
+That is two LLM round-trips per user turn. This example uses ambient
+retrieval: every user turn fires a Moss query automatically before
+the LLM is invoked, with the result injected as a system message.
+The LLM responds in one round-trip.
 
 Why ambient retrieval fits airline customer service:
 
@@ -68,7 +68,6 @@ from moss import MossClient, QueryOptions
 
 load_dotenv()
 
-INITIAL_PNR = os.getenv("BOOKING_PNR")  # optional: an IVR could pre-capture the PNR
 SUMMARY_DIR = Path(os.getenv("AIRLINE_CALL_SUMMARY_DIR", "./call-summaries"))
 
 logging.getLogger("livekit").setLevel(logging.WARNING)
@@ -109,7 +108,13 @@ def _first_name_matches(candidate: str, record_text: str) -> bool:
     candidate = candidate.strip().lower()
     if not candidate or len(candidate) < 2:
         return False
-    tokens = {t.lower() for t in record_text.replace(",", " ").split() if t.isalpha()}
+    # Strip non-alpha chars per word so trailing punctuation does not drop the
+    # token (e.g. "Max." -> "max" instead of being filtered entirely).
+    tokens = {
+        "".join(c for c in word if c.isalpha())
+        for word in record_text.lower().split()
+    }
+    tokens = {t for t in tokens if len(t) >= 2}
     return candidate in tokens
 
 
@@ -363,9 +368,10 @@ class AirlineAgent(Agent):
     async def verify_caller(self, context: RunContext, first_name: str) -> str:
         """Match the caller's first name against the passenger on the booking.
 
-        Looks up the passenger record, compares first names case-insensitively
-        with a partial match, and either records success or increments the
-        attempt counter. After three failures the agent should escalate.
+        Looks up the passenger record and performs a strict case-insensitive
+        token match (see `_first_name_matches`). Records success or
+        increments the attempt counter. After three failures the agent
+        should escalate.
 
         Verification gates ambient retrieval. Until this succeeds, no
         booking context is injected into the LLM's chat history.
@@ -423,8 +429,13 @@ class AirlineAgent(Agent):
     @function_tool
     async def add_note(self, context: RunContext, note: str) -> str:
         """Add a free-form note. Use sparingly - prefer change requests
-        when the caller wants something done."""
+        when the caller wants something done.
+
+        Requires identity verification (same gate as record_change_request).
+        """
         data: CallSessionData = self.session.userdata
+        if not data.caller_verified:
+            return "Cannot add a note before identity verification."
         data.notes.append(note.strip())
         return "Note added."
 
@@ -488,17 +499,18 @@ async def entrypoint(ctx: JobContext):
 
     userdata = CallSessionData(moss_client=moss_client)
 
-    # If the IVR or operator nominated a PNR via env var, preload the index
-    # so the very first turn is already grounded.
-    if INITIAL_PNR:
-        index = _index_name_for(INITIAL_PNR)
+    # If the IVR or operator nominated a PNR via the BOOKING_PNR env var,
+    # preload the index so the very first turn is already grounded.
+    preloaded_pnr = os.getenv("BOOKING_PNR")
+    if preloaded_pnr:
+        index = _index_name_for(preloaded_pnr)
         try:
             t0 = time.time()
             await moss_client.load_index(index)
             elapsed_ms = int((time.time() - t0) * 1000)
-            userdata.active_pnr = INITIAL_PNR.upper()
+            userdata.active_pnr = preloaded_pnr.upper()
             userdata.active_index = index
-            userdata.bookings_loaded.append(INITIAL_PNR.upper())
+            userdata.bookings_loaded.append(preloaded_pnr.upper())
             logger.info(f"{GREEN}preloaded {index} in {elapsed_ms}ms (from BOOKING_PNR){RESET}")
         except Exception as e:
             logger.warning(f"{RED}failed to preload {index}: {e}{RESET}")
