@@ -1,0 +1,2 @@
+# Scorecards are runtime artifacts - don't commit them.
+scorecards/

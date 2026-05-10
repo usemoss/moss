@@ -1,0 +1,87 @@
+[
+    {
+        "id": "company-overview",
+        "text": "Lattica is a Series B payments infrastructure company. We provide programmable card issuing, ledger, and money-movement APIs to fintechs in the US, Canada, and the EU. We process over four billion dollars in annualized volume across 12 production tenants.",
+        "metadata": {"section": "company"}
+    },
+    {
+        "id": "role-summary",
+        "text": "The Senior Backend Engineer on the Payments team owns critical paths in our money-movement systems: authorization, settlement, ledgering, and dispute handling. You will design and build the services that move customer funds and that our compliance and finance teams audit.",
+        "metadata": {"section": "summary"}
+    },
+    {
+        "id": "location-and-remote",
+        "text": "Location: this role is fully remote within the US, Canada, and the EU. We hold quarterly in-person on-sites for the Payments team, typically in New York or Berlin, and cover travel and lodging for those.",
+        "metadata": {"section": "location"}
+    },
+    {
+        "id": "visa-sponsorship",
+        "text": "Visa sponsorship: Lattica sponsors US H-1B and TN visas for senior roles. Existing OPT and STEM-OPT holders are welcome to apply. We do not sponsor entry-level or mid-level visas at this time.",
+        "metadata": {"section": "visa"}
+    },
+    {
+        "id": "must-have-python",
+        "text": "Required: at least four years of production Python experience. We use Python 3.11+ with type hints throughout. You should be comfortable reading a stack trace, writing async code, and reasoning about performance in a hot path.",
+        "metadata": {"section": "must_have", "skill": "python"}
+    },
+    {
+        "id": "must-have-postgres",
+        "text": "Required: strong working knowledge of Postgres in production. You have written non-trivial SQL, understand transactions and isolation levels, have debugged a slow query with EXPLAIN, and know when to add an index versus when to rewrite the query.",
+        "metadata": {"section": "must_have", "skill": "postgres"}
+    },
+    {
+        "id": "must-have-distributed-systems",
+        "text": "Required: production experience with distributed systems. You have built or operated a service that handles concurrent writes, retries safely, and recovers from partial failures. Familiarity with idempotency, exactly-once semantics, and queue-based architectures.",
+        "metadata": {"section": "must_have", "skill": "distributed_systems"}
+    },
+    {
+        "id": "must-have-payments-or-financial",
+        "text": "Required: hands-on experience in payments, banking, or another regulated financial domain. You understand why double-entry ledgers exist, what a chargeback is, and why eventual consistency is a four-letter word in money movement.",
+        "metadata": {"section": "must_have", "skill": "payments_domain"}
+    },
+    {
+        "id": "must-have-on-call",
+        "text": "Required: willingness to participate in an on-call rotation, roughly one week every six. Pages are rare but can be high-stakes; on-call engineers are expected to triage and either fix or escalate within fifteen minutes.",
+        "metadata": {"section": "must_have", "skill": "on_call"}
+    },
+    {
+        "id": "nice-to-have-kafka",
+        "text": "Nice to have: experience with Kafka, NATS, or a similar log-based messaging system. We use Kafka for the event spine that connects authorization, ledgering, and downstream reporting.",
+        "metadata": {"section": "nice_to_have", "skill": "kafka"}
+    },
+    {
+        "id": "nice-to-have-card-networks",
+        "text": "Nice to have: prior exposure to card-network integrations, ISO 8583 message formats, or processor APIs such as Marqeta, Galileo, or i2c. You will not be writing ISO 8583 from scratch but you will read it.",
+        "metadata": {"section": "nice_to_have", "skill": "card_networks"}
+    },
+    {
+        "id": "nice-to-have-rust-or-go",
+        "text": "Nice to have: production experience in Rust or Go. A small set of latency-sensitive services are written in Rust; we are open to migrations and rewrites where the performance case is clear.",
+        "metadata": {"section": "nice_to_have", "skill": "rust_or_go"}
+    },
+    {
+        "id": "tech-stack",
+        "text": "Tech stack: Python 3.11, FastAPI, Postgres 16, Kafka, Redis, Temporal for orchestration, AWS (EKS, RDS, S3, KMS), Datadog for observability, and Buildkite for CI. Most production services run on Kubernetes with progressive deployment via Argo Rollouts.",
+        "metadata": {"section": "tech_stack"}
+    },
+    {
+        "id": "team-structure",
+        "text": "Team structure: the Payments team has eight engineers, one engineering manager, one product manager, and one designer. We pair on tricky changes, do code review for everything that ships, and run a fortnightly architecture review.",
+        "metadata": {"section": "team"}
+    },
+    {
+        "id": "day-to-day",
+        "text": "Day-to-day: you own services end to end. You will write design documents for non-trivial changes, ship code through code review, instrument and monitor your services, respond to issues found by support and finance, and partner with compliance on audit-ready logging.",
+        "metadata": {"section": "day_to_day"}
+    },
+    {
+        "id": "interview-process",
+        "text": "Interview process: a recruiter screen, a thirty-minute screening with this voice agent, a take-home design exercise reviewed live, two engineering interviews (one systems, one code), and a values conversation. Total elapsed time is typically two to three weeks.",
+        "metadata": {"section": "process"}
+    },
+    {
+        "id": "compensation-and-equity",
+        "text": "Compensation: base salary range is $185,000 to $235,000 USD depending on location and level, plus a meaningful equity grant vesting over four years. Lattica provides full health, dental, vision, and a $2,000 annual learning budget.",
+        "metadata": {"section": "compensation"}
+    }
+]

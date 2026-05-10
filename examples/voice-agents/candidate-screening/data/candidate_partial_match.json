@@ -1,0 +1,62 @@
+[
+    {
+        "id": "summary",
+        "text": "Senior infrastructure engineer with eight years of experience building distributed systems at scale. Strong systems and Python background but no direct payments or financial-domain work. Looking to move from infrastructure into product engineering with real customer-facing impact.",
+        "metadata": {"section": "summary"}
+    },
+    {
+        "id": "current-role",
+        "text": "Currently a Senior Engineer at Topograph (Series C, ~300 employees, geospatial analytics). On the platform team. I own the data pipeline that ingests and processes around two terabytes of geospatial data per day for analytics customers.",
+        "metadata": {"section": "experience", "company": "Topograph", "current": true}
+    },
+    {
+        "id": "kafka-pipeline-project",
+        "text": "Built and operated Topograph's Kafka-based ingestion pipeline. The pipeline processes roughly 40,000 events per second at peak with end-to-end latency under two seconds. I designed the partitioning scheme and wrote the consumers in Python and Go.",
+        "metadata": {"section": "project", "skill": "kafka"}
+    },
+    {
+        "id": "postgres-migration-project",
+        "text": "Led a multi-quarter Postgres migration that moved Topograph's metadata store from a self-managed Postgres on EC2 to RDS Aurora with logical replication for cutover. Zero downtime, zero data loss, and trimmed monthly database spend by 35 percent.",
+        "metadata": {"section": "project", "skill": "postgres"}
+    },
+    {
+        "id": "previous-role-cloudbase",
+        "text": "Previously a Software Engineer at Cloudbase (an internal-tools company). Worked on the deployment platform team for three years. Wrote a lot of Python and got my first real exposure to running services in production.",
+        "metadata": {"section": "experience", "company": "Cloudbase"}
+    },
+    {
+        "id": "skills-python",
+        "text": "Python: eight years of production experience. Heavy use of asyncio for I/O-bound services, FastAPI for internal APIs, and a fair amount of typed Python with mypy. Comfortable with modern tooling.",
+        "metadata": {"section": "skills", "skill": "python"}
+    },
+    {
+        "id": "skills-postgres",
+        "text": "Postgres: six years. Comfortable with the operational side, including replication, point-in-time recovery, and tuning for read-heavy workloads. Less comfortable with the transactional-correctness corners that I imagine matter for a ledger.",
+        "metadata": {"section": "skills", "skill": "postgres"}
+    },
+    {
+        "id": "skills-kafka",
+        "text": "Kafka: four years of production experience as both a consumer-author and an operator. Have written consumers in Python, Go, and a small amount of Rust. Have debugged consumer lag, rebalances, and ZooKeeper to KRaft migrations.",
+        "metadata": {"section": "skills", "skill": "kafka"}
+    },
+    {
+        "id": "skills-go",
+        "text": "Go: two years of production experience. Wrote a number of small services and a CLI tool. Comfortable enough to be productive but I would not call myself an expert.",
+        "metadata": {"section": "skills", "skill": "go"}
+    },
+    {
+        "id": "no-payments-experience",
+        "text": "Have not worked in payments, banking, or any other regulated financial domain. Familiar with concepts like idempotency and double-entry accounting from reading and side reading, but I have not shipped production payments code.",
+        "metadata": {"section": "gaps", "skill": "payments_domain"}
+    },
+    {
+        "id": "on-call-experience",
+        "text": "On-call: have been on rotation at both companies. Topograph is one week every five. I do not love it but I do not dread it either; I treat it as part of the job.",
+        "metadata": {"section": "skills", "skill": "on_call"}
+    },
+    {
+        "id": "education",
+        "text": "BS in Computer Engineering from the University of Texas at Austin, 2016. Worked on a research project on distributed consensus in undergrad which is still my favorite area.",
+        "metadata": {"section": "education"}
+    }
+]
