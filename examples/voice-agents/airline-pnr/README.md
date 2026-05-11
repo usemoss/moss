@@ -1,12 +1,9 @@
 # Airline Customer Voice Agent (Ambient Retrieval)
 
-This example showcases a different retrieval pattern from the other
-voice-agent examples in this folder: **ambient retrieval**.
-
-There is no `lookup_*` tool. Every user turn automatically triggers a
-Moss query against the active booking before the LLM is invoked, and
-the result is injected as a system message. The LLM responds in one
-shot.
+A live voice agent for airline customer service, built around
+**ambient retrieval**: every user turn auto-queries the active
+booking's Moss index before the LLM is invoked, so the LLM responds
+in a single round-trip instead of two.
 
 ```
               tool-driven retrieval                 ambient retrieval
@@ -227,15 +224,9 @@ Agent:   [record_change_request(kind="seat",
          aisle. The crew will confirm by email before departure.
 
 Caller:  That's all, thanks.
-         [ambient query: That's all, thanks.]   <- still queries; cheap
 Agent:   [submit_call_summary() -> ./call-summaries/WJ7BNH__1234.json]
          Have a good trip.
 ```
-
-A small honest cost of ambient retrieval: the last "thanks" turn fires
-a query that returns docs the LLM doesn't really need. At sub-10ms per
-query this is fine, but it is a real difference from tool-driven where
-the LLM would have skipped retrieval entirely.
 
 ## The call summary
 
@@ -321,4 +312,4 @@ stays in the driver's seat and explicitly decides when to retrieve.
 - [Moss llms.txt](https://moss.dev/llms.txt)
 - [LiveKit Agents docs](https://docs.livekit.io/agents/)
 - [Moss GitHub](https://github.com/usemoss/moss)
-- [Discord](https://moss.link/discord)
+- [Discord](https://discord.com/invite/eMXExuafBR)
