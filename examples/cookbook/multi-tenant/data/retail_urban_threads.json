@@ -1,0 +1,52 @@
+[
+  {
+    "id": "urban-threads-catalog",
+    "text": "Urban Threads carries men's and women's streetwear, casual basics, outerwear, denim, and footwear. Brands include our in-house label plus Nike, New Balance, Carhartt, Levi's, Patagonia, and Vans. New drops every Thursday.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "products"}
+  },
+  {
+    "id": "urban-threads-pricing",
+    "text": "Price ranges: T-shirts $25–$55, hoodies $60–$120, jackets and outerwear $90–$280, denim $65–$150, footwear $70–$180, accessories $15–$65. In-house label items are 20–30% more affordable than comparable branded items.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "pricing"}
+  },
+  {
+    "id": "urban-threads-hours",
+    "text": "Store hours: Monday–Saturday 10am–8pm, Sunday 11am–6pm. Extended holiday hours November–December. Online store at urbanthreads.com open 24/7 with same-day local delivery available until 4pm on weekdays.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "info"}
+  },
+  {
+    "id": "urban-threads-returns",
+    "text": "Return policy: 30-day returns for unworn items with tags attached and receipt. Exchange or store credit for items without a receipt. Final sale items (marked with red tag) are non-returnable. Online orders include a prepaid return label.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "policy"}
+  },
+  {
+    "id": "urban-threads-shipping",
+    "text": "Shipping: Free standard shipping (5–7 days) on orders over $75. Express shipping $12 (2 days). Same-day local delivery $8 within 10 miles. International shipping available to 30 countries — rates calculated at checkout.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "shipping"}
+  },
+  {
+    "id": "urban-threads-sizing",
+    "text": "Sizing: XS–3XL in most styles. Size guides available on each product page. Our in-house label runs true to size. Fitting rooms available in-store. Online size recommendation tool at urbanthreads.com/fit — enter your measurements for a personalized recommendation.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "products"}
+  },
+  {
+    "id": "urban-threads-loyalty",
+    "text": "Loyalty program (Threads Club): Earn 1 point per $1 spent. 100 points = $5 reward. Tiers: Bronze (0–499 pts), Silver (500–1499 pts, 10% off birthday month), Gold (1500+ pts, early access to drops + 15% off birthday month). Free to join.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "promotions"}
+  },
+  {
+    "id": "urban-threads-payment",
+    "text": "Payment methods: Visa, Mastercard, Amex, Apple Pay, Google Pay, Shop Pay, Klarna (buy now pay later in 4 installments). Gift cards available in-store and online in $25, $50, and $100 denominations.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "info"}
+  },
+  {
+    "id": "urban-threads-location",
+    "text": "Flagship store at 88 Fairfax Avenue, Los Angeles, CA 90036. Free 2-hour parking in the adjacent lot. Also available at select Nordstrom locations and online. Pop-up events announced on Instagram @urbanthreads.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "info"}
+  },
+  {
+    "id": "urban-threads-sustainability",
+    "text": "Sustainability: 60% of our in-house label uses organic or recycled fabrics. We offer a garment recycling program — bring in any brand's old clothing and get 10% off your next purchase. Packaging is 100% recycled and plastic-free.",
+    "metadata": {"business_id": "retail-urban-threads", "category": "brand"}
+  }
+]

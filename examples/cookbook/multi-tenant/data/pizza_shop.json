@@ -1,0 +1,52 @@
+[
+  {
+    "id": "pizza-shop-menu-margherita",
+    "text": "Margherita Pizza: Classic tomato sauce, fresh mozzarella, and basil. Small $12, Medium $16, Large $20. Gluten-free crust available for $3 extra.",
+    "metadata": {"business_id": "pizza-shop", "category": "menu"}
+  },
+  {
+    "id": "pizza-shop-menu-pepperoni",
+    "text": "Pepperoni Pizza: Tomato sauce, mozzarella, and premium pepperoni. Small $14, Medium $18, Large $23. Our best seller.",
+    "metadata": {"business_id": "pizza-shop", "category": "menu"}
+  },
+  {
+    "id": "pizza-shop-menu-bbq-chicken",
+    "text": "BBQ Chicken Pizza: Smoky BBQ sauce, grilled chicken, red onion, and mozzarella. Small $15, Medium $19, Large $24.",
+    "metadata": {"business_id": "pizza-shop", "category": "menu"}
+  },
+  {
+    "id": "pizza-shop-menu-sides",
+    "text": "Sides and extras: Garlic bread $4, Caesar salad $7, Buffalo wings (8 pieces) $10, Tiramisu $6, Soft drinks $2.50.",
+    "metadata": {"business_id": "pizza-shop", "category": "menu"}
+  },
+  {
+    "id": "pizza-shop-toppings",
+    "text": "Extra toppings $1.50 each: mushrooms, bell peppers, olives, jalapeños, sun-dried tomatoes, anchovies, caramelized onions, roasted garlic, spinach, artichoke hearts.",
+    "metadata": {"business_id": "pizza-shop", "category": "menu"}
+  },
+  {
+    "id": "pizza-shop-hours",
+    "text": "Opening hours: Monday to Thursday 11am–10pm, Friday and Saturday 11am–11pm, Sunday 12pm–9pm. We are closed on Thanksgiving and Christmas Day.",
+    "metadata": {"business_id": "pizza-shop", "category": "info"}
+  },
+  {
+    "id": "pizza-shop-delivery",
+    "text": "Delivery is available within a 5-mile radius. Delivery fee $2.99 for orders under $30, free delivery for orders $30 and above. Average delivery time 30–45 minutes. We also partner with DoorDash and Uber Eats.",
+    "metadata": {"business_id": "pizza-shop", "category": "delivery"}
+  },
+  {
+    "id": "pizza-shop-specials",
+    "text": "Weekly specials: Two-for-Tuesday — buy any large pizza, get a medium 50% off. Family Friday deal — two large pizzas, a side salad, and four drinks for $49.99. Loyalty card: every 10th pizza free.",
+    "metadata": {"business_id": "pizza-shop", "category": "promotions"}
+  },
+  {
+    "id": "pizza-shop-location",
+    "text": "We are located at 142 Napoli Street, Brooklyn, NY 11201. Free parking available in the lot behind the restaurant. Nearest subway stop: Jay Street–MetroTech (A, C, F lines).",
+    "metadata": {"business_id": "pizza-shop", "category": "info"}
+  },
+  {
+    "id": "pizza-shop-ordering",
+    "text": "How to order: Call us at (718) 555-0192, order online at luigispizzeria.com, or walk in. Online orders require a minimum of $15. We accept all major credit cards, Apple Pay, and cash.",
+    "metadata": {"business_id": "pizza-shop", "category": "info"}
+  }
+]
