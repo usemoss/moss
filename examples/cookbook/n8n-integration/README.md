@@ -49,7 +49,7 @@ const results = await helper.query('my-index', 'hello', { topK: 5 });
 await helper.deleteDocs('my-index', ['1']);
 
 // Clean up
-helper.dispose();
+helper.close();
 ```
 
 ### Option 2: Direct HTTP Requests
