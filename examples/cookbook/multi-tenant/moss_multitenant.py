@@ -7,6 +7,8 @@ load lazily on first use — only the ones actually called pay the load cost.
 """
 from __future__ import annotations
 
+import asyncio
+
 from langchain_core.tools import StructuredTool
 from moss import MossClient, QueryOptions
 from pydantic import BaseModel, Field
@@ -17,8 +19,9 @@ class IndexStore:
     Lazy-loading registry of named Moss indexes.
 
     Each index is loaded from the Moss cloud on its first query and kept
-    resident in memory for subsequent calls. Multiple indexes can be queried
-    independently — LangChain's AgentExecutor handles parallelism.
+    resident in memory for subsequent calls. A per-index asyncio.Lock ensures
+    load_index() is called exactly once even when concurrent coroutines
+    (e.g. asyncio.gather tool calls) race on the same index.
 
     Usage::
 
@@ -31,17 +34,27 @@ class IndexStore:
         self.top_k = top_k
         self.alpha = alpha
         self._loaded: set[str] = set()
+        self._locks: dict[str, asyncio.Lock] = {}
+
+    def _lock_for(self, index_name: str) -> asyncio.Lock:
+        # Synchronous dict access — safe between await points in asyncio.
+        if index_name not in self._locks:
+            self._locks[index_name] = asyncio.Lock()
+        return self._locks[index_name]
 
     async def search(self, index_name: str, query: str) -> str:
         """
         Query a named index and return a formatted context string.
 
-        Loads the index on first call. Subsequent calls on the same index
-        skip the load step and return in <10ms.
+        Loads the index on first call. Subsequent calls skip the load and
+        return in <10ms. Concurrent callers on the same index wait for the
+        first load rather than triggering duplicate load_index() calls.
         """
         if index_name not in self._loaded:
-            await self._client.load_index(index_name)
-            self._loaded.add(index_name)
+            async with self._lock_for(index_name):
+                if index_name not in self._loaded:   # re-check inside the lock
+                    await self._client.load_index(index_name)
+                    self._loaded.add(index_name)
 
         results = await self._client.query(
             index_name,

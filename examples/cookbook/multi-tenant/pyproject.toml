@@ -17,6 +17,7 @@ dependencies = [
     "langchain-openai",
     "langchain-core",
     "python-dotenv",
+    "pydantic",
 ]
 
 [tool.hatch.build.targets.wheel]
