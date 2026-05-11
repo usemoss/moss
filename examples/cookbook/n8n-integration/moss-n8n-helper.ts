@@ -1,4 +1,5 @@
 import { MossClient } from '@moss-dev/moss';
+import type { MutationResult, JobStatusResponse } from '@moss-dev/moss-core';
 
 // Moss N8N Helper - Wrapper around Moss SDK for use in n8n workflows
 // This helper provides easy-to-use functions for the four core Moss operations:
@@ -27,7 +28,7 @@ export class MossN8NHelper {
    * @param indexName - Name of the index to create
    * @param docs - Array of documents (each with id and text, optionally with metadata and embedding)
    * @param options - Optional configuration (modelId, onProgress callback)
-   * @returns Promise resolving to the creation result
+   * @returns Promise resolving to the creation result with job info
    */
   async createIndex(
     indexName: string,
@@ -39,12 +40,12 @@ export class MossN8NHelper {
     }>,
     options?: {
       modelId?: string;
-      onProgress?: (status: string, progress: number) => void;
+      onProgress?: (jobProgress: { status: string; progress: number; currentPhase?: string }) => void;
     }
   ): Promise<{
     jobId: string;
-    status: string;
-    progress: number;
+    indexName: string;
+    docCount: number;
   }> {
     // Convert to Moss DocumentInfo format
     const mossDocs = docs.map(doc => ({
@@ -54,11 +55,16 @@ export class MossN8NHelper {
       ...(doc.embedding && { embedding: doc.embedding })
     }));
 
+    // Call the SDK method which returns MutationResult
     const result = await this.client.createIndex(indexName, mossDocs, options);
+    
+    // If there's a progress callback, we need to poll for status updates
+    // But for simplicity in this helper, we'll just return the basic result
+    // Users can call getJobStatus separately if they need progress tracking
     return {
       jobId: result.jobId,
-      status: result.status,
-      progress: result.progress
+      indexName: result.indexName,
+      docCount: result.docCount
     };
   }
 
@@ -67,7 +73,7 @@ export class MossN8NHelper {
    * @param indexName - Name of the target index
    * @param docs - Array of documents to add/update
    * @param options - Optional configuration (upsert, onProgress callback)
-   * @returns Promise resolving to the operation result
+   * @returns Promise resolving to the operation result with job info
    */
   async addDocs(
     indexName: string,
@@ -79,12 +85,12 @@ export class MossN8NHelper {
     }>,
     options?: {
       upsert?: boolean;
-      onProgress?: (status: string, progress: number) => void;
+      onProgress?: (jobProgress: { status: string; progress: number; currentPhase?: string }) => void;
     }
   ): Promise<{
     jobId: string;
-    status: string;
-    progress: number;
+    indexName: string;
+    docCount: number;
   }> {
     // Convert to Moss DocumentInfo format
     const mossDocs = docs.map(doc => ({
@@ -94,11 +100,14 @@ export class MossN8NHelper {
       ...(doc.embedding && { embedding: doc.embedding })
     }));
 
+    // Call the SDK method which returns MutationResult
     const result = await this.client.addDocs(indexName, mossDocs, options);
+    
+    // Return the basic result - users can call getJobStatus for progress
     return {
       jobId: result.jobId,
-      status: result.status,
-      progress: result.progress
+      indexName: result.indexName,
+      docCount: result.docCount
     };
   }
 
@@ -107,24 +116,27 @@ export class MossN8NHelper {
    * @param indexName - Name of the target index
    * @param docIds - Array of document IDs to delete
    * @param options - Optional configuration (onProgress callback)
-   * @returns Promise resolving to the deletion result
+   * @returns Promise resolving to the deletion result with job info
    */
   async deleteDocs(
     indexName: string,
     docIds: string[],
     options?: {
-      onProgress?: (status: string, progress: number) => void;
+      onProgress?: (jobProgress: { status: string; progress: number; currentPhase?: string }) => void;
     }
   ): Promise<{
     jobId: string;
-    status: string;
-    progress: number;
+    indexName: string;
+    docCount: number;
   }> {
+    // Call the SDK method which returns MutationResult
     const result = await this.client.deleteDocs(indexName, docIds, options);
+    
+    // Return the basic result - users can call getJobStatus for progress
     return {
       jobId: result.jobId,
-      status: result.status,
-      progress: result.progress
+      indexName: result.indexName,
+      docCount: result.docCount
     };
   }
 
@@ -147,9 +159,9 @@ export class MossN8NHelper {
     metadata?: Record<string, any>;
     score: number;
   }>> {
-    // Load index for fast local queries (recommended for n8n workflows)
-    await this.client.loadIndex(indexName);
-    
+    // Note: Per Moss SDK docs, query() will use local index if loaded via loadIndex(),
+    // otherwise it falls back to cloud query. For best performance in n8n workflows,
+    // users should call loadIndex() once before doing multiple queries.
     const results = await this.client.query(indexName, queryText, {
       topK: options?.topK ?? 10
     });
@@ -164,26 +176,49 @@ export class MossN8NHelper {
   }
 
   /**
+   * Load an index into memory for fast local querying
+   * @param indexName - Name of the index to load
+   * @param options - Optional configuration including auto-refresh settings
+   * @returns Promise that resolves to index info
+   */
+  async loadIndex(
+    indexName: string,
+    options?: {
+      autoRefresh?: boolean;
+      pollingIntervalInSeconds?: number;
+    }
+  ): Promise<string> {
+    return this.client.loadIndex(indexName, options);
+  }
+
+  /**
    * Get the status of an async job
    * @param jobId - The job ID from createIndex, addDocs, or deleteDocs
-   * @returns Promise resolving to job status
+   * @returns Promise resolving to job status with progress details
    */
   async getJobStatus(jobId: string): Promise<{
     status: string;
     progress: number;
+    currentPhase?: string;
+    error?: string;
   }> {
     const status = await this.client.getJobStatus(jobId);
     return {
       status: status.status,
-      progress: status.progress
+      progress: status.progress,
+      currentPhase: status.currentPhase?.toString(),
+      error: status.error
     };
   }
 
   /**
-   * Dispose of the client resources
+   * Close the client and release resources
+   * Note: MossClient doesn't have a dispose() method, but we can clean up references
    */
-  dispose(): void {
-    this.client.dispose();
+  close(): void {
+    // In JavaScript, we just nullify the reference to allow garbage collection
+    // The actual cleanup happens internally in the MossClient
+    (this as any).client = null;
   }
 }
 
@@ -195,15 +230,22 @@ export class MossN8NHelper {
 //   { id: '1', text: 'Hello world', metadata: { source: 'example' } }
 // ]);
 // 
+// // Check creation status (optional)
+// const createStatus = await helper.getJobStatus(createResult.jobId);
+// 
 // // Add docs
-// await helper.addDocs('my-index', [
+// const addResult = await helper.addDocs('my-index', [
 //   { id: '2', text: 'Another document', metadata: { source: 'example' } }
 // ]);
 // 
+// // Load index for fast local queries (recommended before querying)
+// await helper.loadIndex('my-index');
+// 
 // // Query
-// const results = await helper.query('my-index', 'hello');
+// const results = await helper.query('my-index', 'hello', { topK: 5 });
 // 
 // // Delete docs
-// await helper.deleteDocs('my-index', ['1']);
+// const deleteResult = await helper.deleteDocs('my-index', ['1']);
 // 
-// helper.dispose();
+// // Clean up
+// helper.close();
