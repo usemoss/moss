@@ -1,0 +1,72 @@
+[
+    {
+        "id": "booking-summary",
+        "text": "Booking reference MR5XBP, booked on 2026-05-19. Lead passenger Sam Park traveling with one infant in arms. One-way trip from Los Angeles to Honolulu on Aurora Air, departing 2026-06-30.",
+        "metadata": {"section": "summary", "pnr": "MR5XBP"}
+    },
+    {
+        "id": "passengers",
+        "text": "Passengers on this PNR: Sam J Park, adult, lead passenger. Infant in arms named Leo T Park, age 9 months at travel date. Infant tickets do not have a seat assignment but are tied to the lead passenger seat for safety.",
+        "metadata": {"section": "passenger"}
+    },
+    {
+        "id": "flight-segment",
+        "text": "Flight Aurora Air AUR287 from Los Angeles LAX to Honolulu HNL on 2026-06-30. Scheduled departure 1:55 PM Pacific, scheduled arrival 4:30 PM Hawaii time. Aircraft is an Airbus A321neo. Flight time approximately 5 hours 35 minutes. Currently on-time.",
+        "metadata": {"section": "flight", "segment": 1, "flight_number": "AUR287"}
+    },
+    {
+        "id": "seat-assignment",
+        "text": "Seat assignment: 7F, an economy plus window seat in the bassinet row. Bassinet is reserved for this booking subject to confirmation 24 hours before departure. The bassinet supports infants up to 25 pounds and 26 inches.",
+        "metadata": {"section": "seat", "seat": "7F", "amenity": "bassinet"}
+    },
+    {
+        "id": "meal-preference",
+        "text": "Special meal pre-ordered: infant meal (BBML) for the infant in arms. The lead passenger has no special meal selected and will receive the standard Hawaiian-route meal service.",
+        "metadata": {"section": "meal", "meal_code": "BBML"}
+    },
+    {
+        "id": "special-services-wheelchair",
+        "text": "Special service request: wheelchair assistance from the gate to the aircraft door at LAX, and from the aircraft to baggage claim at HNL. The request is for the lead passenger and her infant, listed as WCHR (wheelchair, can walk short distances).",
+        "metadata": {"section": "ssr", "code": "WCHR"}
+    },
+    {
+        "id": "stroller-policy",
+        "text": "Stroller: 1 collapsible stroller checked at the gate at no charge. The stroller is returned at the gate at the destination airport. Strollers are in addition to the standard checked baggage allowance.",
+        "metadata": {"section": "baggage", "amenity": "stroller"}
+    },
+    {
+        "id": "baggage-allowance",
+        "text": "Baggage allowance: 1 personal item and 1 carry-on per adult included free. Checked bags: 2 free checked bags up to 50 pounds each because Hawaiian routes include enhanced bag allowance. Currently 2 checked bags reserved on the booking.",
+        "metadata": {"section": "baggage"}
+    },
+    {
+        "id": "loyalty-tier",
+        "text": "Aurora Air loyalty status: no tier on this booking. The lead passenger is enrolled in AuroraMiles with a balance of 18,400 miles. Infant tickets do not earn miles.",
+        "metadata": {"section": "loyalty"}
+    },
+    {
+        "id": "fare-rules-changes",
+        "text": "Fare class Economy Plus. Date changes are allowed for $99 plus any fare difference up to 4 hours before departure. Cancellation within 24 hours of booking is fully refundable. After that, refunds are issued as travel credit valid for 12 months.",
+        "metadata": {"section": "fare_rules"}
+    },
+    {
+        "id": "check-in-window",
+        "text": "Check-in opens 24 hours before scheduled departure. Passengers traveling with an infant in arms or with a wheelchair request are encouraged to use airport check-in for assistance with documentation. Recommended airport arrival is 2 hours before departure.",
+        "metadata": {"section": "check_in"}
+    },
+    {
+        "id": "infant-documentation",
+        "text": "Documentation required for the infant: a government-issued birth certificate or passport must be presented at check-in to verify the infant's age. Both adults named on the underlying account must consent if applicable; for this booking the consent is on file.",
+        "metadata": {"section": "documents"}
+    },
+    {
+        "id": "payment-summary",
+        "text": "Total fare paid: $612.30, charged to a Visa card ending in 7789 on the booking date. The total includes $498 adult base fare, $74.70 infant fare which is 10 percent of the adult fare on Hawaiian routes, plus taxes and segment fees.",
+        "metadata": {"section": "payment"}
+    },
+    {
+        "id": "contact-on-file",
+        "text": "Contact information on file: an email address ending in @icloud.com, and a US mobile number ending in 1156. Notifications enabled for delays and gate changes.",
+        "metadata": {"section": "contact"}
+    }
+]
