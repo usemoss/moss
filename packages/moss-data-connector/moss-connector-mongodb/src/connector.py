@@ -10,7 +10,8 @@ wrap it with `str()` to render the hex string, e.g.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterator, Optional
+from collections.abc import Callable, Iterator
+from typing import Any
 
 from moss import DocumentInfo
 from pymongo import MongoClient
@@ -32,8 +33,8 @@ class MongoDBConnector:
         database: str,
         collection: str,
         mapper: Callable[[dict[str, Any]], DocumentInfo],
-        filter: Optional[dict[str, Any]] = None,
-        projection: Optional[dict[str, Any]] = None,
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
     ) -> None:
         self.uri = uri
         self.database = database

@@ -1,9 +1,9 @@
 import asyncio
+import logging
 import os
 
 from dotenv import load_dotenv
 from moss import DocumentInfo, MossClient
-import logging
 
 logger = logging.getLogger("create_index")
 

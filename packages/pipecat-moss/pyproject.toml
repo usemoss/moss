@@ -43,6 +43,10 @@ ignore = [
     "D104", # Missing docstring in public package
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"examples/*.py" = ["E501"]
+"src/pipecat_moss/moss_index_processor.py" = ["E501"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 

@@ -24,7 +24,7 @@ jobs:
         pip install ruff mypy
         if [ -f examples/python/requirements.txt ]; then pip install -r examples/python/requirements.txt; fi
     - name: Lint with ruff
-      run: ruff check apps examples packages moss-live-labs
+      run: ruff check apps examples packages moss-live-labs --extend-exclude '*.ipynb'
     - name: Type check with mypy
       run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports --exclude "apps/pipecat-moss/hume-ollama-local/create_index.py"
 

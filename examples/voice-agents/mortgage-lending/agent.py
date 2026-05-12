@@ -196,7 +196,7 @@ class MortgageRetrievalAgent(Agent):
         greeting = (
             "Got it, let me hand you over to our payment flow."
             if not data.loan_number
-            else f"Got it. I have your loan number on file — connecting you to payments now."
+            else "Got it. I have your loan number on file — connecting you to payments now."
         )
         return PaymentFlowAgent(), greeting
 

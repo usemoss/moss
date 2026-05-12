@@ -6,7 +6,8 @@ Uses only the stdlib so it doubles as a zero-dep test fixture.
 from __future__ import annotations
 
 import sqlite3
-from typing import Any, Callable, Iterator
+from collections.abc import Callable, Iterator
+from typing import Any
 
 from moss import DocumentInfo
 

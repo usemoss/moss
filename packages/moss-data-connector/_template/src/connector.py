@@ -4,7 +4,8 @@ host package (`moss_connector_template` → `moss_connector_<source>`).
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterator
+from collections.abc import Callable, Iterator
+from typing import Any
 
 from moss import DocumentInfo
 
