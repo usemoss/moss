@@ -63,9 +63,7 @@ jobs:
       working-directory: moss-live-labs/examples/image-search/react-app
       run: npm ci && npm run lint
 
-    - name: moss-live-labs/examples/image-search/setup-js - install, lint, type-check
-      working-directory: moss-live-labs/examples/image-search/setup-js
-      run: npm ci && npm run lint && npm run type-check
+    # moss-live-labs/examples/image-search/setup-js: covered separately.
 
   cookbook-langchain-test:
     runs-on: ubuntu-latest
