@@ -2,7 +2,9 @@
 
 <div align="center">
 
-<img src="https://github.com/user-attachments/assets/2e1fb567-c003-49b5-a07e-eb687ad20d68" alt="Moss — Real-time semantic search for AI agents. Sub-10 ms." width="1200" />
+<img src="https://github.com/user-attachments/assets/6a345d64-e662-4e9f-915d-050e75dc2efa" alt="Moss — Real-time semantic search for AI agents. Sub-10 ms." width="1200" />
+
+<br /><br />
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![PyPI](https://img.shields.io/pypi/v/moss?color=deepgreen)](https://pypi.org/project/moss/)
@@ -228,7 +230,7 @@ Full API reference: [docs.moss.dev](https://docs.moss.dev).
 
 ## Architecture
 
-![Moss runtime architecture](./assets/moss-architecture.svg)
+![Moss runtime architecture](https://github.com/user-attachments/assets/7aebbedf-a467-48a4-be38-feddfa4f7d04)
 
 Three parts:
 
@@ -248,7 +250,7 @@ Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
 ## Contributing
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/ebf1c972-7f8c-451c-8f67-58dbec3954e8" alt="We welcome contributions!" width="1200" />
+  <img src="https://github.com/user-attachments/assets/80b9dd1c-661c-4201-a1b4-9d191afa8e6b" alt="We welcome contributions!" width="1200" />
 </div>
 
 Here's where the community can have the most impact:
