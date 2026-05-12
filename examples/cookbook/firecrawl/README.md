@@ -43,18 +43,17 @@ This design lets you crawl once (which can be slow/expensive) and then iterate o
 │   URLs      │
 └──────┬──────┘
        │
-       ├──> Firecrawl (crawl + scrape)
+       |
        │
 ┌──────▼─────────────────┐
 │  Crawled Pages         │
 │  (raw HTML/markdown)   │
 └──────┬─────────────────┘
        │
-       ├──> Markdown Normalization
-       │    (clean text, remove chrome)
+       |
        │
 ┌──────▼─────────────────┐
-│  Cleaned Markdown      │
+│   Markdown             │
 │  (one DocumentInfo     │
 │   per page)            │
 └──────┬─────────────────┘
