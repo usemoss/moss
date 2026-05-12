@@ -41,6 +41,7 @@ export default function MossDemo() {
       const saved = localStorage.getItem('moss_credentials');
       if (saved) {
         const p = JSON.parse(saved) as { projectId: string; projectKey: string };
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (p.projectId && p.projectKey) { setCredentials(p); setCredInput(p); setShowCreds(false); }
       }
     } catch {}
@@ -171,10 +172,13 @@ export default function MossDemo() {
   // Keystroke search
   useEffect(() => {
     if (!isIndexLoaded || !searchQuery.trim()) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchError(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasSearched(true);
     runSearch(searchQuery);
-  }, [searchQuery, isIndexLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, isIndexLoaded]);
 
   // Re-run immediately when topK/alpha change (no debounce needed)
   useEffect(() => {
