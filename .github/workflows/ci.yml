@@ -36,30 +36,23 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-
-    - name: examples/javascript - install, lint, type-check
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          examples/javascript/package-lock.json
+          apps/next-js/package-lock.json
+    - name: Install root dependencies
+      run: npm ci
+    - name: Install examples/javascript dependencies
       working-directory: examples/javascript
-      run: npm ci && npm run lint && npm run type-check
-
-    - name: apps/next-js - install, lint, type-check
+      run: npm ci
+    - name: Install apps/next-js dependencies
       working-directory: apps/next-js
-      run: npm ci && npm run lint && npm run type-check
-
-    # sdks/javascript/sdk: covered separately.
-
-    # apps/moss-bun: covered separately.
-
-    - name: examples/javascript-web - install, type-check
-      working-directory: examples/javascript-web
-      run: npm ci && npm run type-check
-
-    # apps/livekit-moss-vercel/agent-react: covered separately.
-
-    - name: moss-live-labs/examples/image-search/react-app - install, lint
-      working-directory: moss-live-labs/examples/image-search/react-app
-      run: npm ci && npm run lint
-
-    # moss-live-labs/examples/image-search/setup-js: covered separately.
+      run: npm ci
+    - name: Lint (examples/javascript + apps/next-js)
+      run: npm run lint
+    - name: Type check (examples/javascript + apps/next-js)
+      run: npm run type-check
 
   cookbook-langchain-test:
     runs-on: ubuntu-latest
