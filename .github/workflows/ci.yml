@@ -7,7 +7,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, fix/repo-hygiene-paths-ci-docs ]  # TODO(temp): drop side-branch entry before merging
 
 jobs:
   python-lint:
