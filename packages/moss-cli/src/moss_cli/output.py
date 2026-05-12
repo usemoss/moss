@@ -176,7 +176,7 @@ def print_mutation_result(result: Any, json_mode: bool = False) -> None:
     if json_mode:
         _print_json(_mutation_to_dict(result))
         return
-    console.print(f"[green]Job submitted[/green]")
+    console.print("[green]Job submitted[/green]")
     console.print(f"  Job ID:  {result.job_id}")
     console.print(f"  Index:   {result.index_name}")
     console.print(f"  Docs:    {result.doc_count}")

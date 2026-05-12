@@ -1,6 +1,6 @@
 import os
 import asyncio
-from moss import MossClient, DocumentInfo, QueryOptions
+from moss import MossClient
 from dotenv import load_dotenv
 load_dotenv()
 

@@ -17,3 +17,6 @@ packages = ["main.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"main.py" = ["E501"]

@@ -1,11 +1,10 @@
 """Tests for MossVapiSearch result formatting and guards."""
 
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
-from vapi_moss.search import MossVapiSearch, VapiSearchResult
+from vapi_moss.search import MossVapiSearch
 
 
 @dataclass

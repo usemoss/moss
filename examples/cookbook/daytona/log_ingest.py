@@ -5,8 +5,7 @@ import re
 from typing import List, Optional
 
 from langchain_core.tools import Tool
-
-from moss import MossClient, QueryOptions, DocumentInfo
+from moss import DocumentInfo, MossClient, QueryOptions
 
 logger = logging.getLogger(__name__)
 

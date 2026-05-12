@@ -25,3 +25,7 @@ packages = ["log_agent.py", "log_ingest.py", "mock_logs.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"log_agent.py" = ["E501"]
+"log_ingest.py" = ["E501"]

@@ -48,7 +48,6 @@ logger.debug("All components loaded successfully!")
 
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     """Run the customer support bot pipeline."""
-
     # Initialize stt, tts, llm services
     logger.debug("Starting customer support bot")
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
