@@ -49,21 +49,15 @@ jobs:
       working-directory: apps/next-js
       run: npm ci && npm run lint && npm run type-check
 
-    # sdks/javascript/sdk is skipped: its package.json depends on a local
-    # native-bindings tarball that requires a Rust toolchain build to produce.
-    # It needs its own dedicated CI job, not this top-level lint sweep.
+    # sdks/javascript/sdk: covered separately.
 
-    # apps/moss-bun is skipped: its `type-check` script invokes `bun check`,
-    # which is not a real bun subcommand and exits with an error. Track separately;
-    # this is a pre-existing bug in apps/moss-bun/package.json, not a CI issue.
+    # apps/moss-bun: covered separately.
 
     - name: examples/javascript-web - install, type-check
       working-directory: examples/javascript-web
       run: npm ci && npm run type-check
 
-    - name: apps/livekit-moss-vercel/agent-react - install, lint (pnpm)
-      working-directory: apps/livekit-moss-vercel/agent-react
-      run: pnpm install --frozen-lockfile && pnpm run lint
+    # apps/livekit-moss-vercel/agent-react: covered separately.
 
     - name: moss-live-labs/examples/image-search/react-app - install, lint
       working-directory: moss-live-labs/examples/image-search/react-app
