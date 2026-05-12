@@ -22,6 +22,9 @@ examples/
   c/               — C binding examples
   bun/             — Bun runtime example
   python-classification/ — Text classification with Moss
+  voice-agents/    - End-to-end voice agents (LiveKit-based)
+    airline-pnr/         - Ambient retrieval; per-caller Moss index, swap mid-call
+    mortgage-lending/    - Multi-agent flow with shared session state
   cookbook/        — Framework integrations (one subdirectory per framework)
     autogen/       — AutoGen multi-agent e-commerce support
     crewai/        — CrewAI retrieval tool
@@ -29,7 +32,9 @@ examples/
     dspy/          — DSPy notebook
     haystack/      — Haystack RAG pipeline integration
     langchain/     — LangChain retriever + tool integration
+    langgraph/     - LangGraph stateful retrieval node
     mastra/        — Mastra agent createTool() integration
+    pydantic-ai/   - Pydantic AI integration
     moss-cognee-daytona/ — Claude Code + Cognee + Moss on Daytona (shared memory)
 apps/
   agora-moss/      — Agora Conversational AI voice agent (MCP server demo)
@@ -60,7 +65,24 @@ packages/
   vercel-sdk/            — Vercel AI SDK tool wrappers (@moss-tools/vercel-sdk)
   vitepress-plugin-moss/ — VitePress search plugin (on-device fallback after cloud)
   zo-computer/           — Zo computer skill for Moss search
+moss-live-labs/          - Experimental zone: prototypes and community demos (APIs can change)
+  python/                - Minimal Python quickstart + advanced query example
+  typescript/            - Minimal TypeScript quickstart + advanced query example
+  examples/
+    voice-agent/         - LiveKit + Moss voice assistant
+    advanced-voice-agent/ - Persona impersonator built on a PDF knowledge base
+    image-search/        - FastAPI + React image search over COCO data
+  community-demos/
+    voice-agents/
+      bharat-benefits/      - Voice RAG over Indian public-benefit schemes (Sarvam STT/TTS)
+      shoplabs-voice-agent/ - Pipecat WebRTC ecommerce support agent
 ```
+
+**`moss-live-labs/` policy:** experimental code. Treat it as staging area for
+ideas that may graduate into `sdks/`, `apps/`, `examples/`, or `packages/`, or
+that may be deleted. Do not depend on it from stable code paths. When adding
+new top-level features, prefer the main directories unless the user explicitly
+asks for an experimental landing spot.
 
 ## Integrations & Cookbooks
 
@@ -127,6 +149,23 @@ packages/
 | `c/` | C | `example_usage.c`, `metadata_filtering.c`, `session_usage.c` |
 | `bun/` | Bun | Bun-native runtime example |
 | `python-classification/` | Python | `classify_sample.py` — zero-shot text classification via Moss |
+| `voice-agents/airline-pnr/` | Python (LiveKit) | Ambient retrieval: every user turn auto-queries a per-PNR Moss index before the LLM speaks |
+| `voice-agents/mortgage-lending/` | Python (LiveKit) | Multi-agent handoff (retrieval-heavy Q&A -> payment flow) with shared session state |
+
+### Moss Live Labs (`moss-live-labs/`)
+
+Experimental staging area. Use it to prototype before promoting into the main
+directories. Examples here may move, change shape, or be removed.
+
+| Directory | What it demonstrates |
+| --------- | -------------------- |
+| `python/` | Minimal `uv`-based Python quickstart + advanced query example |
+| `typescript/` | Minimal Node/TypeScript quickstart + advanced query example |
+| `examples/voice-agent/` | LiveKit voice assistant over a Moss knowledge base |
+| `examples/advanced-voice-agent/` | Persona impersonator (e.g. Harry Potter) built on a PDF index |
+| `examples/image-search/` | FastAPI backend + React frontend doing image search over COCO |
+| `community-demos/voice-agents/bharat-benefits/` | Voice RAG over Indian public-benefit schemes using Sarvam AI |
+| `community-demos/voice-agents/shoplabs-voice-agent/` | Pipecat WebRTC ecommerce support agent |
 
 ## Commands
 
