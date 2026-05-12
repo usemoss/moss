@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="https://github.com/user-attachments/assets/ecd20db2-b93a-4304-bc83-f4daf4d05267" alt="Moss — Real-time semantic search for AI agents. Sub-10 ms." width="1200" height="300" />
+<img src="https://github.com/user-attachments/assets/25f92357-a670-4564-881d-e336f668c252" alt="Moss — Real-time semantic search for AI agents. Sub-10 ms." width="1200" />
 
 <br /><br />
 
