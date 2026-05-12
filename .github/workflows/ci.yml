@@ -55,7 +55,8 @@ jobs:
 
     - name: apps/moss-bun - install, type-check
       working-directory: apps/moss-bun
-      run: npm ci && npm run type-check
+      # moss-bun uses bun, only bun.lock is checked in; npm install (not ci) is fine for type-check
+      run: npm install --no-audit --no-fund && npm run type-check
 
     - name: examples/javascript-web - install, type-check
       working-directory: examples/javascript-web
