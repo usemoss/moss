@@ -56,6 +56,7 @@ export default function MossDemo() {
 
   const [docs, setDocs] = useState<DocumentInfo[]>(INITIAL_DOCS);
   const [modifiedIds, setModifiedIds] = useState<Set<string>>(new Set(INITIAL_DOCS.map(d => d.id)));
+  // Lazy initializer runs exactly once on mount; indexName is stable across renders.
   const [indexName] = useState(
     () => `demo-index-${globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)}`
   );
