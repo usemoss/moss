@@ -24,7 +24,7 @@ jobs:
         pip install ruff mypy
         if [ -f examples/python/requirements.txt ]; then pip install -r examples/python/requirements.txt; fi
     - name: Lint with ruff
-      run: ruff check apps examples packages moss-live-labs --extend-exclude '*.ipynb'
+      run: ruff check . --extend-exclude '**/*.ipynb'
     - name: Type check with mypy
       run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports --exclude "apps/pipecat-moss/hume-ollama-local/create_index.py"
 
@@ -32,27 +32,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: |
-          package-lock.json
-          examples/javascript/package-lock.json
-          apps/next-js/package-lock.json
-    - name: Install root dependencies
-      run: npm ci
-    - name: Install examples/javascript dependencies
+
+    - name: examples/javascript - install, lint, type-check
       working-directory: examples/javascript
-      run: npm ci
-    - name: Install apps/next-js dependencies
+      run: npm ci && npm run lint && npm run type-check
+
+    - name: apps/next-js - install, lint, type-check
       working-directory: apps/next-js
-      run: npm ci
-    - name: Lint (examples/javascript + apps/next-js)
-      run: npm run lint
-    - name: Type check (examples/javascript + apps/next-js)
-      run: npm run type-check
+      run: npm ci && npm run lint && npm run type-check
+
+    - name: sdks/javascript/sdk - install, lint
+      working-directory: sdks/javascript/sdk
+      run: npm ci && npm run lint
+
+    - name: apps/moss-bun - install, type-check
+      working-directory: apps/moss-bun
+      run: npm ci && npm run type-check
+
+    - name: examples/javascript-web - install, type-check
+      working-directory: examples/javascript-web
+      run: npm ci && npm run type-check
+
+    - name: apps/livekit-moss-vercel/agent-react - install, lint (pnpm)
+      working-directory: apps/livekit-moss-vercel/agent-react
+      run: pnpm install --frozen-lockfile && pnpm run lint
+
+    - name: moss-live-labs/examples/image-search/react-app - install, lint
+      working-directory: moss-live-labs/examples/image-search/react-app
+      run: npm ci && npm run lint
+
+    - name: moss-live-labs/examples/image-search/setup-js - install, lint, type-check
+      working-directory: moss-live-labs/examples/image-search/setup-js
+      run: npm ci && npm run lint && npm run type-check
 
   cookbook-langchain-test:
     runs-on: ubuntu-latest

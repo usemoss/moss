@@ -4,15 +4,14 @@ This measures end-to-end latency: embed the query via an external API,
 then search a local in-memory ChromaDB collection.
 """
 
-import os
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from corpus import get_documents, get_queries
-from embedding import EmbeddingClient
-from stats import Timer, BenchmarkResult
+from corpus import get_documents, get_queries  # noqa: E402
+from embedding import EmbeddingClient  # noqa: E402
+from stats import Timer, BenchmarkResult  # noqa: E402
 
 DOC_COUNT = 100_000
 TOP_K = 5
