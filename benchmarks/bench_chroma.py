@@ -7,11 +7,11 @@ then search a local in-memory ChromaDB collection.
 
 from dotenv import load_dotenv
 
-load_dotenv()
+from corpus import get_documents, get_queries
+from embedding import EmbeddingClient
+from stats import Timer, BenchmarkResult
 
-from corpus import get_documents, get_queries  # noqa: E402
-from embedding import EmbeddingClient  # noqa: E402
-from stats import Timer, BenchmarkResult  # noqa: E402
+load_dotenv()
 
 DOC_COUNT = 100_000
 TOP_K = 5
