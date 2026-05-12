@@ -49,9 +49,9 @@ jobs:
       working-directory: apps/next-js
       run: npm ci && npm run lint && npm run type-check
 
-    - name: sdks/javascript/sdk - install, lint
-      working-directory: sdks/javascript/sdk
-      run: npm ci && npm run lint
+    # sdks/javascript/sdk is skipped: its package.json depends on a local
+    # native-bindings tarball that requires a Rust toolchain build to produce.
+    # It needs its own dedicated CI job, not this top-level lint sweep.
 
     - name: apps/moss-bun - install, type-check
       working-directory: apps/moss-bun
