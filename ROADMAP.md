@@ -46,7 +46,6 @@ This is a living document. We update it as priorities shift based on community f
 - [x] ElevenLabs integration — `elevenlabs-moss` package; knowledge-base-backed Conversational AI bot
 - [x] Agora Conversational AI integration — `agora-moss` MCP server; `search_knowledge_base` tool for Agora voice agents
 - [x] VAPI integration — `vapi-moss` webhook adapter with HMAC verification; LLM-directed retrieval via Custom Tool
-- [x] **End-to-end voice agent examples** (`examples/voice-agents/`) - `airline-pnr` (ambient retrieval, per-caller index swap) and `mortgage-lending` (multi-agent handoff with shared session state)
 
 ### Developer Tools & Packages
 
@@ -68,17 +67,6 @@ This is a living document. We update it as priorities shift based on community f
 
 - [x] Next.js example app — Next.js 15 Server Actions + Moss SDK; reference semantic search UI
 - [x] Docker deployment examples (ECS / Kubernetes patterns) — Python + JS SDK in containers
-
-### Moss Live Labs (`moss-live-labs/`)
-
-Experimental staging area for prototypes and community demos. APIs and
-structure inside Live Labs can change without notice; promote into `sdks/`,
-`apps/`, `examples/`, or `packages/` once they stabilize.
-
-- [x] Minimal Python and TypeScript quickstart + advanced-query examples
-- [x] LiveKit voice agent demos (`voice-agent`, `advanced-voice-agent`)
-- [x] Image search demo - FastAPI backend + React frontend over COCO data
-- [x] Community voice agents - `bharat-benefits` (Sarvam STT/TTS, Indian benefits), `shoplabs-voice-agent` (Pipecat WebRTC ecommerce support)
 
 ---
 

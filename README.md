@@ -170,12 +170,6 @@ moss-live-labs/              # Experimental zone: prototypes and community demos
     └── voice-agents/        # bharat-benefits, shoplabs-voice-agent
 ```
 
-> **Heads up:** `moss-live-labs/` is the experimental zone for prototypes,
-> community demos, and projects that have not yet graduated into the main
-> layout. APIs and structure inside it can change without notice. Stable
-> SDK + integration code lives under `sdks/`, `apps/`, `packages/`, and
-> `examples/`.
-
 ### Run the Python examples
 
 ```bash
