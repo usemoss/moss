@@ -18,11 +18,9 @@ dependencies = [
     "python-dotenv",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["firecrawl_moss.py"]
-
 [tool.hatch.build.targets.sdist]
 include = [
     "README.md",
     ".env.example",
+    "firecrawl_moss.ipynb",
 ]
