@@ -35,6 +35,9 @@ ignore = [
     "D104", # Missing docstring in public package
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D101", "D102", "D103"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
