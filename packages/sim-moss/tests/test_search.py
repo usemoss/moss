@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from sim_moss.search import MossSimSearch, SimSearchResult
+from sim_moss.search import MossSimSearch
 
 
 @dataclass

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -66,7 +67,13 @@ class MossSimSearch:
             top_k: Number of results to retrieve per query.
             alpha: Blend between semantic (1.0) and keyword (0.0) scoring.
         """
-        self._client = MossClient(project_id=project_id, project_key=project_key)
+        resolved_id = project_id or os.environ.get("MOSS_PROJECT_ID")
+        resolved_key = project_key or os.environ.get("MOSS_PROJECT_KEY")
+        if not resolved_id:
+            raise ValueError("project_id is required or set MOSS_PROJECT_ID env var")
+        if not resolved_key:
+            raise ValueError("project_key is required or set MOSS_PROJECT_KEY env var")
+        self._client = MossClient(project_id=resolved_id, project_key=resolved_key)
         self._index_name = index_name
         self._top_k = top_k
         self._alpha = alpha
