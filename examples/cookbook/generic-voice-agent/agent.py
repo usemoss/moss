@@ -10,7 +10,7 @@ from livekit.agents.llm import function_tool
 from livekit.plugins import deepgram, openai, silero
 from moss import MossClient, QueryOptions
 
-load_dotenv(".env")
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
