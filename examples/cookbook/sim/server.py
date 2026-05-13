@@ -33,8 +33,8 @@ load_dotenv()
 search = MossSimSearch(
     project_id=os.environ["MOSS_PROJECT_ID"],
     project_key=os.environ["MOSS_PROJECT_KEY"],
-    index_name=os.environ.get("MOSS_INDEX_NAME", "sim"),
-    top_k=int(os.environ.get("MOSS_TOP_K", "5")),
+    index_name=os.environ.get("MOSS_INDEX_NAME", "sim-docs"),
+    top_k=5,
 )
 
 

@@ -25,7 +25,7 @@ sim.ai workflow
 ```bash
 cd examples/cookbook/sim
 python -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -r requirements.txt
 ```
 
 ### 2. Configure environment
