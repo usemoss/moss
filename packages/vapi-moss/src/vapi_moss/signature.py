@@ -8,8 +8,8 @@
 
 from __future__ import annotations
 
-import hmac
 import hashlib
+import hmac
 
 __all__ = ["verify_vapi_signature"]
 

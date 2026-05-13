@@ -15,7 +15,6 @@ import pytest
 pytest.importorskip("pymongo")
 
 from moss import DocumentInfo  # noqa: E402
-
 from moss_connector_mongodb import MongoDBConnector, ingest  # noqa: E402
 
 

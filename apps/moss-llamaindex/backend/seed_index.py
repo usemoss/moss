@@ -124,10 +124,10 @@ async def seed(pdf_path: str, index_name: str) -> str:
     await client.create_index(index_name, docs)
     await client.load_index(index_name)
 
-    print(f"\nDone!")
+    print("\nDone!")
     print(f"  Index name : {index_name}")
     print(f"  Chunk count: {len(docs)}")
-    print(f"\nTo use this as a cached session in main.py, set:")
+    print("\nTo use this as a cached session in main.py, set:")
     print(f"  SEED_INDEX_NAME={index_name}")
     return index_name
 

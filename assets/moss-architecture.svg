@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 660" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <style>
+      .bg              { fill: #FAFAFA; }
+
+      /* runtime container — process boundary */
+      .runtime-box     { fill: #FFFFFF; stroke: #18181B; stroke-width: 1.8; stroke-dasharray: 7 4; }
+
+      /* horizontal context bars (full width) */
+      .ctx-bar         { fill: #FFFFFF; stroke: #E4E4E7; stroke-width: 1.4; }
+      .cloud-bar       { fill: #18181B; stroke: #18181B; stroke-width: 1.5; }
+
+      /* component boxes */
+      .comp            { fill: #FFFFFF; stroke: #D4D4D8; stroke-width: 1.2; }
+      .comp-em         { fill: #18181B; stroke: #18181B; stroke-width: 1.5; }
+
+      /* lines + arrows */
+      .line-em         { stroke: #18181B; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+      .arrow-em        { fill: #18181B; }
+
+      /* type */
+      .h-display       { fill: #0A0A0A; font-size: 26px; font-weight: 500; letter-spacing: -0.4px; }
+      .h-tagline       { fill: #71717A; font-size: 13px; font-weight: 400; }
+
+      .ctx-eyebrow     { fill: #71717A; font-size: 10.5px; font-weight: 700; letter-spacing: 2px; }
+      .ctx-h           { fill: #0A0A0A; font-size: 14px; font-weight: 500; }
+      .ctx-mono        { fill: #71717A; font-family: 'SF Mono', 'Monaco', monospace; font-size: 11.5px; font-weight: 500; }
+      .cloud-eyebrow   { fill: #A1A1AA; font-size: 10.5px; font-weight: 700; letter-spacing: 2px; }
+      .cloud-h         { fill: #FAFAFA; font-size: 14px; font-weight: 500; }
+      .cloud-mono      { fill: #A1A1AA; font-family: 'SF Mono', 'Monaco', monospace; font-size: 11.5px; font-weight: 500; }
+
+      .runtime-title   { fill: #0A0A0A; font-size: 22px; font-weight: 500; letter-spacing: -0.3px; }
+      .runtime-meta    { fill: #71717A; font-family: 'SF Mono', 'Monaco', monospace; font-size: 11.5px; font-weight: 500; }
+
+      .section-eyebrow { fill: #71717A; font-size: 10.5px; font-weight: 700; letter-spacing: 2.2px; }
+
+      .comp-h          { fill: #0A0A0A; font-size: 13.5px; font-weight: 500; }
+      .comp-sub        { fill: #71717A; font-family: 'SF Mono', 'Monaco', monospace; font-size: 10.5px; font-weight: 500; }
+      .comp-em-h       { fill: #FAFAFA; font-size: 13.5px; font-weight: 500; }
+      .comp-em-sub     { fill: #A1A1AA; font-family: 'SF Mono', 'Monaco', monospace; font-size: 10.5px; font-weight: 500; }
+
+      .endpoint        { fill: #18181B; font-size: 12.5px; font-weight: 700; letter-spacing: 1.4px; }
+      .endpoint-sub    { fill: #71717A; font-family: 'SF Mono', 'Monaco', monospace; font-size: 10.5px; font-weight: 500; }
+
+      .transport-pill  { fill: #FFFFFF; stroke: #18181B; stroke-width: 1.3; }
+      .transport-text  { fill: #18181B; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; }
+    </style>
+
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path class="arrow-em" d="M 0 0 L 10 5 L 0 10 Z"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1300" height="660"/>
+
+  <!-- ============ HEADER ============ -->
+  <g id="header">
+    <text class="h-display" x="30" y="44">moss runtime</text>
+    <text class="h-tagline" x="30" y="64">In-process semantic search engine · Rust + WASM · sub-10 ms · &lt;20 kB</text>
+  </g>
+
+  <!-- ============ UPPER CONTEXT — small centered box ============ -->
+  <g id="app-ctx">
+    <rect class="ctx-bar" x="450" y="84" width="400" height="48" rx="10"/>
+    <text class="ctx-h"   x="650" y="106" text-anchor="middle">Your application</text>
+    <text class="ctx-mono" x="650" y="122" text-anchor="middle">await client.query("docs", "...")</text>
+  </g>
+
+  <!-- transport: app -> runtime, with pill -->
+  <g id="t-in">
+    <line class="line-em" x1="650" y1="134" x2="650" y2="172" marker-end="url(#arr)"/>
+    <rect class="transport-pill" x="676" y="142" width="110" height="22" rx="11"/>
+    <text class="transport-text" x="731" y="157" text-anchor="middle">IN-PROCESS</text>
+  </g>
+
+  <!-- ============ MOSS RUNTIME — single dashed container ============ -->
+  <g id="runtime">
+    <rect class="runtime-box" x="30" y="184" width="1240" height="320" rx="14"/>
+
+    <!-- runtime title row -->
+    <text class="runtime-title" x="58" y="218">Moss Runtime</text>
+    <text class="runtime-meta"  x="1242" y="218" text-anchor="end">process boundary · WASM · Native · NIF · FFI</text>
+
+    <!-- divider -->
+    <line x1="58" y1="234" x2="1242" y2="234" stroke="#E4E4E7" stroke-width="1"/>
+
+    <!-- ============ SECTION 1 — QUERY PIPELINE ============ -->
+    <text class="section-eyebrow" x="58" y="256">QUERY PIPELINE</text>
+    <text class="section-eyebrow" x="1242" y="256" text-anchor="end">SUB-10 MS · IN-MEMORY</text>
+
+    <!-- Pipeline geometry — main flow center y=344, vector y=294, keyword y=394
+         Pipeline content is symmetrically centered in container content area (x=58-1242). -->
+
+    <!-- 1. QUERY endpoint -->
+    <text class="endpoint" x="86" y="348">QUERY</text>
+    <line class="line-em" x1="146" y1="344" x2="170" y2="344" marker-end="url(#arr)"/>
+
+    <!-- 2. Embed -->
+    <rect class="comp" x="170" y="324" width="200" height="40" rx="8"/>
+    <text class="comp-h"   x="270" y="343" text-anchor="middle">Embed query</text>
+    <text class="comp-sub" x="270" y="357" text-anchor="middle">moss-minilm · custom</text>
+
+    <!-- 3. SPLIT -->
+    <line class="line-em" x1="370" y1="344" x2="394" y2="344"/>
+    <line class="line-em" x1="394" y1="294" x2="394" y2="394"/>
+    <line class="line-em" x1="394" y1="294" x2="418" y2="294" marker-end="url(#arr)"/>
+    <line class="line-em" x1="394" y1="394" x2="418" y2="394" marker-end="url(#arr)"/>
+
+    <!-- 4a. Vector index -->
+    <rect class="comp" x="418" y="274" width="240" height="40" rx="8"/>
+    <text class="comp-h"   x="538" y="298" text-anchor="middle">Vector index</text>
+
+    <!-- 4b. Keyword index -->
+    <rect class="comp" x="418" y="374" width="240" height="40" rx="8"/>
+    <text class="comp-h"   x="538" y="398" text-anchor="middle">Keyword index</text>
+
+    <!-- 5. MERGE -->
+    <line class="line-em" x1="658" y1="294" x2="682" y2="294"/>
+    <line class="line-em" x1="658" y1="394" x2="682" y2="394"/>
+    <line class="line-em" x1="682" y1="294" x2="682" y2="394"/>
+    <line class="line-em" x1="682" y1="344" x2="706" y2="344" marker-end="url(#arr)"/>
+
+    <!-- 6. Hybrid ranker (emphasized) -->
+    <rect class="comp-em" x="706" y="324" width="200" height="40" rx="8"/>
+    <text class="comp-em-h"   x="806" y="343" text-anchor="middle">Hybrid ranker</text>
+    <text class="comp-em-sub" x="806" y="357" text-anchor="middle">α-tunable · top-K</text>
+
+    <line class="line-em" x1="906" y1="344" x2="930" y2="344" marker-end="url(#arr)"/>
+
+    <!-- 7. Metadata filter -->
+    <rect class="comp" x="930" y="324" width="200" height="40" rx="8"/>
+    <text class="comp-h"   x="1030" y="343" text-anchor="middle">Metadata filter</text>
+    <text class="comp-sub" x="1030" y="357" text-anchor="middle">$eq $gt $in $near $and</text>
+
+    <line class="line-em" x1="1130" y1="344" x2="1154" y2="344" marker-end="url(#arr)"/>
+
+    <!-- 8. TOP-K endpoint -->
+    <text class="endpoint"     x="1162" y="348">TOP-K</text>
+    <text class="endpoint-sub" x="1162" y="362">&lt; 10 ms</text>
+
+    <!-- ============ SECTION 2 — DATA STORE ============ -->
+    <text class="section-eyebrow" x="650" y="434" text-anchor="middle">DATA STORE</text>
+
+    <!-- cache band — small centered, matches upper/lower context boxes -->
+    <rect class="comp" x="450" y="446" width="400" height="48" rx="10"/>
+    <text class="comp-h"   x="650" y="468" text-anchor="middle">Local index cache</text>
+    <text class="comp-sub" x="650" y="484" text-anchor="middle">in-memory · synced from cloud</text>
+  </g>
+
+  <!-- transport: runtime <-> cloud -->
+  <g id="t-out">
+    <line class="line-em" x1="650" y1="516" x2="650" y2="556" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <rect class="transport-pill" x="676" y="526" width="170" height="22" rx="11"/>
+    <text class="transport-text" x="761" y="541" text-anchor="middle">HTTPS · INDEX SYNC</text>
+  </g>
+
+  <!-- ============ LOWER CONTEXT — small centered dark box ============ -->
+  <g id="cloud-ctx">
+    <rect class="cloud-bar" x="450" y="572" width="400" height="48" rx="10"/>
+    <text class="cloud-h"   x="650" y="594" text-anchor="middle">Moss Cloud</text>
+    <text class="cloud-mono" x="650" y="610" text-anchor="middle">ingest · embed · store · distribute</text>
+  </g>
+
+  <!-- footer -->
+  <text class="h-tagline" x="30"   y="644">github.com/usemoss/moss</text>
+  <text class="h-tagline" x="1270" y="644" text-anchor="end">moss.dev</text>
+</svg>

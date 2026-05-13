@@ -38,7 +38,6 @@ except ImportError:
     pass  # dotenv is optional; env vars can also be set directly.
 
 from moss import DocumentInfo, MossClient, QueryOptions  # noqa: E402
-
 from moss_connector_sqlite import SQLiteConnector, ingest  # noqa: E402
 
 PROJECT_ID = os.getenv("MOSS_PROJECT_ID")

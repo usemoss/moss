@@ -24,7 +24,7 @@ jobs:
         pip install ruff mypy
         if [ -f examples/python/requirements.txt ]; then pip install -r examples/python/requirements.txt; fi
     - name: Lint with ruff
-      run: ruff check examples/python apps/pipecat-moss apps/livekit-moss-vercel
+      run: ruff check . --extend-exclude '**/*.ipynb'
     - name: Type check with mypy
       run: mypy examples/python apps/pipecat-moss apps/livekit-moss-vercel --ignore-missing-imports --exclude "apps/pipecat-moss/hume-ollama-local/create_index.py"
 
@@ -37,18 +37,24 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: examples/javascript/package-lock.json
-    - name: Install dependencies
+        cache-dependency-path: |
+          package-lock.json
+          examples/javascript/package-lock.json
+          apps/next-js/package-lock.json
+    - name: Install root dependencies
+      run: npm ci
+    - name: Install examples/javascript dependencies
       working-directory: examples/javascript
       run: npm ci
-    - name: Lint
-      working-directory: examples/javascript
+    - name: Install apps/next-js dependencies
+      working-directory: apps/next-js
+      run: npm ci
+    - name: Lint (examples/javascript + apps/next-js)
       run: npm run lint
-    - name: Type check
-      working-directory: examples/javascript
+    - name: Type check (examples/javascript + apps/next-js)
       run: npm run type-check
 
-  python-test:
+  cookbook-langchain-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -58,10 +64,13 @@ jobs:
         python-version: '3.11'
     - name: Install package
       working-directory: examples/cookbook/langchain
-      run: python -m pip install -e .
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest
     - name: Run tests
       working-directory: examples/cookbook/langchain
-      run: python -m unittest -v
+      run: pytest -v
 
   python-sdk-test:
     runs-on: ubuntu-latest
@@ -138,14 +147,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
     - name: Set up pnpm
       uses: pnpm/action-setup@v4
       with:
-        version: latest
+        version: 10
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
     - name: Install dependencies
       working-directory: packages/vitepress-plugin-moss
       run: pnpm install --frozen-lockfile

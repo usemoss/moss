@@ -77,6 +77,7 @@ app = FastAPI()
 
 @app.post("/chat/completions")
 async def chat_completions(request: Request) -> Response:
+    """Forward OpenAI-compatible chat completion requests to the configured upstream."""
     upstream = os.environ.get("LLM_PROXY_UPSTREAM")
     if not upstream:
         return JSONResponse(
