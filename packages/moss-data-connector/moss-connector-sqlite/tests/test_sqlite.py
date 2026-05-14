@@ -13,9 +13,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-
 from moss import DocumentInfo
-
 from moss_connector_sqlite import SQLiteConnector, ingest
 
 

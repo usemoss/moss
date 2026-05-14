@@ -55,10 +55,10 @@ async def lifespan(app: FastAPI):
         try:
             print(f"[startup] Loading seed index '{_seed}' into memory…")
             await sessions["seed"]["client"].load_index(_seed)
-            print(f"[startup] Seed index ready.")
+            print("[startup] Seed index ready.")
         except Exception as e:
             print(f"[startup] Warning: could not load seed index '{_seed}': {e}")
-            print(f"[startup] Sample PDF will be unavailable until the index is created.")
+            print("[startup] Sample PDF will be unavailable until the index is created.")
             sessions.pop("seed", None)
     yield
 

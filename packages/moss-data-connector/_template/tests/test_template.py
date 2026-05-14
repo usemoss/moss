@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
-from unittest.mock import patch
 
 import pytest  # noqa: F401
-
 from moss import DocumentInfo  # noqa: F401
 
 # TODO: update these imports to match your renamed package.

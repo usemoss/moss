@@ -33,7 +33,7 @@ def main():
             sys.exit(1)
 
     print("=" * 70)
-    print(f"  Benchmark Suite")
+    print("  Benchmark Suite")
     print(f"  Date: {datetime.now():%Y-%m-%d %H:%M:%S}")
     print(f"  Running: {', '.join(targets)}")
     print("=" * 70)

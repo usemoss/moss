@@ -3,11 +3,10 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-from dotenv import load_dotenv
 from daytona import Daytona, DaytonaConfig
-from langchain_openai import ChatOpenAI
+from dotenv import load_dotenv
 from langchain.agents import create_agent
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_openai import ChatOpenAI
 from moss import MossClient
 
 from log_ingest import get_log_search_tool, parse_log_lines
@@ -53,11 +52,6 @@ async def _build_agent(index_name: str):
         top_k=7,
     )
     llm = ChatOpenAI(model="gpt-5.1", temperature=0)
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", _SYSTEM_PROMPT),
-        ("human", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ])
     agent = create_agent(llm, [search_tool], system_prompt=_SYSTEM_PROMPT)
     return agent
 

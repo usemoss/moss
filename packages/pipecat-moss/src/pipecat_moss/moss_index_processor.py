@@ -11,8 +11,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from moss import MossClient, QueryOptions, SearchResult
 from loguru import logger
+from moss import MossClient, QueryOptions, SearchResult
 from pipecat.frames.frames import (
     ErrorFrame,
     Frame,

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from moss import MossClient, ParseFileInput
+from moss import MossClient, ParseFileInput  # noqa: E402
 
 PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
 PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")

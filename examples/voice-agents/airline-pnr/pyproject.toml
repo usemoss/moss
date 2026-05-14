@@ -1,0 +1,17 @@
+[project]
+name = "airline-pnr-voice-agent"
+version = "0.1.0"
+description = "Live voice agent for airline customer service. Each booking lives in its own Moss index for sub-10ms per-user retrieval."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "moss>=1.0.1",
+    "livekit-agents[openai,deepgram,silero,turn-detector,cartesia]>=1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]

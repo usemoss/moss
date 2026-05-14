@@ -49,13 +49,13 @@ import sys
 import time
 
 from daytona import (
-    Daytona,
-    DaytonaConfig,
-    DaytonaAuthorizationError,
     CreateSandboxFromImageParams,
-    SessionExecuteRequest,
+    Daytona,
+    DaytonaAuthorizationError,
+    DaytonaConfig,
     Image,
     Resources,
+    SessionExecuteRequest,
     VolumeMount,
 )
 from dotenv import load_dotenv

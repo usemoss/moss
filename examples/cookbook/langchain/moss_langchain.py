@@ -1,5 +1,4 @@
 from typing import Any, List, Optional
-import os
 from pydantic import Field, PrivateAttr
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.callbacks import CallbackManagerForRetrieverRun, AsyncCallbackManagerForRetrieverRun
