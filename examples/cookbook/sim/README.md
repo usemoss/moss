@@ -1,6 +1,6 @@
 # Moss + sim.ai
 
-Use [Moss](https://docs.moss.dev) as a high-speed knowledge base for [sim.ai](https://sim.ai/) workflows. Moss delivers sub-10ms on-device semantic search; sim.ai calls it via a lightweight FastAPI webhook server whenever a workflow node needs to retrieve context.
+Give your [sim.ai](https://sim.ai/) workflows instant retrieval with [Moss](https://docs.moss.dev) — a real-time semantic search runtime that runs on-device at sub-10ms latency. sim.ai calls it via a lightweight FastAPI webhook server whenever a workflow node needs to retrieve context.
 
 ## How it works
 
@@ -17,6 +17,7 @@ sim.ai workflow
 - [Moss Portal](https://portal.usemoss.dev) project with credentials
 - sim.ai workspace with a deployed workflow
 - Python 3.10+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
 ## Setup
 
@@ -24,8 +25,7 @@ sim.ai workflow
 
 ```bash
 cd examples/cookbook/sim
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 ### 2. Configure environment
@@ -40,13 +40,13 @@ cp .env.example .env
 Put `.txt` or `.md` files in a `docs/` directory, then run:
 
 ```bash
-python example_index.py --docs ./docs --index sim-docs
+uv run python example_index.py --docs ./docs
 ```
 
 ### 4. Start the webhook server
 
 ```bash
-uvicorn server:app --host 0.0.0.0 --port 8000
+uv run uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
 The server pre-loads the Moss index on startup. Check `/health` to confirm readiness.
