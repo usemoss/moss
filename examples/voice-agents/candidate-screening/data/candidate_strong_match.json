@@ -1,62 +1,96 @@
 [
-    {
-        "id": "summary",
-        "text": "Senior backend engineer with seven years of production experience. The last four years have been on payments and ledger systems at two fintech startups. Comfortable owning critical money-movement code end to end, from API design through audit-ready logging.",
-        "metadata": {"section": "summary"}
-    },
-    {
-        "id": "current-role",
-        "text": "Currently a Senior Backend Engineer at Northwind Pay (Series A, ~80 employees, $400M annualized payment volume). Joined as employee number 22 in early 2024. I lead the ledger and reconciliation services and recently shipped a rewrite of the settlement pipeline.",
-        "metadata": {"section": "experience", "company": "Northwind Pay", "current": true}
-    },
-    {
-        "id": "settlement-rewrite-project",
-        "text": "Led the rewrite of Northwind's daily settlement pipeline from a Cron-driven Python script to a Temporal workflow with Postgres-backed idempotency. Reduced settlement-day errors by 90 percent and cut the close-of-books window from six hours to under one hour.",
-        "metadata": {"section": "project", "skill": "distributed_systems"}
-    },
-    {
-        "id": "ledger-design",
-        "text": "Designed and implemented Northwind's double-entry ledger from scratch. Used Postgres with serializable isolation for the entry-write path and an event-sourced read model for reporting. Authored the design document and got sign-off from compliance and the auditor.",
-        "metadata": {"section": "project", "skill": "payments_domain"}
-    },
-    {
-        "id": "previous-role-acme",
-        "text": "Previously a Backend Engineer at Acme Issuing (acquired by Marqeta in 2022). Joined as a mid-level engineer and was promoted to senior in 18 months. Worked on the card authorization path and ISO 8583 message handling.",
-        "metadata": {"section": "experience", "company": "Acme Issuing"}
-    },
-    {
-        "id": "iso8583-experience",
-        "text": "At Acme Issuing I owned the ISO 8583 parser and the authorization decision engine. Wrote and operated the integration with two card networks (Visa and Mastercard) and shipped a fraud-rules engine that reduced false declines by 12 percent in the first quarter.",
-        "metadata": {"section": "project", "skill": "card_networks"}
-    },
-    {
-        "id": "skills-python",
-        "text": "Python: seven years of production experience. Comfortable with asyncio, type hints, modern Python tooling (uv, ruff, pyright), FastAPI, Pydantic, and SQLAlchemy. Have profiled and optimized hot paths in production.",
-        "metadata": {"section": "skills", "skill": "python"}
-    },
-    {
-        "id": "skills-postgres",
-        "text": "Postgres: five years in production, including running it under non-trivial load. Have used logical replication for blue-green migrations, debugged lock contention with pg_stat_activity, and have strong opinions about when to use Postgres versus a queue.",
-        "metadata": {"section": "skills", "skill": "postgres"}
-    },
-    {
-        "id": "skills-kafka",
-        "text": "Kafka: two years of production experience. Owned a Kafka cluster for the event spine at Northwind, wrote consumers in Python, and have debugged consumer lag, partition rebalances, and the joys of exactly-once semantics.",
-        "metadata": {"section": "skills", "skill": "kafka"}
-    },
-    {
-        "id": "on-call-experience",
-        "text": "On-call: have been on a one-week-in-six rotation at both companies. At Northwind I am also the de facto incident commander for payment outages. I have a strong opinion that the goal of on-call is to keep the customer whole, not to be the hero.",
-        "metadata": {"section": "skills", "skill": "on_call"}
-    },
-    {
-        "id": "education",
-        "text": "BS in Computer Science from the University of Waterloo, 2017. Co-op rotations at Stripe and Shopify during undergrad gave early exposure to payments and high-traffic systems.",
-        "metadata": {"section": "education"}
-    },
-    {
-        "id": "side-project",
-        "text": "Side project: I maintain a small open-source library that implements double-entry accounting in pure Python with a Postgres adapter. About 800 stars on GitHub and used by a handful of small fintechs.",
-        "metadata": {"section": "side_projects"}
+  {
+    "id": "summary",
+    "text": "Senior backend engineer with seven years of production experience. The last four years have been on payments and ledger systems at two fintech startups. Comfortable owning critical money-movement code end to end, from API design through audit-ready logging.",
+    "metadata": {
+      "section": "summary"
     }
+  },
+  {
+    "id": "current-role",
+    "text": "Currently a Senior Backend Engineer at Northwind Pay (Series A, ~80 employees, $400M annualized payment volume). Joined as employee number 22 in early 2024. I lead the ledger and reconciliation services and recently shipped a rewrite of the settlement pipeline.",
+    "metadata": {
+      "section": "experience",
+      "company": "Northwind Pay",
+      "current": "true"
+    }
+  },
+  {
+    "id": "settlement-rewrite-project",
+    "text": "Led the rewrite of Northwind's daily settlement pipeline from a Cron-driven Python script to a Temporal workflow with Postgres-backed idempotency. Reduced settlement-day errors by 90 percent and cut the close-of-books window from six hours to under one hour.",
+    "metadata": {
+      "section": "project",
+      "skill": "distributed_systems"
+    }
+  },
+  {
+    "id": "ledger-design",
+    "text": "Designed and implemented Northwind's double-entry ledger from scratch. Used Postgres with serializable isolation for the entry-write path and an event-sourced read model for reporting. Authored the design document and got sign-off from compliance and the auditor.",
+    "metadata": {
+      "section": "project",
+      "skill": "payments_domain"
+    }
+  },
+  {
+    "id": "previous-role-acme",
+    "text": "Previously a Backend Engineer at Acme Issuing (acquired by Marqeta in 2022). Joined as a mid-level engineer and was promoted to senior in 18 months. Worked on the card authorization path and ISO 8583 message handling.",
+    "metadata": {
+      "section": "experience",
+      "company": "Acme Issuing"
+    }
+  },
+  {
+    "id": "iso8583-experience",
+    "text": "At Acme Issuing I owned the ISO 8583 parser and the authorization decision engine. Wrote and operated the integration with two card networks (Visa and Mastercard) and shipped a fraud-rules engine that reduced false declines by 12 percent in the first quarter.",
+    "metadata": {
+      "section": "project",
+      "skill": "card_networks"
+    }
+  },
+  {
+    "id": "skills-python",
+    "text": "Python: seven years of production experience. Comfortable with asyncio, type hints, modern Python tooling (uv, ruff, pyright), FastAPI, Pydantic, and SQLAlchemy. Have profiled and optimized hot paths in production.",
+    "metadata": {
+      "section": "skills",
+      "skill": "python"
+    }
+  },
+  {
+    "id": "skills-postgres",
+    "text": "Postgres: five years in production, including running it under non-trivial load. Have used logical replication for blue-green migrations, debugged lock contention with pg_stat_activity, and have strong opinions about when to use Postgres versus a queue.",
+    "metadata": {
+      "section": "skills",
+      "skill": "postgres"
+    }
+  },
+  {
+    "id": "skills-kafka",
+    "text": "Kafka: two years of production experience. Owned a Kafka cluster for the event spine at Northwind, wrote consumers in Python, and have debugged consumer lag, partition rebalances, and the joys of exactly-once semantics.",
+    "metadata": {
+      "section": "skills",
+      "skill": "kafka"
+    }
+  },
+  {
+    "id": "on-call-experience",
+    "text": "On-call: have been on a one-week-in-six rotation at both companies. At Northwind I am also the de facto incident commander for payment outages. I have a strong opinion that the goal of on-call is to keep the customer whole, not to be the hero.",
+    "metadata": {
+      "section": "skills",
+      "skill": "on_call"
+    }
+  },
+  {
+    "id": "education",
+    "text": "BS in Computer Science from the University of Waterloo, 2017. Co-op rotations at Stripe and Shopify during undergrad gave early exposure to payments and high-traffic systems.",
+    "metadata": {
+      "section": "education"
+    }
+  },
+  {
+    "id": "side-project",
+    "text": "Side project: I maintain a small open-source library that implements double-entry accounting in pure Python with a Postgres adapter. About 800 stars on GitHub and used by a handful of small fintechs.",
+    "metadata": {
+      "section": "side_projects"
+    }
+  }
 ]

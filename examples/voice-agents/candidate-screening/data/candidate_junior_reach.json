@@ -1,57 +1,88 @@
 [
-    {
-        "id": "summary",
-        "text": "Mid-level backend engineer with three years of professional experience. Comfortable with Python and Postgres for typical web-app workloads. Applying to senior roles because I am ambitious and ready to grow, even if the role is a stretch.",
-        "metadata": {"section": "summary"}
-    },
-    {
-        "id": "current-role",
-        "text": "Currently a Software Engineer at Bookstack (Series A, ~40 employees, B2B SaaS). I have been here for two and a half years and was recently promoted from junior to mid-level. I work on the API and integrations team.",
-        "metadata": {"section": "experience", "company": "Bookstack", "current": true}
-    },
-    {
-        "id": "stripe-integration-project",
-        "text": "Shipped the Stripe billing integration at Bookstack. Wrote the webhook handlers and the subscription state machine on top of Stripe's APIs. This is the closest I have come to working on payments, although Stripe abstracts most of the hard parts.",
-        "metadata": {"section": "project", "skill": "payments_domain"}
-    },
-    {
-        "id": "skills-python",
-        "text": "Python: three years of production experience. Have worked with Django, FastAPI, and Celery. Comfortable with the language but I am still learning the deeper performance and async corners.",
-        "metadata": {"section": "skills", "skill": "python"}
-    },
-    {
-        "id": "skills-postgres",
-        "text": "Postgres: three years of experience as a consumer of the database. Have written reasonably complex queries and added indexes when ORM-generated queries were slow. Have not run Postgres in production myself.",
-        "metadata": {"section": "skills", "skill": "postgres"}
-    },
-    {
-        "id": "no-distributed-systems-depth",
-        "text": "Distributed systems: limited direct experience. Have used Redis as a queue and Celery for background jobs but have not designed a system that needs strict idempotency or exactly-once semantics. Eager to learn.",
-        "metadata": {"section": "gaps", "skill": "distributed_systems"}
-    },
-    {
-        "id": "no-kafka",
-        "text": "Kafka: no production experience. I have read the documentation and built a toy producer-consumer in a weekend project but have not run Kafka under real load.",
-        "metadata": {"section": "gaps", "skill": "kafka"}
-    },
-    {
-        "id": "first-job",
-        "text": "First job out of college was as a Junior Engineer at Pageturn, a small ed-tech company. Worked there for six months on the front-end before moving to backend at Bookstack.",
-        "metadata": {"section": "experience", "company": "Pageturn"}
-    },
-    {
-        "id": "on-call-experience",
-        "text": "On-call: Bookstack does not have a formal on-call rotation. The senior engineers handle pages. I have helped triage a few incidents during business hours but have never been the primary responder.",
-        "metadata": {"section": "skills", "skill": "on_call"}
-    },
-    {
-        "id": "education",
-        "text": "BS in Mathematics from a state university, 2022. Took a few computer science classes but most of my software skills are self-taught and on-the-job.",
-        "metadata": {"section": "education"}
-    },
-    {
-        "id": "motivation",
-        "text": "Motivation for applying: I want to work on something with high stakes where correctness matters more than speed of feature output. Payments feels like the right environment to grow into a real senior engineer.",
-        "metadata": {"section": "motivation"}
+  {
+    "id": "summary",
+    "text": "Mid-level backend engineer with three years of professional experience. Comfortable with Python and Postgres for typical web-app workloads. Applying to senior roles because I am ambitious and ready to grow, even if the role is a stretch.",
+    "metadata": {
+      "section": "summary"
     }
+  },
+  {
+    "id": "current-role",
+    "text": "Currently a Software Engineer at Bookstack (Series A, ~40 employees, B2B SaaS). I have been here for two and a half years and was recently promoted from junior to mid-level. I work on the API and integrations team.",
+    "metadata": {
+      "section": "experience",
+      "company": "Bookstack",
+      "current": "true"
+    }
+  },
+  {
+    "id": "stripe-integration-project",
+    "text": "Shipped the Stripe billing integration at Bookstack. Wrote the webhook handlers and the subscription state machine on top of Stripe's APIs. This is the closest I have come to working on payments, although Stripe abstracts most of the hard parts.",
+    "metadata": {
+      "section": "project",
+      "skill": "payments_domain"
+    }
+  },
+  {
+    "id": "skills-python",
+    "text": "Python: three years of production experience. Have worked with Django, FastAPI, and Celery. Comfortable with the language but I am still learning the deeper performance and async corners.",
+    "metadata": {
+      "section": "skills",
+      "skill": "python"
+    }
+  },
+  {
+    "id": "skills-postgres",
+    "text": "Postgres: three years of experience as a consumer of the database. Have written reasonably complex queries and added indexes when ORM-generated queries were slow. Have not run Postgres in production myself.",
+    "metadata": {
+      "section": "skills",
+      "skill": "postgres"
+    }
+  },
+  {
+    "id": "no-distributed-systems-depth",
+    "text": "Distributed systems: limited direct experience. Have used Redis as a queue and Celery for background jobs but have not designed a system that needs strict idempotency or exactly-once semantics. Eager to learn.",
+    "metadata": {
+      "section": "gaps",
+      "skill": "distributed_systems"
+    }
+  },
+  {
+    "id": "no-kafka",
+    "text": "Kafka: no production experience. I have read the documentation and built a toy producer-consumer in a weekend project but have not run Kafka under real load.",
+    "metadata": {
+      "section": "gaps",
+      "skill": "kafka"
+    }
+  },
+  {
+    "id": "first-job",
+    "text": "First job out of college was as a Junior Engineer at Pageturn, a small ed-tech company. Worked there for six months on the front-end before moving to backend at Bookstack.",
+    "metadata": {
+      "section": "experience",
+      "company": "Pageturn"
+    }
+  },
+  {
+    "id": "on-call-experience",
+    "text": "On-call: Bookstack does not have a formal on-call rotation. The senior engineers handle pages. I have helped triage a few incidents during business hours but have never been the primary responder.",
+    "metadata": {
+      "section": "skills",
+      "skill": "on_call"
+    }
+  },
+  {
+    "id": "education",
+    "text": "BS in Mathematics from a state university, 2022. Took a few computer science classes but most of my software skills are self-taught and on-the-job.",
+    "metadata": {
+      "section": "education"
+    }
+  },
+  {
+    "id": "motivation",
+    "text": "Motivation for applying: I want to work on something with high stakes where correctness matters more than speed of feature output. Payments feels like the right environment to grow into a real senior engineer.",
+    "metadata": {
+      "section": "motivation"
+    }
+  }
 ]
