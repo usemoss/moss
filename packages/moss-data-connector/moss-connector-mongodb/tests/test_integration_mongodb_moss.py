@@ -35,7 +35,6 @@ except ImportError:
     pass
 
 from moss import DocumentInfo, MossClient, QueryOptions  # noqa: E402
-
 from moss_connector_mongodb import MongoDBConnector, ingest  # noqa: E402
 
 # Point this at whatever Mongo you're running locally.

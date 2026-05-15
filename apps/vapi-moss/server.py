@@ -17,7 +17,6 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-
 from vapi_moss import MossVapiSearch, verify_vapi_signature
 
 load_dotenv(override=True)

@@ -9,10 +9,10 @@ import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 from corpus import get_documents, get_queries
 from stats import Timer, BenchmarkResult
+
+load_dotenv()
 
 DOC_COUNT = 100_000
 TOP_K = 5
@@ -29,7 +29,7 @@ async def run_async():
     print(f"  warmup rounds  : {WARMUP_ROUNDS}")
     print(f"  query rounds   : {QUERY_ROUNDS}")
     print(f"  queries/round  : {len(queries)}")
-    print(f"  embedding      : built-in (moss-minilm)")
+    print("  embedding      : built-in (moss-minilm)")
 
     # --- Setup ---
     client = MossClient(

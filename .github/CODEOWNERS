@@ -4,14 +4,23 @@
 # Default owner for everything
 * @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
 
-# JavaScript/TypeScript SDKs and samples
-/javascript/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
-/next-js/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
-/moss/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+# Language SDKs (Python, JS/TS, Elixir, C bindings)
+/sdks/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
 
-# Python SDK and samples
-/python/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
-/cookbook/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+# Applications and end-to-end integrations
+/apps/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
 
-# CI/CD Workflows
+# Standalone language examples, framework cookbooks, voice agents
+/examples/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+
+# Reusable packages (CLI, connectors, framework adapters, plugins)
+/packages/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+
+# Moss Live Labs (experimental SDKs, voice/image demos, community demos)
+/moss-live-labs/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+
+# Latency / throughput benchmarks
+/benchmarks/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+
+# CI/CD workflows
 /.github/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster

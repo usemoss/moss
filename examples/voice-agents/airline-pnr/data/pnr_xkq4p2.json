@@ -1,0 +1,62 @@
+[
+    {
+        "id": "booking-summary",
+        "text": "Booking reference XKQ4P2, booked on 2026-04-12. Passenger Maya Singh. One-way trip from San Francisco to Chicago O'Hare on Aurora Air, departing 2026-06-22.",
+        "metadata": {"section": "summary", "pnr": "XKQ4P2"}
+    },
+    {
+        "id": "passenger-name",
+        "text": "Passenger of record: Maya R Singh. The agent must verify a partial name match before disclosing booking details. No additional passengers on this PNR.",
+        "metadata": {"section": "passenger"}
+    },
+    {
+        "id": "flight-segment-outbound",
+        "text": "Outbound flight Aurora Air AUR442 from San Francisco SFO to Chicago O'Hare ORD on 2026-06-22. Scheduled departure 8:25 AM Pacific, scheduled arrival 2:48 PM Central. Aircraft is a Boeing 737-900 with 175 seats. Flight currently shows on-time status.",
+        "metadata": {"section": "flight", "segment": 1, "flight_number": "AUR442"}
+    },
+    {
+        "id": "seat-assignment",
+        "text": "Seat assignment: 14C, a standard economy aisle seat. Seat selection was free at booking because the fare class is Economy Standard. The passenger may change seats up to one hour before departure at no charge.",
+        "metadata": {"section": "seat", "seat": "14C"}
+    },
+    {
+        "id": "meal-preference",
+        "text": "No special meal pre-ordered. Standard buy-on-board snack service is available on this domestic flight. Complimentary water, coffee, and tea are served. Special meals must be requested at least 24 hours before departure.",
+        "metadata": {"section": "meal"}
+    },
+    {
+        "id": "baggage-allowance",
+        "text": "Baggage allowance: 1 personal item and 1 carry-on bag included free. Checked bags: this fare allows 1 free checked bag up to 50 pounds. Additional checked bags are $40 each. Bags exceeding 50 pounds incur a $100 overweight fee.",
+        "metadata": {"section": "baggage"}
+    },
+    {
+        "id": "checked-bags-current",
+        "text": "Currently 0 checked bags added to the booking. The passenger can add bags through the website, the app, or at the airport. Adding online before departure is $5 cheaper than adding at the airport.",
+        "metadata": {"section": "baggage"}
+    },
+    {
+        "id": "loyalty-tier",
+        "text": "Aurora Air loyalty status: no tier. The passenger is enrolled in the AuroraMiles program with 4,820 miles in the account. Standard mileage accrual applies on this flight.",
+        "metadata": {"section": "loyalty"}
+    },
+    {
+        "id": "fare-rules-changes",
+        "text": "Fare class Economy Standard. Same-day flight changes are available for $75. Date changes outside same-day are allowed up to 2 hours before departure for a $99 change fee plus any fare difference. Cancellations within 24 hours of booking are fully refundable per regulation.",
+        "metadata": {"section": "fare_rules"}
+    },
+    {
+        "id": "check-in-window",
+        "text": "Check-in opens 24 hours before scheduled departure, at 8:25 AM Pacific on 2026-06-21. Mobile boarding passes are supported. The recommended airport arrival is 90 minutes before departure for domestic flights.",
+        "metadata": {"section": "check_in"}
+    },
+    {
+        "id": "payment-summary",
+        "text": "Total fare paid: $284.40, charged to a Visa card ending in 2207 on the booking date. The total includes $268 base fare, $11.20 federal taxes, and $5.20 segment fees. No future charges are scheduled on the original payment method.",
+        "metadata": {"section": "payment"}
+    },
+    {
+        "id": "contact-on-file",
+        "text": "Contact information on file: an email address ending in @gmail.com, and a US mobile number ending in 4471. Notifications for delays and gate changes are enabled on both channels.",
+        "metadata": {"section": "contact"}
+    }
+]

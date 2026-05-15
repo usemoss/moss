@@ -8,8 +8,8 @@
 
 from __future__ import annotations
 
-from moss import MossClient
 from loguru import logger
+from moss import MossClient
 
 from .moss_index_processor import MossIndexProcessor
 

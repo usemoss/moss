@@ -26,5 +26,11 @@
   },
   "devDependencies": {
     "dotenv": "^17.3.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "^0.25.0",
+      "vite": "^6.4.2"
+    }
   }
 }

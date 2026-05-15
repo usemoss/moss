@@ -6,6 +6,7 @@ sub-10ms retrieval inside the speech loop.
 | Example | What it shows |
 |---|---|
 | [`mortgage-lending/`](mortgage-lending/) | Multi-agent flow: a retrieval-heavy mortgage Q&A agent hands off to a payment flow agent, with shared session state. |
+| [`airline-pnr/`](airline-pnr/) | **Ambient retrieval** for airline customer service: no `lookup_*` tool, every user turn auto-queries the active booking before the LLM is invoked. Pairs with per-PNR Moss indexes (one warm index per caller, swap mid-call for companion bookings). |
 | [`candidate-screening/`](candidate-screening/) | Two-index retrieval (job description + candidate resume) powering a live voice screening interview that emits a structured scorecard JSON. Single agent, phased prompt, bias-mitigation rules, deterministic eval suite. |
 
 Each subfolder is self-contained - its own `pyproject.toml`, `.env.example`,

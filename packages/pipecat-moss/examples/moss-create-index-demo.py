@@ -2,8 +2,8 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
-from moss import DocumentInfo, MossClient
 from loguru import logger
+from moss import DocumentInfo, MossClient
 
 load_dotenv()
 

@@ -51,5 +51,8 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/test_integration_sqlite_moss.py" = ["E501"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

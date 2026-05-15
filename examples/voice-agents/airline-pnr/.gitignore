@@ -1,0 +1,2 @@
+# Call summaries are runtime artifacts - don't commit them.
+call-summaries/

@@ -6,16 +6,15 @@ included in the measured latency.
 """
 
 import os
-import sys
 import time
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 from corpus import get_documents, get_queries
 from embedding import EmbeddingClient
 from stats import Timer, BenchmarkResult
+
+load_dotenv()
 
 DOC_COUNT = 100_000
 TOP_K = 5

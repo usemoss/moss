@@ -2,13 +2,15 @@
 
 <div align="center">
 
-<img src="https://github.com/user-attachments/assets/2e1fb567-c003-49b5-a07e-eb687ad20d68" alt="Moss — Real-time semantic search for AI agents. Sub-10 ms." width="1200" />
+<img src="https://github.com/user-attachments/assets/25f92357-a670-4564-881d-e336f668c252" alt="Moss — Real-time semantic search for AI agents. Sub-10 ms." width="1200" />
+
+<br /><br />
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![PyPI](https://img.shields.io/pypi/v/moss?color=deepgreen)](https://pypi.org/project/moss/)
 [![PyPI downloads](https://static.pepy.tech/personalized-badge/inferedge-moss-core?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi+downloads)](https://pepy.tech/project/inferedge-moss-core)
 [![npm](https://img.shields.io/npm/v/@moss-dev/moss?color=deepgreen)](https://www.npmjs.com/package/@moss-dev/moss)
-[![npm downloads](https://img.shields.io/npm/dt/@inferedge/moss?label=npm+downloads&color=blue)](https://www.npmjs.com/package/@inferedge/moss)
+[![npm downloads](https://img.shields.io/npm/dt/@moss-dev/moss?label=npm+downloads&color=blue)](https://www.npmjs.com/package/@moss-dev/moss)
 [![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=white&label=Discord&color=7B2FBE)](https://moss.link/discord)
 
 [Website](https://moss.dev) · [Docs](https://docs.moss.dev) · [Discord](https://moss.link/discord) · [Blog](https://moss.dev/blog)
@@ -135,6 +137,9 @@ examples/
 │   └── custom_embedding_sample.ts
 ├── javascript-web/          # Browser / WASM SDK samples
 ├── c/                       # C SDK samples (libmoss)
+├── voice-agents/            # End-to-end voice agents (ambient + multi-agent)
+│   ├── airline-pnr/         # Ambient retrieval; per-PNR Moss indexes, swap mid-call
+│   └── mortgage-lending/    # Multi-agent flow with shared session state
 └── cookbook/                # Framework integrations
     ├── langchain/           # LangChain retriever
     ├── dspy/                # DSPy module
@@ -155,6 +160,16 @@ apps/
 ├── moss-llamaindex/         # LlamaIndex RAG backend + frontend
 ├── moss-bun/                # Bun runtime example
 └── docker/                  # Dockerized examples (ECS/K8s pattern)
+
+moss-live-labs/              # Experimental zone: prototypes and community demos
+├── python/                  # Minimal Python quickstart + advanced query example
+├── typescript/              # Minimal TypeScript quickstart + advanced query example
+├── examples/                # Larger experiments (image search, voice agents)
+│   ├── voice-agent/         # LiveKit + Moss voice assistant
+│   ├── advanced-voice-agent/ # Persona impersonator built on a PDF knowledge base
+│   └── image-search/        # FastAPI + React image search over COCO
+└── community-demos/         # Community-contributed projects
+    └── voice-agents/        # bharat-benefits, shoplabs-voice-agent
 ```
 
 ### Run the Python examples
@@ -228,7 +243,7 @@ Full API reference: [docs.moss.dev](https://docs.moss.dev).
 
 ## Architecture
 
-![Moss runtime architecture](./assets/moss-architecture.svg)
+![Moss runtime architecture](https://github.com/user-attachments/assets/7aebbedf-a467-48a4-be38-feddfa4f7d04)
 
 Three parts:
 
@@ -248,7 +263,7 @@ Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
 ## Contributing
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/ebf1c972-7f8c-451c-8f67-58dbec3954e8" alt="We welcome contributions!" width="1200" />
+  <img src="https://github.com/user-attachments/assets/80b9dd1c-661c-4201-a1b4-9d191afa8e6b" alt="We welcome contributions!" width="1200" />
 </div>
 
 Here's where the community can have the most impact:
