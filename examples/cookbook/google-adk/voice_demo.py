@@ -184,6 +184,16 @@ async def play_agent_events(
                         f"({part.function_call.args})"
                     )
                 if part.function_response:
+                    # Tell the model: stop whatever you were saying and use this
+                    # result NOW. Otherwise half-cascade Live often finishes its
+                    # in-flight (ungrounded) reply before incorporating the tool
+                    # result, which lands one turn late. INTERRUPT is documented
+                    # for NON_BLOCKING tools; on BLOCKING tools it is a harmless
+                    # hint. The mutation lands because ADK yields the event to
+                    # us before forwarding event.content back to the model.
+                    part.function_response.scheduling = (
+                        types.FunctionResponseScheduling.INTERRUPT
+                    )
                     response = part.function_response.response or {}
                     result = response.get("result") if isinstance(response, dict) else response
                     if isinstance(result, str) and len(result) > 300:
@@ -221,10 +231,30 @@ async def main() -> None:
         model=VOICE_MODEL,
         description="Voice customer support agent backed by Moss.",
         instruction=(
-            "You are a friendly support assistant on a voice call. "
-            "Before answering questions about orders, refunds, shipping, "
-            "or support, call the `moss_search` tool with the user's "
-            "question. Keep answers short and conversational."
+            "You are a friendly support assistant on a voice call.\n"
+            "\n"
+            "You have NO internal knowledge about this company's policies, "
+            "products, orders, refunds, shipping, returns, or account "
+            "operations. The ONLY source of truth is the `moss_search` "
+            "tool.\n"
+            "\n"
+            "Rules (follow strictly):\n"
+            "1. For ANY user question that could be answered from the "
+            "knowledge base (orders, refunds, shipping, returns, support, "
+            "account, policies, products), you MUST call `moss_search` "
+            "FIRST with the user's question as the query.\n"
+            "2. Do NOT speak, do NOT produce any audio, and do NOT say "
+            "filler like 'let me check' before the tool returns. Stay "
+            "silent until you have the tool result.\n"
+            "3. Base your spoken reply ONLY on the contents of the tool "
+            "result. Do not invent details.\n"
+            "4. If the tool result does not contain a relevant answer, "
+            "say so plainly and offer to escalate or point them to "
+            "support; do not guess.\n"
+            "5. Only skip the tool call for pure small talk with no "
+            "factual content (greetings, thanks, goodbye).\n"
+            "\n"
+            "Keep spoken answers short and conversational."
         ),
         tools=[moss_search],
     )
