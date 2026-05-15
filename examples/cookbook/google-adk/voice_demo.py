@@ -22,30 +22,57 @@ import asyncio
 import os
 import queue
 import sys
+import time
 
 import sounddevice as sd
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 from google.adk.agents.live_request_queue import LiveRequestQueue
-from google.adk.agents.run_config import RunConfig, StreamingMode
+from google.adk.agents.run_config import (
+    RunConfig,
+    StreamingMode,
+    ToolThreadPoolConfig,
+)
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 from moss import DocumentInfo, MossClient
 
-from moss_adk import MossSearchTool
+from moss_agent.moss_search import make_moss_search
 
 APP_NAME = "moss_adk_voice_demo"
 USER_ID = "voice_user"
 
-# Native-audio Gemini Live model: takes audio in, returns audio out.
-VOICE_MODEL = os.getenv(
-    "ADK_VOICE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025"
-)
+# Half-cascade Gemini Live model: audio in / audio out, with stable tool support.
+VOICE_MODEL = os.getenv("ADK_MODEL", "gemini-3.1-flash-live-preview")
 
 # Gemini Live API audio formats.
 INPUT_SAMPLE_RATE = 16000   # 16 kHz mono PCM int16 going up
 OUTPUT_SAMPLE_RATE = 24000  # 24 kHz mono PCM int16 coming back
 INPUT_CHUNK_MS = 100        # send mic chunks every 100 ms
+# Extra tail (seconds) to keep the mic muted after the speaker finishes,
+# so reverb/room decay doesn't get re-transcribed.
+ECHO_TAIL_SECONDS = 0.4
+
+
+class MicGate:
+    """Half-duplex gate: mute the mic while the model is speaking.
+
+    Without this, speaker output is picked up by the mic, transcribed as
+    user input, and the model ends up replying to its own echo in a loop.
+    Use headphones to keep barge-in instead.
+    """
+
+    def __init__(self) -> None:
+        self._muted_until = 0.0
+
+    def extend(self, audio_bytes: bytes, sample_rate: int) -> None:
+        duration = len(audio_bytes) / 2 / sample_rate  # int16 mono
+        end = time.monotonic() + duration + ECHO_TAIL_SECONDS
+        if end > self._muted_until:
+            self._muted_until = end
+
+    def is_muted(self) -> bool:
+        return time.monotonic() < self._muted_until
 
 SEED_DOCS = [
     DocumentInfo(id="1", text="Refunds are processed within 3-5 business days of the request."),
@@ -67,7 +94,9 @@ async def seed_index_if_needed(client: MossClient, index_name: str) -> None:
 
 
 async def microphone_to_queue(
-    live_request_queue: LiveRequestQueue, loop: asyncio.AbstractEventLoop
+    live_request_queue: LiveRequestQueue,
+    loop: asyncio.AbstractEventLoop,
+    mic_gate: MicGate,
 ) -> None:
     """Capture mic and forward 16 kHz PCM chunks into the ADK live queue."""
     chunk_frames = int(INPUT_SAMPLE_RATE * INPUT_CHUNK_MS / 1000)
@@ -86,16 +115,21 @@ async def microphone_to_queue(
         channels=1,
         callback=callback,
     ):
-        print("[mic] open — start talking. Ctrl+C to exit.")
+        print("[mic] open - start talking. Ctrl+C to exit.")
         while True:
             chunk = await loop.run_in_executor(None, mic_q.get)
+            if mic_gate.is_muted():
+                continue
             live_request_queue.send_realtime(
                 types.Blob(mime_type=f"audio/pcm;rate={INPUT_SAMPLE_RATE}", data=chunk)
             )
 
 
 async def play_agent_events(
-    runner: InMemoryRunner, session_id: str, live_request_queue: LiveRequestQueue
+    runner: InMemoryRunner,
+    session_id: str,
+    live_request_queue: LiveRequestQueue,
+    mic_gate: MicGate,
 ) -> None:
     """Consume run_live() events: play audio out, log tool calls and transcripts."""
     run_config = RunConfig(
@@ -103,6 +137,10 @@ async def play_agent_events(
         response_modalities=["AUDIO"],
         input_audio_transcription=types.AudioTranscriptionConfig(),
         output_audio_transcription=types.AudioTranscriptionConfig(),
+        # Reconnect to a dropped Live session instead of losing it.
+        session_resumption=types.SessionResumptionConfig(),
+        # Run blocking tool calls off the event loop so audio stays responsive.
+        tool_thread_pool_config=ToolThreadPoolConfig(),
     )
 
     speaker = sd.RawOutputStream(
@@ -119,10 +157,17 @@ async def play_agent_events(
             live_request_queue=live_request_queue,
             run_config=run_config,
         ):
+            # Live API streams ASR for both sides as separate event fields.
+            if event.input_transcription and event.input_transcription.text:
+                tag = "user" if event.input_transcription.finished else "user.."
+                print(f"[{tag}] {event.input_transcription.text}")
+            if event.output_transcription and event.output_transcription.text:
+                tag = "model" if event.output_transcription.finished else "model.."
+                print(f"[{tag}] {event.output_transcription.text}")
+
             if not event.content or not event.content.parts:
                 continue
             for part in event.content.parts:
-                # Audio reply: play it.
                 if (
                     part.inline_data
                     and part.inline_data.mime_type
@@ -130,14 +175,20 @@ async def play_agent_events(
                     and part.inline_data.data
                 ):
                     speaker.write(part.inline_data.data)
-                # Transcripts and tool calls: log for visibility.
-                if part.text:
-                    print(f"[{event.author}] {part.text}")
+                    mic_gate.extend(part.inline_data.data, OUTPUT_SAMPLE_RATE)
+                if part.text and not getattr(part, "thought", False):
+                    print(f"[model-text] {part.text}")
                 if part.function_call:
                     print(
                         f"[tool] {part.function_call.name}"
                         f"({part.function_call.args})"
                     )
+                if part.function_response:
+                    response = part.function_response.response or {}
+                    result = response.get("result") if isinstance(response, dict) else response
+                    if isinstance(result, str) and len(result) > 300:
+                        result = result[:300] + "..."
+                    print(f"[tool-result] {part.function_response.name} -> {result}")
     finally:
         speaker.stop()
         speaker.close()
@@ -162,7 +213,8 @@ async def main() -> None:
     )
     await seed_index_if_needed(seed_client, index_name)
 
-    moss = MossSearchTool(index_name=index_name)
+    load_index, moss_search = make_moss_search(index_name=index_name)
+    await load_index()
 
     agent = Agent(
         name="moss_voice_agent",
@@ -174,7 +226,7 @@ async def main() -> None:
             "or support, call the `moss_search` tool with the user's "
             "question. Keep answers short and conversational."
         ),
-        tools=[moss.search_tool],
+        tools=[moss_search],
     )
 
     runner = InMemoryRunner(agent=agent, app_name=APP_NAME)
@@ -184,14 +236,15 @@ async def main() -> None:
 
     live_request_queue = LiveRequestQueue()
     loop = asyncio.get_running_loop()
+    mic_gate = MicGate()
 
     print(f"\nVoice agent ready (model={VOICE_MODEL}).")
     print("Speak: 'How long do refunds take?' or 'What's your return policy?'\n")
 
     try:
         await asyncio.gather(
-            microphone_to_queue(live_request_queue, loop),
-            play_agent_events(runner, session.id, live_request_queue),
+            microphone_to_queue(live_request_queue, loop, mic_gate),
+            play_agent_events(runner, session.id, live_request_queue, mic_gate),
         )
     except KeyboardInterrupt:
         print("\n[exit] bye.")
