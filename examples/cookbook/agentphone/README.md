@@ -168,8 +168,8 @@ for Railway to query it.
 3. In the Railway service's **Settings** tab:
    - **Root Directory**: `examples/cookbook/agentphone`
    - Railway will pick up `railway.json` from that directory and use
-     the start command, healthcheck path, and Nixpacks builder
-     configured there.
+     the start command and healthcheck path configured there. Railway
+     auto-detects the Python builder from `pyproject.toml`.
 4. In the **Variables** tab, set everything from your `.env`:
    - `MOSS_PROJECT_ID`
    - `MOSS_PROJECT_KEY`
@@ -209,35 +209,29 @@ curl -X POST https://api.agentphone.ai/v1/webhooks \
 This rotates the secret. Update `AGENTPHONE_WEBHOOK_SECRET` in Railway
 with the new value.
 
-## Wire it up to AgentPhone
+## Create an agent and attach a number
 
-With the public URL in hand:
+Webhook registration is covered by whichever deployment section you
+followed above (ngrok or Railway). The remaining AgentPhone-side
+setup is the agent itself and the phone number it answers on:
 
-1. Register the webhook (use your AgentPhone API key, `sk_live_...`):
-   ```bash
-   curl -X POST https://api.agentphone.ai/v1/webhooks \
-     -H "Authorization: Bearer $AGENTPHONE_API_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"url": "https://<your-ngrok-host>/webhook"}'
-   ```
-   The response includes a `secret` (starts with `whsec_`). Paste it
-   into `AGENTPHONE_WEBHOOK_SECRET` in `.env`, then restart the server.
-2. Create an agent with `voiceMode: "webhook"` and attach a voice-capable
-   phone number:
-   ```bash
-   curl -X POST https://api.agentphone.ai/v1/agents \
-     -H "Authorization: Bearer $AGENTPHONE_API_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"name": "Moss Support Bot", "voiceMode": "webhook",
-          "beginMessage": "Hi, thanks for calling. How can I help?"}'
-   # then attach a number:
-   curl -X POST https://api.agentphone.ai/v1/agents/<AGENT_ID>/numbers \
-     -H "Authorization: Bearer $AGENTPHONE_API_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"numberId": "<NUMBER_ID>"}'
-   ```
-3. Call the number, or place a browser test call via
-   `POST /v1/calls/web`.
+```bash
+# Create an agent that delegates voice handling to your webhook.
+curl -X POST https://api.agentphone.ai/v1/agents \
+  -H "Authorization: Bearer $AGENTPHONE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Moss Support Bot", "voiceMode": "webhook",
+       "beginMessage": "Hi, thanks for calling. How can I help?"}'
+
+# Attach a voice-capable number to it.
+curl -X POST https://api.agentphone.ai/v1/agents/<AGENT_ID>/numbers \
+  -H "Authorization: Bearer $AGENTPHONE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"numberId": "<NUMBER_ID>"}'
+```
+
+Then call the number, or place a browser test call via
+`POST /v1/calls/web`.
 
 ## Troubleshooting
 
@@ -280,7 +274,7 @@ a tool, and `recentHistory` -> Anthropic-message mapping.
 `moss_agentphone.py` (reusable, no env side effects):
 
 1. `TOOLS` schema
-2. `verify_webhook_signature` (HMAC-SHA256, with replay window)
+2. `verify_webhook_signature` (HMAC-SHA256)
 3. `to_anthropic_history` (map AgentPhone `recentHistory` -> Claude messages)
 4. `run_tool_call` loop (bounded at 5 iterations, exits on
    `stop_reason != "tool_use"`)
