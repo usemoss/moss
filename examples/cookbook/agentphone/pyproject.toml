@@ -21,4 +21,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["server", "create_index", "test_integration"]
+py-modules = ["server", "moss_agentphone", "create_index", "test_integration"]
