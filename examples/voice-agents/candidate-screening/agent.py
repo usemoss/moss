@@ -204,12 +204,21 @@ class ScreeningAgent(Agent):
         super().__init__(instructions=SYSTEM_PROMPT)
 
     async def on_enter(self) -> None:
-        await self.session.say(
-            "Hi, I'm calling about your application for the Senior Backend "
-            "Engineer role on the Lattica Payments team. This is a short "
-            "voice screening - about twenty-five minutes. Before we get "
-            "started, this conversation is recorded and reviewed by the "
-            "hiring team - is that okay with you to continue?"
+        role_context = await self._query(
+            JOB_INDEX,
+            "role title, company name, team",
+            source="JD",
+        )
+        await self.session.generate_reply(
+            instructions=(
+                "Greet the candidate. Identify the role, company, and team "
+                "using ONLY the context below - do not invent any of them. "
+                "Tell them this is a short voice screening, about 25 minutes, "
+                "and that the conversation is recorded and reviewed by the "
+                "hiring team. Ask if it's okay to continue. Keep it under "
+                "three sentences and conversational.\n\n"
+                f"Role context from the JD index:\n{role_context}"
+            ),
         )
 
     # ----- Retrieval tools -------------------------------------------------
@@ -340,8 +349,11 @@ class ScreeningAgent(Agent):
         if data.consent_to_record is not True:
             return "Cannot submit a scorecard without recorded consent."
 
+        safe_candidate_id = "".join(
+            ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in data.candidate_id
+        ) or "candidate"
         SCORECARD_DIR.mkdir(parents=True, exist_ok=True)
-        path = SCORECARD_DIR / f"{data.candidate_id}__{int(data.started_at)}.json"
+        path = SCORECARD_DIR / f"{safe_candidate_id}__{int(data.started_at)}.json"
         scorecard = _build_scorecard(data)
         path.write_text(json.dumps(scorecard, indent=2))
         logger.info(f"{GREEN}scorecard written: {path}{RESET}")

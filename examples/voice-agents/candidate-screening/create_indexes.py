@@ -6,8 +6,9 @@ Two indexes power the screening:
 
 Both fixtures live in ``data/`` as flat JSON arrays of ``{id, text, metadata}``
 documents - the native Moss shape. Index names are derived from the
-fixture filename, with the leading ``job_`` / ``candidate_`` and the
-``.json`` suffix stripped, then underscores swapped for dashes.
+fixture filename by dropping the ``.json`` suffix and swapping
+underscores for dashes - the leading ``job_`` / ``candidate_`` prefix
+is kept (e.g. ``candidate_strong_match.json`` -> ``candidate-strong-match``).
 
 Run before starting the agent:
 

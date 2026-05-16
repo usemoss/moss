@@ -19,7 +19,7 @@ before the agent can ask a good follow-up.
               ▼                                       ▼
      ┌──────────────────┐                    ┌──────────────────┐
      │  Moss: JD index  │                    │ Moss: resume idx │
-     │ (15 docs)        │                    │ (10-12 docs)     │
+     │ (17 docs)        │                    │ (11-12 docs)     │
      └──────────────────┘                    └──────────────────┘
         lookup_job_requirement                lookup_resume_fact
 ```
@@ -116,8 +116,10 @@ the candidate notices any pause.
 ## A working interview, condensed
 
 ```
-Agent:     Hi, I'm calling about your application for the Senior Backend
-           Engineer role on the Lattica Payments team. This is a short
+Agent:     [lookup_job_requirement("role title, company name, team")
+            -> "Senior Backend Engineer on the Payments team... Lattica..."]
+           Hi, I'm calling about your application for the Senior Backend
+           Engineer role on Lattica's Payments team. This is a short
            voice screening - about twenty-five minutes. The conversation
            is recorded and reviewed by the hiring team - okay to continue?
 Candidate: Yes, that works.
