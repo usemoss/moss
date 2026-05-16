@@ -44,6 +44,7 @@ skip retrieval entirely on small talk.
 | `create_index.py` | One-time script to seed the Moss demo index |
 | `test_integration.py` | Mocked unit tests |
 | `pyproject.toml` | Package metadata |
+| `railway.json` | Railway deploy config (start command + healthcheck) |
 | `.env.example` | Template for required environment variables |
 
 ## Installation
@@ -121,8 +122,67 @@ so you will need to re-register the webhook if you stop the tunnel.
 
 Alternative: `cloudflared tunnel --url http://localhost:8000` (no signup
 required) prints a `https://<random>.trycloudflare.com` URL you can use
-the same way. Or deploy `server.py` to any host that gives you a stable
-HTTPS URL (Railway, Render, Fly.io, etc.) and skip the tunnel entirely.
+the same way. Or deploy to Railway (see below) for a stable URL and
+skip the tunnel entirely.
+
+## Deploy to Railway
+
+ngrok is good for local iteration; for anything you want to revisit
+tomorrow, deploy the server somewhere with a persistent HTTPS URL.
+This cookbook ships with a `railway.json` so the deploy is one click.
+
+Before deploying, run `uv run python create_index.py` once locally with
+the Moss credentials you plan to use on Railway. The index lives in
+your Moss project, not on the server, so seeding it locally is enough
+for Railway to query it.
+
+1. Push the repo (including this cookbook) to GitHub if it isn't there
+   already.
+2. Go to https://railway.app -> "New Project" -> "Deploy from GitHub
+   repo" -> pick your fork of the Moss repo.
+3. In the Railway service's **Settings** tab:
+   - **Root Directory**: `examples/cookbook/agentphone`
+   - Railway will pick up `railway.json` from that directory and use
+     the start command, healthcheck path, and Nixpacks builder
+     configured there.
+4. In the **Variables** tab, set everything from your `.env`:
+   - `MOSS_PROJECT_ID`
+   - `MOSS_PROJECT_KEY`
+   - `MOSS_INDEX_NAME`
+   - `ANTHROPIC_API_KEY`
+   - `ANTHROPIC_MODEL`
+   - `AGENTPHONE_WEBHOOK_SECRET` (use a placeholder for now; you will
+     replace it after step 6)
+
+   Do **not** set `PORT`; Railway injects it.
+5. Click **Deploy**. Once the build is green, open the service and
+   click **Settings -> Networking -> Generate Domain**. You will get a
+   URL like `https://moss-agentphone-production.up.railway.app`.
+6. Register the webhook against that URL with the AgentPhone API:
+   ```bash
+   curl -X POST https://api.agentphone.ai/v1/webhooks \
+     -H "Authorization: Bearer $AGENTPHONE_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"url": "https://<your-railway-domain>/webhook"}'
+   ```
+   Copy the `secret` from the response, paste it into the
+   `AGENTPHONE_WEBHOOK_SECRET` variable in Railway, and let it
+   redeploy.
+7. Call your AgentPhone number. Railway's deployment logs show the
+   same colored Moss block you saw locally.
+
+If you had already registered the webhook against an ngrok URL, you
+can swap it without losing the existing webhook id:
+
+```bash
+curl -X POST https://api.agentphone.ai/v1/webhooks \
+  -H "Authorization: Bearer $AGENTPHONE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://<your-railway-domain>/webhook"}'
+```
+
+This rotates the secret. Update `AGENTPHONE_WEBHOOK_SECRET` in Railway
+with the new value.
 
 ## Wire it up to AgentPhone
 
