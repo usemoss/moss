@@ -1,35 +1,49 @@
 # Moss AgentPhone Cookbook
 
-This cookbook backs an [AgentPhone](https://agentphone.ai) phone number with
-[Moss](https://moss.dev) semantic search, using the **voice-webhook
-tool-calling pattern AgentPhone recommends**. AgentPhone handles the
-telephony, STT, and TTS; your webhook runs Claude in a tool-call loop with
-`moss_search` as the only tool; the grounded reply is streamed back as the
-spoken answer.
+A single-file webhook server that backs an [AgentPhone](https://agentphone.ai)
+phone number with [Moss](https://moss.dev) semantic search. The model
+runs in a Claude tool-call loop with `moss_search` as the only tool.
+Voice only.
 
-- [AgentPhone - "Example: tool-calling handler (Python / Flask)"](https://docs.agentphone.ai/documentation/guides/calls)
+Mirrors the structure of AgentPhone's reference example:
+[Calls guide - "Example: tool-calling handler"](https://docs.agentphone.ai/documentation/guides/calls).
 
-## Why this is the right shape
+## Call flow
 
-Realtime voice models often emit an ungrounded reply before a tool returns.
-AgentPhone's webhook-voice mode inverts that: AgentPhone has nothing to
-speak until your handler returns text, so the spoken answer is always built
-from whatever `moss_search` produced. Tool calling (rather than ambient
-retrieval) also lets the model rewrite the user's question into a focused
-search query and skip retrieval entirely on small talk.
+```
+   caller
+     |
+     | speaks
+     v
+  AgentPhone   --(signed webhook)-->   server.py
+   ^                                       |
+   |                                       | run_tool_call(transcript, history)
+   |                                       |    Claude --(tool_use)--> moss_search --> Moss
+   |                                       |    Claude <-(tool_result)
+   |                                       v
+   |                                  NDJSON streamed back
+   |
+   speaks reply
+```
 
-## What this example does
+## Why this shape
 
-1. Receives `agent.message` webhooks from AgentPhone.
-2. Verifies the `X-Webhook-Signature` HMAC.
-3. Streams an immediate interim NDJSON line ("Let me check that for you.").
-4. Runs a Claude tool-calling loop: model may call `moss_search(query=...)`,
-   we run the search against Moss, the model gets the excerpts back and
-   produces the final answer.
-5. Streams the final NDJSON line, which ends the spoken turn.
+Realtime voice models often emit an ungrounded reply before a tool
+returns. AgentPhone's webhook-voice mode inverts that: AgentPhone has
+nothing to speak until your handler returns text, so the spoken answer
+is always built from whatever `moss_search` produced. Tool calling lets
+the model rewrite the user's question into a focused search query and
+skip retrieval entirely on small talk.
 
-For SMS, MMS, and iMessage the same tool loop runs and the answer is
-returned as a single JSON body.
+## Files
+
+| File | Description |
+|------|-------------|
+| `server.py` | Module-level `TOOLS` / `TOOL_HANDLERS` / `run_tool_call` + the FastAPI webhook |
+| `create_index.py` | One-time script to seed the Moss demo index |
+| `test_integration.py` | Mocked unit tests |
+| `pyproject.toml` | Package metadata |
+| `.env.example` | Template for required environment variables |
 
 ## Installation
 
@@ -52,13 +66,17 @@ AGENTPHONE_WEBHOOK_SECRET=whsec_...
 PORT=8000
 ```
 
-`AGENTPHONE_WEBHOOK_SECRET` is the value AgentPhone returns when you create
-the webhook (`POST /v1/webhooks`). Without it, every request is rejected
-with `401`.
+`AGENTPHONE_WEBHOOK_SECRET` is returned when you register the webhook
+(step 2 of "Wire it up" below).
 
-If `MOSS_INDEX_NAME` does not exist yet, the server seeds a small demo
-index (refunds, returns, shipping, support hours, password reset) on
-startup so you have something to test against.
+## Create the demo index (one time)
+
+```bash
+uv run python create_index.py
+```
+
+Seeds a small index (refunds, returns, shipping, support hours, password
+reset). Skips if the index already exists.
 
 ## Run the server
 
@@ -66,11 +84,11 @@ startup so you have something to test against.
 uv run python server.py
 ```
 
-The server listens on `http://localhost:8000/webhook` and `/healthz`.
+Listens on `http://localhost:8000/webhook` and `/healthz`.
 
 ## Wire it up to AgentPhone
 
-1. Expose the local server publicly. ngrok is the quickest option:
+1. Expose the local server publicly:
    ```bash
    ngrok http 8000
    ```
@@ -79,14 +97,28 @@ The server listens on `http://localhost:8000/webhook` and `/healthz`.
    curl -X POST https://api.agentphone.ai/v1/webhooks \
      -H "Authorization: Bearer $AGENTPHONE_API_KEY" \
      -H "Content-Type: application/json" \
-     -d '{"url": "https://<your-ngrok-host>/webhook", "timeout": 30}'
+     -d '{"url": "https://<your-ngrok-host>/webhook"}'
    ```
-   Copy the returned secret into `AGENTPHONE_WEBHOOK_SECRET` and restart
-   the server.
-3. Create an agent with `voiceMode: "webhook"` and attach a phone number
-   (`POST /v1/agents`, then `POST /v1/agents/{id}/numbers`).
-4. Call the number, or place a browser test call with
+   Copy the returned `secret` into `AGENTPHONE_WEBHOOK_SECRET` and
+   restart the server.
+3. Create an agent with `voiceMode: "webhook"` and attach a voice-capable
+   number to it.
+4. Call the number, or place a browser test call via
    `POST /v1/calls/web`.
+
+## What success looks like
+
+A caller speaking once produces these log lines (`channel=voice`, two
+Anthropic calls = one tool round-trip with Moss):
+
+```
+delivery=voice_... event=agent.message channel=voice
+POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+"POST /webhook HTTP/1.1" 200 OK
+```
+
+Small talk that doesn't trigger retrieval shows only one Anthropic call.
 
 ## Run the tests
 
@@ -94,99 +126,32 @@ The server listens on `http://localhost:8000/webhook` and `/healthz`.
 uv run python test_integration.py
 ```
 
-Tests are mocked end to end. They exercise:
+Tests cover signature verification, the tool-call loop with and without
+a tool, and `recentHistory` -> Anthropic-message mapping.
 
-- HMAC signature verification (accept valid, reject tampered body and
-  garbage signatures).
-- Tool-calling loop: model asks for `moss_search`, bridge runs Moss, model
-  produces the final answer using the returned excerpts.
-- Tool-calling loop: model can answer directly without calling the tool.
-- Voice stream: emits the interim filler line followed by the final line.
+## How it reads
 
-## How it works
+The whole integration is in `server.py` and reads top-to-bottom:
 
-| File | Description |
-|------|-------------|
-| `moss_agentphone.py` | `MossAgentPhoneBridge` (tool loop) and `verify_webhook_signature` |
-| `server.py` | FastAPI app that handles AgentPhone webhooks |
-| `test_integration.py` | Mocked unit tests |
-| `pyproject.toml` | Package metadata |
-| `.env.example` | Template for required environment variables |
-
-### The tool
-
-The model sees one tool:
-
-```python
-{
-    "name": "moss_search",
-    "description": "Search the Moss knowledge base for documents that "
-                   "could answer the caller's question...",
-    "input_schema": {
-        "type": "object",
-        "properties": {"query": {"type": "string"}},
-        "required": ["query"],
-    },
-}
-```
-
-Each call hits `MossClient.query(index, query, QueryOptions(top_k, alpha))`
-and returns a numbered string of excerpts the model can quote from.
-
-### The loop
-
-`MossAgentPhoneBridge.run_tool_call` mirrors AgentPhone's reference
-example. `TOOLS` is the schema list, `TOOL_HANDLERS` maps each tool name
-to its handler:
-
-```python
-for _ in range(self.max_tool_iterations):
-    response = await client.messages.create(
-        model=self.model,
-        tools=TOOLS,
-        messages=messages,
-        ...
-    )
-    if response.stop_reason != "tool_use":
-        return _extract_text(response)
-    # otherwise: run the requested tools via TOOL_HANDLERS,
-    # append tool_results, loop
-```
-
-The loop is bounded (`max_tool_iterations=5`) so a misbehaving model
-cannot stall the call.
-
-### Voice response shape
-
-AgentPhone accepts NDJSON in the voice webhook response. Each line is one
-spoken segment:
-
-```
-{"text": "Let me check that for you.", "interim": true}
-{"text": "Refunds are processed within 3 to 5 business days."}
-```
-
-`interim: true` keeps the call open while more lines stream; the final
-line (without `interim`) ends the turn.
-
-### Webhook signature
-
-AgentPhone signs `{timestamp}.{raw_body}` with HMAC-SHA256 using the
-secret returned from `POST /v1/webhooks`. The headers are:
-
-- `X-Webhook-Signature: sha256=<hex>`
-- `X-Webhook-Timestamp: <unix_seconds>`
-- `X-Webhook-ID: <unique_delivery_id>` (use for idempotency)
-- `X-Webhook-Event: <event_type>`
-
-`verify_webhook_signature` recomputes the digest and uses
-`hmac.compare_digest` to avoid timing leaks.
+1. env + clients
+2. system prompt
+3. `TOOLS` schema
+4. `_moss_search` handler + `TOOL_HANDLERS` dict
+5. `run_tool_call` loop (bounded at 5 iterations, exits on
+   `stop_reason != "tool_use"`)
+6. `verify_webhook_signature` (HMAC-SHA256)
+7. FastAPI `/webhook` route: verify, route, stream NDJSON
 
 ## Notes
 
-- The example uses Anthropic Claude for the LLM hop, matching AgentPhone's
-  reference example. Any chat client that exposes a tools-based
-  `messages.create`-shaped API works; the `anthropic_client` parameter on
-  `MossAgentPhoneBridge` is duck-typed.
-- `agent.call_ended` deliveries are acked with `{"ok": true}`. Hook in
-  your own logging or evals there if you want a transcript record.
+- SMS / iMessage are out of scope for this cookbook. AgentPhone replies
+  to text channels through `POST /v1/messages`, not the webhook response
+  body, and US SMS additionally needs 10DLC registration. Voice is the
+  path the AgentPhone reference example shows, and it works without any
+  per-account compliance steps.
+- `recentHistory` from the webhook payload is threaded into Claude's
+  `messages` so the model has prior turns of context. Without this the
+  agent loses memory between turns of the same call.
+- Any chat client that exposes a tools-aware `messages.create`-shaped
+  API works; the cookbook uses `anthropic.AsyncAnthropic` to match
+  AgentPhone's reference example.

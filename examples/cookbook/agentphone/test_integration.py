@@ -1,13 +1,12 @@
-"""Unit tests for the Moss + AgentPhone bridge (no live API calls).
+"""Unit tests for the AgentPhone voice cookbook (no live API calls).
 
-Tests cover:
-
-- HMAC signature verification (accept valid, reject tampered, reject garbage).
-- Tool-calling loop: model asks for moss_search, bridge runs Moss, model
-  produces the final answer using the search result.
-- Tool-calling loop: model can answer directly without calling the tool
-  (e.g. small talk).
-- Voice stream: emits the interim filler line then the final line.
+Tests:
+- HMAC signature verification (accept valid, reject tampered/garbage).
+- Tool-call loop: model asks for ``moss_search``, ``_moss_search`` runs Moss,
+  model produces a grounded final answer using the returned excerpts.
+- Tool-call loop: model can answer directly without calling the tool.
+- ``_to_anthropic_history`` maps ``recentHistory`` into Anthropic messages
+  with correct ``user``/``assistant`` roles.
 
 Run with::
 
@@ -18,60 +17,18 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
+import os
 import unittest
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from moss_agentphone import MossAgentPhoneBridge, verify_webhook_signature
+os.environ.setdefault("MOSS_PROJECT_ID", "test")
+os.environ.setdefault("MOSS_PROJECT_KEY", "test")
+os.environ.setdefault("MOSS_INDEX_NAME", "test-index")
+os.environ.setdefault("ANTHROPIC_API_KEY", "test")
+os.environ.setdefault("AGENTPHONE_WEBHOOK_SECRET", "whsec_test")
 
-
-class WebhookSignatureTests(unittest.TestCase):
-    def test_accepts_valid_signature(self) -> None:
-        secret = "whsec_test"
-        timestamp = "1715760000"
-        body = b'{"event":"agent.message"}'
-        digest = hmac.new(
-            secret.encode(),
-            f"{timestamp}.".encode() + body,
-            hashlib.sha256,
-        ).hexdigest()
-        self.assertTrue(
-            verify_webhook_signature(
-                secret=secret,
-                timestamp=timestamp,
-                body=body,
-                signature=f"sha256={digest}",
-            )
-        )
-
-    def test_rejects_tampered_body(self) -> None:
-        secret = "whsec_test"
-        timestamp = "1715760000"
-        body = b'{"event":"agent.message"}'
-        digest = hmac.new(
-            secret.encode(),
-            f"{timestamp}.".encode() + body,
-            hashlib.sha256,
-        ).hexdigest()
-        self.assertFalse(
-            verify_webhook_signature(
-                secret=secret,
-                timestamp=timestamp,
-                body=b'{"event":"tampered"}',
-                signature=f"sha256={digest}",
-            )
-        )
-
-    def test_rejects_garbage_signature(self) -> None:
-        self.assertFalse(
-            verify_webhook_signature(
-                secret="whsec_test",
-                timestamp="1715760000",
-                body=b"{}",
-                signature="sha256=deadbeef",
-            )
-        )
+import server  # noqa: E402  (env must be set before import)
 
 
 def _text_block(text: str) -> MagicMock:
@@ -89,7 +46,6 @@ def _tool_use_block(
     block.id = tool_id
     block.name = name
     block.input = args
-    block.text = None
     return block
 
 
@@ -100,117 +56,163 @@ def _claude_response(stop_reason: str, content: list[Any]) -> MagicMock:
     return response
 
 
-def _moss_with(docs: list[dict[str, Any]]) -> MagicMock:
-    moss = MagicMock()
-    doc_mocks = [
-        MagicMock(
-            text=d["text"],
-            score=d.get("score"),
-            metadata=d.get("metadata"),
+class WebhookSignatureTests(unittest.TestCase):
+    def test_accepts_valid_signature(self) -> None:
+        secret = "whsec_test"
+        timestamp = "1715760000"
+        body = b'{"event":"agent.message"}'
+        digest = hmac.new(
+            secret.encode(),
+            f"{timestamp}.".encode() + body,
+            hashlib.sha256,
+        ).hexdigest()
+        self.assertTrue(
+            server.verify_webhook_signature(
+                secret=secret,
+                timestamp=timestamp,
+                body=body,
+                signature=f"sha256={digest}",
+            )
         )
-        for d in docs
-    ]
-    moss.query = AsyncMock(return_value=MagicMock(docs=doc_mocks))
-    return moss
 
-
-def _anthropic_client(responses: list[MagicMock]) -> MagicMock:
-    client = MagicMock()
-    client.messages.create = AsyncMock(side_effect=responses)
-    return client
-
-
-class BridgeTests(unittest.IsolatedAsyncioTestCase):
-    async def test_tool_call_then_final_answer(self) -> None:
-        moss = _moss_with(
-            [{"text": "Refunds take 3-5 business days.", "score": 0.91}]
+    def test_rejects_tampered_body(self) -> None:
+        secret = "whsec_test"
+        timestamp = "1715760000"
+        digest = hmac.new(
+            secret.encode(),
+            f"{timestamp}.".encode() + b'{"event":"agent.message"}',
+            hashlib.sha256,
+        ).hexdigest()
+        self.assertFalse(
+            server.verify_webhook_signature(
+                secret=secret,
+                timestamp=timestamp,
+                body=b'{"event":"tampered"}',
+                signature=f"sha256={digest}",
+            )
         )
-        anthropic = _anthropic_client(
+
+    def test_rejects_garbage_signature(self) -> None:
+        self.assertFalse(
+            server.verify_webhook_signature(
+                secret="whsec_test",
+                timestamp="1715760000",
+                body=b"{}",
+                signature="sha256=deadbeef",
+            )
+        )
+
+
+class HistoryMappingTests(unittest.TestCase):
+    def test_maps_directions_to_roles(self) -> None:
+        history = server._to_anthropic_history(
             [
-                _claude_response(
-                    "tool_use",
-                    [
-                        _tool_use_block(
-                            "tu_1",
-                            "moss_search",
-                            {"query": "refund processing time"},
-                        )
-                    ],
-                ),
-                _claude_response(
-                    "end_turn",
-                    [_text_block("Refunds take three to five business days.")],
-                ),
+                {"content": "Hi", "direction": "inbound"},
+                {"content": "Hello, how can I help?", "direction": "outbound"},
             ]
         )
-        bridge = MossAgentPhoneBridge(
-            moss_client=moss,
-            index_name="demo",
-            anthropic_client=anthropic,
-        )
-
-        answer = await bridge.run_tool_call("how long do refunds take?")
-
         self.assertEqual(
-            answer, "Refunds take three to five business days."
+            history,
+            [
+                {"role": "user", "content": "Hi"},
+                {"role": "assistant", "content": "Hello, how can I help?"},
+            ],
         )
-        moss.query.assert_awaited_once()
-        passed_query = moss.query.await_args.args[1]
-        self.assertEqual(passed_query, "refund processing time")
-        # Second turn payload must include the tool_result content.
-        second_call_messages = anthropic.messages.create.await_args_list[1].kwargs[
-            "messages"
+
+    def test_skips_empty_entries(self) -> None:
+        history = server._to_anthropic_history(
+            [{"content": "", "direction": "inbound"}, None] if False else [
+                {"content": "", "direction": "inbound"},
+                {"content": "real", "direction": "outbound"},
+            ]
+        )
+        self.assertEqual(
+            history, [{"role": "assistant", "content": "real"}]
+        )
+
+    def test_empty_input_returns_empty_list(self) -> None:
+        self.assertEqual(server._to_anthropic_history(None), [])
+        self.assertEqual(server._to_anthropic_history([]), [])
+
+
+class RunToolCallTests(unittest.IsolatedAsyncioTestCase):
+    async def test_tool_call_then_final_answer(self) -> None:
+        moss_result = MagicMock(
+            docs=[MagicMock(text="Refunds take 3-5 business days.")]
+        )
+        responses = [
+            _claude_response(
+                "tool_use",
+                [
+                    _tool_use_block(
+                        "tu_1", "moss_search", {"query": "refund processing time"}
+                    )
+                ],
+            ),
+            _claude_response(
+                "end_turn",
+                [_text_block("Refunds take three to five business days.")],
+            ),
         ]
-        tool_result_msg = second_call_messages[-1]
-        self.assertEqual(tool_result_msg["role"], "user")
-        self.assertEqual(tool_result_msg["content"][0]["type"], "tool_result")
+
+        with patch.object(
+            server.moss_client, "query", AsyncMock(return_value=moss_result)
+        ) as moss_query, patch.object(
+            server.anthropic_client.messages,
+            "create",
+            AsyncMock(side_effect=responses),
+        ) as anthropic_create:
+            answer = await server.run_tool_call(
+                "how long do refunds take?", history=[]
+            )
+
+        self.assertEqual(answer, "Refunds take three to five business days.")
+        moss_query.assert_awaited_once()
+        self.assertEqual(
+            moss_query.await_args.args[1], "refund processing time"
+        )
+        # Second call must include the tool_result content.
+        second_messages = anthropic_create.await_args_list[1].kwargs["messages"]
+        self.assertEqual(second_messages[-1]["role"], "user")
+        self.assertEqual(second_messages[-1]["content"][0]["type"], "tool_result")
         self.assertIn(
             "Refunds take 3-5 business days.",
-            tool_result_msg["content"][0]["content"],
+            second_messages[-1]["content"][0]["content"],
         )
 
     async def test_model_can_answer_without_tool(self) -> None:
-        moss = _moss_with([])
-        anthropic = _anthropic_client(
-            [_claude_response("end_turn", [_text_block("Hi! How can I help?")])]
-        )
-        bridge = MossAgentPhoneBridge(
-            moss_client=moss,
-            index_name="demo",
-            anthropic_client=anthropic,
-        )
-
-        answer = await bridge.run_tool_call("hello")
+        responses = [
+            _claude_response("end_turn", [_text_block("Hi! How can I help?")])
+        ]
+        with patch.object(
+            server.moss_client, "query", AsyncMock()
+        ) as moss_query, patch.object(
+            server.anthropic_client.messages,
+            "create",
+            AsyncMock(side_effect=responses),
+        ):
+            answer = await server.run_tool_call("hello", history=[])
 
         self.assertEqual(answer, "Hi! How can I help?")
-        moss.query.assert_not_awaited()
+        moss_query.assert_not_awaited()
 
-    async def test_voice_stream_emits_interim_then_final(self) -> None:
-        moss = _moss_with([])
-        anthropic = _anthropic_client(
-            [
-                _claude_response(
-                    "end_turn",
-                    [_text_block("You can return within thirty days.")],
-                )
-            ]
-        )
-        bridge = MossAgentPhoneBridge(
-            moss_client=moss,
-            index_name="demo",
-            anthropic_client=anthropic,
-        )
+    async def test_history_is_prepended_to_messages(self) -> None:
+        responses = [_claude_response("end_turn", [_text_block("ok")])]
+        history = [
+            {"role": "user", "content": "earlier turn"},
+            {"role": "assistant", "content": "earlier reply"},
+        ]
+        with patch.object(server.moss_client, "query", AsyncMock()), patch.object(
+            server.anthropic_client.messages,
+            "create",
+            AsyncMock(side_effect=responses),
+        ) as anthropic_create:
+            await server.run_tool_call("new turn", history=history)
 
-        chunks: list[dict[str, Any]] = []
-        async for raw in bridge.voice_response_stream("can I return this?"):
-            chunks.append(json.loads(raw.decode().strip()))
-
-        self.assertEqual(len(chunks), 2)
-        self.assertTrue(chunks[0].get("interim"))
-        self.assertNotIn("interim", chunks[1])
-        self.assertEqual(
-            chunks[1]["text"], "You can return within thirty days."
-        )
+        sent = anthropic_create.await_args.kwargs["messages"]
+        self.assertEqual(sent[0], {"role": "user", "content": "earlier turn"})
+        self.assertEqual(sent[1], {"role": "assistant", "content": "earlier reply"})
+        self.assertEqual(sent[2], {"role": "user", "content": "new turn"})
 
 
 if __name__ == "__main__":

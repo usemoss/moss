@@ -9,7 +9,6 @@ source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
     { name = "fastapi" },
-    { name = "httpx" },
     { name = "moss" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
@@ -19,7 +18,6 @@ dependencies = [
 requires-dist = [
     { name = "anthropic", specifier = ">=0.39.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "httpx", specifier = ">=0.27.0" },
     { name = "moss", specifier = ">=1.0.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "uvicorn", specifier = ">=0.30.0" },

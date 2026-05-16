@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentphone-moss-cookbook"
 version = "0.1.0"
-description = "AgentPhone tool-calling webhook cookbook for Moss semantic search"
+description = "AgentPhone voice webhook cookbook for Moss semantic search"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "BSD-2-Clause" }
@@ -17,9 +17,8 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
     "anthropic>=0.39.0",
-    "httpx>=0.27.0",
     "python-dotenv>=1.0.0",
 ]
 
 [tool.setuptools]
-py-modules = ["server", "moss_agentphone", "test_integration"]
+py-modules = ["server", "create_index", "test_integration"]
