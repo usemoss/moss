@@ -1,9 +1,12 @@
 # Moss AgentPhone Cookbook
 
-A single-file webhook server that backs an [AgentPhone](https://agentphone.ai)
-phone number with [Moss](https://moss.dev) semantic search. The model
-runs in a Claude tool-call loop with `moss_search` as the only tool.
-Voice only.
+A small webhook-server cookbook that backs an
+[AgentPhone](https://agentphone.ai) phone number with
+[Moss](https://moss.dev) semantic search. The FastAPI entrypoint is in
+`server.py`, reusable logic (tool schema, tool-call loop, signature
+verification) is in `moss_agentphone.py`, and one-time index setup is
+in `create_index.py`. The model runs in a Claude tool-call loop with
+`moss_search` as the only tool. Voice only.
 
 Mirrors the structure of AgentPhone's reference example:
 [Calls guide - "Example: tool-calling handler"](https://docs.agentphone.ai/documentation/guides/calls).
@@ -69,7 +72,7 @@ PORT=8000
 ```
 
 `AGENTPHONE_WEBHOOK_SECRET` is returned when you register the webhook
-(step 2 of "Wire it up" below).
+(step 1 of "Wire it up" below).
 
 ## Create the demo index (one time)
 
@@ -252,16 +255,22 @@ a tool, and `recentHistory` -> Anthropic-message mapping.
 
 ## How it reads
 
-The whole integration is in `server.py` and reads top-to-bottom:
+`moss_agentphone.py` (reusable, no env side effects):
 
-1. env + clients
-2. system prompt
-3. `TOOLS` schema
-4. `_moss_search` handler + `TOOL_HANDLERS` dict
-5. `run_tool_call` loop (bounded at 5 iterations, exits on
+1. `TOOLS` schema
+2. `verify_webhook_signature` (HMAC-SHA256, with replay window)
+3. `to_anthropic_history` (map AgentPhone `recentHistory` -> Claude messages)
+4. `run_tool_call` loop (bounded at 5 iterations, exits on
    `stop_reason != "tool_use"`)
-6. `verify_webhook_signature` (HMAC-SHA256)
-7. FastAPI `/webhook` route: verify, route, stream NDJSON
+5. NDJSON + Moss-log helpers
+
+`server.py` (FastAPI deployment shell):
+
+1. env + clients (`MossClient`, `AsyncAnthropic`)
+2. `SYSTEM_PROMPT`
+3. `_moss_search` tool handler + `TOOL_HANDLERS` dict
+4. `lifespan` hook (pre-load the Moss index)
+5. `/webhook` route: verify signature, route by channel, stream NDJSON
 
 ## Notes
 
