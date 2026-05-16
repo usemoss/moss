@@ -32,12 +32,14 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+import httpx
 from moss import MossClient, QueryOptions
 
 __all__ = [
     "TOOLS",
     "verify_webhook_signature",
     "MossAgentPhoneBridge",
+    "AgentPhoneAPI",
 ]
 
 logger = logging.getLogger(__name__)
@@ -213,6 +215,55 @@ class MossAgentPhoneBridge:
     @staticmethod
     def _ndjson(payload: dict[str, Any]) -> bytes:
         return (json.dumps(payload) + "\n").encode()
+
+
+class AgentPhoneAPI:
+    """Minimal async client for AgentPhone outbound calls.
+
+    SMS, MMS, and iMessage replies are not sent through the webhook
+    response body - the handler must call ``POST /v1/messages`` to deliver
+    the reply. Voice is the only channel where the webhook response body
+    drives the spoken turn.
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        base_url: str = "https://api.agentphone.ai",
+        timeout: float = 30.0,
+    ) -> None:
+        self._client = httpx.AsyncClient(
+            base_url=base_url,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=timeout,
+        )
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    async def send_message(
+        self,
+        *,
+        agent_id: str,
+        to_number: str,
+        body: str,
+        number_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Send an SMS / iMessage reply via ``POST /v1/messages``."""
+        payload: dict[str, Any] = {
+            "agent_id": agent_id,
+            "to_number": to_number,
+            "body": body,
+        }
+        if number_id:
+            payload["number_id"] = number_id
+        response = await self._client.post("/v1/messages", json=payload)
+        response.raise_for_status()
+        return response.json()
 
 
 def _extract_text(response: Any) -> str:

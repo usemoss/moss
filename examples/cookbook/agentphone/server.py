@@ -36,7 +36,11 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from moss import DocumentInfo, MossClient
 
-from moss_agentphone import MossAgentPhoneBridge, verify_webhook_signature
+from moss_agentphone import (
+    AgentPhoneAPI,
+    MossAgentPhoneBridge,
+    verify_webhook_signature,
+)
 
 logger = logging.getLogger("moss_agentphone.server")
 logging.basicConfig(level=logging.INFO)
@@ -52,6 +56,7 @@ def _require_env(name: str) -> str:
 load_dotenv()
 
 WEBHOOK_SECRET = _require_env("AGENTPHONE_WEBHOOK_SECRET")
+AGENTPHONE_API_KEY = _require_env("AGENTPHONE_API_KEY")
 INDEX_NAME = _require_env("MOSS_INDEX_NAME")
 
 moss_client = MossClient(
@@ -64,6 +69,7 @@ bridge = MossAgentPhoneBridge(
     anthropic_client=AsyncAnthropic(api_key=_require_env("ANTHROPIC_API_KEY")),
     model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
 )
+agentphone_api = AgentPhoneAPI(api_key=AGENTPHONE_API_KEY)
 
 DEMO_DOCS = [
     DocumentInfo(
@@ -142,8 +148,26 @@ async def webhook(
         )
 
     if event_type == "agent.message" and channel in {"sms", "mms", "imessage"}:
-        message = (event.get("data") or {}).get("message", "")
-        return {"text": await bridge.run_tool_call(message)}
+        data = event.get("data") or {}
+        agent_id = event.get("agentId")
+        message = data.get("message", "")
+        from_number = data.get("from")
+        number_id = data.get("numberId")
+
+        answer = await bridge.run_tool_call(message)
+
+        if agent_id and from_number:
+            await agentphone_api.send_message(
+                agent_id=agent_id,
+                to_number=from_number,
+                body=answer,
+                number_id=number_id,
+            )
+        else:
+            logger.warning(
+                "missing agentId or from on inbound %s; cannot reply", channel
+            )
+        return {"ok": True}
 
     # agent.call_ended, agent.reaction, etc.: ack and move on.
     return {"ok": True}
