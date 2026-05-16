@@ -14,20 +14,42 @@ Mirrors the structure of AgentPhone's reference example:
 ## Call flow
 
 ```
-   caller
-     |
-     | speaks
-     v
-  AgentPhone   --(signed webhook)-->   server.py
-   ^                                       |
-   |                                       | run_tool_call(transcript, history)
-   |                                       |    Claude --(tool_use)--> moss_search --> Moss
-   |                                       |    Claude <-(tool_result)
-   |                                       v
-   |                                  NDJSON streamed back
-   |
-   speaks reply
+    +----------+        1. speech         +------------+
+    |  caller  |  <-------------------->  | AgentPhone |
+    +----------+        8. reply          +------------+
+                                                |
+                                         2. POST /webhook
+                                         (signed, transcript)
+                                                v
+                                         +-----------------+
+                                         |    server.py    |
+                                         |  FastAPI route  |
+                                         +-----------------+
+                                           |             ^
+                                 3. messages.create      |
+                                 + tools=[moss_search]   |
+                                           v             |
+                                         +--------+      |
+                                         | Claude |      | 7. NDJSON
+                                         +--------+      |    {type:"message"}
+                                           |    ^        |
+                                 4. tool_use    |        |
+                                 moss_search    | 6. final text
+                                           v    |        |
+                                         +-----------------+
+                                         |   moss_search   |
+                                         |    handler      |
+                                         +-----------------+
+                                                |
+                                         5. semantic search
+                                                v
+                                         +-----------------+
+                                         |   Moss index    |
+                                         +-----------------+
 ```
+
+Small talk skips steps 4-5: Claude returns text on the first
+`messages.create`, and the server streams it straight back as NDJSON.
 
 ## Why this shape
 
