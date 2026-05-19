@@ -41,8 +41,9 @@ def _register_moss_commands() -> None:
 
 try:
     _register_moss_commands()
-except Exception:
+except ImportError:
     pass  # moss SDK unavailable; SDK-dependent commands will be absent
+
 
 
 @app.callback()
