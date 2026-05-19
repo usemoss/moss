@@ -23,7 +23,7 @@
     },
     {
       "parameters": {
-        "functionCode": "// Initialize Moss N8N Helper\n// Replace with your actual project ID and key\nconst projectId = \"your-project-id\";\nconst projectKey = \"your-project-key\";\n\n// This would normally be done in a Function node\n// For demo purposes, we're just returning the config\nreturn [{\n  projectId,\n  projectKey\n}];"
+        "functionCode": "// Initialize Moss N8N Helper\n// Read credentials from n8n environment variables instead of hardcoding them in the workflow\nconst projectId = process.env.MOSS_PROJECT_ID;\nconst projectKey = process.env.MOSS_PROJECT_KEY;\n\nif (!projectId || !projectKey) {\n  throw new Error('Missing Moss configuration. Set MOSS_PROJECT_ID and MOSS_PROJECT_KEY as environment variables in n8n.');\n}\n\n// This would normally be done in a Function node\n// For demo purposes, we're just returning the config\nreturn [{\n  projectId,\n  projectKey\n}];"
       },
       "name": "Moss Config",
       "type": "n8n-nodes-base.function",

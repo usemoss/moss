@@ -1,5 +1,5 @@
 import { MossClient } from '@moss-dev/moss';
-import type { MutationResult, JobStatusResponse } from '@moss-dev/moss-core';
+
 
 // Moss N8N Helper - Wrapper around Moss SDK for use in n8n workflows
 // This helper provides easy-to-use functions for the four core Moss operations:
@@ -7,6 +7,12 @@ import type { MutationResult, JobStatusResponse } from '@moss-dev/moss-core';
 // - addDocs: Upsert documents into an index
 // - deleteDocs: Remove documents by ID
 // - query: Run semantic/hybrid search queries
+type MossDocumentInput = {
+    id: string;
+    text: string;
+    metadata?: Record<string, any>;
+    embedding?: number[];
+};
 
 /**
  * MossN8NHelper - Wrapper for Moss SDK optimized for n8n usage
@@ -30,14 +36,11 @@ export class MossN8NHelper {
    * @param options - Optional configuration (modelId, onProgress callback)
    * @returns Promise resolving to the creation result with job info
    */
+  
+  
   async createIndex(
     indexName: string,
-    docs: Array<{
-      id: string;
-      text: string;
-      metadata?: Record<string, any>;
-      embedding?: number[];
-    }>,
+    docs: MossDocumentInput[],
     options?: {
       modelId?: string;
       onProgress?: (jobProgress: { status: string; progress: number; currentPhase?: string }) => void;
@@ -52,7 +55,9 @@ export class MossN8NHelper {
       id: doc.id,
       text: doc.text,
       ...(doc.metadata && { metadata: doc.metadata }),
-      ...(doc.embedding && { embedding: doc.embedding })
+      ...((doc.embedding?.length ?? 0) > 0 && {
+        embedding: doc.embedding
+      })
     }));
 
     // Call the SDK method which returns MutationResult
@@ -93,11 +98,18 @@ export class MossN8NHelper {
     docCount: number;
   }> {
     // Convert to Moss DocumentInfo format
-    const mossDocs = docs.map(doc => ({
+    const mossDocs = docs.map((doc: {
+      id: string;
+      text: string;
+      metadata?: Record<string, any>;
+      embedding?: number[];
+    }) => ({
       id: doc.id,
       text: doc.text,
       ...(doc.metadata && { metadata: doc.metadata }),
-      ...(doc.embedding && { embedding: doc.embedding })
+      ...((doc.embedding?.length ?? 0) > 0 && {
+        embedding: doc.embedding
+      })
     }));
 
     // Call the SDK method which returns MutationResult
@@ -207,18 +219,17 @@ export class MossN8NHelper {
       status: status.status,
       progress: status.progress,
       currentPhase: status.currentPhase?.toString(),
-      error: status.error
+      error: status.error ?? undefined
     };
   }
 
   /**
    * Close the client and release resources
-   * Note: MossClient doesn't have a dispose() method, but we can clean up references
+   * Note: MossClient doesn't expose a public close()/dispose() API, so this is a no-op.
+   * The helper remains usable after calling close().
    */
   close(): void {
-    // In JavaScript, we just nullify the reference to allow garbage collection
-    // The actual cleanup happens internally in the MossClient
-    (this as any).client = null;
+    // No-op: do not invalidate `this.client` by nulling it out.
   }
 }
 
