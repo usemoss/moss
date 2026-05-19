@@ -97,6 +97,7 @@ asks for an experimental landing spot.
 | `haystack/` | Haystack | `MossDocumentStore` and `MossRetriever` drop-in components for Haystack RAG pipelines |
 | `langchain/` | LangChain | `MossRetriever` (BaseRetriever) + `get_moss_tool()` factory; the canonical pattern for new Python cookbook integrations |
 | `mastra/` | Mastra | Moss wrapped as a `createTool()` primitive for Mastra conversational agents (TypeScript) |
+| `sim/` | sim.ai | FastAPI webhook server exposing Moss as an external HTTP tool for sim.ai workflows |
 | `moss-cognee-daytona/` | Claude Code + Cognee + Daytona | Three Claude Code agents share a persistent Cognee memory graph backed by Moss, each running in an isolated Daytona sandbox |
 
 ### Voice Agent Apps (`apps/`)
@@ -133,6 +134,7 @@ asks for an experimental landing spot.
 | `moss-connector-supabase/` | `moss-connector-supabase` | Sync Supabase tables → Moss index via PostgREST |
 | `moss-md-indexer/` | `moss-md-indexer` | Parse Markdown docs, chunk, upload to Moss (used by VitePress plugin) |
 | `pipecat-moss/` | `pipecat-moss` | `MossPipecatTool` — retrieval tool for Pipecat pipeline services |
+| `sim-moss/` | `sim-moss` | `MossSimSearch` — knowledge base adapter for sim.ai workflow HTTP tool nodes |
 | `strands-agents-moss/` | `strands-agents-moss` | Moss tool for AWS Strands Agents |
 | `vapi-moss/` | `vapi-moss` | `MossVapiSearch` adapter + HMAC webhook verification for VAPI |
 | `vercel-sdk/` | `@moss-tools/vercel-sdk` | Vercel AI SDK 6 `tool()` wrappers: search, create index, manage documents |
