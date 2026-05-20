@@ -1,0 +1,5 @@
+[project]
+name = "moss-e2b-sample-ledger"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Tiny broken project used by the Moss + E2B cookbook"

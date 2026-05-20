@@ -147,6 +147,7 @@ examples/
     ├── autogen/             # AutoGen integration
     ├── mastra/              # Mastra retriever
     ├── pydantic-ai/         # Pydantic AI integration
+    ├── e2b/                 # E2B sandbox example
     └── daytona/             # Daytona sandbox example
 
 apps/
@@ -220,6 +221,7 @@ Full API reference: [docs.moss.dev](https://docs.moss.dev).
 | [Haystack](https://github.com/deepset-ai/haystack) | Available | [`examples/cookbook/haystack/`](examples/cookbook/haystack/) |
 | [Mastra](https://mastra.ai) | Available | [`examples/cookbook/mastra/`](examples/cookbook/mastra/) |
 | [Pydantic AI](https://ai.pydantic.dev) | Available | [`examples/cookbook/pydantic-ai/`](examples/cookbook/pydantic-ai/) |
+| [E2B](https://e2b.dev) | Available | [`examples/cookbook/e2b/`](examples/cookbook/e2b/) |
 | [Pipecat](https://github.com/pipecat-ai/pipecat) | Available | [`apps/pipecat-moss/`](apps/pipecat-moss/) |
 | [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
 | [Vapi](https://vapi.ai) | Available | [`apps/vapi-moss/`](apps/vapi-moss/) |
