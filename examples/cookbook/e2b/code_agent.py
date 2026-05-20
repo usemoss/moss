@@ -174,7 +174,9 @@ async def run_code_repair(args: argparse.Namespace) -> bool:
             alpha=args.alpha,
         )
         context = format_search_results(hits)
-        paths = [getattr(hit, "metadata", {}).get("path", hit.id) for hit in hits]
+        paths = [
+            (getattr(hit, "metadata", {}) or {}).get("path", hit.id) for hit in hits
+        ]
         print("\nMoss retrieved:")
         for path in paths:
             print(f"  - {path}")
