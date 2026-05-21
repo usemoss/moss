@@ -6,7 +6,8 @@
   "description": "Vercel AI SDK integration for Moss semantic search",
   "scripts": {
     "create-index": "tsx create_index.ts",
-    "start": "tsx example_usage.ts"
+    "start": "tsx example_usage.ts",
+    "test": "tsx --test test_vercel.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.0",
