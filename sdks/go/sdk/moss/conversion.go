@@ -31,6 +31,19 @@ func toDocumentInfo(value internal.DocumentInfoResponse) DocumentInfo {
 	}
 }
 
+func toDocumentInfoResponses(values []DocumentInfo) []internal.DocumentInfoResponse {
+	out := make([]internal.DocumentInfoResponse, 0, len(values))
+	for _, value := range values {
+		out = append(out, internal.DocumentInfoResponse{
+			ID:        value.ID,
+			Text:      value.Text,
+			Metadata:  value.Metadata,
+			Embedding: value.Embedding,
+		})
+	}
+	return out
+}
+
 func toSearchResult(value internal.SearchResultResponse) SearchResult {
 	docs := make([]QueryResultDocumentInfo, 0, len(value.Docs))
 	for _, item := range value.Docs {
@@ -47,6 +60,25 @@ func toSearchResult(value internal.SearchResultResponse) SearchResult {
 		Query:       value.Query,
 		IndexName:   value.IndexName,
 		TimeTakenMs: value.TimeTakenMs,
+	}
+}
+
+func toJobStatusResponse(value internal.JobStatusResponse) JobStatusResponse {
+	var currentPhase *JobPhase
+	if value.CurrentPhase != nil {
+		phase := JobPhase(*value.CurrentPhase)
+		currentPhase = &phase
+	}
+
+	return JobStatusResponse{
+		JobID:        value.JobID,
+		Status:       JobStatus(value.Status),
+		Progress:     value.Progress,
+		CurrentPhase: currentPhase,
+		Error:        value.Error,
+		CreatedAt:    value.CreatedAt,
+		UpdatedAt:    value.UpdatedAt,
+		CompletedAt:  value.CompletedAt,
 	}
 }
 

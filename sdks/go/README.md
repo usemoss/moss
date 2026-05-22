@@ -1,23 +1,19 @@
 # Moss Go SDK
 
-This directory contains the in-progress Go SDK for Moss.
+The Go SDK is currently implemented as a cloud-first, pure-Go client.
 
-The first implementation track is intentionally:
+Current status:
 
-- pure Go
-- cloud-first
-- compatible with the public repository
+- typed client and models
+- cloud reads (`GetIndex`, `ListIndexes`, `GetDocs`, `DeleteIndex`)
+- cloud query (`Query`)
+- cloud mutations (`CreateIndex`, `AddDocs`, `DeleteDocs`, `GetJobStatus`)
+- unit tests
 
-Current scope:
+Current limitations:
 
-- typed client construction
-- cloud index metadata reads
-- cloud document reads
-- cloud query
+- no local `LoadIndex` / `UnloadIndex`
+- no in-memory query runtime
+- no local metadata-filtered query parity
 
-Deferred follow-up work:
-
-- mutation flows (`CreateIndex`, `AddDocs`, `DeleteDocs`, `GetJobStatus`)
-- examples
-- integration tests
-- local runtime loading/query parity
+The Go module itself lives under [`sdks/go/sdk/`](./sdk/).
