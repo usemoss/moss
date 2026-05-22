@@ -15,24 +15,32 @@ import MossC
 /// let result = try await client.query("docs", "vector search on mobile")
 /// ```
 public final class MossClient: @unchecked Sendable {
-    /// Opaque pointer to the native MossClient. C side uses `MossClient *`,
-    /// which Swift imports as `OpaquePointer?` because the struct is opaque.
-    /// Mutated only behind `handleLock`; once nil, the handle has been freed
-    /// and any subsequent native-side call is rejected at the requireHandle
-    /// boundary.
+    /// Opaque pointer to the native MossClient. Mutated only behind
+    /// `stateCond`; access from outside the lock is unsafe because a
+    /// concurrent `close()` could free it. Operations borrow it via
+    /// `borrowHandle()` which both reads it and increments `inFlight` in
+    /// a single critical section.
     private var handle: OpaquePointer?
     /// Authenticator-backed clients retain an opaque pointer to an
     /// `AuthenticatorBox` (`Unmanaged.passRetained`) as the native side's
-    /// user_data. `close()` releases it once.
+    /// user_data. `close()` releases it once, after the in-flight count
+    /// has drained.
     private var authUserData: UnsafeMutableRawPointer?
-    /// Serializes mutations to `handle` / `authUserData` so a concurrent
-    /// close() can't free state out from under an in-flight operation that
-    /// has already captured the handle.
-    private let handleLock = NSLock()
+    /// Number of operations that have called `borrowHandle()` but not yet
+    /// `returnHandle()`. `close()` waits on `stateCond` until this drops
+    /// to zero before freeing the native handle, so an in-flight call
+    /// never operates on a freed pointer.
+    private var inFlight: Int = 0
+    /// Once true, no new `borrowHandle()` succeeds. Set by `close()`
+    /// before it begins waiting for `inFlight` to drain.
+    private var closed: Bool = false
+    /// Mutex + condition variable guarding `handle`, `authUserData`,
+    /// `inFlight`, and `closed`. `close()` signals here when ops finish.
+    private let stateCond = NSCondition()
 
     /// Construct a client backed by a static project key.
     public init(projectId: String, projectKey: String) throws {
-        Self.ensureModelCacheDir()
+        try Self.ensureModelCacheDir()
         var raw: OpaquePointer?
         let r = projectId.withCString { pid in
             projectKey.withCString { pkey in
@@ -47,7 +55,7 @@ public final class MossClient: @unchecked Sendable {
 
     /// Construct a client whose bearer tokens come from [authenticator].
     public init(projectId: String, authenticator: any Authenticator, baseUrl: String? = nil) throws {
-        Self.ensureModelCacheDir()
+        try Self.ensureModelCacheDir()
         let box = AuthenticatorBox(authenticator)
         // Retain the box and pass its raw pointer as user_data. The native
         // side stores it for the client's lifetime. `close()` releases the
@@ -81,17 +89,30 @@ public final class MossClient: @unchecked Sendable {
 
     deinit { close() }
 
-    /// Free the underlying native handle and any authenticator box. Idempotent.
+    /// Free the underlying native handle and any authenticator box.
+    ///
+    /// Idempotent. Safe to call concurrently with in-flight operations:
+    /// the call blocks until every borrowed handle is returned, then
+    /// frees. After `close()` returns, every further operation throws
+    /// `MossError(-1, "MossClient already closed")`.
     public func close() {
-        handleLock.lock(); defer { handleLock.unlock() }
-        if let h = handle {
-            moss_client_free(h)
-            handle = nil
+        stateCond.lock()
+        if closed {
+            stateCond.unlock()
+            return
         }
-        if let ud = authUserData {
-            Unmanaged<AuthenticatorBox>.fromOpaque(ud).release()
-            authUserData = nil
+        closed = true
+        while inFlight > 0 {
+            stateCond.wait()
         }
+        let h = handle
+        handle = nil
+        let ud = authUserData
+        authUserData = nil
+        stateCond.unlock()
+
+        if let h { moss_client_free(h) }
+        if let ud { Unmanaged<AuthenticatorBox>.fromOpaque(ud).release() }
     }
 
     public static var sdkVersion: String {
@@ -121,22 +142,22 @@ public final class MossClient: @unchecked Sendable {
     /// caller has overridden it via `setModelCacheDir`. The native default
     /// home-directory lookup doesn't resolve inside an iOS app sandbox, so
     /// without this hook the first `loadIndex` / `query` would fail with
-    /// `ErrModel`.
-    private static func ensureModelCacheDir() {
+    /// a much less actionable `ErrModel`.
+    private static func ensureModelCacheDir() throws {
         cacheDirLock.lock(); defer { cacheDirLock.unlock() }
         if cacheDirConfigured { return }
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
-        guard let cacheRoot = caches.first else { return }
+        guard let cacheRoot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            throw MossError(code: -7, message: "could not locate <Library/Caches> for model cache")
+        }
         let dir = cacheRoot.appendingPathComponent("moss-models", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         } catch {
-            return
+            throw MossError(code: -7, message: "could not create model cache directory at \(dir.path): \(error.localizedDescription)")
         }
         let r = dir.path.withCString { ptr in moss_set_model_cache_dir(ptr) }
-        if r == 0 {
-            cacheDirConfigured = true
-        }
+        try throwIfErr(r)
+        cacheDirConfigured = true
     }
 
     /// Guards `cacheDirConfigured` against races between `setModelCacheDir`
@@ -147,12 +168,10 @@ public final class MossClient: @unchecked Sendable {
     // ── Operations ───────────────────────────────────────────────────
 
     public func loadIndex(_ name: String, options: LoadIndexOptions = LoadIndexOptions()) async throws {
-        let h = try requireHandle()
         let opts = options
-        // throwIfErr must run on the same thread as the C call — moss_last_error
-        // is thread-local, so reading it after the Task.detached resumption
-        // would land on the wrong thread and lose the message.
         try await Task.detached { [self] in
+            let h = try borrowHandle()
+            defer { returnHandle() }
             try name.withCString { cname in
                 try withOptionalCString(opts.cachePath) { cachePath in
                     var nativeOpts = MossLoadIndexOptions(
@@ -170,8 +189,9 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func unloadIndex(_ name: String) async throws {
-        let h = try requireHandle()
         try await Task.detached { [self] in
+            let h = try borrowHandle()
+            defer { returnHandle() }
             try name.withCString { cname in
                 let r = moss_client_unload_index(h, cname)
                 try Self.throwIfErr(r)
@@ -184,16 +204,16 @@ public final class MossClient: @unchecked Sendable {
         _ query: String,
         options: QueryOptions = QueryOptions()
     ) async throws -> SearchResult {
-        let h = try requireHandle()
         let opts = options
-        // Validate topK here so `UInt(opts.topK)` below doesn't trap on
-        // negatives — defensive against caller error since topK is a
-        // signed Int in the public API.
+        // Validate topK eagerly so the caller gets a descriptive error
+        // instead of `UInt(opts.topK)` trapping on negatives.
         guard opts.topK >= 0 else {
             throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
         }
         return try await Task.detached { [self] () throws -> SearchResult in
-            try indexName.withCString { iname in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try indexName.withCString { iname in
                 try query.withCString { q in
                     try withOptionalCString(opts.filterJson) { filter in
                         var nativeOpts = MossQueryOptions(
@@ -216,9 +236,10 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func deleteIndex(_ name: String) async throws -> Bool {
-        let h = try requireHandle()
-        return try await Task.detached { [self] () throws -> Bool in
-            try name.withCString { (cname: UnsafePointer<CChar>) throws -> Bool in
+        try await Task.detached { [self] () throws -> Bool in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try name.withCString { (cname: UnsafePointer<CChar>) throws -> Bool in
                 var deleted: Bool = false
                 let r = moss_client_delete_index(h, cname, &deleted)
                 try Self.throwIfErr(r)
@@ -228,9 +249,10 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func getIndex(_ name: String) async throws -> IndexInfo {
-        let h = try requireHandle()
-        return try await Task.detached { [self] () throws -> IndexInfo in
-            try name.withCString { cname in
+        try await Task.detached { [self] () throws -> IndexInfo in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try name.withCString { cname in
                 var info: UnsafeMutablePointer<MossIndexInfo>?
                 let r = moss_client_get_index(h, cname, &info)
                 try Self.throwIfErr(r)
@@ -242,8 +264,9 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func listIndexes() async throws -> [IndexInfo] {
-        let h = try requireHandle()
-        return try await Task.detached { [self] () throws -> [IndexInfo] in
+        try await Task.detached { [self] () throws -> [IndexInfo] in
+            let h = try borrowHandle()
+            defer { returnHandle() }
             var infos: UnsafeMutablePointer<MossIndexInfo>?
             var count: UInt = 0
             let r = moss_client_list_indexes(h, &infos, &count)
@@ -261,9 +284,10 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func refreshIndex(_ name: String) async throws -> RefreshResult {
-        let h = try requireHandle()
-        return try await Task.detached { [self] () throws -> RefreshResult in
-            try name.withCString { cname in
+        try await Task.detached { [self] () throws -> RefreshResult in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try name.withCString { cname in
                 var result: UnsafeMutablePointer<MossRefreshResult>?
                 let r = moss_client_refresh_index(h, cname, &result)
                 try Self.throwIfErr(r)
@@ -281,9 +305,10 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func getJobStatus(_ jobId: String) async throws -> JobStatus {
-        let h = try requireHandle()
-        return try await Task.detached { [self] () throws -> JobStatus in
-            try jobId.withCString { cjob in
+        try await Task.detached { [self] () throws -> JobStatus in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try jobId.withCString { cjob in
                 var result: UnsafeMutablePointer<MossJobStatusResponse>?
                 let r = moss_client_get_job_status(h, cjob, &result)
                 try Self.throwIfErr(r)
@@ -309,10 +334,11 @@ public final class MossClient: @unchecked Sendable {
         docs: [DocumentInfo],
         modelId: String? = nil
     ) async throws -> MutationResult {
-        let h = try requireHandle()
         let docsJson = try Self.encodeJson(docs)
         return try await Task.detached { [self] () throws -> MutationResult in
-            try name.withCString { cname in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try name.withCString { cname in
                 try docsJson.withCString { cdocs in
                     try withOptionalCString(modelId) { cmodel in
                         var out: UnsafeMutablePointer<CChar>?
@@ -332,10 +358,11 @@ public final class MossClient: @unchecked Sendable {
         docs: [DocumentInfo],
         upsert: Bool = true
     ) async throws -> MutationResult {
-        let h = try requireHandle()
         let docsJson = try Self.encodeJson(docs)
         return try await Task.detached { [self] () throws -> MutationResult in
-            try name.withCString { cname in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try name.withCString { cname in
                 try docsJson.withCString { cdocs in
                     var out: UnsafeMutablePointer<CChar>?
                     let r = moss_client_add_docs_from_json(h, cname, cdocs, upsert, &out)
@@ -349,10 +376,11 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func getDocs(_ name: String, docIds: [String]? = nil) async throws -> [DocumentInfo] {
-        let h = try requireHandle()
         let idsJson: String? = try docIds.map { try Self.encodeJson($0) }
         return try await Task.detached { [self] () throws -> [DocumentInfo] in
-            try name.withCString { cname in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try name.withCString { cname in
                 try withOptionalCString(idsJson) { cids in
                     var out: UnsafeMutablePointer<CChar>?
                     let r = moss_client_get_docs_json(h, cname, cids, &out)
@@ -372,10 +400,14 @@ public final class MossClient: @unchecked Sendable {
     /// `UIApplication.didReceiveMemoryWarningNotification`. Returns the
     /// number of indexes that were unloaded.
     public func onMemoryPressure(_ level: MemoryPressureLevel = .critical) async throws -> Int {
-        let h = try requireHandle()
         let levelRaw = level.rawValue
         return try await Task.detached { [self] () throws -> Int in
+            let h = try borrowHandle()
+            defer { returnHandle() }
             var unloaded: Int = 0
+            // `MossMemoryPressure` is the same cbindgen-generated enum/typedef
+            // pair as `MossResult` — pass the raw UInt8 value to avoid the
+            // ambiguous-type lookup error.
             let r = moss_client_release_memory(h, levelRaw, &unloaded)
             try Self.throwIfErr(r)
             return unloaded
@@ -383,11 +415,12 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func deleteDocs(_ name: String, docIds: [String]) async throws -> MutationResult {
-        let h = try requireHandle()
-        return try await Task.detached { [self] () throws -> MutationResult in
+        try await Task.detached { [self] () throws -> MutationResult in
+            let h = try borrowHandle()
+            defer { returnHandle() }
             // Build a const-char-pointer array; the C function takes
             // `const char *const *` plus a count.
-            try name.withCString { cname in
+            return try name.withCString { cname in
                 try withCStringArray(docIds) { ptrs in
                     var result: UnsafeMutablePointer<MossMutationResult>?
                     let r = moss_client_delete_docs(h, cname, ptrs, UInt(docIds.count), &result)
@@ -407,14 +440,32 @@ public final class MossClient: @unchecked Sendable {
 
     // ── Internals ────────────────────────────────────────────────────
 
-    private func requireHandle() throws -> OpaquePointer {
-        guard let h = handle else {
+    /// Reserve the native handle for the duration of a single operation.
+    /// Increments `inFlight` so a concurrent `close()` blocks until the
+    /// matching `returnHandle()` runs. Must be paired with exactly one
+    /// `returnHandle()` (use `defer`).
+    private func borrowHandle() throws -> OpaquePointer {
+        stateCond.lock()
+        defer { stateCond.unlock() }
+        guard !closed, let h = handle else {
             throw MossError(code: -1, message: "MossClient already closed")
         }
+        inFlight += 1
         return h
     }
 
-    /// `MossResult` is emitted as both an `enum` and a separate
+    /// Release a handle reservation taken with `borrowHandle()`. Wakes a
+    /// waiting `close()` when `inFlight` drops to zero.
+    private func returnHandle() {
+        stateCond.lock()
+        defer { stateCond.unlock() }
+        inFlight -= 1
+        if inFlight == 0 {
+            stateCond.broadcast()
+        }
+    }
+
+    /// `MossResult` is emitted by cbindgen as both an `enum` and a separate
     /// `typedef int32_t MossResult`, which Swift sees as ambiguous. We treat
     /// the value as a raw `Int32` and compare against the well-known OK == 0
     /// constant from the C header.
@@ -455,6 +506,11 @@ public final class MossClient: @unchecked Sendable {
     }
 
     fileprivate static func decodeMutationResult(_ json: String) throws -> MutationResult {
+        // The JSON-returning C entry points (moss_client_create_index_from_json,
+        // moss_client_add_docs_from_json) emit MutationResult with camelCase
+        // keys: { "jobId", "indexName", "docCount" }. If the native layer's
+        // serialization format ever changes, the JSONDecoder call below will
+        // throw with a clear "keyNotFound" error.
         struct Wire: Decodable {
             let jobId: String
             let indexName: String
@@ -473,24 +529,45 @@ public final class MossClient: @unchecked Sendable {
                 let d = buf.advanced(by: i).pointee
                 docs.append(
                     QueryResult(
-                        id: d.id.flatMap { String(cString: $0) } ?? "",
+                        id: cstr(d.id),
                         score: d.score,
-                        text: d.text.flatMap { String(cString: $0) } ?? ""
+                        text: cstr(d.text),
+                        metadata: parseMetadata(d.metadata, count: d.metadata_count)
                     )
                 )
             }
         }
         return SearchResult(
             docs: docs,
-            query: r.query.flatMap { String(cString: $0) } ?? "",
+            query: cstr(r.query),
             timeMs: r.time_taken_ms
         )
+    }
+
+    /// Decode a `MossMetadataEntry *` array into a `[String: String]`.
+    /// Drops entries with NULL keys (which the native side shouldn't emit
+    /// but we defend against). NULL `entries` or `count == 0` returns nil
+    /// so the optional `QueryResult.metadata` is empty rather than `[:]`.
+    private static func parseMetadata(
+        _ entries: UnsafeMutablePointer<MossMetadataEntry>?,
+        count: UInt
+    ) -> [String: String]? {
+        guard let entries, count > 0 else { return nil }
+        var out: [String: String] = [:]
+        let n = Int(count)
+        out.reserveCapacity(n)
+        for i in 0..<n {
+            let e = entries.advanced(by: i).pointee
+            guard let keyPtr = e.key else { continue }
+            out[String(cString: keyPtr)] = cstr(e.value)
+        }
+        return out.isEmpty ? nil : out
     }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-/// Trampoline matching `MossAuthNotifyFn` in the C header:
+/// Trampoline matching `MossAuthNotifyFn` in libmoss.h:
 ///   typedef void (*MossAuthNotifyFn)(uint32_t request_id, void *user_data);
 ///
 /// Lives here (not in Authenticator.swift) because Swift's eager linker
@@ -521,20 +598,32 @@ func withOptionalCString<R>(_ s: String?, _ body: (UnsafePointer<CChar>?) throws
     }
 }
 
-/// Build a `const char *const *` array of NUL-terminated copies of `strings`,
-/// hand it to `body`, then free everything. Used for C functions that take
-/// arrays of strings (e.g. `moss_client_delete_docs`).
+/// Build a `const char *const *` array of NUL-terminated UTF-8 copies of
+/// `strings`, hand it to `body`, then free everything. Used for C
+/// functions that take arrays of strings (e.g. `moss_client_delete_docs`).
+///
+/// Allocates with Swift's `UnsafeMutablePointer.allocate`, which traps on
+/// failure rather than returning nil — so the produced pointer array is
+/// always fully populated by the time `body` runs.
 @inline(__always)
 func withCStringArray<R>(
     _ strings: [String],
     _ body: (UnsafePointer<UnsafePointer<CChar>?>) throws -> R
 ) rethrows -> R {
-    let copies = strings.map { strdup($0) }
-    defer { copies.forEach { free($0) } }
-    let ptrs = UnsafeMutablePointer<UnsafePointer<CChar>?>.allocate(capacity: copies.count)
+    let buffers: [UnsafeMutablePointer<CChar>] = strings.map { s in
+        let utf8 = Array(s.utf8)
+        let buf = UnsafeMutablePointer<CChar>.allocate(capacity: utf8.count + 1)
+        for (i, b) in utf8.enumerated() {
+            buf[i] = CChar(bitPattern: b)
+        }
+        buf[utf8.count] = 0
+        return buf
+    }
+    defer { buffers.forEach { $0.deallocate() } }
+    let ptrs = UnsafeMutablePointer<UnsafePointer<CChar>?>.allocate(capacity: buffers.count)
     defer { ptrs.deallocate() }
-    for (i, c) in copies.enumerated() {
-        ptrs[i] = UnsafePointer(c)
+    for (i, b) in buffers.enumerated() {
+        ptrs[i] = UnsafePointer(b)
     }
     return try body(ptrs)
 }

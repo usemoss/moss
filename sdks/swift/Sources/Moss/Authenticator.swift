@@ -4,9 +4,27 @@ import MossC
 /// Implement to inject a custom auth flow into [MossClient].
 ///
 /// The native runtime calls [getAuthHeader] whenever it needs a fresh bearer
-/// token. Implementations typically fetch from a server endpoint and cache.
+/// token for an outbound request. Implementations typically fetch the token
+/// from your backend (and cache it until expiry).
 ///
-/// Tokens returned must be the raw bearer token (no `Bearer ` prefix).
+/// ## Return-value contract
+///
+/// Return **the raw bearer token only** — do **not** include the `Bearer `
+/// prefix or any other Authorization-header decoration:
+///
+/// ```swift
+/// // ✅ correct
+/// return "eyJhbGciOi..."
+/// // ❌ wrong — the SDK prepends `Bearer ` itself
+/// return "Bearer eyJhbGciOi..."
+/// ```
+///
+/// The Swift wrapper passes this string directly to the native side, which
+/// constructs the full `Authorization: Bearer <token>` header. The JS SDK's
+/// `IAuthenticator.getAuthHeader()` happens to use the opposite convention
+/// (returns the full `Bearer ...` value); that's because the JS SDK builds
+/// the request in JS userland rather than going through the native C ABI.
+/// Don't copy the JS convention here.
 ///
 /// Implementations must be safe to call from any thread; the native side may
 /// invoke from a background worker.

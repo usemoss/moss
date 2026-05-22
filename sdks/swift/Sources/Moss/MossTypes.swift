@@ -4,6 +4,17 @@ public struct QueryResult: Sendable {
     public let id: String
     public let score: Float
     public let text: String
+    /// Metadata associated with the document at index time, surfaced for
+    /// inspection and filtering. `nil` when the document has no metadata;
+    /// values are always strings (matching the native key/value model).
+    public let metadata: [String: String]?
+
+    public init(id: String, score: Float, text: String, metadata: [String: String]? = nil) {
+        self.id = id
+        self.score = score
+        self.text = text
+        self.metadata = metadata
+    }
 }
 
 public struct SearchResult: Sendable {

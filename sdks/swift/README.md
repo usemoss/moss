@@ -4,7 +4,7 @@ The Swift SDK for [Moss](https://github.com/usemoss/moss) — fast on-device sea
 
 ## Requirements
 
-- iOS 15.1+
+- iOS 15+
 - Xcode 15+
 
 ## Install
