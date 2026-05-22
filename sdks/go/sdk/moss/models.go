@@ -99,12 +99,14 @@ type GetDocumentsOptions struct {
 
 // CreateIndexOptions customizes index creation behavior.
 type CreateIndexOptions struct {
-	ModelID MossModel `json:"modelId,omitempty"`
+	ModelID    MossModel         `json:"modelId,omitempty"`
+	OnProgress func(JobProgress) `json:"-"`
 }
 
 // MutationOptions customizes add/update/delete document behavior.
 type MutationOptions struct {
-	Upsert *bool `json:"upsert,omitempty"`
+	Upsert     *bool             `json:"upsert,omitempty"`
+	OnProgress func(JobProgress) `json:"-"`
 }
 
 // MutationResult is returned when a mutation job completes.

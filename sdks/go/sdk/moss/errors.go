@@ -11,6 +11,9 @@ var (
 	ErrMissingManageURL       = errors.New("moss: manage URL is not configured")
 	ErrMissingQueryURL        = errors.New("moss: query URL is not configured")
 	ErrEmptyIndexName         = errors.New("moss: index name must not be empty")
+	ErrEmptyJobID             = errors.New("moss: job ID must not be empty")
+	ErrEmptyDocuments         = errors.New("moss: documents must not be empty")
+	ErrEmptyDocumentIDs       = errors.New("moss: document IDs must not be empty")
 	ErrUnsupportedQueryFilter = errors.New("moss: query filters are not supported in the cloud-only Go SDK yet")
 )
 
