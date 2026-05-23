@@ -6,18 +6,17 @@ import (
 )
 
 var (
-	ErrMissingProjectID       = errors.New("moss: missing project ID")
-	ErrMissingProjectKey      = errors.New("moss: missing project key")
-	ErrMissingManageURL       = errors.New("moss: manage URL is not configured")
-	ErrMissingQueryURL        = errors.New("moss: query URL is not configured")
-	ErrEmptyIndexName         = errors.New("moss: index name must not be empty")
-	ErrEmptyJobID             = errors.New("moss: job ID must not be empty")
-	ErrEmptyDocuments         = errors.New("moss: documents must not be empty")
-	ErrEmptyDocumentIDs       = errors.New("moss: document IDs must not be empty")
-	ErrUnsupportedQueryFilter = errors.New("moss: query filters are not supported in the cloud-only Go SDK yet")
+	ErrMissingProjectID     = errors.New("moss: missing project ID")
+	ErrMissingProjectKey    = errors.New("moss: missing project key")
+	ErrEmptyIndexName       = errors.New("moss: index name must not be empty")
+	ErrEmptyJobID           = errors.New("moss: job ID must not be empty")
+	ErrEmptyDocuments       = errors.New("moss: documents must not be empty")
+	ErrEmptyDocumentIDs     = errors.New("moss: document IDs must not be empty")
+	ErrIndexNotLoaded       = errors.New("moss: index is not loaded locally; call LoadIndex first")
+	ErrUnsupportedCachePath = errors.New("moss: LoadIndexOptions.CachePath is not supported by the current libmoss bindings")
 )
 
-// HTTPError wraps non-2xx responses from Moss services.
+// HTTPError is retained for compatibility with earlier SDK scaffolding.
 type HTTPError struct {
 	StatusCode int
 	Body       string

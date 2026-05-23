@@ -2,10 +2,13 @@ package moss
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 	"time"
+
+	mosscore "github.com/usemoss/moss/sdks/go/bindings"
 )
 
 func TestCloudLifecycleIntegration(t *testing.T) {
@@ -16,6 +19,9 @@ func TestCloudLifecycleIntegration(t *testing.T) {
 	}
 
 	client := NewClient(projectID, projectKey)
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
 	ctx := context.Background()
 	indexName := fmt.Sprintf("go-sdk-int-%d", time.Now().UnixNano())
 
@@ -38,6 +44,9 @@ func TestCloudLifecycleIntegration(t *testing.T) {
 
 	createResult, err := client.CreateIndex(ctx, indexName, docs, nil)
 	if err != nil {
+		if errors.Is(err, mosscore.ErrBindingsUnavailable) {
+			t.Skip("Skipping Go bindings integration test: libmoss bindings are unavailable in this build")
+		}
 		t.Fatalf("CreateIndex failed: %v", err)
 	}
 	if createResult.JobID == "" || createResult.IndexName != indexName || createResult.DocCount != 2 {
@@ -66,6 +75,13 @@ func TestCloudLifecycleIntegration(t *testing.T) {
 	}
 	if len(gotDocs) != 2 {
 		t.Fatalf("unexpected doc count: %d", len(gotDocs))
+	}
+
+	if _, err := client.LoadIndex(ctx, indexName, &LoadIndexOptions{}); err != nil {
+		if errors.Is(err, mosscore.ErrBindingsUnavailable) {
+			t.Skip("Skipping local query integration: libmoss bindings are unavailable in this build")
+		}
+		t.Fatalf("LoadIndex failed: %v", err)
 	}
 
 	search, err := client.Query(ctx, indexName, "", &QueryOptions{

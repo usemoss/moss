@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -20,6 +19,11 @@ func main() {
 
 	ctx := context.Background()
 	client := moss.NewClient(projectID, projectKey)
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.Printf("close warning: %v", err)
+		}
+	}()
 	indexName := fmt.Sprintf("go-basic-%d", time.Now().Unix())
 
 	docs := []moss.DocumentInfo{
@@ -45,7 +49,13 @@ func main() {
 	}
 	fmt.Println("create job:", result.JobID)
 
-	search, err := queryWithRetry(ctx, client, indexName, "how long do refunds take?")
+	if _, err := client.LoadIndex(ctx, indexName, &moss.LoadIndexOptions{}); err != nil {
+		log.Fatal(err)
+	}
+
+	search, err := client.Query(ctx, indexName, "how long do refunds take?", &moss.QueryOptions{
+		TopK: 3,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,28 +73,4 @@ func main() {
 func cleanup(ctx context.Context, client *moss.Client, indexName string) error {
 	_, err := client.DeleteIndex(ctx, indexName)
 	return err
-}
-
-func queryWithRetry(ctx context.Context, client *moss.Client, indexName, query string) (moss.SearchResult, error) {
-	const attempts = 6
-
-	for attempt := 1; attempt <= attempts; attempt++ {
-		result, err := client.Query(ctx, indexName, query, &moss.QueryOptions{
-			TopK: 3,
-		})
-		if err == nil {
-			return result, nil
-		}
-
-		var httpErr *moss.HTTPError
-		if !errors.As(err, &httpErr) || httpErr.StatusCode != 503 || attempt == attempts {
-			return moss.SearchResult{}, err
-		}
-
-		delay := time.Duration(attempt) * 2 * time.Second
-		log.Printf("query returned 503, retrying in %s (%d/%d)", delay, attempt, attempts)
-		time.Sleep(delay)
-	}
-
-	return moss.SearchResult{}, fmt.Errorf("query retries exhausted")
 }

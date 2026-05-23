@@ -5,28 +5,24 @@ import "net/http"
 // Option customizes client construction.
 type Option func(*clientConfig)
 
-// WithManageURL overrides the default manage endpoint.
+// WithManageURL is retained for compatibility with earlier SDK scaffolding.
+// The bindings-backed client currently ignores explicit endpoint overrides.
 func WithManageURL(url string) Option {
 	return func(cfg *clientConfig) {
 		cfg.manageURL = url
-		if cfg.queryURL == "" {
-			cfg.queryURL = defaultQueryURL(url)
-		}
 	}
 }
 
-// WithQueryURL overrides the default query endpoint.
+// WithQueryURL is retained for compatibility with earlier SDK scaffolding.
+// The bindings-backed client currently ignores explicit endpoint overrides.
 func WithQueryURL(url string) Option {
 	return func(cfg *clientConfig) {
 		cfg.queryURL = url
 	}
 }
 
-// WithHTTPClient injects a custom HTTP client.
-func WithHTTPClient(httpClient *http.Client) Option {
-	return func(cfg *clientConfig) {
-		if httpClient != nil {
-			cfg.httpClient = httpClient
-		}
-	}
+// WithHTTPClient is retained for compatibility with earlier SDK scaffolding.
+// The bindings-backed client currently ignores custom HTTP transports.
+func WithHTTPClient(_ *http.Client) Option {
+	return func(cfg *clientConfig) {}
 }

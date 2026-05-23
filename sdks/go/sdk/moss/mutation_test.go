@@ -2,71 +2,52 @@ package moss
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"strings"
-	"sync/atomic"
 	"testing"
+
+	mosscore "github.com/usemoss/moss/sdks/go/bindings"
 )
 
-func TestCreateIndexRunsInitUploadUploadStartBuildAndPoll(t *testing.T) {
-	var initSeen, startSeen bool
-	var uploaded []byte
-	var pollCount atomic.Int32
-
-	mux := http.NewServeMux()
-	server := httptest.NewServer(mux)
-	defer server.Close()
-
-	mux.HandleFunc("/manage", func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		var body map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			t.Fatalf("decode request body: %v", err)
-		}
-
-		switch body["action"] {
-		case "initUpload":
-			initSeen = true
-			if body["modelId"] != "moss-minilm" {
-				t.Fatalf("unexpected modelId: %#v", body["modelId"])
+func TestCreateIndexUsesBindingsAndPollsJobStatus(t *testing.T) {
+	polls := 0
+	client := newTestClient(&fakeManageRuntime{
+		createIndexFn: func(name string, docs []mosscore.DocumentInfo, modelID string) (mosscore.MutationResult, error) {
+			if name != "support-docs" {
+				t.Fatalf("unexpected index name: %q", name)
 			}
-			if body["dimension"] != float64(0) {
-				t.Fatalf("unexpected dimension: %#v", body["dimension"])
+			if len(docs) != 2 {
+				t.Fatalf("unexpected doc count: %d", len(docs))
 			}
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"jobId":"job-create","uploadUrl":"` + server.URL + `/upload","expiresIn":3600}`))
-		case "startBuild":
-			startSeen = true
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"jobId":"job-create","status":"building"}`))
-		case "getJobStatus":
-			w.Header().Set("Content-Type", "application/json")
-			if pollCount.Add(1) == 1 {
-				_, _ = w.Write([]byte(`{"jobId":"job-create","status":"building","progress":42,"currentPhase":"building_index","error":null,"createdAt":"2026-05-22T00:00:00Z","updatedAt":"2026-05-22T00:00:01Z","completedAt":null}`))
-				return
+			if modelID != string(ModelMossMiniLM) {
+				t.Fatalf("unexpected model ID: %q", modelID)
 			}
-			_, _ = w.Write([]byte(`{"jobId":"job-create","status":"completed","progress":100,"currentPhase":null,"error":null,"createdAt":"2026-05-22T00:00:00Z","updatedAt":"2026-05-22T00:00:02Z","completedAt":"2026-05-22T00:00:02Z"}`))
-		default:
-			t.Fatalf("unexpected action: %#v", body["action"])
-		}
-	})
+			return mosscore.MutationResult{JobID: "job-create", IndexName: name, DocCount: len(docs)}, nil
+		},
+		getJobStatusFn: func(jobID string) (mosscore.JobStatusResponse, error) {
+			polls++
+			if polls == 1 {
+				phase := "building_index"
+				return mosscore.JobStatusResponse{
+					JobID:        jobID,
+					Status:       string(JobStatusBuilding),
+					Progress:     42,
+					CurrentPhase: &phase,
+					CreatedAt:    "2026-05-22T00:00:00Z",
+					UpdatedAt:    "2026-05-22T00:00:01Z",
+				}, nil
+			}
+			return mosscore.JobStatusResponse{
+				JobID:       jobID,
+				Status:      string(JobStatusCompleted),
+				Progress:    100,
+				CreatedAt:   "2026-05-22T00:00:00Z",
+				UpdatedAt:   "2026-05-22T00:00:02Z",
+				CompletedAt: ptr("2026-05-22T00:00:02Z"),
+			}, nil
+		},
+	}, nil)
 
-	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		data, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Fatalf("read upload body: %v", err)
-		}
-		uploaded = data
-		w.WriteHeader(http.StatusOK)
-	})
-
-	client := NewClient("project-id", "project-key", WithManageURL(server.URL+"/manage"))
 	progresses := []JobProgress{}
-
 	result, err := client.CreateIndex(context.Background(), "support-docs", []DocumentInfo{
 		{ID: "doc-1", Text: "hello"},
 		{ID: "doc-2", Text: "world"},
@@ -77,16 +58,6 @@ func TestCreateIndexRunsInitUploadUploadStartBuildAndPoll(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("CreateIndex returned error: %v", err)
-	}
-
-	if !initSeen || !startSeen {
-		t.Fatalf("expected initUpload and startBuild to both run")
-	}
-	if len(uploaded) == 0 {
-		t.Fatal("expected upload payload to be sent")
-	}
-	if string(uploaded[:4]) != "MOSS" {
-		t.Fatalf("unexpected upload header: %q", string(uploaded[:4]))
 	}
 	if result.JobID != "job-create" || result.IndexName != "support-docs" || result.DocCount != 2 {
 		t.Fatalf("unexpected mutation result: %#v", result)
@@ -108,108 +79,106 @@ func TestCreateIndexRejectsMixedEmbeddings(t *testing.T) {
 	}
 }
 
-func TestAddDocsSendsJSONMutationAndPolls(t *testing.T) {
-	var gotBody map[string]any
-
-	mux := http.NewServeMux()
-	server := httptest.NewServer(mux)
-	defer server.Close()
-
-	mux.HandleFunc("/manage", func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
-			t.Fatalf("decode request body: %v", err)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		switch gotBody["action"] {
-		case "addDocs":
-			_, _ = w.Write([]byte(`{"jobId":"job-add","status":"building"}`))
-		case "getJobStatus":
-			_, _ = w.Write([]byte(`{"jobId":"job-add","status":"completed","progress":100,"currentPhase":null,"error":null,"createdAt":"2026-05-22T00:00:00Z","updatedAt":"2026-05-22T00:00:01Z","completedAt":"2026-05-22T00:00:01Z"}`))
-		default:
-			t.Fatalf("unexpected action: %#v", gotBody["action"])
-		}
-	})
-
+func TestAddDocsUsesBindingsAndConvertsOptions(t *testing.T) {
 	upsert := true
-	client := NewClient("project-id", "project-key", WithManageURL(server.URL+"/manage"))
+	client := newTestClient(&fakeManageRuntime{
+		addDocsFn: func(name string, docs []mosscore.DocumentInfo, options *mosscore.MutationOptions) (mosscore.MutationResult, error) {
+			if name != "support-docs" {
+				t.Fatalf("unexpected index name: %q", name)
+			}
+			if len(docs) != 1 || docs[0].ID != "doc-3" {
+				t.Fatalf("unexpected docs: %#v", docs)
+			}
+			if options == nil || options.Upsert == nil || !*options.Upsert {
+				t.Fatalf("expected upsert option to be forwarded, got %#v", options)
+			}
+			return mosscore.MutationResult{JobID: "job-add", IndexName: name, DocCount: len(docs)}, nil
+		},
+		getJobStatusFn: func(jobID string) (mosscore.JobStatusResponse, error) {
+			return mosscore.JobStatusResponse{
+				JobID:       jobID,
+				Status:      string(JobStatusCompleted),
+				Progress:    100,
+				CreatedAt:   "2026-05-22T00:00:00Z",
+				UpdatedAt:   "2026-05-22T00:00:01Z",
+				CompletedAt: ptr("2026-05-22T00:00:01Z"),
+			}, nil
+		},
+	}, nil)
+
 	result, err := client.AddDocs(context.Background(), "support-docs", []DocumentInfo{
 		{ID: "doc-3", Text: "new"},
 	}, &MutationOptions{Upsert: &upsert})
 	if err != nil {
 		t.Fatalf("AddDocs returned error: %v", err)
 	}
-
 	if result.JobID != "job-add" || result.DocCount != 1 {
 		t.Fatalf("unexpected add result: %#v", result)
 	}
-	if gotBody["action"] != "getJobStatus" {
-		t.Fatalf("expected final request to be getJobStatus, got %#v", gotBody["action"])
-	}
 }
 
-func TestDeleteDocsSendsExpectedAction(t *testing.T) {
-	var firstAction string
-	var seenDelete bool
+func TestDeleteDocsUsesBindings(t *testing.T) {
+	client := newTestClient(&fakeManageRuntime{
+		deleteDocsFn: func(name string, docIDs []string) (mosscore.MutationResult, error) {
+			if name != "support-docs" {
+				t.Fatalf("unexpected index name: %q", name)
+			}
+			if len(docIDs) != 2 || docIDs[0] != "doc-1" || docIDs[1] != "doc-2" {
+				t.Fatalf("unexpected doc IDs: %#v", docIDs)
+			}
+			return mosscore.MutationResult{JobID: "job-del", IndexName: name, DocCount: len(docIDs)}, nil
+		},
+		getJobStatusFn: func(jobID string) (mosscore.JobStatusResponse, error) {
+			return mosscore.JobStatusResponse{
+				JobID:       jobID,
+				Status:      string(JobStatusCompleted),
+				Progress:    100,
+				CreatedAt:   "2026-05-22T00:00:00Z",
+				UpdatedAt:   "2026-05-22T00:00:01Z",
+				CompletedAt: ptr("2026-05-22T00:00:01Z"),
+			}, nil
+		},
+	}, nil)
 
-	mux := http.NewServeMux()
-	server := httptest.NewServer(mux)
-	defer server.Close()
-
-	mux.HandleFunc("/manage", func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		var body map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			t.Fatalf("decode request body: %v", err)
-		}
-		action := body["action"].(string)
-		if firstAction == "" {
-			firstAction = action
-		}
-		if action == "deleteDocs" {
-			seenDelete = true
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if action == "deleteDocs" {
-			_, _ = w.Write([]byte(`{"jobId":"job-del","status":"building"}`))
-			return
-		}
-		_, _ = w.Write([]byte(`{"jobId":"job-del","status":"completed","progress":100,"currentPhase":null,"error":null,"createdAt":"2026-05-22T00:00:00Z","updatedAt":"2026-05-22T00:00:01Z","completedAt":"2026-05-22T00:00:01Z"}`))
-	})
-
-	client := NewClient("project-id", "project-key", WithManageURL(server.URL+"/manage"))
 	result, err := client.DeleteDocs(context.Background(), "support-docs", []string{"doc-1", "doc-2"}, nil)
 	if err != nil {
 		t.Fatalf("DeleteDocs returned error: %v", err)
-	}
-
-	if !seenDelete || firstAction != "deleteDocs" {
-		t.Fatalf("expected first action to be deleteDocs, got %q", firstAction)
 	}
 	if result.DocCount != 2 {
 		t.Fatalf("unexpected delete result: %#v", result)
 	}
 }
 
-func TestGetJobStatusDecodesResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"jobId":"job-123","status":"building","progress":55,"currentPhase":"uploading","error":null,"createdAt":"2026-05-22T00:00:00Z","updatedAt":"2026-05-22T00:00:01Z","completedAt":null}`))
-	}))
-	defer server.Close()
+func TestGetJobStatusUsesBindingsRuntime(t *testing.T) {
+	client := newTestClient(&fakeManageRuntime{
+		getJobStatusFn: func(jobID string) (mosscore.JobStatusResponse, error) {
+			if jobID != "job-123" {
+				t.Fatalf("unexpected job ID: %q", jobID)
+			}
+			phase := "uploading"
+			return mosscore.JobStatusResponse{
+				JobID:        jobID,
+				Status:       string(JobStatusBuilding),
+				Progress:     55,
+				CurrentPhase: &phase,
+				CreatedAt:    "2026-05-22T00:00:00Z",
+				UpdatedAt:    "2026-05-22T00:00:01Z",
+			}, nil
+		},
+	}, nil)
 
-	client := NewClient("project-id", "project-key", WithManageURL(server.URL))
 	status, err := client.GetJobStatus(context.Background(), "job-123")
 	if err != nil {
 		t.Fatalf("GetJobStatus returned error: %v", err)
 	}
-
 	if status.JobID != "job-123" || status.Status != JobStatusBuilding || status.Progress != 55 {
 		t.Fatalf("unexpected job status: %#v", status)
 	}
 	if status.CurrentPhase == nil || *status.CurrentPhase != JobPhaseUploading {
 		t.Fatalf("unexpected current phase: %#v", status.CurrentPhase)
 	}
+}
+
+func ptr(value string) *string {
+	return &value
 }

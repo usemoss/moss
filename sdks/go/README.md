@@ -1,19 +1,20 @@
 # Moss Go SDK
 
-The Go SDK is currently implemented as a cloud-first, pure-Go client.
+The Go work now has the same two-layer direction as the other Moss SDKs:
+
+- `sdks/go/sdk/` contains the public Go SDK
+- `sdks/go/bindings/` wraps the native `libmoss` runtime via CGO
 
 Current status:
 
-- typed client and models
-- cloud reads (`GetIndex`, `ListIndexes`, `GetDocs`, `DeleteIndex`)
-- cloud query (`Query`)
-- cloud mutations (`CreateIndex`, `AddDocs`, `DeleteDocs`, `GetJobStatus`)
-- unit tests
+- bindings-backed manage operations for mutations and metadata reads
+- local `LoadIndex` / `UnloadIndex` / local `Query` via `libmoss`
+- examples and unit tests
+- env-gated integration test scaffold
 
-Current limitations:
+Important note:
 
-- no local `LoadIndex` / `UnloadIndex`
-- no in-memory query runtime
-- no local metadata-filtered query parity
+- all runtime operations require the `libmoss` C SDK plus `-tags libmoss`
 
-The Go module itself lives under [`sdks/go/sdk/`](./sdk/).
+The public SDK module lives under [`sdks/go/sdk/`](./sdk/), and the native
+bindings module lives under [`sdks/go/bindings/`](./bindings/).
