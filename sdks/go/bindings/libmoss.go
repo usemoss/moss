@@ -434,8 +434,9 @@ func convertDocuments(out *C.MossDocumentInfo, count C.uintptr_t) []DocumentInfo
 	response := make([]DocumentInfo, 0, len(items))
 	for i := range items {
 		item := items[i]
-		embedding := make([]float32, int(item.embedding_dim))
+		var embedding []float32
 		if item.embedding != nil && item.embedding_dim > 0 {
+			embedding = make([]float32, int(item.embedding_dim))
 			values := unsafe.Slice(item.embedding, int(item.embedding_dim))
 			for j := range values {
 				embedding[j] = float32(values[j])
