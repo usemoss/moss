@@ -19,6 +19,11 @@ func main() {
 
 	ctx := context.Background()
 	client := moss.NewClient(projectID, projectKey)
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.Printf("close warning: %v", err)
+		}
+	}()
 	indexName := fmt.Sprintf("go-custom-%d", time.Now().Unix())
 
 	docs := []moss.DocumentInfo{
@@ -39,6 +44,10 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("create job:", result.JobID)
+
+	if _, err := client.LoadIndex(ctx, indexName, &moss.LoadIndexOptions{}); err != nil {
+		log.Fatal(err)
+	}
 
 	query := []float32{1, 0, 0, 0}
 	search, err := client.Query(ctx, indexName, "", &moss.QueryOptions{

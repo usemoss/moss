@@ -1,12 +1,25 @@
 package moss
 
-import (
-	"errors"
+import mosscore "github.com/usemoss/moss/sdks/go/bindings"
 
-	"github.com/usemoss/moss/sdks/go/sdk/moss/internal"
-)
+func toCoreDocumentInfo(value DocumentInfo) mosscore.DocumentInfo {
+	return mosscore.DocumentInfo{
+		ID:        value.ID,
+		Text:      value.Text,
+		Metadata:  value.Metadata,
+		Embedding: value.Embedding,
+	}
+}
 
-func toIndexInfo(value internal.IndexInfoResponse) IndexInfo {
+func toCoreDocumentInfos(values []DocumentInfo) []mosscore.DocumentInfo {
+	out := make([]mosscore.DocumentInfo, 0, len(values))
+	for _, value := range values {
+		out = append(out, toCoreDocumentInfo(value))
+	}
+	return out
+}
+
+func fromCoreIndexInfo(value mosscore.IndexInfo) IndexInfo {
 	return IndexInfo{
 		ID:        value.ID,
 		Name:      value.Name,
@@ -22,7 +35,7 @@ func toIndexInfo(value internal.IndexInfoResponse) IndexInfo {
 	}
 }
 
-func toDocumentInfo(value internal.DocumentInfoResponse) DocumentInfo {
+func fromCoreDocumentInfo(value mosscore.DocumentInfo) DocumentInfo {
 	return DocumentInfo{
 		ID:        value.ID,
 		Text:      value.Text,
@@ -31,20 +44,15 @@ func toDocumentInfo(value internal.DocumentInfoResponse) DocumentInfo {
 	}
 }
 
-func toDocumentInfoResponses(values []DocumentInfo) []internal.DocumentInfoResponse {
-	out := make([]internal.DocumentInfoResponse, 0, len(values))
-	for _, value := range values {
-		out = append(out, internal.DocumentInfoResponse{
-			ID:        value.ID,
-			Text:      value.Text,
-			Metadata:  value.Metadata,
-			Embedding: value.Embedding,
-		})
+func fromCoreMutationResult(value mosscore.MutationResult) MutationResult {
+	return MutationResult{
+		JobID:     value.JobID,
+		IndexName: value.IndexName,
+		DocCount:  value.DocCount,
 	}
-	return out
 }
 
-func toSearchResult(value internal.SearchResultResponse) SearchResult {
+func fromCoreSearchResult(value mosscore.SearchResult) SearchResult {
 	docs := make([]QueryResultDocumentInfo, 0, len(value.Docs))
 	for _, item := range value.Docs {
 		docs = append(docs, QueryResultDocumentInfo{
@@ -55,15 +63,16 @@ func toSearchResult(value internal.SearchResultResponse) SearchResult {
 		})
 	}
 
+	timeTaken := value.TimeTakenMs
 	return SearchResult{
 		Docs:        docs,
 		Query:       value.Query,
 		IndexName:   value.IndexName,
-		TimeTakenMs: value.TimeTakenMs,
+		TimeTakenMs: &timeTaken,
 	}
 }
 
-func toJobStatusResponse(value internal.JobStatusResponse) JobStatusResponse {
+func fromCoreJobStatusResponse(value mosscore.JobStatusResponse) JobStatusResponse {
 	var currentPhase *JobPhase
 	if value.CurrentPhase != nil {
 		phase := JobPhase(*value.CurrentPhase)
@@ -79,21 +88,5 @@ func toJobStatusResponse(value internal.JobStatusResponse) JobStatusResponse {
 		CreatedAt:    value.CreatedAt,
 		UpdatedAt:    value.UpdatedAt,
 		CompletedAt:  value.CompletedAt,
-	}
-}
-
-func normalizeError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	var httpErr *internal.HTTPError
-	if !errors.As(err, &httpErr) {
-		return err
-	}
-
-	return &HTTPError{
-		StatusCode: httpErr.StatusCode,
-		Body:       httpErr.Body,
 	}
 }

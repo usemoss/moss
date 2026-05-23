@@ -1,29 +1,25 @@
 # Moss client library for Go
 
-`moss` provides a typed Go client for Moss cloud-backed semantic search workflows.
+`moss` provides a typed Go client for Moss semantic search workflows.
 
-This first Go release is intentionally:
+The Go SDK now has two layers:
 
-- pure Go
-- cloud-first
-- buildable from the public repository
+- a public SDK in `sdks/go/sdk`
+- native `libmoss` bindings in `sdks/go/bindings`
 
 ## Features
 
 - typed Go client and models
-- cloud index creation and document mutation
-- cloud index metadata and document reads
-- cloud query with optional caller-provided embeddings
+- bindings-backed index creation and document mutation
+- bindings-backed index metadata and document reads
+- local index loading and query via native bindings
+- optional caller-provided embeddings for custom indexes
 - env-gated live integration tests
 
 ## Current limitations
 
-- no local `LoadIndex` / `UnloadIndex`
-- no in-memory query runtime
-- no local metadata filtering support
-
-If you pass `QueryOptions.Filter`, the Go SDK returns an explicit error because
-cloud-only query does not yet provide the same behavior as the local runtimes.
+- the SDK requires the `libmoss` C SDK and the `libmoss` build tag for real runtime operations
+- `LoadIndexOptions.CachePath` is not exposed by the current `libmoss` C API yet
 
 ## Installation
 
@@ -32,6 +28,10 @@ From this repository, use the module at:
 ```go
 github.com/usemoss/moss/sdks/go/sdk/moss
 ```
+
+Download the `libmoss` C SDK release and build with `-tags libmoss`. The
+bindings setup is documented in
+[`../bindings/README.md`](../bindings/README.md).
 
 ## Quick start
 
@@ -50,6 +50,7 @@ func main() {
 	ctx := context.Background()
 
 	client := moss.NewClient("your-project-id", "your-project-key")
+	defer client.Close()
 
 	docs := []moss.DocumentInfo{
 		{
@@ -74,6 +75,10 @@ func main() {
 	}
 
 	fmt.Println("created job:", result.JobID)
+
+	if _, err := client.LoadIndex(ctx, "support-docs", &moss.LoadIndexOptions{}); err != nil {
+		log.Fatal(err)
+	}
 
 	search, err := client.Query(ctx, "support-docs", "how long do refunds take?", &moss.QueryOptions{
 		TopK: 3,
@@ -112,6 +117,10 @@ if err != nil {
 	log.Fatal(err)
 }
 
+if _, err := client.LoadIndex(ctx, "custom-embeddings", &moss.LoadIndexOptions{}); err != nil {
+	log.Fatal(err)
+}
+
 results, err := client.Query(ctx, "custom-embeddings", "", &moss.QueryOptions{
 	Embedding: []float32{1, 0, 0, 0},
 	TopK:      5,
@@ -128,6 +137,15 @@ Runnable examples live here:
 - [`examples/basic/main.go`](./examples/basic/main.go)
 - [`examples/custom-embeddings/main.go`](./examples/custom-embeddings/main.go)
 
+Run them with native bindings enabled:
+
+```bash
+export CGO_CFLAGS="-I<libmoss-sdk-root>/include"
+export CGO_LDFLAGS="-L<libmoss-sdk-root>/lib"
+export LD_LIBRARY_PATH="<libmoss-sdk-root>/lib"
+go run -tags libmoss ./examples/basic
+```
+
 ## Integration tests
 
 Live tests are skipped unless both of these are set:
@@ -142,4 +160,8 @@ Then run:
 ```bash
 cd sdks/go/sdk
 go test ./...
+CGO_CFLAGS="-I<libmoss-sdk-root>/include" \
+CGO_LDFLAGS="-L<libmoss-sdk-root>/lib" \
+LD_LIBRARY_PATH="<libmoss-sdk-root>/lib" \
+go test -tags libmoss ./...
 ```

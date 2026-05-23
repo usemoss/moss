@@ -84,12 +84,19 @@ type SearchResult struct {
 	TimeTakenMs *int                      `json:"timeTakenMs,omitempty"`
 }
 
-// QueryOptions customizes cloud query behavior.
+// QueryOptions customizes local query behavior.
 type QueryOptions struct {
 	Embedding []float32      `json:"embedding,omitempty"`
 	TopK      int            `json:"topK,omitempty"`
 	Alpha     *float64       `json:"alpha,omitempty"`
 	Filter    map[string]any `json:"filter,omitempty"`
+}
+
+// LoadIndexOptions configures local index loading behavior.
+type LoadIndexOptions struct {
+	AutoRefresh              bool   `json:"autoRefresh,omitempty"`
+	PollingIntervalInSeconds uint64 `json:"pollingIntervalInSeconds,omitempty"`
+	CachePath                string `json:"cachePath,omitempty"`
 }
 
 // GetDocumentsOptions optionally narrows document retrieval by ID.
@@ -134,4 +141,12 @@ type JobStatusResponse struct {
 	CreatedAt    string    `json:"createdAt"`
 	UpdatedAt    string    `json:"updatedAt"`
 	CompletedAt  *string   `json:"completedAt,omitempty"`
+}
+
+// RefreshResult describes the outcome of a local refresh operation.
+type RefreshResult struct {
+	IndexName         string `json:"indexName"`
+	PreviousUpdatedAt string `json:"previousUpdatedAt"`
+	NewUpdatedAt      string `json:"newUpdatedAt"`
+	WasUpdated        bool   `json:"wasUpdated"`
 }

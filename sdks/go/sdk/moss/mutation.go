@@ -1,28 +1,25 @@
 package moss
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
-	"encoding/json"
 	"fmt"
-	"io"
-	"math"
-	"net/http"
 	"strings"
 	"time"
+
+	mosscore "github.com/usemoss/moss/sdks/go/bindings"
 )
 
 const (
 	defaultPollInterval      = 2 * time.Second
 	defaultMutationTimeout   = 30 * time.Minute
 	maxConsecutivePollErrors = 3
-	maxUploadRetries         = 3
-	baseUploadRetryDelay     = 1 * time.Second
 )
 
-// CreateIndex initializes an upload, sends the bulk payload, starts the build, and polls until completion.
+// CreateIndex creates a new index through the native bindings and polls until completion.
 func (c *Client) CreateIndex(ctx context.Context, indexName string, docs []DocumentInfo, options *CreateIndexOptions) (MutationResult, error) {
+	if err := ctx.Err(); err != nil {
+		return MutationResult{}, err
+	}
 	if err := c.validateManageRequest(indexName); err != nil {
 		return MutationResult{}, err
 	}
@@ -31,27 +28,18 @@ func (c *Client) CreateIndex(ctx context.Context, indexName string, docs []Docum
 	}
 
 	modelID := resolveModelID(docs, options)
-	dimension, err := resolveEmbeddingDimension(docs, modelID)
+	if _, err := resolveEmbeddingDimension(docs, modelID); err != nil {
+		return MutationResult{}, err
+	}
+
+	manage, err := c.ensureManageClient()
 	if err != nil {
 		return MutationResult{}, err
 	}
 
-	initResponse, err := c.manageAPI.InitUpload(ctx, c.manageURL, c.projectID, c.projectKey, indexName, string(modelID), len(docs), dimension)
-	if err != nil {
-		return MutationResult{}, normalizeError(err)
-	}
-
-	payload, err := serializeBulkPayload(docs, dimension)
+	response, err := manage.CreateIndex(indexName, toCoreDocumentInfos(docs), string(modelID))
 	if err != nil {
 		return MutationResult{}, err
-	}
-
-	if err := c.uploadBulkPayload(ctx, initResponse.UploadURL, payload); err != nil {
-		return MutationResult{}, err
-	}
-
-	if _, err := c.manageAPI.StartBuild(ctx, c.manageURL, c.projectID, c.projectKey, initResponse.JobID); err != nil {
-		return MutationResult{}, normalizeError(err)
 	}
 
 	var onProgress func(JobProgress)
@@ -59,11 +47,14 @@ func (c *Client) CreateIndex(ctx context.Context, indexName string, docs []Docum
 		onProgress = options.OnProgress
 	}
 
-	return c.pollJobUntilComplete(ctx, initResponse.JobID, indexName, len(docs), onProgress)
+	return c.pollJobUntilComplete(ctx, response, onProgress)
 }
 
 // AddDocs appends or upserts documents and polls the async job until completion.
 func (c *Client) AddDocs(ctx context.Context, indexName string, docs []DocumentInfo, options *MutationOptions) (MutationResult, error) {
+	if err := ctx.Err(); err != nil {
+		return MutationResult{}, err
+	}
 	if err := c.validateManageRequest(indexName); err != nil {
 		return MutationResult{}, err
 	}
@@ -71,23 +62,31 @@ func (c *Client) AddDocs(ctx context.Context, indexName string, docs []DocumentI
 		return MutationResult{}, ErrEmptyDocuments
 	}
 
-	var upsert *bool
+	var bindingOptions *mosscore.MutationOptions
 	var onProgress func(JobProgress)
 	if options != nil {
-		upsert = options.Upsert
+		bindingOptions = &mosscore.MutationOptions{Upsert: options.Upsert}
 		onProgress = options.OnProgress
 	}
 
-	response, err := c.manageAPI.AddDocs(ctx, c.manageURL, c.projectID, c.projectKey, indexName, toDocumentInfoResponses(docs), upsert)
+	manage, err := c.ensureManageClient()
 	if err != nil {
-		return MutationResult{}, normalizeError(err)
+		return MutationResult{}, err
 	}
 
-	return c.pollJobUntilComplete(ctx, response.JobID, indexName, len(docs), onProgress)
+	response, err := manage.AddDocs(indexName, toCoreDocumentInfos(docs), bindingOptions)
+	if err != nil {
+		return MutationResult{}, err
+	}
+
+	return c.pollJobUntilComplete(ctx, response, onProgress)
 }
 
 // DeleteDocs removes documents by ID and polls the async job until completion.
 func (c *Client) DeleteDocs(ctx context.Context, indexName string, docIDs []string, options *MutationOptions) (MutationResult, error) {
+	if err := ctx.Err(); err != nil {
+		return MutationResult{}, err
+	}
 	if err := c.validateManageRequest(indexName); err != nil {
 		return MutationResult{}, err
 	}
@@ -100,31 +99,41 @@ func (c *Client) DeleteDocs(ctx context.Context, indexName string, docIDs []stri
 		onProgress = options.OnProgress
 	}
 
-	response, err := c.manageAPI.DeleteDocs(ctx, c.manageURL, c.projectID, c.projectKey, indexName, docIDs)
+	manage, err := c.ensureManageClient()
 	if err != nil {
-		return MutationResult{}, normalizeError(err)
+		return MutationResult{}, err
 	}
 
-	return c.pollJobUntilComplete(ctx, response.JobID, indexName, len(docIDs), onProgress)
+	response, err := manage.DeleteDocs(indexName, docIDs)
+	if err != nil {
+		return MutationResult{}, err
+	}
+
+	return c.pollJobUntilComplete(ctx, response, onProgress)
 }
 
 // GetJobStatus fetches the current status of an async mutation job.
 func (c *Client) GetJobStatus(ctx context.Context, jobID string) (JobStatusResponse, error) {
-	if err := validateCredentials(c.projectID, c.projectKey); err != nil {
+	if err := ctx.Err(); err != nil {
 		return JobStatusResponse{}, err
 	}
-	if strings.TrimSpace(c.manageURL) == "" {
-		return JobStatusResponse{}, ErrMissingManageURL
+	if err := validateCredentials(c.projectID, c.projectKey); err != nil {
+		return JobStatusResponse{}, err
 	}
 	if strings.TrimSpace(jobID) == "" {
 		return JobStatusResponse{}, ErrEmptyJobID
 	}
 
-	response, err := c.manageAPI.GetJobStatus(ctx, c.manageURL, c.projectID, c.projectKey, jobID)
+	manage, err := c.ensureManageClient()
 	if err != nil {
-		return JobStatusResponse{}, normalizeError(err)
+		return JobStatusResponse{}, err
 	}
-	return toJobStatusResponse(response), nil
+
+	response, err := manage.GetJobStatus(jobID)
+	if err != nil {
+		return JobStatusResponse{}, err
+	}
+	return fromCoreJobStatusResponse(response), nil
 }
 
 func resolveModelID(docs []DocumentInfo, options *CreateIndexOptions) MossModel {
@@ -171,102 +180,9 @@ func resolveEmbeddingDimension(docs []DocumentInfo, modelID MossModel) (int, err
 	return dimension, nil
 }
 
-func serializeBulkPayload(docs []DocumentInfo, dimension int) ([]byte, error) {
-	metadataDocs := make([]map[string]any, 0, len(docs))
-	for _, doc := range docs {
-		item := map[string]any{
-			"id":   doc.ID,
-			"text": doc.Text,
-		}
-		if len(doc.Metadata) > 0 {
-			item["metadata"] = doc.Metadata
-		}
-		metadataDocs = append(metadataDocs, item)
-	}
-
-	metadataBytes, err := json.Marshal(metadataDocs)
-	if err != nil {
-		return nil, err
-	}
-
-	const headerSize = 20
-	embeddingsSize := 0
-	if dimension > 0 {
-		embeddingsSize = len(docs) * dimension * 4
-	}
-
-	buf := bytes.NewBuffer(make([]byte, 0, headerSize+len(metadataBytes)+embeddingsSize))
-	buf.Write([]byte{'M', 'O', 'S', 'S'})
-	for _, value := range []uint32{1, uint32(len(docs)), uint32(dimension), uint32(len(metadataBytes))} {
-		if err := binary.Write(buf, binary.LittleEndian, value); err != nil {
-			return nil, err
-		}
-	}
-	buf.Write(metadataBytes)
-
-	for _, doc := range docs {
-		for _, value := range doc.Embedding {
-			if err := binary.Write(buf, binary.LittleEndian, value); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return buf.Bytes(), nil
-}
-
-func (c *Client) uploadBulkPayload(ctx context.Context, uploadURL string, payload []byte) error {
-	var lastErr error
-
-	for attempt := 0; attempt < maxUploadRetries; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadURL, bytes.NewReader(payload))
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Content-Type", "application/octet-stream")
-
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			lastErr = err
-		} else {
-			body, _ := io.ReadAll(io.LimitReader(resp.Body, 16*1024))
-			resp.Body.Close()
-
-			if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
-				return nil
-			}
-
-			lastErr = &HTTPError{
-				StatusCode: resp.StatusCode,
-				Body:       strings.TrimSpace(string(body)),
-			}
-
-			if resp.StatusCode < http.StatusInternalServerError {
-				return lastErr
-			}
-		}
-
-		if attempt == maxUploadRetries-1 {
-			break
-		}
-
-		delay := time.Duration(math.Pow(2, float64(attempt))) * baseUploadRetryDelay
-		timer := time.NewTimer(delay)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return ctx.Err()
-		case <-timer.C:
-		}
-	}
-
-	return lastErr
-}
-
 func (c *Client) pollJobUntilComplete(
 	ctx context.Context,
-	jobID, indexName string,
-	docCount int,
+	result mosscore.MutationResult,
 	onProgress func(JobProgress),
 ) (MutationResult, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, defaultMutationTimeout)
@@ -276,9 +192,10 @@ func (c *Client) pollJobUntilComplete(
 	defer ticker.Stop()
 
 	consecutiveErrors := 0
+	completed := fromCoreMutationResult(result)
 
 	for {
-		status, err := c.GetJobStatus(timeoutCtx, jobID)
+		status, err := c.GetJobStatus(timeoutCtx, result.JobID)
 		if err != nil {
 			consecutiveErrors++
 			if consecutiveErrors >= maxConsecutivePollErrors {
@@ -297,11 +214,7 @@ func (c *Client) pollJobUntilComplete(
 
 			switch status.Status {
 			case JobStatusCompleted:
-				return MutationResult{
-					JobID:     jobID,
-					IndexName: indexName,
-					DocCount:  docCount,
-				}, nil
+				return completed, nil
 			case JobStatusFailed:
 				if status.Error != nil && *status.Error != "" {
 					return MutationResult{}, fmt.Errorf("moss: job failed: %s", *status.Error)
