@@ -1,0 +1,52 @@
+[
+  {
+    "id": "p-aurora-headphones",
+    "text": "Aurora Pro wireless over-ear headphones. Active noise cancellation, 40-hour battery, USB-C fast charge (10 minutes for 5 hours playback), Bluetooth 5.3, multipoint pairing for two devices. $279. Colors: midnight black, sand, sage.",
+    "metadata": {"category": "audio", "sku": "AUR-OE-001", "price_usd": 279}
+  },
+  {
+    "id": "p-aurora-buds",
+    "text": "Aurora Buds true wireless earbuds. ANC plus transparency mode, 8 hours per bud (28 hours with case), IPX5 sweat resistant, wireless charging case. Half the noise cancellation of the over-ear Pro. $149. Colors: black, white.",
+    "metadata": {"category": "audio", "sku": "AUR-TW-002", "price_usd": 149}
+  },
+  {
+    "id": "p-luma-lamp",
+    "text": "Luma desk lamp. Full-spectrum LED, 5 color temperatures from 2700K warm to 6500K daylight, USB-C output for charging your phone from the base. Touch-dim, no buttons. $89.",
+    "metadata": {"category": "home", "sku": "LUM-DSK-010", "price_usd": 89}
+  },
+  {
+    "id": "p-luma-floor",
+    "text": "Luma floor lamp. Same full-spectrum panel as the desk lamp scaled to a 60-inch column, foot-tap controls, motion-activated dim-to-night mode. $229.",
+    "metadata": {"category": "home", "sku": "LUM-FLR-011", "price_usd": 229}
+  },
+  {
+    "id": "p-nimbus-backpack",
+    "text": "Nimbus 22L commuter backpack. Padded 16-inch laptop sleeve, weatherproof recycled ripstop shell, magnetic chest strap, hidden RFID-blocking passport pocket. Carry-on legal on every major US airline. $139.",
+    "metadata": {"category": "bags", "sku": "NIM-BP-022", "price_usd": 139}
+  },
+  {
+    "id": "p-nimbus-sling",
+    "text": "Nimbus crossbody sling. 4L, fits an iPad mini, water bottle pocket, anti-theft locking zipper. $69.",
+    "metadata": {"category": "bags", "sku": "NIM-SL-004", "price_usd": 69}
+  },
+  {
+    "id": "p-tide-bottle",
+    "text": "Tide vacuum-insulated bottle. 24oz, keeps cold drinks cold for 36 hours and hot drinks hot for 12. Dishwasher-safe lid. $39. Colors: storm, dune, moss.",
+    "metadata": {"category": "drinkware", "sku": "TID-BTL-024", "price_usd": 39}
+  },
+  {
+    "id": "p-tide-mug",
+    "text": "Tide travel mug. 16oz, leak-proof flip lid, fits standard car cup holders, double-wall vacuum insulation. $29.",
+    "metadata": {"category": "drinkware", "sku": "TID-MUG-016", "price_usd": 29}
+  },
+  {
+    "id": "p-helix-keyboard",
+    "text": "Helix 75% mechanical keyboard. Hot-swap sockets, gasket-mounted PCB, lubed tactile switches, RGB underglow, Bluetooth + 2.4GHz + USB-C wired. Mac and Windows layouts both ship with every order. $199.",
+    "metadata": {"category": "desk", "sku": "HLX-KB-075", "price_usd": 199}
+  },
+  {
+    "id": "p-helix-mouse",
+    "text": "Helix wireless mouse. 26K DPI optical sensor, 6 programmable buttons, 70-hour battery, 1ms latency on the 2.4GHz dongle. $89.",
+    "metadata": {"category": "desk", "sku": "HLX-MS-001", "price_usd": 89}
+  }
+]

@@ -1,0 +1,11 @@
+[project]
+name = "ecommerce-support-voice-agent"
+version = "0.1.0"
+description = "LiveKit voice agent built on the moss-agent SDK. Prewarms a process-wide MossAgent once and serves every room from the same warm in-process cache."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "moss-agent[livekit]>=1.0.0",
+    "livekit-agents[openai,deepgram,silero,turn-detector,cartesia]>=1.0",
+]

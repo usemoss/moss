@@ -1,0 +1,42 @@
+[
+  {
+    "id": "faq-shipping-time",
+    "text": "Standard shipping is free for orders over $50 in the continental US and arrives in 3-5 business days. Expedited 2-day shipping is $12. Overnight is $25 and must be ordered before 2pm Eastern.",
+    "metadata": {"topic": "shipping"}
+  },
+  {
+    "id": "faq-international-shipping",
+    "text": "We ship to Canada, the UK, Australia, and the EU. International orders take 7-14 business days. Duties and taxes are calculated at checkout - the price you see is the price you pay, no surprise customs bills.",
+    "metadata": {"topic": "shipping"}
+  },
+  {
+    "id": "faq-order-tracking",
+    "text": "You will receive a tracking email when your order ships - usually within 24 hours of placing it. Tracking links go live within a few hours of the carrier picking the package up. If 48 hours have passed and the link still says 'label created', the carrier has the package but has not scanned it yet.",
+    "metadata": {"topic": "shipping"}
+  },
+  {
+    "id": "faq-payment-methods",
+    "text": "We accept Visa, Mastercard, American Express, Discover, Apple Pay, Google Pay, Shop Pay, and PayPal. We do not accept checks, money orders, or cryptocurrency.",
+    "metadata": {"topic": "payment"}
+  },
+  {
+    "id": "faq-gift-cards",
+    "text": "Digital gift cards are available in $25, $50, $100, and $250 denominations. They arrive by email within 5 minutes of purchase, never expire, and can be combined with other gift cards or promo codes at checkout.",
+    "metadata": {"topic": "payment"}
+  },
+  {
+    "id": "faq-account-required",
+    "text": "You do not need an account to place an order - guest checkout is supported. Creating an account lets you track previous orders, save shipping addresses, and earn loyalty points (1 point per dollar, $1 off per 100 points).",
+    "metadata": {"topic": "account"}
+  },
+  {
+    "id": "faq-promo-code-stacking",
+    "text": "Only one promo code can be applied per order. Loyalty point redemptions and gift card balances can be combined with a promo code. Sale prices stack with promo codes unless the promo specifically says 'full-price items only'.",
+    "metadata": {"topic": "promotions"}
+  },
+  {
+    "id": "faq-product-availability",
+    "text": "Items in stock ship same-day if ordered before 12pm Eastern. Backordered items show an estimated restock date on the product page; we charge your card only when the item ships. Sold-out items have a 'notify me' button that emails you when stock returns.",
+    "metadata": {"topic": "inventory"}
+  }
+]

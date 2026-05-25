@@ -1,0 +1,37 @@
+[
+  {
+    "id": "pol-returns-window",
+    "text": "Returns are accepted within 60 days of delivery for any reason. Items must be in original condition with all packaging and accessories. Original shipping is non-refundable; return shipping is free via our prepaid label.",
+    "metadata": {"topic": "returns"}
+  },
+  {
+    "id": "pol-returns-process",
+    "text": "Start a return at usestore.example/returns with your order number and email. Print the prepaid label, drop the package at any UPS location, and the refund hits your original payment method within 5 business days of the package being scanned.",
+    "metadata": {"topic": "returns"}
+  },
+  {
+    "id": "pol-warranty-audio",
+    "text": "Aurora audio products carry a 2-year limited warranty against manufacturing defects. Battery degradation below 70% of original capacity within the warranty window is covered. Damage from drops, liquid exposure, or unauthorized repair is not covered.",
+    "metadata": {"topic": "warranty", "category": "audio"}
+  },
+  {
+    "id": "pol-warranty-general",
+    "text": "All other products carry a 1-year limited warranty against manufacturing defects. To claim, email support@usestore.example with your order number, a photo of the defect, and a one-sentence description. Most claims are resolved with a replacement shipped within 3 business days.",
+    "metadata": {"topic": "warranty"}
+  },
+  {
+    "id": "pol-price-match",
+    "text": "We price-match identical items from major retailers (Amazon, Best Buy, Target, Walmart) within 14 days of purchase. Email support with the competitor URL and we will refund the difference to your original payment method.",
+    "metadata": {"topic": "pricing"}
+  },
+  {
+    "id": "pol-cancel-order",
+    "text": "Orders can be cancelled for a full refund up until the moment they ship - usually within 2 hours of being placed. Once a tracking number is generated the order cannot be cancelled; you can refuse delivery or return it through the normal return process.",
+    "metadata": {"topic": "orders"}
+  },
+  {
+    "id": "pol-privacy",
+    "text": "We do not sell or share customer email addresses, order history, or payment information with third parties. Aggregated, non-identifying analytics may be shared with marketing partners. Account data can be exported or deleted on request at usestore.example/privacy.",
+    "metadata": {"topic": "privacy"}
+  }
+]
