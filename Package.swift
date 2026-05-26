@@ -10,7 +10,7 @@
 // To consume from another package or app:
 //
 //     dependencies: [
-//         .package(url: "https://github.com/usemoss/moss", from: "0.1.0"),
+//         .package(url: "https://github.com/usemoss/moss", from: "0.2.0"),
 //     ],
 //     targets: [
 //         .target(name: "YourTarget", dependencies: [
@@ -35,8 +35,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "MossC",
-            url: "https://github.com/usemoss/moss/releases/download/v0.1.0/Moss.xcframework.zip",
-            checksum: "08d78183b3eb94a372990373fd669101bb3292d5824680b2f5b826977a9ee924"
+            url: "https://github.com/usemoss/moss/releases/download/v0.2.0/Moss.xcframework.zip",
+            checksum: "0e0c6ef37569f0570511d86878c28485b5c3c8865f30541a16242875fdde9cbc"
         ),
         .target(
             name: "Moss",
