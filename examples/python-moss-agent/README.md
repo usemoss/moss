@@ -1,7 +1,7 @@
 # Ecommerce Support Voice Agent
 
 End-to-end LiveKit voice agent built on the
-[`moss-agent`](https://github.com/usemoss/moss/tree/main/python/moss-agent)
+[`moss-agent`](https://pypi.org/project/moss-agent/)
 SDK. Showcases the **prewarm-once, attach-per-room** pattern: one
 process-wide `MossAgent` with hot indexes loaded at boot, every concurrent
 room queries the same warm in-process cache via a one-line
