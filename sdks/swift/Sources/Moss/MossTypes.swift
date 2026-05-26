@@ -100,6 +100,35 @@ public struct JobStatus: Sendable {
     public let completedAt: String?
 }
 
+/// On-disk vector precision picked at session creation; used by
+/// `MossSession.save(toCachePath:)`. Orthogonal to the embedding model
+/// — pick `int8` for the smallest `.mossvec` files (~4× smaller than
+/// FP32, sub-1% recall hit on MiniLM-family vectors), `fp32` to force
+/// the historical lossless format, or leave at `.default` to get
+/// the platform-appropriate value (INT8 on iOS, FP32 elsewhere).
+///
+/// Raw wire values match the C ABI: 0 = default, 1 = fp32, 2 = int8.
+public enum VectorQuantization: UInt8, Sendable {
+    case `default` = 0
+    case fp32 = 1
+    case int8 = 2
+}
+
+/// Options bag for `MossClient.session(_:options:)`.
+public struct SessionOptions: Sendable {
+    /// Embedding model id. `nil` = platform default (`moss-litelm` on
+    /// iOS, `moss-minilm` elsewhere). Pass `"custom"` to skip on-device
+    /// embedding and supply embeddings via `DocumentInfo.embedding`.
+    public var modelId: String?
+    /// On-disk vector precision used by `MossSession.save(toCachePath:)`.
+    public var vectorQuantization: VectorQuantization
+
+    public init(modelId: String? = nil, vectorQuantization: VectorQuantization = .default) {
+        self.modelId = modelId
+        self.vectorQuantization = vectorQuantization
+    }
+}
+
 public struct LoadIndexOptions: Sendable {
     public var autoRefresh: Bool
     public var pollingIntervalSeconds: UInt64

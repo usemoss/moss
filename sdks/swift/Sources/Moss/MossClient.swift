@@ -1,5 +1,8 @@
 import Foundation
 import MossC
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Idiomatic Swift wrapper for the native Moss SDK.
 ///
@@ -39,12 +42,22 @@ public final class MossClient: @unchecked Sendable {
     private let stateCond = NSCondition()
 
     /// Construct a client backed by a static project key.
+    ///
+    /// The client automatically attaches a stable per-device telemetry
+    /// identifier sourced from `UIDevice.current.identifierForVendor`,
+    /// with a Keychain-persisted UUID fallback if IDFV is unavailable.
+    /// The consumer doesn't supply this — it's an SDK concern, not an
+    /// app concern, and keeping it inside the SDK ensures every
+    /// consumer reports telemetry the same way.
     public init(projectId: String, projectKey: String) throws {
         try Self.ensureModelCacheDir()
+        let did = Self.stableDeviceId()
         var raw: OpaquePointer?
         let r = projectId.withCString { pid in
             projectKey.withCString { pkey in
-                moss_client_new(pid, pkey, &raw)
+                did.withCString { d in
+                    moss_client_new_with_device_id(pid, pkey, d, &raw)
+                }
             }
         }
         try Self.throwIfErr(r)
@@ -54,24 +67,33 @@ public final class MossClient: @unchecked Sendable {
     }
 
     /// Construct a client whose bearer tokens come from [authenticator].
-    public init(projectId: String, authenticator: any Authenticator, baseUrl: String? = nil) throws {
+    /// See the static-key initializer for the device-id behavior.
+    public init(
+        projectId: String,
+        authenticator: any Authenticator,
+        baseUrl: String? = nil
+    ) throws {
         try Self.ensureModelCacheDir()
         let box = AuthenticatorBox(authenticator)
         // Retain the box and pass its raw pointer as user_data. The native
         // side stores it for the client's lifetime. `close()` releases the
         // retained reference exactly once.
         let userData = Unmanaged.passRetained(box).toOpaque()
+        let did = Self.stableDeviceId()
 
         var raw: OpaquePointer?
         let r = projectId.withCString { pid in
             withOptionalCString(baseUrl) { base in
-                moss_client_new_with_authenticator(
-                    pid,
-                    mossSwiftAuthNotify,
-                    userData,
-                    base,
-                    &raw
-                )
+                did.withCString { d in
+                    moss_client_new_with_authenticator_and_device_id(
+                        pid,
+                        mossSwiftAuthNotify,
+                        userData,
+                        base,
+                        d,
+                        &raw
+                    )
+                }
             }
         }
         if r != 0 {
@@ -164,6 +186,65 @@ public final class MossClient: @unchecked Sendable {
     /// (caller thread) and `ensureModelCacheDir` (any init thread).
     private static let cacheDirLock = NSLock()
     private static var cacheDirConfigured = false
+
+    // ── Device-identifier helpers ────────────────────────────────────
+
+    /// Returns a stable per-device identifier suitable for telemetry
+    /// attribution. Tries `UIDevice.identifierForVendor` first (the
+    /// recommended Apple-blessed mechanism; no permission prompt, no
+    /// App Tracking Transparency consent required). Falls back to a
+    /// UUID persisted in the Keychain if IDFV is unavailable — which
+    /// is rare in practice but can happen very early in the launch
+    /// sequence or in unusual restored-from-backup states.
+    ///
+    /// IDFV is stable for the lifetime of any app from your team on
+    /// this device; the Keychain fallback is stable across reinstalls
+    /// of this specific app.
+    static func stableDeviceId() -> String {
+        #if canImport(UIKit)
+        if let idfv = UIDevice.current.identifierForVendor?.uuidString {
+            return idfv
+        }
+        #endif
+        return keychainOrCreateDeviceId()
+    }
+
+    /// Reads (or creates) a UUID stored in the Keychain under a moss-
+    /// specific service+account. Used as a fallback when IDFV is nil
+    /// or absent.
+    private static func keychainOrCreateDeviceId() -> String {
+        let service = "dev.moss.sdk"
+        let account = "device_id"
+
+        let readQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+        ]
+        var item: CFTypeRef?
+        if SecItemCopyMatching(readQuery as CFDictionary, &item) == errSecSuccess,
+           let data = item as? Data,
+           let existing = String(data: data, encoding: .utf8),
+           !existing.isEmpty {
+            return existing
+        }
+
+        let new = UUID().uuidString
+        let writeAttrs: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: Data(new.utf8),
+            // ThisDeviceOnly: the entry doesn't migrate to a new device
+            // via iCloud Keychain backup. Telemetry IDs should stay
+            // device-scoped — restoring to a new device should look
+            // like a fresh install for attribution purposes.
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        _ = SecItemAdd(writeAttrs as CFDictionary, nil)
+        return new
+    }
 
     // ── Operations ───────────────────────────────────────────────────
 
@@ -438,6 +519,48 @@ public final class MossClient: @unchecked Sendable {
         }.value
     }
 
+    /// Open an on-device session for `name` with the given options.
+    ///
+    /// Sessions back the local-only flow: documents are embedded on-
+    /// device with the bundled litelm model (no network round-trip),
+    /// stored in an mmap'd vector store, and queried locally. Pass the
+    /// returned [MossSession] to `addDocs`/`query`/etc. Call `close()`
+    /// (or let it deinit) to release the native handle.
+    ///
+    /// `options.modelId == nil` selects the platform default
+    /// (`moss-litelm` on iOS). `options.vectorQuantization` picks the
+    /// on-disk vector precision used by `MossSession.save(toCachePath:)`
+    /// — defaults to platform-appropriate (INT8 on iOS).
+    public func session(
+        _ name: String,
+        options: SessionOptions = SessionOptions()
+    ) async throws -> MossSession {
+        let opts = options
+        return try await Task.detached { [self] () throws -> MossSession in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            return try name.withCString { cname in
+                try withOptionalCString(opts.modelId) { cmodel in
+                    var nativeOpts = MossSessionOptions(
+                        model_id: cmodel,
+                        vector_quantization: opts.vectorQuantization.rawValue
+                    )
+                    var raw: OpaquePointer?
+                    let r = moss_client_session(h, cname, &nativeOpts, &raw)
+                    try Self.throwIfErr(r)
+                    guard let raw else { throw Self.lastError(code: -7) }
+                    return MossSession(takingOwnershipOf: raw)
+                }
+            }
+        }.value
+    }
+
+    /// Convenience overload: open a session with just a model id.
+    /// Equivalent to `session(name, options: SessionOptions(modelId: modelId))`.
+    public func session(_ name: String, modelId: String?) async throws -> MossSession {
+        try await session(name, options: SessionOptions(modelId: modelId))
+    }
+
     // ── Internals ────────────────────────────────────────────────────
 
     /// Reserve the native handle for the duration of a single operation.
@@ -469,13 +592,13 @@ public final class MossClient: @unchecked Sendable {
     /// `typedef int32_t MossResult`, which Swift sees as ambiguous. We treat
     /// the value as a raw `Int32` and compare against the well-known OK == 0
     /// constant from the C header.
-    fileprivate static func throwIfErr(_ r: Int32) throws {
+    static func throwIfErr(_ r: Int32) throws {
         if r != 0 {
             throw lastError(code: r)
         }
     }
 
-    fileprivate static func lastError(code: Int32) -> MossError {
+    static func lastError(code: Int32) -> MossError {
         let ptr = moss_last_error()
         let msg = ptr != nil ? String(cString: ptr!) : "moss native error code \(code)"
         return MossError(code: code, message: msg)
@@ -497,7 +620,7 @@ public final class MossClient: @unchecked Sendable {
         )
     }
 
-    fileprivate static func encodeJson<T: Encodable>(_ value: T) throws -> String {
+    static func encodeJson<T: Encodable>(_ value: T) throws -> String {
         let data = try JSONEncoder().encode(value)
         guard let s = String(data: data, encoding: .utf8) else {
             throw MossError(code: -7, message: "encoded JSON was not valid UTF-8")
@@ -505,7 +628,7 @@ public final class MossClient: @unchecked Sendable {
         return s
     }
 
-    fileprivate static func decodeMutationResult(_ json: String) throws -> MutationResult {
+    static func decodeMutationResult(_ json: String) throws -> MutationResult {
         // The JSON-returning C entry points (moss_client_create_index_from_json,
         // moss_client_add_docs_from_json) emit MutationResult with camelCase
         // keys: { "jobId", "indexName", "docCount" }. If the native layer's
@@ -520,7 +643,7 @@ public final class MossClient: @unchecked Sendable {
         return MutationResult(jobId: w.jobId, indexName: w.indexName, docCount: w.docCount)
     }
 
-    private static func parseSearchResult(_ r: MossSearchResult) -> SearchResult {
+    static func parseSearchResult(_ r: MossSearchResult) -> SearchResult {
         let count = Int(r.doc_count)
         var docs: [QueryResult] = []
         docs.reserveCapacity(count)
@@ -548,7 +671,7 @@ public final class MossClient: @unchecked Sendable {
     /// Drops entries with NULL keys (which the native side shouldn't emit
     /// but we defend against). NULL `entries` or `count == 0` returns nil
     /// so the optional `QueryResult.metadata` is empty rather than `[:]`.
-    private static func parseMetadata(
+    static func parseMetadata(
         _ entries: UnsafeMutablePointer<MossMetadataEntry>?,
         count: UInt
     ) -> [String: String]? {
