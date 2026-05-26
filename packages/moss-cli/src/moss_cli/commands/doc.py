@@ -37,6 +37,7 @@ def add(
     upsert: bool = typer.Option(False, "--upsert", "-u", help="Update existing documents"),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
+    timeout: Optional[float] = typer.Option(None, "--timeout", help="Max seconds to wait (requires --wait)"),
 ) -> None:
     """Add documents to an index."""
     json_mode = ctx.obj.get("json_output", False)
@@ -57,7 +58,7 @@ def add(
     output.print_mutation_result(result, json_mode=json_mode)
 
     if wait:
-        asyncio.run(wait_for_job(client, result.job_id, poll_interval, json_mode))
+        asyncio.run(wait_for_job(client, result.job_id, poll_interval, json_mode, timeout))
 
 
 @doc_app.command(name="delete")
@@ -70,6 +71,7 @@ def delete(
     ),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
+    timeout: Optional[float] = typer.Option(None, "--timeout", help="Max seconds to wait (requires --wait)"),
 ) -> None:
     """Delete documents from an index by ID."""
     json_mode = ctx.obj.get("json_output", False)
@@ -89,7 +91,7 @@ def delete(
     output.print_mutation_result(result, json_mode=json_mode)
 
     if wait:
-        asyncio.run(wait_for_job(client, result.job_id, poll_interval, json_mode))
+        asyncio.run(wait_for_job(client, result.job_id, poll_interval, json_mode, timeout))
 
 
 @doc_app.command(name="get")
