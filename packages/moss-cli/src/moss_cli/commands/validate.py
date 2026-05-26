@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from collections import Counter
 from typing import List
 
@@ -11,7 +10,6 @@ import typer
 from rich.console import Console
 
 from ..documents import load_documents
-from ..output import print_error
 
 console = Console()
 
