@@ -40,14 +40,15 @@ def load_documents(filename: str) -> list[DocumentInfo]:
     path = DATA_DIR / filename
     with path.open() as f:
         raw = json.load(f)
-    return [
-        DocumentInfo(
-            id=doc["id"],
-            text=doc["text"],
-            metadata=doc.get("metadata", {}),
+    docs: list[DocumentInfo] = []
+    for doc in raw:
+        # Moss requires string-valued metadata. Coerce so the JSON can
+        # still write ints/bools naturally (e.g., "price_usd": 279).
+        metadata = {k: str(v) for k, v in doc.get("metadata", {}).items()}
+        docs.append(
+            DocumentInfo(id=doc["id"], text=doc["text"], metadata=metadata)
         )
-        for doc in raw
-    ]
+    return docs
 
 
 async def main() -> None:
