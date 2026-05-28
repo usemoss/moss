@@ -13,7 +13,7 @@ authors = [
     { name = "InferEdge Inc.", email = "contact@moss.dev" }
 ]
 dependencies = [
-    "moss>=1.0.0",
+    "moss>=1.1.1",
     "pydantic-ai>=0.8.0",
     "python-dotenv>=1.0.0",
 ]

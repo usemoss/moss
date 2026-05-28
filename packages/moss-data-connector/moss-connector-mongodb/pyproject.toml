@@ -19,7 +19,7 @@ classifiers = [
     "Topic :: Database",
 ]
 dependencies = [
-    "moss>=1.0.0",
+    "moss>=1.1.1",
     "pymongo>=4.6",
 ]
 

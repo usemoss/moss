@@ -21,7 +21,7 @@ classifiers = [
     "Topic :: Database",
 ]
 dependencies = [
-    "moss>=1.0.0",
+    "moss>=1.1.1",
     # TODO: add your source's driver, e.g. "psycopg[binary]>=3.1"
 ]
 

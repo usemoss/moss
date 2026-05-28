@@ -13,7 +13,7 @@ authors = [
     { name = "InferEdge Inc.", email = "contact@moss.dev" }
 ]
 dependencies = [
-    "moss>=1.0.0",
+    "moss>=1.1.1",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
     "anthropic>=0.39.0",

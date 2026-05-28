@@ -1,5 +1,5 @@
 # Core
-moss>=1.0.0
+moss>=1.1.1
 python-dotenv>=1.0.0
 httpx>=0.27.0
 

@@ -8,7 +8,7 @@ dependencies = [
     "pipecat-ai[webrtc,deepgram,openai,cartesia,runner]",
     "pipecat-ai-cli",
     "pipecat-moss>=0.0.3",
-    "moss>=1.0.0",
+    "moss>=1.1.1",
     "loguru>=0.7.2",
 ]
 

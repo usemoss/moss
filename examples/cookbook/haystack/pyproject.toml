@@ -14,7 +14,7 @@ authors = [
 ]
 dependencies = [
     "haystack-ai",
-    "moss>=1.0.0",
+    "moss>=1.1.1",
     "python-dotenv",
 ]
 
