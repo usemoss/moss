@@ -94,9 +94,8 @@ exercised end-to-end with timing.
 ## Get your credentials
 
 Sign up at [moss.dev](https://moss.dev) for a `project_id` and `project_key`
-(free tier available) - the same credentials used throughout the
-[main Quickstart](https://github.com/usemoss/moss#quickstart). Enter them on
-the app's first launch.
+(free tier available), then enter them on the app's first launch. See the
+[main Quickstart](https://github.com/usemoss/moss#quickstart) for more.
 
 ## The SDK dependency
 
