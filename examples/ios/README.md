@@ -6,9 +6,17 @@ the cloud, and load it back into a fresh session.
 
 The app walks the flow end-to-end, with per-step timing:
 
-`session` → `addDocs` (embedded on-device) → `query` → `deleteDocs` →
+`session` → `addDocs` (with metadata, embedded on-device) → `query` →
 `pushIndex` (local → cloud) → poll `getJobStatus` until ready →
 `loadIndex` (cloud → a new session) → query
+
+Along the way it exercises the full query surface:
+
+- **Hybrid search** - the same query across `alpha` (1.0 = pure semantic,
+  0.0 = pure keyword).
+- **Metadata filtering** - `$eq`, `$and`, `$in`, and `$near` filters on
+  document metadata.
+- **Fetch by id** - `getDocs(["p1", "p3"])` for graph-style traversals.
 
 Documents are embedded on-device, and the loaded-back index queries locally.
 The push/load steps need network access and valid credentials.
