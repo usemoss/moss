@@ -4,8 +4,8 @@ import Moss
 /// Drives the demo screen - owns a `MossClient`, a status string, and a
 /// running log of operations. UI binds to the `@Published` fields.
 ///
-/// This sample focuses on Moss's on-device sessions: documents are embedded
-/// and searched entirely on the device, with no network calls.
+/// This sample highlights the push pathway: build an index on-device, push it
+/// to the cloud with `pushIndex`, then load it back into a fresh session.
 @MainActor
 final class MossDemoModel: ObservableObject {
     @Published var status: String = "starting…"
@@ -32,25 +32,30 @@ final class MossDemoModel: ObservableObject {
         }
     }
 
-    // ── On-device session example ────────────────────────────────────────────
+    // ── Push pathway example ─────────────────────────────────────────────────
 
-    /// Walks the on-device flow end-to-end: open a session, embed a handful
-    /// of docs locally with the bundled model, query against them, persist to
-    /// disk, reopen, then close. No network calls - everything runs on device.
+    /// Highlights the push pathway end-to-end: open an on-device session, embed
+    /// docs locally and query them, then `pushIndex` the session up to the
+    /// cloud as a server-side index, poll until it's processed, and pull it
+    /// back into a fresh session with `loadIndex`. The session keeps its
+    /// on-device model throughout, so the loaded-back index queries locally
+    /// with no model mismatch. Requires network + valid credentials.
     func runSessionExample() async {
         guard let c = client else { return }
         busy = true
-        appendLog("\n========== On-device session ==========")
+        appendLog("\n========== Session → push → load ==========")
         defer {
             appendLog("========== Done ==========\n")
             busy = false
         }
 
-        let sessionName = "ios-local-\(Int(Date().timeIntervalSince1970 * 1000))"
+        let sessionName = "ios-push-\(Int(Date().timeIntervalSince1970 * 1000))"
         var session: MossSession?
         defer { session?.close() }
+        var pushedName = sessionName
 
         do {
+            // ── Build an index on-device ──────────────────────────────────
             try await step("session('\(sessionName)')") {
                 session = try await c.session(sessionName)
                 self.appendLog("    name=\(session?.name ?? "?")  docCount=\(session?.docCount ?? -1)")
@@ -78,103 +83,57 @@ final class MossDemoModel: ObservableObject {
                 }
             }
 
-            try await step("getDocs (all)") {
-                let docs = try await s.getDocs()
-                self.appendLog("    fetched \(docs.count) docs")
-            }
-
             try await step("deleteDocs(['ml5'])") {
                 let deleted = try await s.deleteDocs(["ml5"])
                 self.appendLog("    deleted=\(deleted) docCount=\(s.docCount)")
             }
 
-            // Persistence round-trip: write the session to disk, close the
-            // handle, open a fresh session for the same name, and verify the
-            // docs survived.
-            let cache = NSTemporaryDirectory()
-            try await step("save(toCachePath:)") {
-                try await s.save(toCachePath: cache)
-                self.appendLog("    saved to disk")
+            // ── Push it to the cloud ──────────────────────────────────────
+            var jobId = ""
+            try await step("pushIndex (local → cloud)") {
+                let r = try await s.pushIndex()
+                jobId = r.jobId
+                pushedName = r.indexName
+                self.appendLog("    job=\(r.jobId)  index=\(r.indexName)  status=\(r.status)")
             }
+
+            try await step("poll getJobStatus until ready") {
+                let done: Set<String> = ["ready", "completed", "done", "succeeded"]
+                let failed: Set<String> = ["failed", "error"]
+                for attempt in 1...30 {
+                    let st = try await c.getJobStatus(jobId)
+                    self.appendLog("    [\(attempt)] status=\(st.status)")
+                    if done.contains(st.status.lowercased()) { return }
+                    if failed.contains(st.status.lowercased()) {
+                        throw DemoError(message: "push job failed: \(st.error ?? "unknown")")
+                    }
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+                throw DemoError(message: "push job did not finish in time")
+            }
+
+            // ── Tear down the local session, reload it from the cloud ─────
             session?.close()
             session = nil
 
-            try await step("reopen + loadFromDisk → expect 4 docs") {
-                let restored = try await c.session(sessionName)
-                defer { restored.close() }
-                let count = try await restored.loadFromDisk(cachePath: cache)
-                self.appendLog("    restored \(count) docs")
-                let r = try await restored.query("transformers", options: .init(topK: 2))
-                self.appendLog("    re-query returned \(r.docs.count) hits")
+            try await step("loadIndex (cloud → new session) + query") {
+                let loaded = try await c.session(pushedName)
+                defer { loaded.close() }
+                let count = try await loaded.loadIndex(pushedName)
+                self.appendLog("    loaded \(count) docs from cloud")
+                let r = try await loaded.query("how do transformers work", options: .init(topK: 3))
+                self.appendLog("    \(r.docs.count) hits in \(r.timeMs)ms")
+                for (i, d) in r.docs.enumerated() {
+                    self.appendLog(String(format: "      %d. [%.3f] %@", i + 1, d.score, d.id))
+                }
             }
 
-            // Cloud round-trip: push the on-device index to the cloud, wait
-            // for it to process, then pull it back into a fresh session and
-            // query it. The session keeps its on-device model end-to-end, so
-            // the loaded-back index queries locally with no model mismatch.
-            try await runCloudRoundTrip(c)
+            try await step("deleteIndex (cleanup)") {
+                _ = try await c.deleteIndex(pushedName)
+                self.appendLog("    deleted cloud index \(pushedName)")
+            }
         } catch {
             appendLog("✗ failure: \(error.localizedDescription)")
-        }
-    }
-
-    /// Push the local session to the cloud, poll until the push job finishes,
-    /// then load it back into a new session and query it. Deletes the
-    /// throwaway cloud index at the end. Requires network + valid credentials.
-    private func runCloudRoundTrip(_ c: MossClient) async throws {
-        let cloudName = "ios-pushed-\(Int(Date().timeIntervalSince1970 * 1000))"
-
-        // Build a small index and push it up.
-        let pushSession = try await c.session(cloudName)
-        try await step("addDocs (for push)") {
-            let (added, _) = try await pushSession.addDocs([
-                .init(id: "a", text: "Vector databases store embeddings for fast similarity search."),
-                .init(id: "b", text: "Quantization shrinks vectors so more fit in memory."),
-            ])
-            self.appendLog("    added=\(added)")
-        }
-
-        var jobId = ""
-        var pushedName = cloudName
-        try await step("pushIndex (local → cloud)") {
-            let r = try await pushSession.pushIndex()
-            jobId = r.jobId
-            pushedName = r.indexName
-            self.appendLog("    job=\(r.jobId)  index=\(r.indexName)  status=\(r.status)")
-        }
-        pushSession.close()
-
-        try await step("poll getJobStatus until ready") {
-            let done: Set<String> = ["ready", "completed", "done", "succeeded"]
-            let failed: Set<String> = ["failed", "error"]
-            for attempt in 1...30 {
-                let s = try await c.getJobStatus(jobId)
-                self.appendLog("    [\(attempt)] status=\(s.status)")
-                if done.contains(s.status.lowercased()) { return }
-                if failed.contains(s.status.lowercased()) {
-                    throw DemoError(message: "push job failed: \(s.error ?? "unknown")")
-                }
-                try await Task.sleep(nanoseconds: 1_000_000_000)
-            }
-            throw DemoError(message: "push job did not finish in time")
-        }
-
-        // Pull the pushed index back into a new session and query on-device.
-        try await step("loadIndex (cloud → new session) + query") {
-            let loaded = try await c.session(pushedName)
-            defer { loaded.close() }
-            let count = try await loaded.loadIndex(pushedName)
-            self.appendLog("    loaded \(count) docs from cloud")
-            let r = try await loaded.query("how are vectors stored", options: .init(topK: 2))
-            self.appendLog("    \(r.docs.count) hits in \(r.timeMs)ms")
-            for (i, d) in r.docs.enumerated() {
-                self.appendLog(String(format: "      %d. [%.3f] %@", i + 1, d.score, d.id))
-            }
-        }
-
-        try await step("deleteIndex (cleanup)") {
-            _ = try await c.deleteIndex(pushedName)
-            self.appendLog("    deleted cloud index \(pushedName)")
         }
     }
 

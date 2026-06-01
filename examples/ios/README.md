@@ -1,19 +1,18 @@
 # Moss iOS Example
 
 A SwiftUI app that demonstrates the [Moss Swift SDK](https://github.com/usemoss/moss)
-- fast, on-device semantic search for iOS.
+for iOS, highlighting the **push pathway**: build an index on-device, push it
+to the cloud, and load it back into a fresh session.
 
-Documents are embedded and searched **on the device** - no network calls for
-the core flow. The app walks a session end-to-end, with per-step timing:
+The app walks the flow end-to-end, with per-step timing:
 
-`session` → `addDocs` (embedded locally) → `query` → `getDocs` →
-`deleteDocs` → `save` → reopen → `loadFromDisk`
+`session` → `addDocs` (embedded on-device) → `query` → `deleteDocs` →
+`pushIndex` (local → cloud) → poll `getJobStatus` until ready →
+`loadIndex` (cloud → a new session) → query
 
-It then demonstrates the **cloud round-trip**: `pushIndex` (local → cloud) →
-poll `getJobStatus` until ready → `loadIndex` (cloud → a new session) → query.
-Because the session keeps its on-device model throughout, the loaded-back
-index queries locally with no model mismatch. This part needs network access
-and valid credentials.
+Documents are embedded on-device, so the index keeps its on-device model
+across the round-trip and the loaded-back index queries locally with no model
+mismatch. The push/load steps need network access and valid credentials.
 
 ## Architecture
 
@@ -33,28 +32,23 @@ flowchart TB
 
     model -->|connect| client
 
-    subgraph device["On device"]
-        embed["Embed text locally<br/>(moss model)"]
-        disk[("Disk")]
-    end
-
+    embed["Embed text on-device<br/>(moss model)"]
     cloud[("Moss Cloud<br/>server-side index")]
 
     session -->|"addDocs / query"| embed
-    session <-->|"save / loadFromDisk"| disk
     session -->|"pushIndex"| cloud
     cloud -->|"loadIndex"| session
     client -.->|"getJobStatus (poll)"| cloud
 ```
 
-The core session flow (left/bottom) runs entirely on-device. The cloud
-round-trip (`pushIndex` / `loadIndex`) is the only part that touches the
-network.
+Documents are embedded on-device; `pushIndex` uploads the index to the cloud
+and `loadIndex` pulls it back into a session - the push pathway this sample
+highlights.
 
 ## Quick start
 
-The whole API is `async`/`throws`. Construct a client, open a session, then
-add and query documents - all on-device:
+The whole API is `async`/`throws`. Build an index on-device, push it to the
+cloud, then load it back into a fresh session:
 
 ```swift
 import Moss
@@ -62,19 +56,27 @@ import Moss
 let client = try MossClient(projectId: "your_project_id", projectKey: "your_project_key")
 defer { client.close() }
 
+// 1. Build an index on-device.
 let session = try await client.session("notes")
-defer { session.close() }
-
 try await session.addDocs([
     .init(id: "1", text: "Transformers replaced RNNs for sequence modeling."),
     .init(id: "2", text: "Embeddings map text into vectors for similarity search."),
 ])
 
-let hits = try await session.query("how do transformers work", options: .init(topK: 3))
-hits.docs.forEach { print($0.score, $0.id) }
+// 2. Push it to the cloud and wait for the job to finish.
+let push = try await session.pushIndex()
+session.close()
+while try await client.getJobStatus(push.jobId).status != "ready" {
+    try await Task.sleep(nanoseconds: 1_000_000_000)
+}
 
-// Persist so the next launch skips re-embedding.
-try await session.save(toCachePath: NSTemporaryDirectory())
+// 3. Load it back into a new session and query - still on-device.
+let restored = try await client.session(push.indexName)
+defer { restored.close() }
+_ = try await restored.loadIndex(push.indexName)
+
+let hits = try await restored.query("how do transformers work", options: .init(topK: 3))
+hits.docs.forEach { print($0.score, $0.id) }
 ```
 
 See [`MossDemoModel.swift`](MossExample/MossDemoModel.swift) for every call
@@ -146,8 +148,8 @@ To target a specific simulator instead, pass e.g.
 1. **First launch** shows a credentials screen. Enter your Moss project ID
    and key from the [Moss dashboard](https://portal.usemoss.dev) - they're
    required to authenticate the client.
-2. Tap **Run Session Demo** to walk the full flow - the on-device session
-   followed by the cloud round-trip. The log shows each step and its timing.
+2. Tap **Run Session Demo** to walk the full push pathway - build on-device,
+   push to the cloud, then load back. The log shows each step and its timing.
 
 ## Code tour
 
