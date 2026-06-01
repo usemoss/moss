@@ -37,9 +37,8 @@ final class MossDemoModel: ObservableObject {
     /// Highlights the push pathway end-to-end: open an on-device session, embed
     /// docs locally and query them, then `pushIndex` the session up to the
     /// cloud as a server-side index, poll until it's processed, and pull it
-    /// back into a fresh session with `loadIndex`. The session keeps its
-    /// on-device model throughout, so the loaded-back index queries locally
-    /// with no model mismatch. Requires network + valid credentials.
+    /// back into a fresh session with `loadIndex`, where it queries locally.
+    /// Requires network + valid credentials.
     func runSessionExample() async {
         guard let c = client else { return }
         busy = true

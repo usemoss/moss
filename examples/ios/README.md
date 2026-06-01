@@ -10,9 +10,8 @@ The app walks the flow end-to-end, with per-step timing:
 `pushIndex` (local → cloud) → poll `getJobStatus` until ready →
 `loadIndex` (cloud → a new session) → query
 
-Documents are embedded on-device, so the index keeps its on-device model
-across the round-trip and the loaded-back index queries locally with no model
-mismatch. The push/load steps need network access and valid credentials.
+Documents are embedded on-device, and the loaded-back index queries locally.
+The push/load steps need network access and valid credentials.
 
 ## Architecture
 
