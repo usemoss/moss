@@ -3,11 +3,53 @@
 A SwiftUI app that demonstrates the [Moss Swift SDK](https://github.com/usemoss/moss)
 - fast, on-device semantic search for iOS.
 
-Documents are embedded and searched **entirely on the device**, with no
-network calls. The app walks an on-device session end-to-end:
+Documents are embedded and searched **on the device** - no network calls for
+the core flow. The app walks a session end-to-end, with per-step timing:
 
 `session` → `addDocs` (embedded locally) → `query` → `getDocs` →
-`deleteDocs` → `save` → reopen → `loadFromDisk`, with per-step timing.
+`deleteDocs` → `save` → reopen → `loadFromDisk`
+
+It then demonstrates the **cloud round-trip**: `pushIndex` (local → cloud) →
+poll `getJobStatus` until ready → `loadIndex` (cloud → a new session) → query.
+Because the session keeps its on-device model throughout, the loaded-back
+index queries locally with no model mismatch. This part needs network access
+and valid credentials.
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph app["MossExample app (SwiftUI)"]
+        ui["ContentView / MainView<br/>credentials + Run Session Demo"]
+        model["MossDemoModel<br/>(ObservableObject)"]
+        ui <--> model
+    end
+
+    subgraph sdk["Moss Swift SDK"]
+        client["MossClient<br/>(projectId + key)"]
+        session["MossSession<br/>on-device index"]
+        client -->|"session(name)"| session
+    end
+
+    model -->|connect| client
+
+    subgraph device["On device"]
+        embed["Embed text locally<br/>(moss model)"]
+        disk[("Disk")]
+    end
+
+    cloud[("Moss Cloud<br/>server-side index")]
+
+    session -->|"addDocs / query"| embed
+    session <-->|"save / loadFromDisk"| disk
+    session -->|"pushIndex"| cloud
+    cloud -->|"loadIndex"| session
+    client -.->|"getJobStatus (poll)"| cloud
+```
+
+The core session flow (left/bottom) runs entirely on-device. The cloud
+round-trip (`pushIndex` / `loadIndex`) is the only part that touches the
+network.
 
 ## Quick start
 
@@ -104,8 +146,8 @@ To target a specific simulator instead, pass e.g.
 1. **First launch** shows a credentials screen. Enter your Moss project ID
    and key from the [Moss dashboard](https://portal.usemoss.dev) - they're
    required to authenticate the client.
-2. Tap **Run On-Device Session** to walk the full session flow. Documents are
-   embedded and queried on-device; the log shows each step and its timing.
+2. Tap **Run Session Demo** to walk the full flow - the on-device session
+   followed by the cloud round-trip. The log shows each step and its timing.
 
 ## Code tour
 

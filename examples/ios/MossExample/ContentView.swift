@@ -116,7 +116,7 @@ struct MainView: View {
             }
 
             HStack(spacing: 8) {
-                Button("Run On-Device Session") {
+                Button("Run Session Demo") {
                     Task { await demo.runSessionExample() }
                 }
                 .buttonStyle(.borderedProminent)

@@ -107,8 +107,74 @@ final class MossDemoModel: ObservableObject {
                 self.appendLog("    re-query returned \(r.docs.count) hits")
                 restored.close()
             }
+
+            // Cloud round-trip: push the on-device index to the cloud, wait
+            // for it to process, then pull it back into a fresh session and
+            // query it. The session keeps its on-device model end-to-end, so
+            // the loaded-back index queries locally with no model mismatch.
+            try await runCloudRoundTrip(c)
         } catch {
             appendLog("✗ failure: \(error.localizedDescription)")
+        }
+    }
+
+    /// Push the local session to the cloud, poll until the push job finishes,
+    /// then load it back into a new session and query it. Deletes the
+    /// throwaway cloud index at the end. Requires network + valid credentials.
+    private func runCloudRoundTrip(_ c: MossClient) async throws {
+        let cloudName = "ios-pushed-\(Int(Date().timeIntervalSince1970 * 1000))"
+
+        // Build a small index and push it up.
+        let pushSession = try await c.session(cloudName)
+        try await step("addDocs (for push)") {
+            let (added, _) = try await pushSession.addDocs([
+                .init(id: "a", text: "Vector databases store embeddings for fast similarity search."),
+                .init(id: "b", text: "Quantization shrinks vectors so more fit in memory."),
+            ])
+            self.appendLog("    added=\(added)")
+        }
+
+        var jobId = ""
+        var pushedName = cloudName
+        try await step("pushIndex (local → cloud)") {
+            let r = try await pushSession.pushIndex()
+            jobId = r.jobId
+            pushedName = r.indexName
+            self.appendLog("    job=\(r.jobId)  index=\(r.indexName)  status=\(r.status)")
+        }
+        pushSession.close()
+
+        try await step("poll getJobStatus until ready") {
+            let done: Set<String> = ["ready", "completed", "done", "succeeded"]
+            let failed: Set<String> = ["failed", "error"]
+            for attempt in 1...30 {
+                let s = try await c.getJobStatus(jobId)
+                self.appendLog("    [\(attempt)] status=\(s.status)")
+                if done.contains(s.status.lowercased()) { return }
+                if failed.contains(s.status.lowercased()) {
+                    throw DemoError(message: "push job failed: \(s.error ?? "unknown")")
+                }
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+            throw DemoError(message: "push job did not finish in time")
+        }
+
+        // Pull the pushed index back into a new session and query on-device.
+        try await step("loadIndex (cloud → new session) + query") {
+            let loaded = try await c.session(pushedName)
+            defer { loaded.close() }
+            let count = try await loaded.loadIndex(pushedName)
+            self.appendLog("    loaded \(count) docs from cloud")
+            let r = try await loaded.query("how are vectors stored", options: .init(topK: 2))
+            self.appendLog("    \(r.docs.count) hits in \(r.timeMs)ms")
+            for (i, d) in r.docs.enumerated() {
+                self.appendLog(String(format: "      %d. [%.3f] %@", i + 1, d.score, d.id))
+            }
+        }
+
+        try await step("deleteIndex (cleanup)") {
+            _ = try await c.deleteIndex(pushedName)
+            self.appendLog("    deleted cloud index \(pushedName)")
         }
     }
 
@@ -134,4 +200,11 @@ final class MossDemoModel: ObservableObject {
         let ms = (DispatchTime.now().uptimeNanoseconds - started.uptimeNanoseconds) / 1_000_000
         appendLog("  (\(ms)ms)")
     }
+}
+
+/// Lightweight error for demo-side failures (e.g. a cloud push job that never
+/// reaches a ready state). `MossError` is reserved for the SDK itself.
+private struct DemoError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
 }
