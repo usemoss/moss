@@ -91,6 +91,13 @@ exercised end-to-end with timing.
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the project:
   `brew install xcodegen`
 
+## Get your credentials
+
+Sign up at [moss.dev](https://moss.dev) for a `project_id` and `project_key`
+(free tier available) - the same credentials used throughout the
+[main Quickstart](https://github.com/usemoss/moss#quickstart). Enter them on
+the app's first launch.
+
 ## The SDK dependency
 
 The app depends on the published Moss Swift package - no local SDK checkout
@@ -145,9 +152,9 @@ To target a specific simulator instead, pass e.g.
 
 ## Using it
 
-1. **First launch** shows a credentials screen. Enter your Moss project ID
-   and key from the [Moss dashboard](https://portal.usemoss.dev) - they're
-   required to authenticate the client.
+1. **First launch** shows a credentials screen. Enter the `project_id` and
+   `project_key` from [moss.dev](https://moss.dev) (see
+   [Get your credentials](#get-your-credentials)) - they authenticate the client.
 2. Tap **Run Session Demo** to walk the full push pathway - build on-device,
    push to the cloud, then load back. The log shows each step and its timing.
 
@@ -159,7 +166,7 @@ To target a specific simulator instead, pass e.g.
 | [`ContentView.swift`](MossExample/ContentView.swift) | SwiftUI wiring - credentials screen and the demo button. |
 | [`MossExampleApp.swift`](MossExample/MossExampleApp.swift) | App entry point. |
 
-## Credentials
+## Credentials in production
 
 To keep the sample short, it stores the project key in `@AppStorage`. For a
 production app, use the `Authenticator` protocol instead: your app fetches a
