@@ -9,21 +9,15 @@ import SwiftUI
 struct ContentView: View {
     @AppStorage("project_id") private var projectId: String = ""
     @AppStorage("project_key") private var projectKey: String = ""
-    @AppStorage("search_index") private var searchIndex: String = "example-cloud-index"
 
     var body: some View {
         Group {
             if projectId.isEmpty || projectKey.isEmpty {
-                CredentialsView(
-                    projectId: $projectId,
-                    projectKey: $projectKey,
-                    searchIndex: $searchIndex
-                )
+                CredentialsView(projectId: $projectId, projectKey: $projectKey)
             } else {
                 MainView(
                     projectId: projectId,
                     projectKey: projectKey,
-                    searchIndex: searchIndex,
                     onReset: {
                         projectId = ""
                         projectKey = ""
@@ -39,11 +33,9 @@ struct ContentView: View {
 struct CredentialsView: View {
     @Binding var projectId: String
     @Binding var projectKey: String
-    @Binding var searchIndex: String
 
     @State private var draftId: String = ""
     @State private var draftKey: String = ""
-    @State private var draftIndex: String = "example-cloud-index"
     @State private var error: String?
 
     var body: some View {
@@ -59,6 +51,7 @@ struct CredentialsView: View {
             Text("Enter your Moss project credentials to begin.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Project ID").font(.caption)
@@ -70,12 +63,6 @@ struct CredentialsView: View {
                 Text("Project Key").font(.caption).padding(.top, 8)
                 SecureField("moss_…", text: $draftKey)
                     .textFieldStyle(.roundedBorder)
-
-                Text("Search index").font(.caption).padding(.top, 8)
-                TextField("example-cloud-index", text: $draftIndex)
-                    .textFieldStyle(.roundedBorder)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
             }
             .padding(.horizontal)
 
@@ -92,8 +79,6 @@ struct CredentialsView: View {
                 }
                 projectId = id
                 projectKey = key
-                searchIndex = draftIndex.trimmingCharacters(in: .whitespaces)
-                    .ifEmpty("example-cloud-index")
             }
             .buttonStyle(.borderedProminent)
             .padding(.top)
@@ -109,17 +94,9 @@ struct CredentialsView: View {
 struct MainView: View {
     let projectId: String
     let projectKey: String
-    let searchIndex: String
     let onReset: () -> Void
 
     @StateObject private var demo = MossDemoModel()
-
-    @State private var query: String = ""
-    /// Live-search task; cancelled on each new keystroke.
-    @State private var searchTask: Task<Void, Never>?
-
-    /// Debounce. A few ms - task cancellation does the rest.
-    private let debounceMs: UInt64 = 5
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -138,35 +115,11 @@ struct MainView: View {
                 }
             }
 
-            TextField("Search '\(searchIndex)'…", text: $query)
-                .textFieldStyle(.roundedBorder)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-                .onChange(of: query) { newValue in
-                    searchTask?.cancel()
-                    if newValue.trimmingCharacters(in: .whitespaces).isEmpty {
-                        demo.clearLog()
-                        demo.status = demo.client == nil ? "starting…" : "ready"
-                        return
-                    }
-                    searchTask = Task {
-                        try? await Task.sleep(nanoseconds: debounceMs * 1_000_000)
-                        if Task.isCancelled { return }
-                        await demo.search(indexName: searchIndex, query: newValue)
-                    }
-                }
-
             HStack(spacing: 8) {
-                Button("Local Session") {
-                    Task { await demo.runLocalSessionExample() }
+                Button("Run On-Device Session") {
+                    Task { await demo.runSessionExample() }
                 }
-                .buttonStyle(.bordered)
-                .disabled(demo.client == nil || demo.busy)
-
-                Button("Cloud Example") {
-                    Task { await demo.runCloudExample() }
-                }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
                 .disabled(demo.client == nil || demo.busy)
 
                 Button("Clear Log") { demo.clearLog() }
@@ -191,17 +144,7 @@ struct MainView: View {
         }
         .padding()
         .task {
-            await demo.connect(
-                projectId: projectId,
-                projectKey: projectKey,
-                searchIndex: searchIndex
-            )
+            await demo.connect(projectId: projectId, projectKey: projectKey)
         }
     }
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────────
-
-private extension String {
-    func ifEmpty(_ fallback: String) -> String { isEmpty ? fallback : self }
 }

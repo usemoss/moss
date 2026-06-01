@@ -1,24 +1,18 @@
 # Moss iOS Example
 
-A SwiftUI app that exercises the [Moss Swift SDK](https://github.com/usemoss/moss)
-end-to-end - on-device semantic search for iOS.
+A SwiftUI app that demonstrates the [Moss Swift SDK](https://github.com/usemoss/moss)
+- fast, on-device semantic search for iOS.
 
-It demonstrates both halves of the SDK:
+Documents are embedded and searched **entirely on the device**, with no
+network calls. The app walks an on-device session end-to-end:
 
-- **Cloud** - `createIndex` → `getIndex` → `listIndexes` → `addDocs` →
-  `getDocs` → `loadIndex` → `query` → `deleteDocs` → `refreshIndex` →
-  `onMemoryPressure`, with per-step timing.
-- **Local sessions** - embed docs on-device (no network), `query`,
-  `deleteDocs`, then `save` / reopen / `loadFromDisk`.
-- **Live search** - query a cloud index on every keystroke, with
-  cancellation so only the latest query's results show.
+`session` → `addDocs` (embedded locally) → `query` → `getDocs` →
+`deleteDocs` → `save` → reopen → `loadFromDisk`, with per-step timing.
 
 ## Quick start
 
-The whole API is `async`/`throws`. Construct a client, then either query a
-cloud index or run a fully on-device session.
-
-**Cloud** - create/load an index and search it:
+The whole API is `async`/`throws`. Construct a client, open a session, then
+add and query documents - all on-device:
 
 ```swift
 import Moss
@@ -26,21 +20,6 @@ import Moss
 let client = try MossClient(projectId: "your_project_id", projectKey: "your_project_key")
 defer { client.close() }
 
-_ = try await client.createIndex("support-docs", docs: [
-    .init(id: "1", text: "Refunds are processed within 3-5 business days."),
-    .init(id: "2", text: "Track your order from the dashboard."),
-])
-try await client.loadIndex("support-docs")
-
-let result = try await client.query("support-docs", "how long do refunds take?")
-for doc in result.docs {
-    print(String(format: "[%.3f] %@", doc.score, doc.text))
-}
-```
-
-**On-device session** - embed and search locally, with no network calls:
-
-```swift
 let session = try await client.session("notes")
 defer { session.close() }
 
@@ -122,21 +101,18 @@ To target a specific simulator instead, pass e.g.
 
 ## Using it
 
-1. **First launch** shows a credentials screen - enter your Moss project ID,
-   project key, and the name of a cloud index to search. Find these in the
-   [Moss dashboard](https://portal.usemoss.dev).
-2. **Search bar** queries that cloud index live as you type.
-3. **Cloud Example** walks the full cloud API against a throwaway index and
-   deletes it when done.
-4. **Local Session** runs the entire on-device flow - no cloud project
-   required, so it works even with placeholder credentials.
+1. **First launch** shows a credentials screen. Enter your Moss project ID
+   and key from the [Moss dashboard](https://portal.usemoss.dev) - they're
+   required to authenticate the client.
+2. Tap **Run On-Device Session** to walk the full session flow. Documents are
+   embedded and queried on-device; the log shows each step and its timing.
 
 ## Code tour
 
 | File | What it shows |
 | --- | --- |
 | [`MossDemoModel.swift`](MossExample/MossDemoModel.swift) | Every SDK call, narrated step-by-step. Start here. |
-| [`ContentView.swift`](MossExample/ContentView.swift) | SwiftUI wiring - credentials, live search, buttons. |
+| [`ContentView.swift`](MossExample/ContentView.swift) | SwiftUI wiring - credentials screen and the demo button. |
 | [`MossExampleApp.swift`](MossExample/MossExampleApp.swift) | App entry point. |
 
 ## Credentials
