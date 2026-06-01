@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@source "../node_modules/@moss-tools/founding-agent/dist/**/*.{js,mjs}";
+@import "../node_modules/@livekit/components-styles/dist/general/index.css";
+
+:root {
+  --background: #0a0a0f;
+  --foreground: #f0f0f5;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
