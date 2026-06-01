@@ -3,8 +3,8 @@
 @import "../node_modules/@livekit/components-styles/dist/general/index.css";
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #f0f0f5;
+  --background: #0f0d0a;
+  --foreground: #f5f0e8;
 }
 
 body {
