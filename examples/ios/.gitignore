@@ -1,0 +1,10 @@
+# Xcode project is generated from project.yml via xcodegen.
+MossExample.xcodeproj/
+
+# Build artifacts & resolved package state.
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+Package.resolved

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Complete examples and demonstrations for the Moss JavaScript SDK - Semantic search and document indexing made simple",
   "license": "ISC",
-  "author": "Your Name <email@example.com>",
+  "author": "Moss <contact@moss.dev>",
   "type": "commonjs",
   "main": "sample.ts",
   "keywords": [

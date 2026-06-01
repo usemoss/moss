@@ -1,0 +1,43 @@
+name: MossExample
+options:
+  bundleIdPrefix: dev.moss
+  deploymentTarget:
+    iOS: "15.1"
+  groupSortPosition: top
+
+packages:
+  # The published Moss Swift SDK. Xcode downloads the precompiled xcframework
+  # from the GitHub release on first resolve and verifies its checksum.
+  Moss:
+    url: https://github.com/usemoss/moss
+    from: 0.2.0
+
+targets:
+  MossExample:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.1"
+    sources:
+      - path: MossExample
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.moss.example
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        # arm64 only - matches the xcframework slices the SDK ships
+        # (arm64 device + arm64 Apple Silicon simulator).
+        ARCHS: "arm64"
+        ONLY_ACTIVE_ARCH: "YES"
+    info:
+      path: MossExample/Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleDisplayName: Moss Example
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiresFullScreen: true
+        ITSAppUsesNonExemptEncryption: false
+    dependencies:
+      - package: Moss
+        product: Moss

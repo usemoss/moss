@@ -20,3 +20,6 @@ venv/
 
 *.egg-info
 .moss-cache
+
+# Swift / SwiftPM build artifacts
+.build/
