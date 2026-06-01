@@ -86,7 +86,7 @@ exercised end-to-end with timing.
 - Xcode 15+
 - An **Apple Silicon** Mac. The SDK ships arm64 builds only (device and
   simulator); Intel simulators are not supported.
-- [XcodeGen](https://github.com/yonyz/XcodeGen) to generate the project:
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the project:
   `brew install xcodegen`
 
 ## The SDK dependency

@@ -113,6 +113,7 @@ struct MainView: View {
                 Button(action: onReset) {
                     Image(systemName: "arrow.clockwise")
                 }
+                .accessibilityLabel("Reset credentials")
             }
 
             HStack(spacing: 8) {

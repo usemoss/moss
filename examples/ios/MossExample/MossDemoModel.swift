@@ -101,11 +101,11 @@ final class MossDemoModel: ObservableObject {
 
             try await step("reopen + loadFromDisk → expect 4 docs") {
                 let restored = try await c.session(sessionName)
+                defer { restored.close() }
                 let count = try await restored.loadFromDisk(cachePath: cache)
                 self.appendLog("    restored \(count) docs")
                 let r = try await restored.query("transformers", options: .init(topK: 2))
                 self.appendLog("    re-query returned \(r.docs.count) hits")
-                restored.close()
             }
 
             // Cloud round-trip: push the on-device index to the cloud, wait
