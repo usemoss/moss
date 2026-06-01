@@ -13,6 +13,8 @@ from .commands.init_cmd import init_command
 from .commands.job import job_app
 from .commands.profile import profile_app
 from .commands.search import query_command
+from .commands.sync import sync_command
+from .commands.validate import validate_command
 from .commands.version import version_command
 from .output import print_error
 
@@ -33,6 +35,8 @@ app.add_typer(profile_app, name="profile", help="Manage auth profiles")
 app.command(name="query")(query_command)
 app.command(name="init")(init_command)
 app.command(name="version")(version_command)
+app.command(name="validate")(validate_command)
+app.command(name="sync")(sync_command)
 
 
 @app.callback()

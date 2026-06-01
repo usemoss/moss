@@ -37,6 +37,7 @@ def create(
     ),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for job to complete"),
     poll_interval: float = typer.Option(2.0, "--poll-interval", help="Seconds between status checks"),
+    timeout: Optional[float] = typer.Option(None, "--timeout", help="Max seconds to wait (requires --wait)"),
 ) -> None:
     """Create a new index with documents."""
     json_mode = ctx.obj.get("json_output", False)
@@ -52,7 +53,7 @@ def create(
     output.print_mutation_result(result, json_mode=json_mode)
 
     if wait:
-        asyncio.run(wait_for_job(client, result.job_id, poll_interval, json_mode))
+        asyncio.run(wait_for_job(client, result.job_id, poll_interval, json_mode, timeout))
 
 
 @index_app.command(name="list")
