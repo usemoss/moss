@@ -31,17 +31,23 @@ flowchart TB
 
     model -->|connect| client
 
-    embed["Embed text on-device<br/>(moss model)"]
+    subgraph device["On device"]
+        embed["Embed text locally<br/>(moss model)"]
+        disk[("Disk")]
+    end
+
     cloud[("Moss Cloud<br/>server-side index")]
 
     session -->|"addDocs / query"| embed
+    session <-->|"save / loadFromDisk"| disk
     session -->|"pushIndex"| cloud
     cloud -->|"loadIndex"| session
     client -.->|"getJobStatus (poll)"| cloud
 ```
 
-Documents are embedded on-device; `pushIndex` uploads the index to the cloud
-and `loadIndex` pulls it back into a session.
+The core session flow (left/bottom) runs entirely on-device. The cloud
+round-trip (`pushIndex` / `loadIndex`) is the only part that touches the
+network.
 
 ## Quick start
 
