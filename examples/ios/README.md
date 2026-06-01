@@ -82,6 +82,23 @@ hits.docs.forEach { print($0.score, $0.id) }
 See [`MossDemoModel.swift`](MossExample/MossDemoModel.swift) for every call
 exercised end-to-end with timing.
 
+### Local persistence (no cloud)
+
+If you don't need the cloud, a session can persist to disk and reopen on the
+next launch - fully offline, no network:
+
+```swift
+let session = try await client.session("notes")
+try await session.addDocs([ /* ... */ ])
+try await session.save(toCachePath: NSTemporaryDirectory())
+session.close()
+
+// Later, or on the next launch:
+let restored = try await client.session("notes")
+try await restored.loadFromDisk(cachePath: NSTemporaryDirectory())
+let hits = try await restored.query("how do transformers work", options: .init(topK: 3))
+```
+
 ## Requirements
 
 - iOS 15.1+
