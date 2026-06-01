@@ -56,11 +56,11 @@ needed. The dependency is declared in [`project.yml`](project.yml):
 packages:
   Moss:
     url: https://github.com/usemoss/moss
-    from: 0.2.0
+    from: 0.3.0
 ```
 
 On first build, Xcode downloads the precompiled `Moss.xcframework` from the
-[v0.2.0 release](https://github.com/usemoss/moss/releases/tag/v0.2.0),
+[v0.3.0 release](https://github.com/usemoss/moss/releases/tag/v0.3.0),
 verifies its checksum, and links it in.
 
 ## Generate the project

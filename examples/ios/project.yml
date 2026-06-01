@@ -10,7 +10,7 @@ packages:
   # from the GitHub release on first resolve and verifies its checksum.
   Moss:
     url: https://github.com/usemoss/moss
-    from: 0.2.0
+    from: 0.3.0
 
 targets:
   MossExample:
