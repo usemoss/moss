@@ -1,8 +1,8 @@
 # Moss iOS Example
 
 A SwiftUI app that demonstrates the [Moss Swift SDK](https://github.com/usemoss/moss)
-for iOS, highlighting the **push pathway**: build an index on-device, push it
-to the cloud, and load it back into a fresh session.
+for iOS with an **on-device session**: build an index on-device, push it to
+the cloud, and load it back into a fresh session.
 
 The app walks the flow end-to-end, with per-step timing:
 
@@ -41,8 +41,7 @@ flowchart TB
 ```
 
 Documents are embedded on-device; `pushIndex` uploads the index to the cloud
-and `loadIndex` pulls it back into a session - the push pathway this sample
-highlights.
+and `loadIndex` pulls it back into a session.
 
 ## Quick start
 
@@ -170,8 +169,8 @@ To target a specific simulator instead, pass e.g.
 1. **First launch** shows a credentials screen. Enter the `project_id` and
    `project_key` from [moss.dev](https://moss.dev) (see
    [Get your credentials](#get-your-credentials)) - they authenticate the client.
-2. Tap **Run Session Demo** to walk the full push pathway - build on-device,
-   push to the cloud, then load back. The log shows each step and its timing.
+2. Tap **Run Session Demo** to walk the full flow - build on-device, push to
+   the cloud, then load back. The log shows each step and its timing.
 
 ## Code tour
 

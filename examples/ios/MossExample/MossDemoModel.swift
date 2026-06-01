@@ -4,7 +4,7 @@ import Moss
 /// Drives the demo screen - owns a `MossClient`, a status string, and a
 /// running log of operations. UI binds to the `@Published` fields.
 ///
-/// This sample highlights the push pathway: build an index on-device, push it
+/// This sample uses an on-device session: build an index on-device, push it
 /// to the cloud with `pushIndex`, then load it back into a fresh session.
 @MainActor
 final class MossDemoModel: ObservableObject {
@@ -32,10 +32,10 @@ final class MossDemoModel: ObservableObject {
         }
     }
 
-    // ── Push pathway example ─────────────────────────────────────────────────
+    // ── On-device session example ────────────────────────────────────────────
 
-    /// Highlights the push pathway end-to-end: open an on-device session, embed
-    /// docs locally and query them, then `pushIndex` the session up to the
+    /// Walks an on-device session end-to-end: open a session, embed docs
+    /// locally and query them, then `pushIndex` the session up to the
     /// cloud as a server-side index, poll until it's processed, and pull it
     /// back into a fresh session with `loadIndex`, where it queries locally.
     /// Requires network + valid credentials.
