@@ -7,7 +7,7 @@ import logging
 import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional
+from typing import Any
 
 from agno.knowledge.document import Document
 from agno.utils.log import log_debug, log_error, log_info, log_warning
@@ -50,16 +50,17 @@ class MossVectorDb(VectorDb):
     def __init__(
         self,
         index_name: str,
-        project_id: Optional[str] = None,
-        project_key: Optional[str] = None,
+        project_id: str | None = None,
+        project_key: str | None = None,
         embedding_model: str = "moss-minilm",
         alpha: float = 0.8,
         auto_refresh: bool = False,
         polling_interval_in_seconds: int = 600,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        id: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        id: str | None = None,
     ):
+        """Initialize the MossVectorDb client."""
         self.index_name = index_name
         self.embedding_model = embedding_model
         self.alpha = alpha
@@ -98,7 +99,7 @@ class MossVectorDb(VectorDb):
         except RuntimeError:
             return asyncio.run(coro)
 
-    def _to_moss_doc(self, document: Document, content_hash: Optional[str] = None) -> DocumentInfo:
+    def _to_moss_doc(self, document: Document, content_hash: str | None = None) -> DocumentInfo:
         meta: dict[str, str] = {str(k): str(v) for k, v in (document.meta_data or {}).items()}
         if content_hash:
             meta["content_hash"] = content_hash
@@ -250,7 +251,7 @@ class MossVectorDb(VectorDb):
         self,
         content_hash: str,
         documents: list[Document],
-        filters: Optional[Any] = None,
+        filters: Any | None = None,
     ) -> None:
         """Insert documents; delegates to upsert."""
         self.upsert(content_hash=content_hash, documents=documents, filters=filters)
@@ -259,7 +260,7 @@ class MossVectorDb(VectorDb):
         self,
         content_hash: str,
         documents: list[Document],
-        filters: Optional[Any] = None,
+        filters: Any | None = None,
     ) -> None:
         """Async variant of insert()."""
         await self.async_upsert(content_hash=content_hash, documents=documents, filters=filters)
@@ -268,7 +269,7 @@ class MossVectorDb(VectorDb):
         self,
         content_hash: str,
         documents: list[Document],
-        filters: Optional[Any] = None,
+        filters: Any | None = None,
     ) -> None:
         """Upsert documents into the index, creating it if necessary."""
         moss_docs = [self._to_moss_doc(doc, content_hash) for doc in documents]
@@ -284,7 +285,7 @@ class MossVectorDb(VectorDb):
         self,
         content_hash: str,
         documents: list[Document],
-        filters: Optional[Any] = None,
+        filters: Any | None = None,
     ) -> None:
         """Async variant of upsert()."""
         moss_docs = [self._to_moss_doc(doc, content_hash) for doc in documents]
@@ -300,7 +301,7 @@ class MossVectorDb(VectorDb):
     # Search
     # ------------------------------------------------------------------
 
-    def search(self, query: str, limit: int = 5, filters: Optional[Any] = None) -> list[Document]:
+    def search(self, query: str, limit: int = 5, filters: Any | None = None) -> list[Document]:
         """Search the index and return the top matching documents."""
         try:
             results = self._run(
@@ -320,7 +321,7 @@ class MossVectorDb(VectorDb):
             return []
 
     async def async_search(
-        self, query: str, limit: int = 5, filters: Optional[Any] = None
+        self, query: str, limit: int = 5, filters: Any | None = None
     ) -> list[Document]:
         """Async variant of search()."""
         try:

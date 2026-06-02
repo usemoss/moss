@@ -1,6 +1,5 @@
-"""
-Moss: High-Performance Semantic Search
-=======================================
+"""Demo: Moss semantic search with an Agno agent.
+
 Moss manages embeddings internally and serves queries from an in-memory
 runtime, delivering sub-10ms latency with no external embedder required.
 
@@ -17,6 +16,7 @@ Or pass project_id / project_key directly to MossVectorDb.
 from agno.agent import Agent
 from agno.knowledge.knowledge import Knowledge
 from agno.models.openai import OpenAIChat
+
 from agno_moss import MossVectorDb
 
 if __name__ == "__main__":
