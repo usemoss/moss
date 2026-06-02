@@ -143,11 +143,11 @@ class MossVectorDb(VectorDb):
         if not await self.async_exists():
             log_info(f"Creating Moss index '{self.index_name}' with model '{self.embedding_model}'")
             await self._client.create_index(self.index_name, moss_docs, self.embedding_model)
-            self._index_loaded = False
         else:
             await self._client.add_docs(
                 self.index_name, moss_docs, options=MutationOptions(upsert=True)
             )
+        self._index_loaded = False
         await self._load_index()
 
     # ------------------------------------------------------------------
