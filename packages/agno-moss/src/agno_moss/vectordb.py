@@ -94,10 +94,14 @@ class MossVectorDb(VectorDb):
         """
         try:
             asyncio.get_running_loop()
+            in_running_loop = True
+        except RuntimeError:
+            in_running_loop = False
+
+        if in_running_loop:
             with ThreadPoolExecutor(max_workers=1) as pool:
                 return pool.submit(asyncio.run, coro).result()
-        except RuntimeError:
-            return asyncio.run(coro)
+        return asyncio.run(coro)
 
     def _to_moss_doc(self, document: Document, content_hash: str | None = None) -> DocumentInfo:
         meta: dict[str, str] = {str(k): str(v) for k, v in (document.meta_data or {}).items()}
@@ -230,6 +234,7 @@ class MossVectorDb(VectorDb):
                     self.index_name,
                     content_hash,
                     options=QueryOptions(
+                        alpha=0.0,
                         top_k=1,
                         filter={"field": "content_hash", "condition": {"$eq": content_hash}},
                     ),
