@@ -157,7 +157,7 @@ export default function MossDemo() {
   };
 
   const deleteIndex = () => {
-    if (!client || isDeletingIndex || buildState !== 'done') return;
+    if (!client || isDeletingIndex || isLoadingIndex || buildState !== 'done') return;
 
     setBuildMessage(null);
 
@@ -172,7 +172,7 @@ export default function MossDemo() {
         setHasSearched(false);
         setModifiedIds(new Set(docs.filter(d => d.text.trim()).map(d => d.id)));
       } catch (error) {
-        setBuildState('error');
+        setBuildState('done');
         setBuildMessage(error instanceof Error ? error.message : 'Failed to delete index');
       }
     });
@@ -414,7 +414,7 @@ export default function MossDemo() {
                 <span>{buildState === 'done' ? 'Rebuild' : 'Build'} Index</span>
               </button>
 
-              {buildState === 'error' && buildMessage && (
+              {buildMessage && buildState !== 'building' && (
                 <div className="status-box status-error">
                   <AlertCircle size={14} />
                   <span>{buildMessage}</span>
@@ -434,7 +434,7 @@ export default function MossDemo() {
               <button
                 className="btn btn-danger-soft"
                 onClick={deleteIndex}
-                disabled={isMutatingIndex || buildState !== 'done'}
+                disabled={isMutatingIndex || isLoadingIndex || buildState !== 'done'}
                 style={{ width: '100%', marginTop: '0.75rem' }}
               >
                 {isDeletingIndex ? (

@@ -213,6 +213,8 @@ describe('MossDemo', () => {
       await waitFor(() =>
         expect(screen.getByText('delete failed')).toBeInTheDocument()
       )
+      expect(screen.getByRole('button', { name: /delete index/i })).toBeEnabled()
+      expect(screen.getByRole('button', { name: /load index/i })).toBeEnabled()
     })
 
     it('disables rebuild and load actions while deleting is in progress', async () => {
@@ -242,6 +244,30 @@ describe('MossDemo', () => {
 
       resolveDelete?.()
       await waitFor(() => expect(screen.getByText('Build first')).toBeInTheDocument())
+    })
+
+    it('disables delete while loading is in progress', async () => {
+      let resolveLoad: (() => void) | undefined
+      mockClient.loadIndex.mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveLoad = () => resolve('demo-index')
+          })
+      )
+
+      const user = userEvent.setup()
+      render(<MossDemo />)
+      await doBuildIndex(user)
+
+      await user.click(screen.getByRole('button', { name: /load index/i }))
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /loading index/i })).toBeInTheDocument()
+      )
+      expect(screen.getByRole('button', { name: /delete index/i })).toBeDisabled()
+
+      resolveLoad?.()
+      await waitFor(() => expect(screen.getByText('✓ Ready')).toBeInTheDocument())
     })
   })
 
