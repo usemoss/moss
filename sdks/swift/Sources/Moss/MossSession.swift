@@ -234,20 +234,40 @@ public final class MossSession: @unchecked Sendable {
 
     // ── Persistence ──────────────────────────────────────────────────
 
-    /// Pull a server-side index into this session as a one-time
-    /// hydration. Returns the doc count loaded (0 if the cloud has no
-    /// index by that name). The session subsequently behaves as a
-    /// local one — add/delete/query don't hit the network.
+    /// Pull a server-side index into this session. Returns the doc count
+    /// loaded (0 if the cloud has no index by that name).
+    ///
+    /// By default this is a one-time hydration: the session then behaves as a
+    /// local one — add/delete/query don't hit the network. Pass
+    /// `options.autoRefresh = true` to keep it in sync: a background task
+    /// polls the cloud index every `options.pollingIntervalSeconds` and pulls
+    /// newer versions in on the next `query`/`getDocs`/`docCount`. Auto-refresh
+    /// pauses while the session has un-pushed local edits (`addDocs`/`deleteDocs`
+    /// before a `pushIndex`), so it never clobbers local work.
+    ///
+    /// `options.cachePath` is ignored for sessions — use `save(toCachePath:)`
+    /// for on-disk persistence.
     @discardableResult
-    public func loadIndex(_ indexName: String) async throws -> Int {
-        try await Task.detached { [self] () throws -> Int in
+    public func loadIndex(
+        _ indexName: String,
+        options: LoadIndexOptions = LoadIndexOptions()
+    ) async throws -> Int {
+        let opts = options
+        return try await Task.detached { [self] () throws -> Int in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try indexName.withCString { cname in
-                var docCount: UInt = 0
-                let r = moss_session_load_index(h, cname, &docCount)
-                try MossClient.throwIfErr(r)
-                return Int(docCount)
+                try withOptionalCString(opts.cachePath) { cachePath in
+                    var nativeOpts = MossLoadIndexOptions(
+                        auto_refresh: opts.autoRefresh,
+                        polling_interval_secs: opts.pollingIntervalSeconds,
+                        cache_path: cachePath
+                    )
+                    var docCount: UInt = 0
+                    let r = moss_session_load_index(h, cname, &nativeOpts, &docCount)
+                    try MossClient.throwIfErr(r)
+                    return Int(docCount)
+                }
             }
         }.value
     }
