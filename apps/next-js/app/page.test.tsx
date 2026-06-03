@@ -36,7 +36,7 @@ beforeEach(() => {
   mockClient.deleteIndex.mockResolvedValue(undefined)
   mockClient.createIndex.mockResolvedValue(undefined)
   mockClient.loadIndex.mockResolvedValue(undefined)
-  mockClient.query.mockResolvedValue({ docs: [] })
+  mockClient.query.mockResolvedValue({ docs: [], timeTakenMs: 3.4 })
 })
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -49,6 +49,11 @@ async function doBuildIndex(user: ReturnType<typeof userEvent.setup>) {
 async function doLoadIndex(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: /load index/i }))
   await waitFor(() => expect(screen.getByText('✓ Ready')).toBeInTheDocument())
+}
+
+async function doDeleteIndex(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /delete index/i }))
+  await waitFor(() => expect(screen.getByText('Build first')).toBeInTheDocument())
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -184,6 +189,33 @@ describe('MossDemo', () => {
     })
   })
 
+  describe('deleteIndex', () => {
+    it('deletes the current index and returns the UI to the pre-build state', async () => {
+      const user = userEvent.setup()
+      render(<MossDemo />)
+      await doBuildIndex(user)
+      mockClient.deleteIndex.mockClear()
+      await doDeleteIndex(user)
+
+      expect(mockClient.deleteIndex).toHaveBeenCalledWith(expect.any(String))
+      expect(screen.getByRole('button', { name: /build index/i })).toBeEnabled()
+      expect(screen.getByRole('button', { name: /load index/i })).toBeDisabled()
+    })
+
+    it('shows an error message when deleting the index fails', async () => {
+      const user = userEvent.setup()
+      render(<MossDemo />)
+      await doBuildIndex(user)
+      mockClient.deleteIndex.mockRejectedValueOnce(new Error('delete failed'))
+
+      await user.click(screen.getByRole('button', { name: /delete index/i }))
+
+      await waitFor(() =>
+        expect(screen.getByText('delete failed')).toBeInTheDocument()
+      )
+    })
+  })
+
   describe('handleSearch', () => {
     it('calls query with the search term, topK: 5, and alpha: 0.5', async () => {
       const user = userEvent.setup()
@@ -202,6 +234,7 @@ describe('MossDemo', () => {
           { id: 'doc-1', text: 'Moss is fast', score: 0.95, metadata: {} },
           { id: 'doc-2', text: 'Vector search', score: 0.72, metadata: {} },
         ],
+        timeTakenMs: 4.2,
       })
       const user = userEvent.setup()
       render(<MossDemo />)
@@ -211,6 +244,7 @@ describe('MossDemo', () => {
       await waitFor(() => expect(screen.getByText('Moss is fast')).toBeInTheDocument())
       expect(screen.getByText('Vector search')).toBeInTheDocument()
       expect(screen.getByText(/95%/)).toBeInTheDocument()
+      expect(screen.getByText('Retrieval time 4.2 ms')).toBeInTheDocument()
     })
 
     it('shows empty state when query returns no docs', async () => {
