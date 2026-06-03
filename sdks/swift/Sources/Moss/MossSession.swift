@@ -245,8 +245,9 @@ public final class MossSession: @unchecked Sendable {
     /// pauses while the session has un-pushed local edits (`addDocs`/`deleteDocs`
     /// before a `pushIndex`), so it never clobbers local work.
     ///
-    /// `options.cachePath` is ignored for sessions — use `save(toCachePath:)`
-    /// for on-disk persistence.
+    /// For on-disk persistence of a session, use `save(toCachePath:)` /
+    /// `loadFromDisk(cachePath:)`. `options.cachePath` applies to
+    /// `MossClient.loadIndex`, not to sessions, so it is not forwarded here.
     @discardableResult
     public func loadIndex(
         _ indexName: String,

@@ -130,14 +130,20 @@ public struct SessionOptions: Sendable {
 }
 
 public struct LoadIndexOptions: Sendable {
+    /// Keep the loaded index in sync by polling the cloud in the background.
     public var autoRefresh: Bool
+    /// How often the auto-refresh poll runs, in seconds (only used when
+    /// `autoRefresh` is true). Defaults to 600 (10 minutes); the engine clamps
+    /// values below 1 to 1, so leave it at the default rather than passing 0.
     public var pollingIntervalSeconds: UInt64
     /// Optional sandbox path used to cache the index on disk so subsequent
-    /// launches don't re-download. Pass `FileManager.default.urls(for:
-    /// .documentDirectory, in: .userDomainMask).first!.path` or similar.
+    /// launches don't re-download. Applies to `MossClient.loadIndex`; sessions
+    /// persist via `MossSession.save(toCachePath:)` instead. Pass
+    /// `FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.path`
+    /// or similar.
     public var cachePath: String?
 
-    public init(autoRefresh: Bool = false, pollingIntervalSeconds: UInt64 = 0, cachePath: String? = nil) {
+    public init(autoRefresh: Bool = false, pollingIntervalSeconds: UInt64 = 600, cachePath: String? = nil) {
         self.autoRefresh = autoRefresh
         self.pollingIntervalSeconds = pollingIntervalSeconds
         self.cachePath = cachePath
