@@ -257,17 +257,18 @@ public final class MossSession: @unchecked Sendable {
             let h = try borrowHandle()
             defer { returnHandle() }
             return try indexName.withCString { cname in
-                try withOptionalCString(opts.cachePath) { cachePath in
-                    var nativeOpts = MossLoadIndexOptions(
-                        auto_refresh: opts.autoRefresh,
-                        polling_interval_secs: opts.pollingIntervalSeconds,
-                        cache_path: cachePath
-                    )
-                    var docCount: UInt = 0
-                    let r = moss_session_load_index(h, cname, &nativeOpts, &docCount)
-                    try MossClient.throwIfErr(r)
-                    return Int(docCount)
-                }
+                // `cachePath` is intentionally not forwarded: the native session
+                // load ignores it (sessions persist via `save(toCachePath:)`),
+                // so passing it would only mislead callers.
+                var nativeOpts = MossLoadIndexOptions(
+                    auto_refresh: opts.autoRefresh,
+                    polling_interval_secs: opts.pollingIntervalSeconds,
+                    cache_path: nil
+                )
+                var docCount: UInt = 0
+                let r = moss_session_load_index(h, cname, &nativeOpts, &docCount)
+                try MossClient.throwIfErr(r)
+                return Int(docCount)
             }
         }.value
     }
