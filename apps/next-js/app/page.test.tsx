@@ -213,6 +213,7 @@ describe('MossDemo', () => {
       await waitFor(() =>
         expect(screen.getByText('delete failed')).toBeInTheDocument()
       )
+      expect(screen.queryByText('Index ready to search')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /delete index/i })).toBeEnabled()
       expect(screen.getByRole('button', { name: /load index/i })).toBeEnabled()
     })

@@ -421,7 +421,7 @@ export default function MossDemo() {
                 </div>
               )}
 
-              {buildState === 'done' && (
+              {buildState === 'done' && !buildMessage && (
                 <div className="status-box status-success" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <CheckCircle2 size={14} />
