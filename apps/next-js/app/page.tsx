@@ -76,6 +76,7 @@ export default function MossDemo() {
   const [isBuilding, startBuild] = useTransition();
   const [isSearching, startSearch] = useTransition();
   const [isDeletingIndex, startDeleteIndex] = useTransition();
+  const isMutatingIndex = isBuilding || isDeletingIndex;
 
   // ── Document operations ────────────────────────────────────────────────────
 
@@ -347,7 +348,7 @@ export default function MossDemo() {
                 <button
                   className="btn add-btn"
                   onClick={addNewDoc}
-                  disabled={isBuilding}
+                  disabled={isMutatingIndex}
                   title="Add new document"
                 >
                   <Plus size={14} /> Add
@@ -374,7 +375,7 @@ export default function MossDemo() {
                         <button
                           className="btn-icon update"
                           onClick={() => buildIndex(doc.id)}
-                          disabled={isBuilding || !doc.text.trim()}
+                          disabled={isMutatingIndex || !doc.text.trim()}
                           title="Update this document"
                         >
                           <Upload size={14} />
@@ -383,7 +384,7 @@ export default function MossDemo() {
                       <button
                         className="btn-icon"
                         onClick={() => removeDoc(doc.id)}
-                        disabled={isBuilding}
+                        disabled={isMutatingIndex}
                         title="Remove document"
                       >
                         <Trash2 size={14} />
@@ -406,7 +407,7 @@ export default function MossDemo() {
               <button
                 className="btn btn-primary build-button"
                 onClick={() => buildIndex()}
-                disabled={isBuilding || validDocCount === 0 || !hasModified}
+                disabled={isMutatingIndex || validDocCount === 0 || !hasModified}
               >
                 {isBuilding && <Loader2 className="spinner" size={16} />}
                 {!isBuilding && <Database size={16} />}
@@ -433,7 +434,7 @@ export default function MossDemo() {
               <button
                 className="btn btn-danger-soft"
                 onClick={deleteIndex}
-                disabled={isDeletingIndex || isBuilding || buildState !== 'done'}
+                disabled={isMutatingIndex || buildState !== 'done'}
                 style={{ width: '100%', marginTop: '0.75rem' }}
               >
                 {isDeletingIndex ? (
@@ -458,7 +459,7 @@ export default function MossDemo() {
               <button
                 className="btn btn-secondary"
                 onClick={loadIndexIntoMemory}
-                disabled={isIndexLoaded || isLoadingIndex || !buildState || buildState !== 'done'}
+                disabled={isMutatingIndex || isIndexLoaded || isLoadingIndex || !buildState || buildState !== 'done'}
                 style={{ width: '100%' }}
               >
                 {isIndexLoaded ? (

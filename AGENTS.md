@@ -43,7 +43,7 @@ apps/
   livekit-moss-vercel/ — LiveKit voice agent + React frontend on Vercel
   moss-bun/        — Production Bun semantic search application
   moss-llamaindex/ — LlamaIndex + Liteparse full-stack PDF search demo
-  next-js/         — Next.js 15 semantic search UI (Server Actions)
+  next-js/         — Next.js 16 browser-based semantic search UI (@moss-dev/moss-web)
   pipecat-moss/    — Pipecat voice agent (three variants below)
     pipecat-quickstart/  — Cloud-deployable quickstart bot
     ollama-local/        — Local LLM + Moss + Pipecat via docker compose
@@ -119,7 +119,7 @@ asks for an experimental landing spot.
 | `apps/docker/` | Python + JS SDK usage inside Docker containers (ECS / Kubernetes pattern) |
 | `apps/moss-bun/` | Production Bun + Moss application |
 | `apps/moss-llamaindex/` | Full-stack PDF → LlamaIndex + Liteparse + Moss semantic search demo |
-| `apps/next-js/` | Next.js 15 Server Actions + Moss SDK; reference UI for semantic search |
+| `apps/next-js/` | Next.js 16 browser-based semantic search UI using `@moss-dev/moss-web`; reference UI for semantic search |
 
 ### Reusable Packages (`packages/`)
 
