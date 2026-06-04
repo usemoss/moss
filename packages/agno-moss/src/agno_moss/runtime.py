@@ -1,4 +1,4 @@
-"""Agno VectorDb implementation backed by Moss semantic search."""
+"""Agno integration for the Moss in-memory semantic search runtime."""
 
 from __future__ import annotations
 
@@ -20,19 +20,20 @@ from moss import (
     QueryOptions,
 )
 
-__all__ = ["MossVectorDb"]
+__all__ = ["MossRuntime"]
 
 logger = logging.getLogger("agno_moss")
 
 
-class MossVectorDb(VectorDb):
-    """Agno VectorDb backed by Moss semantic search.
+class MossRuntime(VectorDb):
+    """Agno knowledge source backed by the Moss in-memory semantic search runtime.
 
-    Moss manages embeddings internally and serves queries from an in-memory
-    runtime, delivering sub-10ms latency with no external embedder required.
+    Moss downloads your index and runs queries
+    entirely in-process, giving sub-10ms retrieval with no embedder and no
+    external infrastructure required.
 
     Call ``create()`` once at startup to load an existing index; subsequent
-    ``search()`` calls hit Moss's in-memory runtime. On first ``upsert()``,
+    ``search()`` calls run entirely in memory. On first ``upsert()``,
     the index is created automatically if it does not exist.
 
     Args:
@@ -60,7 +61,7 @@ class MossVectorDb(VectorDb):
         description: str | None = None,
         id: str | None = None,
     ):
-        """Initialize the MossVectorDb client."""
+        """Initialize the MossRuntime."""
         self.index_name = index_name
         self.embedding_model = embedding_model
         self.alpha = alpha

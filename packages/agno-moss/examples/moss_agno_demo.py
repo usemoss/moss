@@ -10,21 +10,21 @@ Environment variables:
     MOSS_PROJECT_ID   - Your Moss project ID
     MOSS_PROJECT_KEY  - Your Moss project key
 
-Or pass project_id / project_key directly to MossVectorDb.
+Or pass project_id / project_key directly to MossRuntime.
 """
 
 from agno.agent import Agent
 from agno.knowledge.knowledge import Knowledge
 from agno.models.openai import OpenAIChat
 
-from agno_moss import MossVectorDb
+from agno_moss import MossRuntime
 
 if __name__ == "__main__":
     # No embedder needed — Moss handles embeddings internally.
     # knowledge.insert() creates + loads the index on first call;
     # every search() after that hits Moss's in-memory runtime.
     knowledge = Knowledge(
-        vector_db=MossVectorDb(
+        vector_db=MossRuntime(
             index_name="thai-recipes",
             embedding_model="moss-minilm",  # or "moss-mediumlm" for higher accuracy
             alpha=0.8,  # 1.0 = pure semantic, 0.0 = pure keyword

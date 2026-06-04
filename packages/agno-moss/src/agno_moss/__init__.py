@@ -10,13 +10,13 @@ from moss import (
     SearchResult,
 )
 
-from .vectordb import MossVectorDb
+from .runtime import MossRuntime
 
 __all__ = [
     "DocumentInfo",
     "GetDocumentsOptions",
     "IndexInfo",
     "MossClient",
-    "MossVectorDb",
+    "MossRuntime",
     "SearchResult",
 ]

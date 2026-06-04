@@ -1,8 +1,8 @@
 # agno-moss
 
-Moss semantic search for [Agno](https://docs.agno.com) agents, exposed as a `VectorDb` drop-in.
+The Moss in-memory semantic search runtime for [Agno](https://docs.agno.com) agents.
 
-Moss manages embeddings internally and serves queries from an in-memory runtime — sub-10ms lookups, no external embedder, no vector database to run. Point `Knowledge` at `MossVectorDb` and Agno agents get instant RAG with zero infrastructure.
+Moss manages embeddings internally and serves queries from an in-memory runtime — sub-10ms lookups, no external embedder, no vector database to run. Point `Knowledge` at `MossRuntime` and Agno agents get instant RAG with zero infrastructure.
 
 ## Installation
 
@@ -25,10 +25,10 @@ import os
 from agno.agent import Agent
 from agno.knowledge.knowledge import Knowledge
 from agno.models.anthropic import Claude
-from agno_moss import MossVectorDb
+from agno_moss import MossRuntime
 
 knowledge = Knowledge(
-    vector_db=MossVectorDb(
+    vector_db=MossRuntime(
         index_name="my-index",
         # Falls back to MOSS_PROJECT_ID / MOSS_PROJECT_KEY env vars
     ),
@@ -47,7 +47,7 @@ agent.print_response("What do you know about our return policy?", stream=True)
 
 ## Configuration
 
-### MossVectorDb
+### MossRuntime
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -61,7 +61,7 @@ agent.print_response("What do you know about our return policy?", stream=True)
 
 ## How it works
 
-`MossVectorDb` implements Agno's `VectorDb` base class:
+`MossRuntime` implements Agno's `VectorDb` base class:
 
 - **`create()`** — loads an existing index into Moss's in-memory runtime. Call once at startup for fast first queries.
 - **`upsert()`** — creates the index on first call, then adds or updates documents. Loads the index automatically after each batch.
