@@ -59,7 +59,10 @@ async def entrypoint(ctx: JobContext):
 
     await moss.load_index(INDEX)                              # long-term: FAQ (run build_index.py first)
     session = await moss.session(index_name=f"call-{ctx.room.name}")  # short-term: live session
-    ctx.add_shutdown_callback(lambda: session.push_index())   # persist for handoff at call end
+
+    async def persist():                                      # persist for handoff at call end
+        await session.push_index()
+    ctx.add_shutdown_callback(persist)
 
     agent_session = AgentSession(
         stt=deepgram.STT(),
