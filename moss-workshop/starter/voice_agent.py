@@ -47,9 +47,10 @@ class HackathonAgent(Agent):
         return "\n".join(f"- {d.text}" for d in res.docs) or "Nothing relevant earlier."
 
     async def on_user_turn_completed(self, turn_ctx: ChatContext, new_message: ChatMessage) -> None:
-        # Index each turn into the session locally (no network) so it can be recalled later.
-        self._turn += 1
-        await self.moss_session.add_docs([DocumentInfo(id=f"turn-{self._turn}", text=new_message.text_content)])
+        # Index each turn locally (no network). Skip empty/None turns (transcription artifacts).
+        if new_message.text_content and new_message.text_content.strip():
+            self._turn += 1
+            await self.moss_session.add_docs([DocumentInfo(id=f"turn-{self._turn}", text=new_message.text_content)])
         await super().on_user_turn_completed(turn_ctx, new_message)
 
 
@@ -60,8 +61,8 @@ async def entrypoint(ctx: JobContext):
     await moss.load_index(INDEX)                              # long-term: FAQ (run build_index.py first)
     session = await moss.session(index_name=f"call-{ctx.room.name}")  # short-term: live session
 
-    async def persist():                                      # persist for handoff at call end
-        await session.push_index()
+    async def persist(*_):                                    # LiveKit may pass a reason arg
+        await session.push_index()                            # persist for handoff at call end
     ctx.add_shutdown_callback(persist)
 
     agent_session = AgentSession(
