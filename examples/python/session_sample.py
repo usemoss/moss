@@ -30,6 +30,11 @@ async def session_sample():
     project_key = os.getenv("MOSS_PROJECT_KEY")
     index_name = os.getenv("MOSS_INDEX_NAME", "session-demo")
 
+    if not project_id or not project_key:
+        print("Error: Missing required environment variables!")
+        print("Please set MOSS_PROJECT_ID and MOSS_PROJECT_KEY in .env file")
+        return
+
     client = MossClient(project_id, project_key)
 
     try:
