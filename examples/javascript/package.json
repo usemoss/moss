@@ -36,12 +36,13 @@
     "lint": "ESLINT_USE_FLAT_CONFIG=true eslint .",
     "format": "prettier --write .",
     "cached-load": "tsx cached_load_sample.ts",
+    "session": "tsx session_sample.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@moss-dev/moss": "^1.0.1",
-    "dotenv": "^17.2.3",
-    "openai": "^6.17.0"
+    "@moss-dev/moss": "^1.1.0",
+    "dotenv": "^17.4.2",
+    "openai": "^6.42.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

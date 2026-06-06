@@ -54,6 +54,14 @@ Provision a fresh index (using the name supplied via `MOSS_INDEX_NAME`), push do
 npx tsx custom_embedding_sample.ts
 ```
 
+### Session Sample
+
+Open a local-first `SessionIndex`, add documents in real time (no cloud round trip), query the in-memory index, then `pushIndex` to the cloud so another agent or device can resume it. This is how Moss indexes a live conversation.
+
+```bash
+npx tsx session_sample.ts
+```
+
 ## Requirements
 
 - Node.js (version 20 or higher)

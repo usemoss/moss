@@ -75,6 +75,14 @@ Requires `moss>=1.1.0`.
 python multi_index_search.py
 ```
 
+### Session Sample
+
+Open a local-first `SessionIndex`, add documents in real time (no cloud round trip), query the in-memory index, then `push_index` to the cloud so another agent or device can resume it. This is how Moss indexes a live conversation.
+
+```bash
+python session_sample.py
+```
+
 ## Requirements
 
 - Python 3.10+
