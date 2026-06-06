@@ -1,0 +1,62 @@
+[
+  {
+    "id": "faq-about",
+    "text": "What is this hackathon? The Conversational AI Hackathon - a 24-hour hackathon hosted by Moss (YC F25) at the Y Combinator office in San Francisco, June 6-7, 2026. Build conversational AI: voice agents, chat agents, copilots, and more."
+  },
+  {
+    "id": "faq-theme",
+    "text": "Why is the hackathon about retrieval? Voice models are now cheap and fast - they are no longer the bottleneck; retrieval is. Moss makes real-time semantic search mature: sub-10ms lookups so agents can hold a fluid conversation, look up complex facts instantly, and act on them. The knowledge base is open and the latency is gone."
+  },
+  {
+    "id": "faq-sponsors",
+    "text": "Who are the sponsors? LiveKit (real-time audio and video infrastructure), TrueFoundry (AI gateway to control, govern, and scale AI agents), Unsiloed (YC F25; API for parsing PDFs and unstructured documents), AWS (cloud computing), MiniMax (intelligence with everyone), and Qwen (voice design, cloning, and generation). Huge thanks to them for the credits, APIs, and prizes."
+  },
+  {
+    "id": "faq-build",
+    "text": "What can I build? Anything conversational - voice agents, support copilots, real-time meeting assistants, cross-channel (SMS and voice) agents, on-device assistants. Pick one of the three tracks. Bonus points for real-time retrieval and a working live demo."
+  },
+  {
+    "id": "faq-tracks",
+    "text": "What are the tracks? Three tracks: (1) Lead Gen - agents that nurture and convert inbound leads; (2) Support - customer service bots that instantly pull docs and user history; (3) Co-Pilot - ambient agents that listen in and display live context."
+  },
+  {
+    "id": "faq-schedule",
+    "text": "What is the schedule? June 6: 1:00 PM doors open and lunch; 2:00 PM opening ceremony and sponsor intros; 2:30 PM hacking begins; 4:00 PM sponsor workshops and office hours; 6:30 PM dinner; 8:00 PM overnight hacking. June 7: 7:30 AM breakfast and final sprint; 11:00 AM submissions due and lunch; 1:00 PM judging, finalist demos, and closing ceremony."
+  },
+  {
+    "id": "faq-submissions",
+    "text": "When are submissions due? Submissions are due at 11:00 AM on June 7, followed by lunch."
+  },
+  {
+    "id": "faq-judging",
+    "text": "When is judging? Judging, finalist demos, and the closing ceremony begin at 1:00 PM on June 7."
+  },
+  {
+    "id": "faq-prizes",
+    "text": "What are the prizes? First place: a YC interview, iPhones, sponsor credits, and prizes across the tracks. Second place: AirPods Max, sponsor credits, and track prizes. Third place: AirPods Pro, sponsor credits, and track prizes. Every attendee walks out with swag."
+  },
+  {
+    "id": "faq-judging-criteria",
+    "text": "What are the judges looking for? A working live demo, originality, and strong use of the sponsor tools. Track-specific prizes reward the best Lead Gen, Support, and Co-Pilot agents."
+  },
+  {
+    "id": "faq-credits",
+    "text": "How do I get Moss credits? Sign up first at https://portal.usemoss.dev."
+  },
+  {
+    "id": "faq-use-moss",
+    "text": "How do I use Moss? Install with pip install moss. Create an index, load it, and query it in single-digit milliseconds. Docs at https://docs.moss.dev. The starter repo has runnable examples for quickstart, sessions, and a voice agent."
+  },
+  {
+    "id": "faq-why-moss",
+    "text": "What makes Moss good for conversational AI? Retrieval runs where your agent lives, so each lookup is a local call, not a network request - under 10 ms, versus hundreds of milliseconds for a cloud vector database. Sessions let you index the live conversation in real time and recall it instantly, then push to the cloud for handoff across agents, channels, and devices."
+  },
+  {
+    "id": "faq-help",
+    "text": "Where do I get help this weekend? Find us at the Moss table any time, or join the Discord: https://discord.gg/eMXExuafBR. Sponsor workshops and office hours run from 4:00 PM on June 6. If you hit any issue using Moss, just reach out - we are here all weekend."
+  },
+  {
+    "id": "faq-logistics",
+    "text": "Where is food and wifi? Meals are provided: lunch at 1:00 PM and dinner at 6:30 PM on June 6, then breakfast at 7:30 AM and lunch at 11:00 AM on June 7. [FILL IN wifi network and password, and restroom locations.]"
+  }
+]
