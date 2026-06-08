@@ -10,7 +10,7 @@ packages:
   # from the GitHub release on first resolve and verifies its checksum.
   Moss:
     url: https://github.com/usemoss/moss
-    from: 0.3.0
+    from: 0.4.1
 
 targets:
   MossExample:
@@ -38,6 +38,11 @@ targets:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
+        # Lets the Simulator reach the plain-HTTP localhost token server during
+        # development (see token-server/). A production token endpoint is HTTPS,
+        # so you can drop this whole key for a real build.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     dependencies:
       - package: Moss
         product: Moss

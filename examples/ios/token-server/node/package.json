@@ -1,0 +1,16 @@
+{
+  "name": "moss-ios-token-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal token-vending backend for the Moss iOS BackendTokenAuthenticator sample",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@moss-dev/moss": "^1.0.1"
+  }
+}

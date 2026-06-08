@@ -9,18 +9,30 @@ import SwiftUI
 struct ContentView: View {
     @AppStorage("project_id") private var projectId: String = ""
     @AppStorage("project_key") private var projectKey: String = ""
+    // Optional: a backend token endpoint. When set, the app authenticates via
+    // `BackendTokenAuthenticator` (short-lived, cached tokens) instead of the
+    // static project key — the production pattern. See the README.
+    @AppStorage("token_url") private var tokenURL: String = ""
+
+    /// Ready once we have a project ID plus *some* credential — either the
+    /// static project key or a backend token endpoint URL.
+    private var hasCredentials: Bool {
+        !projectId.isEmpty && (!projectKey.isEmpty || !tokenURL.isEmpty)
+    }
 
     var body: some View {
         Group {
-            if projectId.isEmpty || projectKey.isEmpty {
-                CredentialsView(projectId: $projectId, projectKey: $projectKey)
+            if !hasCredentials {
+                CredentialsView(projectId: $projectId, projectKey: $projectKey, tokenURL: $tokenURL)
             } else {
                 MainView(
                     projectId: projectId,
                     projectKey: projectKey,
+                    tokenURL: tokenURL,
                     onReset: {
                         projectId = ""
                         projectKey = ""
+                        tokenURL = ""
                     }
                 )
             }
@@ -33,9 +45,11 @@ struct ContentView: View {
 struct CredentialsView: View {
     @Binding var projectId: String
     @Binding var projectKey: String
+    @Binding var tokenURL: String
 
     @State private var draftId: String = ""
     @State private var draftKey: String = ""
+    @State private var draftTokenURL: String = ""
     @State private var error: String?
 
     var body: some View {
@@ -63,6 +77,16 @@ struct CredentialsView: View {
                 Text("Project Key").font(.caption).padding(.top, 8)
                 SecureField("moss_…", text: $draftKey)
                     .textFieldStyle(.roundedBorder)
+
+                Text("Token endpoint URL (optional)").font(.caption).padding(.top, 8)
+                TextField("http://localhost:3456/moss-token", text: $draftTokenURL)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .keyboardType(.URL)
+                Text("Set this to authenticate via your backend (BackendTokenAuthenticator). Leave it blank to use the static project key.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal)
 
@@ -73,12 +97,18 @@ struct CredentialsView: View {
             Button("Continue") {
                 let id = draftId.trimmingCharacters(in: .whitespaces)
                 let key = draftKey.trimmingCharacters(in: .whitespaces)
-                if id.isEmpty || key.isEmpty {
-                    error = "Both fields are required."
+                let url = draftTokenURL.trimmingCharacters(in: .whitespaces)
+                if id.isEmpty {
+                    error = "Project ID is required."
+                    return
+                }
+                if key.isEmpty && url.isEmpty {
+                    error = "Enter a project key or a token endpoint URL."
                     return
                 }
                 projectId = id
                 projectKey = key
+                tokenURL = url
             }
             .buttonStyle(.borderedProminent)
             .padding(.top)
@@ -94,6 +124,7 @@ struct CredentialsView: View {
 struct MainView: View {
     let projectId: String
     let projectKey: String
+    let tokenURL: String
     let onReset: () -> Void
 
     @StateObject private var demo = MossDemoModel()
@@ -145,7 +176,7 @@ struct MainView: View {
         }
         .padding()
         .task {
-            await demo.connect(projectId: projectId, projectKey: projectKey)
+            await demo.connect(projectId: projectId, projectKey: projectKey, tokenURL: tokenURL)
         }
     }
 }

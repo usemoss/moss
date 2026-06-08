@@ -127,11 +127,11 @@ needed. The dependency is declared in [`project.yml`](project.yml):
 packages:
   Moss:
     url: https://github.com/usemoss/moss
-    from: 0.3.0
+    from: 0.4.1
 ```
 
 On first build, Xcode downloads the precompiled `Moss.xcframework` from the
-[v0.3.0 release](https://github.com/usemoss/moss/releases/tag/v0.3.0),
+[v0.4.1 release](https://github.com/usemoss/moss/releases/tag/v0.4.1),
 verifies its checksum, and links it in.
 
 ## Generate the project
@@ -185,6 +185,7 @@ To target a specific simulator instead, pass e.g.
 | [`MossDemoModel.swift`](MossExample/MossDemoModel.swift) | Every SDK call, narrated step-by-step. Start here. |
 | [`ContentView.swift`](MossExample/ContentView.swift) | SwiftUI wiring - credentials screen and the demo button. |
 | [`MossExampleApp.swift`](MossExample/MossExampleApp.swift) | App entry point. |
+| [`BackendTokenAuthenticator.swift`](MossExample/BackendTokenAuthenticator.swift) | Production auth: short-lived backend tokens cached on-device. See [Credentials in production](#credentials-in-production). |
 
 ## Credentials in production
 
@@ -196,9 +197,64 @@ on your server rather than shipping in the binary.
 ```swift
 final class MyAuth: Authenticator {
     func getAuthHeader() async throws -> String {
-        try await myServer.fetchMossToken()
+        try await myServer.fetchMossToken()  // return the raw token, no "Bearer " prefix
     }
 }
 
 let client = try MossClient(projectId: id, authenticator: MyAuth())
 ```
+
+### Cache the token on-device
+
+The SDK calls `getAuthHeader()` on **every** outbound request and does **not**
+cache delegated tokens for you. (The static-key path *does* cache internally,
+but a custom `Authenticator` only returns a token string, so the runtime has no
+expiry to cache against.) The naive `MyAuth` above therefore hits your backend
+once per `query` / `loadIndex`.
+
+To avoid that, cache the token in your own `Authenticator` and only refetch
+once it's expired. The cleanest way is to have your token endpoint return
+`expiresIn` alongside the token — store both, and skip the network call while
+the token is still valid:
+
+```swift
+let auth = BackendTokenAuthenticator(
+    tokenURL: URL(string: "https://api.yourapp.com/moss-token")!
+)
+let client = try MossClient(projectId: id, authenticator: auth)
+```
+
+With caching in place your backend is only hit on a cold start and once per
+token lifetime (e.g. once an hour for `expiresIn: 3600`) — every query in
+between is served from the in-memory cache. Refresh the token ~60s early (the
+same safety margin the SDK applies internally) so it can't lapse mid-request.
+
+See [`BackendTokenAuthenticator.swift`](MossExample/BackendTokenAuthenticator.swift)
+for the full implementation, including the thread-safe token store and the
+backend response shape (`{ "token": "...", "expiresIn": 3600 }`).
+
+### Try it end-to-end
+
+A runnable token server lives in [`token-server/`](token-server/) so you can
+exercise the whole loop locally — app → your backend → cached token → query.
+It ships in both Node and Python (pick either — same endpoint, same response):
+
+```bash
+# Node
+cd token-server/node
+npm install
+MOSS_PROJECT_ID=your_project_id MOSS_PROJECT_KEY=your_project_key npm start
+
+# …or Python
+cd token-server/python
+pip install -r requirements.txt
+MOSS_PROJECT_ID=your_project_id MOSS_PROJECT_KEY=your_project_key \
+  uvicorn server:app --port 3456
+```
+
+Then on the app's credentials screen, enter your **Project ID** and set the
+**Token endpoint URL** to `http://localhost:3456/moss-token` (leave the project
+key blank). Run the demo and watch the server log: you'll see a single
+`vended token` line for the whole run, confirming the on-device cache is
+serving every query after the first fetch. Full steps in
+[`token-server/README.md`](token-server/README.md).

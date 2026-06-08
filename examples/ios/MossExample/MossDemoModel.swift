@@ -16,14 +16,28 @@ final class MossDemoModel: ObservableObject {
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
-    /// Construct the `MossClient` with the project credentials, which
-    /// authenticate the client before any session is opened.
-    func connect(projectId: String, projectKey: String) async {
+    /// Construct the `MossClient`, which authenticates before any session is
+    /// opened. If `tokenURL` is set, the client authenticates through
+    /// `BackendTokenAuthenticator` (short-lived tokens fetched from your
+    /// backend and cached on-device); otherwise it uses the static project key.
+    func connect(projectId: String, projectKey: String, tokenURL: String = "") async {
         appendLog("Constructing MossClient (sdk \(MossClient.sdkVersion))…")
         busy = true
         defer { busy = false }
         do {
-            client = try MossClient(projectId: projectId, projectKey: projectKey)
+            if !tokenURL.isEmpty {
+                guard let url = URL(string: tokenURL) else {
+                    appendLog("✗ Invalid token endpoint URL: \(tokenURL)")
+                    status = "error"
+                    return
+                }
+                appendLog("Auth: backend token endpoint \(url.absoluteString)")
+                let auth = BackendTokenAuthenticator(tokenURL: url)
+                client = try MossClient(projectId: projectId, authenticator: auth)
+            } else {
+                appendLog("Auth: static project key")
+                client = try MossClient(projectId: projectId, projectKey: projectKey)
+            }
             appendLog("✓ Client ready.")
             status = "ready"
         } catch {
