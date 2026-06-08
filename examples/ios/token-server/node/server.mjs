@@ -44,7 +44,9 @@ const server = http.createServer(async (req, res) => {
 
   try {
     const authToken = await moss.getAuthToken(); // { token, expiresIn }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    // no-store: this response carries a bearer token; never let a browser,
+    // proxy, or CDN cache it.
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(authToken));
     console.log(`vended token (expiresIn=${authToken.expiresIn}s)`);
   } catch (err) {

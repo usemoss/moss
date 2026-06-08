@@ -54,19 +54,16 @@ final class BackendTokenAuthenticator: Authenticator {
     }
 
     func getAuthHeader() async throws -> String {
-        // 1. On-device check — return the cached token with no network call
-        //    as long as it's still valid.
-        if let cached = await store.valid() {
-            return cached
+        // Returns the cached token while it's still valid (a local clock check,
+        // no network). On a miss, fetches once — concurrent callers are
+        // coalesced onto a single refresh inside TokenStore, so a cold start or
+        // an expiry boundary triggers one backend round-trip, not one per call.
+        //
+        // Returns the RAW token only — the SDK prepends "Bearer " itself.
+        try await store.token {
+            let fetched = try await self.fetchToken()
+            return (fetched.token, fetched.expiresIn)
         }
-
-        // 2. Missing or expired — fetch a fresh token from your backend and
-        //    cache it (with the 60s safety buffer applied in TokenStore.set).
-        let fetched = try await fetchToken()
-        await store.set(fetched.token, expiresIn: fetched.expiresIn)
-
-        // Return the RAW token only — the SDK prepends "Bearer " itself.
-        return fetched.token
     }
 
     // ── Backend call ─────────────────────────────────────────────────────────
@@ -79,6 +76,9 @@ final class BackendTokenAuthenticator: Authenticator {
     private func fetchToken() async throws -> TokenResponse {
         var request = URLRequest(url: tokenURL)
         request.httpMethod = "GET"
+        // Always hit the backend — never serve the token from URLSession's
+        // cache, so an expired token can't be replayed from a stale response.
+        request.cachePolicy = .reloadIgnoringLocalCacheData
 
         // Authenticate *this* request with your own user credential so your
         // backend knows who's asking before it hands out a Moss token, e.g.:
@@ -100,21 +100,37 @@ final class BackendTokenAuthenticator: Authenticator {
 
 /// Thread-safe token cache. An `actor` because the SDK may invoke
 /// `getAuthHeader()` from a background worker thread.
+///
+/// Callers that arrive while a refresh is already running are coalesced onto
+/// that single in-flight fetch, so a cold start (or the instant after expiry)
+/// triggers exactly one backend round-trip rather than one per request.
 actor TokenStore {
     private var token: String?
     private var expiresAt: Date = .distantPast
+    private var refresh: Task<(token: String, expiresIn: TimeInterval), Error>?
 
-    /// Returns the cached token if it's still valid, otherwise `nil`.
-    func valid() -> String? {
-        guard let token, expiresAt > Date() else { return nil }
-        return token
-    }
-
-    /// Caches a token, expiring it 60s early to match the SDK's internal
+    /// Returns a valid cached token, or runs `fetch` exactly once and caches
+    /// the result. Expires the token 60s early to match the SDK's internal
     /// safety margin (avoids a token lapsing mid-request under clock skew).
-    func set(_ token: String, expiresIn: TimeInterval) {
-        self.token = token
-        self.expiresAt = Date().addingTimeInterval(max(0, expiresIn - 60))
+    func token(
+        orFetch fetch: @Sendable @escaping () async throws -> (token: String, expiresIn: TimeInterval)
+    ) async throws -> String {
+        if let token, expiresAt > Date() {
+            return token
+        }
+        // A refresh is already in flight — await it instead of starting another.
+        if let refresh {
+            return try await refresh.value.token
+        }
+
+        let task = Task { try await fetch() }
+        refresh = task
+        defer { refresh = nil }
+
+        let fetched = try await task.value
+        token = fetched.token
+        expiresAt = Date().addingTimeInterval(max(0, fetched.expiresIn - 60))
+        return fetched.token
     }
 }
 

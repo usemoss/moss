@@ -22,6 +22,7 @@ import os
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 
 MOSS_AUTH_URL = "https://service.usemoss.dev/identity/auth/token"
 
@@ -52,4 +53,6 @@ async def moss_token():
     # which caches it on-device until ~60s before expiry.
     data = resp.json()
     print(f"vended token (expiresIn={data.get('expiresIn')}s)")
-    return data
+    # no-store: this response carries a bearer token; never let a browser,
+    # proxy, or CDN cache it.
+    return JSONResponse(content=data, headers={"Cache-Control": "no-store"})
