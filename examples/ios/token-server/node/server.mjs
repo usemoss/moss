@@ -48,9 +48,11 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify(authToken));
     console.log(`vended token (expiresIn=${authToken.expiresIn}s)`);
   } catch (err) {
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: String(err) }));
+    // Log the details server-side only; return a generic message so internal
+    // error/stack details aren't exposed to the caller.
     console.error('token vend failed:', err);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Failed to vend token' }));
   }
 });
 
