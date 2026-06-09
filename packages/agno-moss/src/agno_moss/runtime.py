@@ -22,8 +22,6 @@ from moss import (
 
 __all__ = ["MossRuntime"]
 
-logger = logging.getLogger("agno_moss")
-
 
 class MossRuntime(VectorDb):
     """Agno knowledge source backed by the Moss in-memory semantic search runtime.
