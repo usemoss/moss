@@ -372,7 +372,7 @@ class MossRuntime(VectorDb):
 
     def delete_by_metadata(self, metadata: dict[str, Any]) -> bool:
         """Not supported — use delete_by_id() for targeted removal."""
-        log_warning("delete_by_metadata is not supported by MossVectorDb.")
+        log_warning("delete_by_metadata is not supported by MossRuntime.")
         return False
 
     def delete_by_content_id(self, content_id: str) -> bool:
