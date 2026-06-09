@@ -367,7 +367,7 @@ class MossRuntime(VectorDb):
 
     def delete_by_name(self, name: str) -> bool:
         """Not supported — Moss does not index by document name."""
-        log_warning("delete_by_name is not supported by MossVectorDb.")
+        log_warning("delete_by_name is not supported by MossRuntime.")
         return False
 
     def delete_by_metadata(self, metadata: dict[str, Any]) -> bool:
