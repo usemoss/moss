@@ -4,8 +4,7 @@ Moss manages embeddings internally and serves queries from an in-memory
 runtime, delivering sub-10ms latency with no external embedder required.
 
 Setup:
-    pip install moss
-
+    pip install agno-moss
 Environment variables:
     MOSS_PROJECT_ID   - Your Moss project ID
     MOSS_PROJECT_KEY  - Your Moss project key
