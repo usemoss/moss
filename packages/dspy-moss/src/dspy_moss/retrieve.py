@@ -12,10 +12,10 @@ import asyncio
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Union
+from typing import Any
 
 import dspy
-from moss import DocumentInfo, GetDocumentsOptions, MossClient, MutationOptions, QueryOptions
+from moss import DocumentInfo, MossClient, MutationOptions, QueryOptions
 
 
 class _DotDict(dict):
@@ -68,6 +68,7 @@ class MossRM(dspy.Retrieve):
         k: int = 3,
         alpha: float = 0.8,
     ):
+        """Initialize the MossRM retrieval module."""
         if moss_client is None:
             resolved_id = project_id or os.getenv("MOSS_PROJECT_ID") or ""
             resolved_key = project_key or os.getenv("MOSS_PROJECT_KEY") or ""
@@ -134,7 +135,7 @@ class MossRM(dspy.Retrieve):
 
     def forward(
         self,
-        query_or_queries: Union[str, list[str]],
+        query_or_queries: str | list[str],
         k: int | None = None,
         **kwargs: Any,
     ) -> list[_DotDict]:
@@ -147,6 +148,7 @@ class MossRM(dspy.Retrieve):
         Args:
             query_or_queries: A single query string or a list of query strings.
             k: Number of passages to retrieve. Defaults to ``self.k``.
+            **kwargs: Additional keyword arguments.
         """
         k = k if k is not None else self.k
         queries = (
@@ -197,7 +199,7 @@ class MossRM(dspy.Retrieve):
             for d in docs[:num_samples]
         ]
 
-    def insert(self, new_objects: Union[dict[str, Any], list[dict[str, Any]]]) -> None:
+    def insert(self, new_objects: dict[str, Any] | list[dict[str, Any]]) -> None:
         """Add or upsert documents into the index.
 
         Args:
