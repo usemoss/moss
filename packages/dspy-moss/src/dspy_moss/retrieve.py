@@ -139,8 +139,8 @@ class MossRM(dspy.Retrieve):
                 auto_refresh=auto_refresh,
                 polling_interval_in_seconds=polling_interval_in_seconds,
             )
-        )
         logger.info("Moss index '%s' ready", self._index_name)
+
     def forward(
         self,
         query_or_queries: str | list[str],
