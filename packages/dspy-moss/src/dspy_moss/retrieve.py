@@ -82,6 +82,7 @@ class MossRM(dspy.Retrieve):
         self._index_name = index_name
         self._client = moss_client
         self._alpha = alpha
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="dspy-moss")
         super().__init__(k=k)
 
     # ------------------------------------------------------------------
@@ -97,9 +98,20 @@ class MossRM(dspy.Retrieve):
             in_running_loop = False
 
         if in_running_loop:
-            with ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(asyncio.run, coro).result()
+            return self._executor.submit(asyncio.run, coro).result()
         return asyncio.run(coro)
+
+    def close(self) -> None:
+        """Release the background executor used when called inside an event loop."""
+        self._executor.shutdown(wait=True)
+
+    def __enter__(self) -> MossRM:
+        """Return this retriever for use as a context manager."""
+        return self
+
+    def __exit__(self, *_exc_info: object) -> None:
+        """Release executor resources when leaving a context manager."""
+        self.close()
 
     # ------------------------------------------------------------------
     # Index loading
@@ -128,11 +140,6 @@ class MossRM(dspy.Retrieve):
             )
         )
         logger.info("Moss index '%s' ready", self._index_name)
-
-    # ------------------------------------------------------------------
-    # DSPy RM interface
-    # ------------------------------------------------------------------
-
     def forward(
         self,
         query_or_queries: str | list[str],
@@ -158,13 +165,17 @@ class MossRM(dspy.Retrieve):
         )
         queries = [q for q in queries if q]
 
+        option_kwargs = dict(kwargs)
+        top_k = option_kwargs.pop("top_k", k)
+        alpha = option_kwargs.pop("alpha", self._alpha)
+
         passages = []
         for query in queries:
             result = self._run(
                 self._client.query(
                     self._index_name,
                     query,
-                    options=QueryOptions(top_k=k, alpha=self._alpha),
+                    options=QueryOptions(top_k=top_k, alpha=alpha, **option_kwargs),
                 )
             )
             for doc in result.docs:

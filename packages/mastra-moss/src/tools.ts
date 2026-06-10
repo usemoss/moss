@@ -83,7 +83,7 @@ export function mossSearchTool(options: MossSearchToolOptions) {
       'Search the knowledge base using Moss semantic search. Returns the most relevant documents for a given query.',
     inputSchema,
     execute: async (input) => {
-      const index = boundIndex ?? (input as { indexName: string }).indexName;
+      const index = boundIndex ?? (input as unknown as { indexName: string }).indexName;
       const result = await client.query(index, input.query, { topK, alpha });
       return result.docs.map((doc) => ({
         text: doc.text,
@@ -124,7 +124,7 @@ export function mossAddDocsTool(options: MossAddDocsToolOptions) {
       'Add or update documents in a Moss knowledge base index. Use this to store new information for future retrieval.',
     inputSchema,
     execute: async (input) => {
-      const index = boundIndex ?? (input as { indexName: string }).indexName;
+      const index = boundIndex ?? (input as unknown as { indexName: string }).indexName;
       const result = await client.addDocs(index, input.docs, { upsert: true });
       return { jobId: result.jobId, docCount: result.docCount };
     },
