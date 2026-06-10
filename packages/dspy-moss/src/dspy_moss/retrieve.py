@@ -23,6 +23,7 @@ class _DotDict(dict):
 
     __getattr__ = dict.get  # type: ignore[assignment]
 
+
 __all__ = ["MossRM"]
 
 logger = logging.getLogger("dspy_moss")
