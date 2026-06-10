@@ -54,10 +54,10 @@ Searches a Moss index and returns ranked documents.
 import { mossSearchTool } from '@moss-tools/mastra';
 
 // Pre-bound to an index — LLM only needs to supply { query }
-const search = mossSearchTool({ client, indexName: 'my-index' });
+const searchBound = mossSearchTool({ client, indexName: 'my-index' });
 
 // Dynamic — LLM supplies { indexName, query }
-const search = mossSearchTool({ client });
+const searchDynamic = mossSearchTool({ client });
 ```
 
 **Options:**
