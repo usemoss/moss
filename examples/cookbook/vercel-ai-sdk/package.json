@@ -1,0 +1,25 @@
+{
+  "name": "moss-vercel-ai-sdk-cookbook",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vercel AI SDK integration for Moss semantic search",
+  "scripts": {
+    "create-index": "tsx create_index.ts",
+    "start": "tsx example_usage.ts",
+    "test": "tsx --test test_vercel.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^1.0.0",
+    "@moss-dev/moss": "latest",
+    "@moss-tools/vercel-sdk": "latest",
+    "ai": "^6.0.0",
+    "dotenv": "^16.4.5",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.11",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}
