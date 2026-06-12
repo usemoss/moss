@@ -13,6 +13,7 @@ The Go SDK now has two layers:
 - bindings-backed index creation and document mutation
 - bindings-backed index metadata and document reads
 - local index loading and query via native bindings
+- cloud query fallback when an index is not loaded locally
 - optional caller-provided embeddings for custom indexes
 - env-gated live integration tests
 
@@ -23,7 +24,7 @@ The Go SDK now has two layers:
 
 ## Installation
 
-From this repository, use the module at:
+From this repository, import the package at:
 
 ```go
 github.com/usemoss/moss/sdks/go/sdk/moss

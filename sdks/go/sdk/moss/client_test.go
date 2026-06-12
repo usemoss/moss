@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	mosscore "github.com/usemoss/moss/sdks/go/bindings"
@@ -239,12 +241,91 @@ func TestGetDocsPassesDocIDsToBindings(t *testing.T) {
 	}
 }
 
-func TestQueryRequiresLoadedIndex(t *testing.T) {
-	client := newTestClient(nil, &fakeIndexRuntime{loaded: map[string]bool{}})
+func TestNewClientUsesDefaultQueryURL(t *testing.T) {
+	t.Setenv("MOSS_CLOUD_API_MANAGE_URL", "")
+	t.Setenv("MOSS_CLOUD_QUERY_URL", "")
 
-	_, err := client.Query(context.Background(), "support-docs", "refund policy", nil)
-	if !errors.Is(err, ErrIndexNotLoaded) {
-		t.Fatalf("expected ErrIndexNotLoaded, got %v", err)
+	client := NewClient("project-id", "project-key")
+	if client.queryURL != "https://service.usemoss.dev/query" {
+		t.Fatalf("unexpected query URL: %q", client.queryURL)
+	}
+}
+
+func TestWithManageURLDerivesQueryURL(t *testing.T) {
+	client := NewClient("project-id", "project-key", WithManageURL("https://custom.example.com/v1/manage"))
+
+	if client.queryURL != "https://custom.example.com/query" {
+		t.Fatalf("unexpected query URL: %q", client.queryURL)
+	}
+}
+
+func TestQueryFallsBackToCloudWhenIndexIsNotLoaded(t *testing.T) {
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"docs":[{"id":"doc-1","text":"Refunds take 5-7 days","score":0.91,"metadata":{"topic":"refunds"}}],
+			"query":"refund policy",
+			"indexName":"support-docs",
+			"timeTakenMs":17
+		}`))
+	}))
+	defer server.Close()
+
+	client := NewClient("project-id", "project-key", WithQueryURL(server.URL))
+	client.indexMgr = &fakeIndexRuntime{loaded: map[string]bool{}}
+
+	result, err := client.Query(context.Background(), "support-docs", "refund policy", &QueryOptions{
+		TopK:      7,
+		Embedding: []float32{0.1, 0.2, 0.3},
+		Filter:    map[string]any{"field": "topic"},
+	})
+	if err != nil {
+		t.Fatalf("Query returned error: %v", err)
+	}
+
+	if gotBody["projectId"] != "project-id" || gotBody["projectKey"] != "project-key" {
+		t.Fatalf("unexpected credentials payload: %#v", gotBody)
+	}
+	if gotBody["indexName"] != "support-docs" || gotBody["query"] != "refund policy" {
+		t.Fatalf("unexpected query payload: %#v", gotBody)
+	}
+	if gotBody["topK"] != float64(7) {
+		t.Fatalf("unexpected topK: %#v", gotBody["topK"])
+	}
+	if _, ok := gotBody["queryEmbedding"]; !ok {
+		t.Fatalf("queryEmbedding missing from payload: %#v", gotBody)
+	}
+	if _, ok := gotBody["filter"]; ok {
+		t.Fatalf("filter should not be sent to cloud query: %#v", gotBody)
+	}
+	if len(result.Docs) != 1 || result.Docs[0].Score != 0.91 {
+		t.Fatalf("unexpected query result: %#v", result)
+	}
+	if result.TimeTakenMs == nil || *result.TimeTakenMs != 17 {
+		t.Fatalf("unexpected timeTakenMs: %#v", result.TimeTakenMs)
+	}
+}
+
+func TestQueryFallsBackToCloudWhenBindingsAreUnavailable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"docs":[],"query":"refund policy","indexName":"support-docs"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient("project-id", "project-key", WithQueryURL(server.URL))
+
+	result, err := client.Query(context.Background(), "support-docs", "refund policy", nil)
+	if err != nil {
+		t.Fatalf("Query returned error: %v", err)
+	}
+	if result.Query != "refund policy" {
+		t.Fatalf("unexpected query result: %#v", result)
 	}
 }
 
@@ -300,6 +381,26 @@ func TestQueryUsesLocalBindingsAndSupportsFilters(t *testing.T) {
 	}
 	if result.TimeTakenMs == nil || *result.TimeTakenMs != 17 {
 		t.Fatalf("unexpected timeTakenMs: %#v", result.TimeTakenMs)
+	}
+}
+
+func TestQueryOmitsZeroTimeTaken(t *testing.T) {
+	client := newTestClient(nil, &fakeIndexRuntime{
+		loaded: map[string]bool{"support-docs": true},
+		queryTextFn: func(indexName, query string, topK int, alpha float32, filterJSON *string) (mosscore.SearchResult, error) {
+			return mosscore.SearchResult{
+				Docs:  []mosscore.QueryResultDocumentInfo{{ID: "doc-1", Text: "Refunds take 5-7 days", Score: 0.91}},
+				Query: query,
+			}, nil
+		},
+	})
+
+	result, err := client.Query(context.Background(), "support-docs", "refund policy", nil)
+	if err != nil {
+		t.Fatalf("Query returned error: %v", err)
+	}
+	if result.TimeTakenMs != nil {
+		t.Fatalf("expected nil TimeTakenMs, got %#v", result.TimeTakenMs)
 	}
 }
 

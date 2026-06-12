@@ -8,6 +8,7 @@ import (
 var (
 	ErrMissingProjectID     = errors.New("moss: missing project ID")
 	ErrMissingProjectKey    = errors.New("moss: missing project key")
+	ErrMissingQueryURL      = errors.New("moss: query URL is not configured")
 	ErrEmptyIndexName       = errors.New("moss: index name must not be empty")
 	ErrEmptyJobID           = errors.New("moss: job ID must not be empty")
 	ErrEmptyDocuments       = errors.New("moss: documents must not be empty")
