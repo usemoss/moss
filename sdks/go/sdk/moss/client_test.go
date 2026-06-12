@@ -282,7 +282,6 @@ func TestQueryFallsBackToCloudWhenIndexIsNotLoaded(t *testing.T) {
 	result, err := client.Query(context.Background(), "support-docs", "refund policy", &QueryOptions{
 		TopK:      7,
 		Embedding: []float32{0.1, 0.2, 0.3},
-		Filter:    map[string]any{"field": "topic"},
 	})
 	if err != nil {
 		t.Fatalf("Query returned error: %v", err)
@@ -300,14 +299,44 @@ func TestQueryFallsBackToCloudWhenIndexIsNotLoaded(t *testing.T) {
 	if _, ok := gotBody["queryEmbedding"]; !ok {
 		t.Fatalf("queryEmbedding missing from payload: %#v", gotBody)
 	}
-	if _, ok := gotBody["filter"]; ok {
-		t.Fatalf("filter should not be sent to cloud query: %#v", gotBody)
-	}
 	if len(result.Docs) != 1 || result.Docs[0].Score != 0.91 {
 		t.Fatalf("unexpected query result: %#v", result)
 	}
 	if result.TimeTakenMs == nil || *result.TimeTakenMs != 17 {
 		t.Fatalf("unexpected timeTakenMs: %#v", result.TimeTakenMs)
+	}
+}
+
+func TestQueryCloudFallbackRejectsLocalOnlyOptions(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client := NewClient("project-id", "project-key", WithQueryURL(server.URL))
+	client.indexMgr = &fakeIndexRuntime{loaded: map[string]bool{}}
+
+	alpha := 0.6
+	for _, tc := range []struct {
+		name    string
+		options *QueryOptions
+	}{
+		{name: "alpha", options: &QueryOptions{Alpha: &alpha}},
+		{name: "filter", options: &QueryOptions{Filter: map[string]any{"field": "topic"}}},
+		{name: "alpha and filter", options: &QueryOptions{Alpha: &alpha, Filter: map[string]any{"field": "topic"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := client.Query(context.Background(), "support-docs", "refund policy", tc.options)
+			if !errors.Is(err, ErrCloudQueryOptions) {
+				t.Fatalf("expected ErrCloudQueryOptions, got %v", err)
+			}
+		})
+	}
+
+	if requests != 0 {
+		t.Fatalf("expected no cloud query requests, got %d", requests)
 	}
 }
 

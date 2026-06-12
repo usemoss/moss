@@ -20,6 +20,7 @@ The Go SDK now has two layers:
 ## Current limitations
 
 - the SDK requires the `libmoss` C SDK and the `libmoss` build tag for real runtime operations
+- cloud query fallback supports `TopK` and caller-provided embeddings; `Alpha` and `Filter` require a locally loaded index
 - `LoadIndexOptions.CachePath` is not exposed by the current `libmoss` C API yet
 
 ## Installation

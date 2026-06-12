@@ -15,6 +15,7 @@ var (
 	ErrEmptyDocumentIDs     = errors.New("moss: document IDs must not be empty")
 	ErrIndexNotLoaded       = errors.New("moss: index is not loaded locally; call LoadIndex first")
 	ErrUnsupportedCachePath = errors.New("moss: LoadIndexOptions.CachePath is not supported by the current libmoss bindings")
+	ErrCloudQueryOptions    = errors.New("moss: alpha and filter query options require a locally loaded index; call LoadIndex first")
 )
 
 // HTTPError is retained for compatibility with earlier SDK scaffolding.

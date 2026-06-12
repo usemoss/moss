@@ -80,6 +80,9 @@ func (c *Client) queryCloud(ctx context.Context, indexName, query string, option
 	topK := defaultTopK
 	var embedding []float32
 	if options != nil {
+		if options.Alpha != nil || options.Filter != nil {
+			return SearchResult{}, ErrCloudQueryOptions
+		}
 		if options.TopK > 0 {
 			topK = options.TopK
 		}
