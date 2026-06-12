@@ -1,15 +1,25 @@
 package moss
 
 import (
+	"net/http"
+	"os"
 	"strings"
 	"sync"
+	"time"
 
 	mosscore "github.com/usemoss/moss/sdks/go/bindings"
 )
 
+const (
+	DefaultManageURL = "https://service.usemoss.dev/v1/manage"
+	defaultTimeout   = 60 * time.Second
+)
+
 type clientConfig struct {
-	manageURL string
-	queryURL  string
+	manageURL  string
+	queryURL   string
+	querySet   bool
+	httpClient *http.Client
 }
 
 type manageRuntime interface {
@@ -42,6 +52,7 @@ type Client struct {
 	projectKey    string
 	manageURL     string
 	queryURL      string
+	httpClient    *http.Client
 	manageMu      sync.Mutex
 	manageClient  manageRuntime
 	indexMu       sync.Mutex
@@ -52,12 +63,19 @@ type Client struct {
 
 // NewClient constructs a new Moss client with optional overrides.
 func NewClient(projectID, projectKey string, opts ...Option) *Client {
-	cfg := clientConfig{}
+	cfg := clientConfig{
+		manageURL:  defaultManageURL(),
+		httpClient: &http.Client{Timeout: defaultTimeout},
+	}
+	cfg.queryURL = defaultQueryURL(cfg.manageURL)
 
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&cfg)
 		}
+	}
+	if !cfg.querySet && strings.TrimSpace(cfg.queryURL) == "" {
+		cfg.queryURL = defaultQueryURL(cfg.manageURL)
 	}
 
 	return &Client{
@@ -65,6 +83,7 @@ func NewClient(projectID, projectKey string, opts ...Option) *Client {
 		projectKey: strings.TrimSpace(projectKey),
 		manageURL:  strings.TrimSpace(cfg.manageURL),
 		queryURL:   strings.TrimSpace(cfg.queryURL),
+		httpClient: cfg.httpClient,
 		manageFactory: func(projectID, projectKey string) (manageRuntime, error) {
 			return mosscore.NewManageClient(projectID, projectKey)
 		},
@@ -72,6 +91,23 @@ func NewClient(projectID, projectKey string, opts ...Option) *Client {
 			return mosscore.NewIndexManager(projectID, projectKey)
 		},
 	}
+}
+
+func defaultManageURL() string {
+	if value := strings.TrimSpace(os.Getenv("MOSS_CLOUD_API_MANAGE_URL")); value != "" {
+		return value
+	}
+	return DefaultManageURL
+}
+
+func defaultQueryURL(manageURL string) string {
+	if value := strings.TrimSpace(os.Getenv("MOSS_CLOUD_QUERY_URL")); value != "" {
+		return value
+	}
+	if strings.TrimSpace(manageURL) == "" {
+		return ""
+	}
+	return strings.Replace(manageURL, "/v1/manage", "/query", 1)
 }
 
 func (c *Client) validateManageRequest(indexName string) error {
@@ -87,6 +123,9 @@ func (c *Client) validateManageRequest(indexName string) error {
 func (c *Client) validateQueryRequest(indexName string) error {
 	if err := validateCredentials(c.projectID, c.projectKey); err != nil {
 		return err
+	}
+	if strings.TrimSpace(c.queryURL) == "" {
+		return ErrMissingQueryURL
 	}
 	if strings.TrimSpace(indexName) == "" {
 		return ErrEmptyIndexName

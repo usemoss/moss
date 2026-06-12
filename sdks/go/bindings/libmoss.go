@@ -19,6 +19,7 @@ import (
 )
 
 type ManageClient struct {
+	mu  sync.Mutex
 	ptr *C.MossClient
 }
 
@@ -39,7 +40,12 @@ func NewManageClient(projectID, projectKey string) (*ManageClient, error) {
 }
 
 func (c *ManageClient) Close() error {
-	if c == nil || c.ptr == nil {
+	if c == nil {
+		return nil
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ptr == nil {
 		return nil
 	}
 	C.moss_client_free(c.ptr)
@@ -64,8 +70,9 @@ func (c *ManageClient) CreateIndex(name string, docs []DocumentInfo, modelID str
 	}
 
 	var out *C.MossMutationResult
-	result := C.moss_client_create_index(c.ptr, cName, input.ptr(), C.uintptr_t(len(docs)), cModelID, &out)
-	if err := checkResult(result); err != nil {
+	if err := c.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_create_index(ptr, cName, input.ptr(), C.uintptr_t(len(docs)), cModelID, &out)
+	}); err != nil {
 		return MutationResult{}, err
 	}
 	defer C.moss_free_mutation_result(out)
@@ -93,8 +100,9 @@ func (c *ManageClient) AddDocs(name string, docs []DocumentInfo, options *Mutati
 		cOpts = &C.MossMutationOptions{upsert: C.bool(*options.Upsert)}
 	}
 
-	result := C.moss_client_add_docs(c.ptr, cName, input.ptr(), C.uintptr_t(len(docs)), cOpts, &out)
-	if err := checkResult(result); err != nil {
+	if err := c.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_add_docs(ptr, cName, input.ptr(), C.uintptr_t(len(docs)), cOpts, &out)
+	}); err != nil {
 		return MutationResult{}, err
 	}
 	defer C.moss_free_mutation_result(out)
@@ -114,8 +122,9 @@ func (c *ManageClient) DeleteDocs(name string, docIDs []string) (MutationResult,
 	defer ids.free()
 
 	var out *C.MossMutationResult
-	result := C.moss_client_delete_docs(c.ptr, cName, ids.ptr(), C.uintptr_t(len(docIDs)), &out)
-	if err := checkResult(result); err != nil {
+	if err := c.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_delete_docs(ptr, cName, ids.ptr(), C.uintptr_t(len(docIDs)), &out)
+	}); err != nil {
 		return MutationResult{}, err
 	}
 	defer C.moss_free_mutation_result(out)
@@ -132,8 +141,9 @@ func (c *ManageClient) GetJobStatus(jobID string) (JobStatusResponse, error) {
 	defer C.free(unsafe.Pointer(cJobID))
 
 	var out *C.MossJobStatusResponse
-	result := C.moss_client_get_job_status(c.ptr, cJobID, &out)
-	if err := checkResult(result); err != nil {
+	if err := c.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_get_job_status(ptr, cJobID, &out)
+	}); err != nil {
 		return JobStatusResponse{}, err
 	}
 	defer C.moss_free_job_status_response(out)
@@ -155,8 +165,9 @@ func (c *ManageClient) GetIndex(name string) (IndexInfo, error) {
 	defer C.free(unsafe.Pointer(cName))
 
 	var out *C.MossIndexInfo
-	result := C.moss_client_get_index(c.ptr, cName, &out)
-	if err := checkResult(result); err != nil {
+	if err := c.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_get_index(ptr, cName, &out)
+	}); err != nil {
 		return IndexInfo{}, err
 	}
 	defer C.moss_free_index_info(out)
@@ -167,8 +178,9 @@ func (c *ManageClient) GetIndex(name string) (IndexInfo, error) {
 func (c *ManageClient) ListIndexes() ([]IndexInfo, error) {
 	var out *C.MossIndexInfo
 	var count C.uintptr_t
-	result := C.moss_client_list_indexes(c.ptr, &out, &count)
-	if err := checkResult(result); err != nil {
+	if err := c.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_list_indexes(ptr, &out, &count)
+	}); err != nil {
 		return nil, err
 	}
 	defer C.moss_free_index_info_list(out, count)
@@ -186,8 +198,9 @@ func (c *ManageClient) DeleteIndex(name string) (bool, error) {
 	defer C.free(unsafe.Pointer(cName))
 
 	var deleted C.bool
-	result := C.moss_client_delete_index(c.ptr, cName, &deleted)
-	if err := checkResult(result); err != nil {
+	if err := c.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_delete_index(ptr, cName, &deleted)
+	}); err != nil {
 		return false, err
 	}
 	return bool(deleted), nil
@@ -202,8 +215,9 @@ func (c *ManageClient) GetDocs(name string, docIDs []string) ([]DocumentInfo, er
 
 	var out *C.MossDocumentInfo
 	var count C.uintptr_t
-	result := C.moss_client_get_docs(c.ptr, cName, ids.ptr(), C.uintptr_t(len(docIDs)), &out, &count)
-	if err := checkResult(result); err != nil {
+	if err := c.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_get_docs(ptr, cName, ids.ptr(), C.uintptr_t(len(docIDs)), &out, &count)
+	}); err != nil {
 		return nil, err
 	}
 	defer C.moss_free_documents(out, count)
@@ -225,11 +239,17 @@ func NewIndexManager(projectID, projectKey string) (*IndexManager, error) {
 }
 
 func (m *IndexManager) Close() error {
-	if m == nil || m.ptr == nil {
+	if m == nil {
+		return nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.ptr == nil {
 		return nil
 	}
 	C.moss_client_free(m.ptr)
 	m.ptr = nil
+	m.loaded = map[string]struct{}{}
 	return nil
 }
 
@@ -246,15 +266,22 @@ func (m *IndexManager) LoadIndex(indexName string, options *LoadIndexOptions) (I
 		}
 	}
 
-	result := C.moss_client_load_index(m.ptr, cName, cOpts, &out)
-	if err := checkResult(result); err != nil {
+	if m == nil {
+		return IndexInfo{}, ErrClientClosed
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.ptr == nil {
+		return IndexInfo{}, ErrClientClosed
+	}
+	if err := withErrorThread(func() C.MossResult {
+		return C.moss_client_load_index(m.ptr, cName, cOpts, &out)
+	}); err != nil {
 		return IndexInfo{}, err
 	}
 	defer C.moss_free_index_info(out)
 
-	m.mu.Lock()
 	m.loaded[indexName] = struct{}{}
-	m.mu.Unlock()
 	return convertIndexInfo(out), nil
 }
 
@@ -262,13 +289,20 @@ func (m *IndexManager) UnloadIndex(indexName string) error {
 	cName := C.CString(indexName)
 	defer C.free(unsafe.Pointer(cName))
 
-	result := C.moss_client_unload_index(m.ptr, cName)
-	if err := checkResult(result); err != nil {
-		return err
+	if m == nil {
+		return ErrClientClosed
 	}
 	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.ptr == nil {
+		return ErrClientClosed
+	}
+	if err := withErrorThread(func() C.MossResult {
+		return C.moss_client_unload_index(m.ptr, cName)
+	}); err != nil {
+		return err
+	}
 	delete(m.loaded, indexName)
-	m.mu.Unlock()
 	return nil
 }
 
@@ -288,6 +322,16 @@ func (m *IndexManager) QueryText(indexName, query string, topK int, alpha float3
 }
 
 func (m *IndexManager) LoadQueryModel(indexName string) error {
+	if m == nil {
+		return ErrClientClosed
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.ptr == nil {
+		return ErrClientClosed
+	}
+	// libmoss loads bundled query models as part of moss_client_load_index.
+	// Keep this method for parity with SDKs that expose explicit model loading.
 	return nil
 }
 
@@ -296,8 +340,9 @@ func (m *IndexManager) RefreshIndex(indexName string) (RefreshResult, error) {
 	defer C.free(unsafe.Pointer(cName))
 
 	var out *C.MossRefreshResult
-	result := C.moss_client_refresh_index(m.ptr, cName, &out)
-	if err := checkResult(result); err != nil {
+	if err := m.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_refresh_index(ptr, cName, &out)
+	}); err != nil {
 		return RefreshResult{}, err
 	}
 	defer C.moss_free_refresh_result(out)
@@ -315,8 +360,9 @@ func (m *IndexManager) GetIndexInfo(indexName string) (IndexInfo, error) {
 	defer C.free(unsafe.Pointer(cName))
 
 	var out *C.MossIndexInfo
-	result := C.moss_client_get_index(m.ptr, cName, &out)
-	if err := checkResult(result); err != nil {
+	if err := m.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_get_index(ptr, cName, &out)
+	}); err != nil {
 		return IndexInfo{}, err
 	}
 	defer C.moss_free_index_info(out)
@@ -360,8 +406,9 @@ func (m *IndexManager) query(indexName, query string, queryEmbedding []float32, 
 	}
 
 	var out *C.MossSearchResult
-	result := C.moss_client_query(m.ptr, cName, cQuery, opts, &out)
-	if err := checkResult(result); err != nil {
+	if err := m.withClient(func(ptr *C.MossClient) C.MossResult {
+		return C.moss_client_query(ptr, cName, cQuery, opts, &out)
+	}); err != nil {
 		return SearchResult{}, err
 	}
 	defer C.moss_free_search_result(out)
@@ -393,11 +440,46 @@ func newCClient(projectID, projectKey string) (*C.MossClient, error) {
 	defer C.free(unsafe.Pointer(cProjectKey))
 
 	var out *C.MossClient
-	result := C.moss_client_new(cProjectID, cProjectKey, &out)
-	if err := checkResult(result); err != nil {
+	if err := withErrorThread(func() C.MossResult {
+		return C.moss_client_new(cProjectID, cProjectKey, &out)
+	}); err != nil {
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *ManageClient) withClient(call func(*C.MossClient) C.MossResult) error {
+	if c == nil {
+		return ErrClientClosed
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ptr == nil {
+		return ErrClientClosed
+	}
+	return withErrorThread(func() C.MossResult {
+		return call(c.ptr)
+	})
+}
+
+func (m *IndexManager) withClient(call func(*C.MossClient) C.MossResult) error {
+	if m == nil {
+		return ErrClientClosed
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.ptr == nil {
+		return ErrClientClosed
+	}
+	return withErrorThread(func() C.MossResult {
+		return call(m.ptr)
+	})
+}
+
+func withErrorThread(call func() C.MossResult) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	return checkResult(call())
 }
 
 func checkResult(result C.MossResult) error {

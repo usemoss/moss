@@ -63,12 +63,16 @@ func fromCoreSearchResult(value mosscore.SearchResult) SearchResult {
 		})
 	}
 
-	timeTaken := value.TimeTakenMs
+	var timeTaken *int
+	if value.TimeTakenMs != 0 {
+		value := value.TimeTakenMs
+		timeTaken = &value
+	}
 	return SearchResult{
 		Docs:        docs,
 		Query:       value.Query,
 		IndexName:   value.IndexName,
-		TimeTakenMs: &timeTaken,
+		TimeTakenMs: timeTaken,
 	}
 }
 

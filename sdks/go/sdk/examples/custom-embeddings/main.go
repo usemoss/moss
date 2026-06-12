@@ -59,7 +59,7 @@ func main() {
 	}
 
 	for _, doc := range search.Docs {
-		fmt.Printf("%s %.3f\n", doc.ID, doc.Score)
+		fmt.Printf("%s %.3f %s\n", doc.ID, doc.Score, doc.Text)
 	}
 
 	if err := cleanup(ctx, client, indexName); err != nil {
