@@ -340,7 +340,7 @@ func (m *IndexManager) RefreshIndex(indexName string) (RefreshResult, error) {
 	defer C.free(unsafe.Pointer(cName))
 
 	var out *C.MossRefreshResult
-	if err := m.withClient(func(ptr *C.MossClient) C.MossResult {
+	if err := m.withExclusiveClient(func(ptr *C.MossClient) C.MossResult {
 		return C.moss_client_refresh_index(ptr, cName, &out)
 	}); err != nil {
 		return RefreshResult{}, err
@@ -468,6 +468,20 @@ func (m *IndexManager) withClient(call func(*C.MossClient) C.MossResult) error {
 	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if m.ptr == nil {
+		return ErrClientClosed
+	}
+	return withErrorThread(func() C.MossResult {
+		return call(m.ptr)
+	})
+}
+
+func (m *IndexManager) withExclusiveClient(call func(*C.MossClient) C.MossResult) error {
+	if m == nil {
+		return ErrClientClosed
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.ptr == nil {
 		return ErrClientClosed
 	}
