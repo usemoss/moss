@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "firecrawl-moss"
+version = "0.1.0"
+description = "Firecrawl integration for Moss semantic search"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "InferEdge Inc.", email = "contact@moss.dev" }
+]
+dependencies = [
+    "firecrawl-py",
+    "moss>=1.0.0",
+    "python-dotenv",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "README.md",
+    ".env.example",
+    "firecrawl_moss.ipynb",
+]
