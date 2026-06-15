@@ -358,6 +358,29 @@ func TestQueryFallsBackToCloudWhenBindingsAreUnavailable(t *testing.T) {
 	}
 }
 
+func TestQueryReturnsIndexManagerInitializationErrors(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	wantErr := errors.New("native runtime initialization failed")
+	client := NewClient("project-id", "project-key", WithQueryURL(server.URL))
+	client.indexFactory = func(projectID, projectKey string) (indexRuntime, error) {
+		return nil, wantErr
+	}
+
+	_, err := client.Query(context.Background(), "support-docs", "refund policy", nil)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected index manager error, got %v", err)
+	}
+	if requests != 0 {
+		t.Fatalf("expected no cloud query requests, got %d", requests)
+	}
+}
+
 func TestQueryUsesLocalBindingsAndSupportsFilters(t *testing.T) {
 	client := newTestClient(nil, &fakeIndexRuntime{
 		loaded: map[string]bool{"support-docs": true},
