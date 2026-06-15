@@ -68,8 +68,8 @@ func (c *Client) RefreshIndex(ctx context.Context, indexName string) (RefreshRes
 	if err := ctx.Err(); err != nil {
 		return RefreshResult{}, err
 	}
-	if strings.TrimSpace(indexName) == "" {
-		return RefreshResult{}, ErrEmptyIndexName
+	if err := c.validateManageRequest(indexName); err != nil {
+		return RefreshResult{}, err
 	}
 
 	manager, err := c.ensureIndexManager()

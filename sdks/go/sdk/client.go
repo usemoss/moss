@@ -124,9 +124,6 @@ func (c *Client) validateQueryRequest(indexName string) error {
 	if err := validateCredentials(c.projectID, c.projectKey); err != nil {
 		return err
 	}
-	if strings.TrimSpace(c.queryURL) == "" {
-		return ErrMissingQueryURL
-	}
 	if strings.TrimSpace(indexName) == "" {
 		return ErrEmptyIndexName
 	}

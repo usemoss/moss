@@ -53,11 +53,11 @@ func (c *Client) queryLocal(manager indexRuntime, indexName, query string, optio
 			embedding = options.Embedding
 		}
 		if options.Filter != nil {
-			bytes, err := json.Marshal(options.Filter)
+			filterBytes, err := json.Marshal(options.Filter)
 			if err != nil {
 				return SearchResult{}, err
 			}
-			value := string(bytes)
+			value := string(filterBytes)
 			filterJSON = &value
 		}
 	}
@@ -87,6 +87,10 @@ type cloudQueryRequest struct {
 }
 
 func (c *Client) queryCloud(ctx context.Context, indexName, query string, options *QueryOptions) (SearchResult, error) {
+	if strings.TrimSpace(c.queryURL) == "" {
+		return SearchResult{}, ErrMissingQueryURL
+	}
+
 	topK := defaultTopK
 	var embedding []float32
 	if options != nil {

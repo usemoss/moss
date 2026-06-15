@@ -307,6 +307,43 @@ func TestQueryFallsBackToCloudWhenIndexIsNotLoaded(t *testing.T) {
 	}
 }
 
+func TestQueryUsesLocalBindingsWithEmptyQueryURL(t *testing.T) {
+	queryCalled := false
+	client := NewClient("project-id", "project-key", WithQueryURL(""))
+	client.indexMgr = &fakeIndexRuntime{
+		loaded: map[string]bool{"support-docs": true},
+		queryTextFn: func(indexName, query string, topK int, alpha float32, filterJSON *string) (mosscore.SearchResult, error) {
+			queryCalled = true
+			return mosscore.SearchResult{
+				Docs:      []mosscore.QueryResultDocumentInfo{{ID: "doc-1", Text: "Refunds take 5-7 days", Score: 0.91}},
+				Query:     query,
+				IndexName: &indexName,
+			}, nil
+		},
+	}
+
+	result, err := client.Query(context.Background(), "support-docs", "refund policy", nil)
+	if err != nil {
+		t.Fatalf("Query returned error: %v", err)
+	}
+	if !queryCalled {
+		t.Fatal("expected local query runtime to be used")
+	}
+	if len(result.Docs) != 1 || result.Docs[0].ID != "doc-1" {
+		t.Fatalf("unexpected query result: %#v", result)
+	}
+}
+
+func TestQueryCloudFallbackRequiresQueryURL(t *testing.T) {
+	client := NewClient("project-id", "project-key", WithQueryURL(""))
+	client.indexMgr = &fakeIndexRuntime{loaded: map[string]bool{}}
+
+	_, err := client.Query(context.Background(), "support-docs", "refund policy", nil)
+	if !errors.Is(err, ErrMissingQueryURL) {
+		t.Fatalf("expected ErrMissingQueryURL, got %v", err)
+	}
+}
+
 func TestQueryCloudFallbackRejectsLocalOnlyOptions(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -489,6 +526,35 @@ func TestLoadIndexRejectsUnsupportedCachePath(t *testing.T) {
 	_, err := client.LoadIndex(context.Background(), "support-docs", &LoadIndexOptions{CachePath: "/tmp/cache"})
 	if !errors.Is(err, ErrUnsupportedCachePath) {
 		t.Fatalf("expected ErrUnsupportedCachePath, got %v", err)
+	}
+}
+
+func TestRefreshIndexValidatesCredentialsBeforeInitializingRuntime(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		projectID  string
+		projectKey string
+		wantErr    error
+	}{
+		{name: "missing project ID", projectID: "", projectKey: "project-key", wantErr: ErrMissingProjectID},
+		{name: "missing project key", projectID: "project-id", projectKey: "", wantErr: ErrMissingProjectKey},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := NewClient(tc.projectID, tc.projectKey)
+			factoryCalled := false
+			client.indexFactory = func(projectID, projectKey string) (indexRuntime, error) {
+				factoryCalled = true
+				return &fakeIndexRuntime{}, nil
+			}
+
+			_, err := client.RefreshIndex(context.Background(), "support-docs")
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("expected %v, got %v", tc.wantErr, err)
+			}
+			if factoryCalled {
+				t.Fatal("expected index runtime initialization to be skipped")
+			}
+		})
 	}
 }
 
