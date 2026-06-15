@@ -1,0 +1,152 @@
+{
+  "name": "Moss Document Sync Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rules": {
+          "items": [
+            {
+              "value": "manual",
+              "name": "trigger",
+              "operation": "equal"
+            }
+          ]
+        }
+      },
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Initialize Moss N8N Helper\n// Read credentials from n8n environment variables instead of hardcoding them in the workflow\nconst projectId = process.env.MOSS_PROJECT_ID;\nconst projectKey = process.env.MOSS_PROJECT_KEY;\n\nif (!projectId || !projectKey) {\n  throw new Error('Missing Moss configuration. Set MOSS_PROJECT_ID and MOSS_PROJECT_KEY as environment variables in n8n.');\n}\n\n// This would normally be done in a Function node\n// For demo purposes, we're just returning the config\nreturn [{\n  projectId,\n  projectKey\n}];"
+      },
+      "name": "Moss Config",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Example: Create a new index with sample documents\n// In a real workflow, this data would come from previous nodes\n\nconst { projectId, projectKey } = items[0].json;\n\n// This is where you'd use the Moss N8N Helper\n// Since we can't directly import TypeScript in n8n Function nodes,\n// we'll show the logic that would be implemented\n\nconst sampleDocs = [\n  { id: 'doc1', text: 'Machine learning is a subset of AI', metadata: { category: 'tech' } },\n  { id: 'doc2', text: 'Deep learning uses neural networks with multiple layers', metadata: { category: 'tech' } },\n  { id: 'doc3', text: 'Natural language processing enables computers to understand text', metadata: { category: 'tech' } }\n];\n\n// In practice, you would:\n// 1. Create a helper instance: const helper = new MossN8NHelper(projectId, projectKey);\n// 2. Create index: const createResult = await helper.createIndex('knowledge-base', sampleDocs);\n// 3. Wait for completion using getJobStatus in a loop\n// 4. Return the job ID for tracking\n\nreturn [{\n  indexName: 'knowledge-base',\n  documentCount: sampleDocs.length,\n  status: 'index_creation_started',\n  note: 'In actual n8n workflow, use Function items to call Moss N8N Helper methods'\n}];"
+      },
+      "name": "Create Moss Index",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Example: Add documents to an existing index\n// This would typically follow a trigger from a data source (Notion, DB, etc.)\n\nconst newDocs = [\n  { id: 'doc4', text: 'Computer vision enables machines to interpret visual information', metadata: { category: 'tech', source: 'webhook' } },\n  { id: 'doc5', text: 'Reinforcement learning trains agents through reward signals', metadata: { category: 'tech', source: 'webhook' } }\n];\n\n// In actual implementation:\n// const helper = new MossN8NHelper($json[\"projectId\"], $json[\"projectKey\"]);\n// const addResult = await helper.addDocs('knowledge-base', newDocs, { upsert: true });\n\nreturn [{\n  addedDocCount: newDocs.length,\n  indexName: 'knowledge-base',\n  status: 'documents_added',\n  note: 'In actual n8n workflow, use Function items to call Moss N8N Helper methods'\n}];"
+      },
+      "name": "Add Documents",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Example: Query the index for relevant information\n// This could be used in an AI agent workflow\n\nconst queryText = \"What is deep learning?\";\n\n// In actual implementation:\n// const helper = new MossN8NHelper($json[\"projectId\"], $json[\"projectKey\"]);\n// await helper.loadIndex('knowledge-base'); // For fast local queries\n// const results = await helper.query('knowledge-base', queryText, { topK: 3 });\n\n// Return formatted results for n8n\nreturn [{\n  query: queryText,\n  results: [\n    {\n      id: \"doc2\",\n      text: \"Deep learning uses neural networks with multiple layers\",\n      metadata: { category: \"tech\" },\n      score: 0.95\n    },\n    {\n      id: \"doc3\",\n      text: \"Natural language processing enables computers to understand text\",\n      metadata: { category: \"tech\" },\n      score: 0.78\n    }\n  ],\n  resultCount: 2,\n  status: 'query_completed'\n}];"
+      },
+      "name": "Query Moss Index",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Example: Delete documents from index\n// Useful for removing outdated information\n\nconst docsToDelete = ['doc1', 'doc3'];\n\n// In actual implementation:\n// const helper = new MossN8NHelper($json[\"projectId\"], $json[\"projectKey\"]);\n// const deleteResult = await helper.deleteDocs('knowledge-base', docsToDelete);\n\nreturn [{\n  deletedDocIds: docsToDelete,\n  indexName: 'knowledge-base',\n  status: 'documents_deleted',\n  note: 'In actual n8n workflow, use Function items to call Moss N8N Helper methods'\n}];"
+      },
+      "name": "Delete Documents",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Moss Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Moss Config": {
+      "main": [
+        [
+          {
+            "node": "Create Moss Index",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Add Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Moss Index": {
+      "main": [
+        [
+          {
+            "node": "Query Moss Index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Documents": {
+      "main": [
+        [
+          {
+            "node": "Query Moss Index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Moss Index": {
+      "main": [
+        [
+          {
+            "node": "Delete Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionTimeout": 5400
+  },
+  "id": "1"
+}
