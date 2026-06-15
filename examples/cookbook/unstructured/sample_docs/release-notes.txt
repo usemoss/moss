@@ -1,0 +1,4 @@
+Moss release notes
+
+Semantic search indexes can be updated incrementally by upserting documents with stable IDs.
+Metadata helps filter or explain where each retrieved chunk came from.
