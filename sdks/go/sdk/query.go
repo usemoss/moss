@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
+
+	mosscore "github.com/usemoss/moss/sdks/go/bindings"
 )
 
 const defaultTopK = 5
@@ -20,7 +23,14 @@ func (c *Client) Query(ctx context.Context, indexName, query string, options *Qu
 		return SearchResult{}, err
 	}
 
-	if manager, err := c.ensureIndexManager(); err == nil && manager.HasIndex(indexName) {
+	manager, err := c.ensureIndexManager()
+	if err != nil {
+		if errors.Is(err, mosscore.ErrBindingsUnavailable) {
+			return c.queryCloud(ctx, indexName, query, options)
+		}
+		return SearchResult{}, err
+	}
+	if manager.HasIndex(indexName) {
 		return c.queryLocal(manager, indexName, query, options)
 	}
 	return c.queryCloud(ctx, indexName, query, options)
