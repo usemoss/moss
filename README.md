@@ -137,6 +137,7 @@ examples/
 │   └── custom_embedding_sample.ts
 ├── javascript-web/          # Browser / WASM SDK samples
 ├── c/                       # C SDK samples (libmoss)
+├── go/                      # Go SDK samples
 ├── voice-agents/            # End-to-end voice agents (ambient + multi-agent)
 │   ├── airline-pnr/         # Ambient retrieval; per-PNR Moss indexes, swap mid-call
 │   └── mortgage-lending/    # Multi-agent flow with shared session state

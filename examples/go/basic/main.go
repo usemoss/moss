@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/usemoss/moss/sdks/go/sdk/moss"
+	"github.com/usemoss/moss/sdks/go/sdk"
 )
 
 func main() {

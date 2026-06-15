@@ -28,7 +28,7 @@ The Go SDK now has two layers:
 From this repository, import the package at:
 
 ```go
-github.com/usemoss/moss/sdks/go/sdk/moss
+github.com/usemoss/moss/sdks/go/sdk
 ```
 
 Download the `libmoss` C SDK release and build with `-tags libmoss`. The
@@ -45,7 +45,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/usemoss/moss/sdks/go/sdk/moss"
+	"github.com/usemoss/moss/sdks/go/sdk"
 )
 
 func main() {
@@ -136,16 +136,17 @@ batch.
 
 Runnable examples live here:
 
-- [`examples/basic/main.go`](./examples/basic/main.go)
-- [`examples/custom-embeddings/main.go`](./examples/custom-embeddings/main.go)
+- [`../../../examples/go/basic/main.go`](../../../examples/go/basic/main.go)
+- [`../../../examples/go/custom-embeddings/main.go`](../../../examples/go/custom-embeddings/main.go)
 
 Run them with native bindings enabled:
 
 ```bash
+cd ../../../examples/go
 export CGO_CFLAGS="-I<libmoss-sdk-root>/include"
 export CGO_LDFLAGS="-L<libmoss-sdk-root>/lib"
 export LD_LIBRARY_PATH="<libmoss-sdk-root>/lib"
-go run -tags libmoss ./examples/basic
+go run -tags libmoss ./basic
 ```
 
 ## Integration tests
