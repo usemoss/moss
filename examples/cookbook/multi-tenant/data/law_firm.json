@@ -1,0 +1,52 @@
+[
+  {
+    "id": "law-firm-practice-areas",
+    "text": "Harrison & Cole LLP handles corporate law, employment law, intellectual property, real estate transactions, mergers and acquisitions, contract disputes, and startup legal services. We do not practice criminal law or family law.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "services"}
+  },
+  {
+    "id": "law-firm-consultation",
+    "text": "Initial consultations are 30 minutes and free of charge. To book, call (212) 555-0847 or use the booking form at harrisoncole.com. We respond to all consultation requests within one business day.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "onboarding"}
+  },
+  {
+    "id": "law-firm-fees-hourly",
+    "text": "Hourly billing rates: Senior Partners $650–$850/hr, Associates $350–$500/hr, Paralegals $150–$200/hr. All clients receive a detailed engagement letter outlining expected costs before work begins.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "pricing"}
+  },
+  {
+    "id": "law-firm-fees-flat",
+    "text": "Flat-fee services: LLC or Corporation formation $1,200, standard NDA drafting $400, standard employment agreement $600, trademark application $800 plus USPTO fees, basic contract review (up to 20 pages) $500.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "pricing"}
+  },
+  {
+    "id": "law-firm-retainer",
+    "text": "Monthly retainer packages for startups and small businesses: Starter $1,500/month (up to 5 hours), Growth $3,000/month (up to 12 hours), Scale $5,500/month (up to 25 hours). Unused hours do not roll over.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "pricing"}
+  },
+  {
+    "id": "law-firm-attorneys",
+    "text": "Our team: Margaret Harrison (Managing Partner, M&A and corporate), David Cole (Partner, IP and tech), Priya Nair (Senior Associate, employment law), James Wu (Associate, real estate and contracts). All attorneys are New York Bar admitted.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "team"}
+  },
+  {
+    "id": "law-firm-hours",
+    "text": "Office hours: Monday to Friday 9am–6pm Eastern. After-hours consultations available for retainer clients by appointment. Emergency contact for existing clients: (212) 555-0848.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "info"}
+  },
+  {
+    "id": "law-firm-location",
+    "text": "Offices at 580 Park Avenue, Suite 1200, New York, NY 10065. We also offer virtual consultations via Zoom for clients outside New York. Document signing can be handled electronically via DocuSign.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "info"}
+  },
+  {
+    "id": "law-firm-process",
+    "text": "Engagement process: 1) Free initial consultation, 2) Scope and fee agreement, 3) Signed engagement letter and retainer payment, 4) Matter opens and attorney assigned within 24 hours, 5) Regular status updates via our client portal.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "onboarding"}
+  },
+  {
+    "id": "law-firm-startup-package",
+    "text": "Startup legal package $3,500 all-in: Delaware C-Corp or LLC formation, founders agreement, IP assignment agreement, standard employee offer letter template, initial equity plan review. Popular with seed-stage companies.",
+    "metadata": {"business_id": "law-harrison-cole", "category": "pricing"}
+  }
+]
