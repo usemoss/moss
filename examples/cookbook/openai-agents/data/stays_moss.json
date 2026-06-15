@@ -1,0 +1,90 @@
+[
+  {
+    "id": "stay-tok-101",
+    "text": "Nine Hours Capsule Hotel - Minimalist capsule stay in Shinjuku. High-speed Wi-Fi, lockers, and showers included. Price: \u00c2\u00a53,500 per night. Location: Shinjuku/Kanda. Amenities: Wi-Fi, Locker, Shower.",
+    "metadata": {
+      "location": "Shinjuku/Kanda",
+      "price": "\u00c2\u00a53,500"
+    }
+  },
+  {
+    "id": "stay-tok-102",
+    "text": "Khaosan Tokyo Origami - Highly rated hostel in Asakusa. Offers dormitory beds and a communal kitchen to save on meal costs. Price: \u00c2\u00a52,800 per night. Location: Asakusa. Amenities: Kitchen, Laundry, Lounge.",
+    "metadata": {
+      "location": "Asakusa",
+      "price": "\u00c2\u00a52,800"
+    }
+  },
+  {
+    "id": "stay-tok-103",
+    "text": "Sakura Hotel Ikebukuro - Budget hotel with private rooms and 24-hour cafe. Good for groups of two on a budget. Price: \u00c2\u00a57,000 per night. Location: Ikebukuro. Amenities: Private Room, Cafe, Multilingual Staff.",
+    "metadata": {
+      "location": "Ikebukuro",
+      "price": "\u00c2\u00a57,000"
+    }
+  },
+  {
+    "id": "stay-vn-104",
+    "text": "Little Hanoi Hostel - Authentic hostel in the heart of the Old Quarter. Offers free breakfast and walking tours. Price: \u00c2\u00a51,200 per night. Location: Hanoi, Vietnam. Amenities: Free Breakfast, Walking Tours, Bicycle Rental.",
+    "metadata": {
+      "location": "Hanoi, Vietnam",
+      "price": "\u00c2\u00a51,200"
+    }
+  },
+  {
+    "id": "stay-al-105",
+    "text": "Santi Quanta Hostel - Boutique hostel near the Skanderbeg Square. Known for a social atmosphere and clean facilities. Price: \u00c2\u00a52,000 per night. Location: Tirana, Albania. Amenities: Common Room, City Maps, Air Conditioning.",
+    "metadata": {
+      "location": "Tirana, Albania",
+      "price": "\u00c2\u00a52,000"
+    }
+  },
+  {
+    "id": "stay-tr-106",
+    "text": "Cheers Lighthouse - Budget-friendly guesthouse in Sultanahmet with views of the Marmara Sea. Very close to the Blue Mosque. Price: \u00c2\u00a54,500 per night. Location: Istanbul, Turkey. Amenities: Ocean View, Restaurant, Airport Shuttle.",
+    "metadata": {
+      "location": "Istanbul, Turkey",
+      "price": "\u00c2\u00a54,500"
+    }
+  },
+  {
+    "id": "stay-ro-107",
+    "text": "Kismet Dao Hostel - Legendary hostel in Brasov. Famous for its backyard BBQ and proximity to the Black Church. Price: \u00c2\u00a52,500 per night. Location: Brasov, Romania. Amenities: Garden BBQ, Lockers, Kitchen Access.",
+    "metadata": {
+      "location": "Brasov, Romania",
+      "price": "\u00c2\u00a52,500"
+    }
+  },
+  {
+    "id": "stay-th-108",
+    "text": "Bed Station Hostel Khaosan - Modern, industrial-style hostel. Features a pool and bar area, perfect for solo travelers. Price: \u00c2\u00a51,800 per night. Location: Bangkok, Thailand. Amenities: Swimming Pool, Bar, Coworking Space.",
+    "metadata": {
+      "location": "Bangkok, Thailand",
+      "price": "\u00c2\u00a51,800"
+    }
+  },
+  {
+    "id": "stay-ge-109",
+    "text": "Fabrika Hostel & Suites - A converted Soviet sewing factory turned into a multi-functional urban space and hostel. Price: \u00c2\u00a53,200 per night. Location: Tbilisi, Georgia. Amenities: Art Studios, Courtyard Bars, Private Suites.",
+    "metadata": {
+      "location": "Tbilisi, Georgia",
+      "price": "\u00c2\u00a53,200"
+    }
+  },
+  {
+    "id": "stay-pt-110",
+    "text": "Yes! Lisbon Hostel - Award-winning hostel known for its group dinners and central location near Pra\u00c3\u00a7a do Com\u00c3\u00a9rcio. Price: \u00c2\u00a54,800 per night. Location: Lisbon, Portugal. Amenities: Group Dinners, Bar, Elevator.",
+    "metadata": {
+      "location": "Lisbon, Portugal",
+      "price": "\u00c2\u00a54,800"
+    }
+  },
+  {
+    "id": "stay-vn-111",
+    "text": "Seashore Hotel & Apartment - Affordable beachfront stay in Da Nang. Ideal for travelers wanting hotel comfort at hostel prices. Price: \u00c2\u00a53,900 per night. Location: Da Nang, Vietnam. Amenities: Beach Access, Rooftop Pool, Gym.",
+    "metadata": {
+      "location": "Da Nang, Vietnam",
+      "price": "\u00c2\u00a53,900"
+    }
+  }
+]
