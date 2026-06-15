@@ -16,7 +16,8 @@ const mockClient = vi.hoisted(() => ({
 }))
 
 vi.mock('@moss-dev/moss-web', () => ({
-  MossClient: vi.fn().mockImplementation(() => mockClient),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  MossClient: vi.fn(function (this: any) { return mockClient }),
 }))
 
 const localStorageMock = (() => {
