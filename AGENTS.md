@@ -20,6 +20,7 @@ examples/
   javascript/      — Standalone TS usage examples
   javascript-web/  — Browser/Vite examples (no Node runtime)
   c/               — C binding examples
+  go/              — Standalone Go SDK usage examples
   bun/             — Bun runtime example
   python-classification/ — Text classification with Moss
   voice-agents/    - End-to-end voice agents (LiveKit-based)
@@ -149,6 +150,7 @@ asks for an experimental landing spot.
 | `javascript/` | TypeScript (Node) | `comprehensive_sample.ts`, `cached_load_sample.ts`, `custom_authenticator_sample.ts` |
 | `javascript-web/` | TypeScript (browser/Vite) | `comprehensive_sample.ts`, `metadata_filtering_sample.ts` |
 | `c/` | C | `example_usage.c`, `metadata_filtering.c`, `session_usage.c` |
+| `go/` | Go | `basic/main.go`, `custom-embeddings/main.go` |
 | `bun/` | Bun | Bun-native runtime example |
 | `python-classification/` | Python | `classify_sample.py` — zero-shot text classification via Moss |
 | `voice-agents/airline-pnr/` | Python (LiveKit) | Ambient retrieval: every user turn auto-queries a per-PNR Moss index before the LLM speaks |

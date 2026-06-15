@@ -9,7 +9,7 @@ Current status:
 
 - bindings-backed manage operations for mutations and metadata reads
 - local `LoadIndex` / `UnloadIndex` / local `Query` via `libmoss`
-- examples and unit tests
+- examples under `examples/go/` and unit tests
 - env-gated integration test scaffold
 
 Important note:
