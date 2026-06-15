@@ -12,7 +12,7 @@ import (
 	mosscore "github.com/usemoss/moss/sdks/go/bindings"
 )
 
-const defaultTopK = 5
+const defaultTopK = 10
 
 // Query executes a local query when the index is loaded, otherwise falls back to cloud query.
 func (c *Client) Query(ctx context.Context, indexName, query string, options *QueryOptions) (SearchResult, error) {
