@@ -38,11 +38,12 @@ from pathlib import Path
 # ── load .env (repo root → package dir, whichever exists) ──────────────────
 try:
     from dotenv import load_dotenv
+
     _here = Path(__file__).resolve()
     for _candidate in (
-        _here.parent / ".env",                 # package dir
-        _here.parents[3] / ".env",             # moss-data-connector/
-        _here.parents[5] / ".env",             # repo root
+        _here.parent / ".env",  # package dir
+        _here.parents[3] / ".env",  # moss-data-connector/
+        _here.parents[5] / ".env",  # repo root
     ):
         if _candidate.exists():
             load_dotenv(_candidate, override=False)
@@ -51,18 +52,16 @@ except ImportError:
     pass  # python-dotenv optional; rely on env vars set in the shell
 
 import boto3
-from boto3.dynamodb.conditions import Attr
-
 from moss import DocumentInfo, MossClient, QueryOptions
 from moss_connector_dynamodb import DynamoDBConnector, ingest
 
 # ── config ──────────────────────────────────────────────────────────────────
-TABLE_NAME   = f"moss-demo-{uuid.uuid4().hex[:6]}"
-INDEX_NAME   = f"moss-demo-{uuid.uuid4().hex[:6]}"
-REGION       = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-ENDPOINT_URL = os.getenv("DYNAMODB_ENDPOINT_URL")            # None → real AWS
-MOSS_ID      = os.getenv("MOSS_PROJECT_ID")
-MOSS_KEY     = os.getenv("MOSS_PROJECT_KEY")
+TABLE_NAME = f"moss-demo-{uuid.uuid4().hex[:6]}"
+INDEX_NAME = f"moss-demo-{uuid.uuid4().hex[:6]}"
+REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+ENDPOINT_URL = os.getenv("DYNAMODB_ENDPOINT_URL")  # None → real AWS
+MOSS_ID = os.getenv("MOSS_PROJECT_ID")
+MOSS_KEY = os.getenv("MOSS_PROJECT_KEY")
 
 SAMPLE_ARTICLES = [
     {
@@ -147,7 +146,7 @@ def boto3_kwargs() -> dict:
 
 
 # ── step 1: create DynamoDB table ──────────────────────────────────────────
-def create_table() -> None:
+def create_table():
     sep("Step 1 — Create DynamoDB table")
     ddb = boto3.resource("dynamodb", **boto3_kwargs())
     table = ddb.create_table(
@@ -181,9 +180,9 @@ async def ingest_to_moss() -> None:
             id=item["sku"],
             text=item["body"],
             metadata={
-                "title":      item["title"],
-                "category":   item["category"],
-                "author":     item["author"],
+                "title": item["title"],
+                "category": item["category"],
+                "author": item["author"],
                 "word_count": str(item["word_count"]),
             },
         ),
@@ -205,13 +204,13 @@ async def query_moss() -> None:
 
     for question in QUERIES:
         result = await client.query(INDEX_NAME, question, QueryOptions(top_k=3))
-        print(f"\n  Query: \"{question}\"")
+        print(f'\n  Query: "{question}"')
         if not result.docs:
             print("    (no results)")
             continue
         for rank, doc in enumerate(result.docs, 1):
             title = (doc.metadata or {}).get("title", "?")
-            cat   = (doc.metadata or {}).get("category", "?")
+            cat = (doc.metadata or {}).get("category", "?")
             print(f"    #{rank}  [{doc.id}] {title}  ({cat})")
             print(f"         {doc.text[:80]}{'…' if len(doc.text) > 80 else ''}")
 
@@ -247,7 +246,7 @@ async def main(skip_cleanup: bool) -> None:
 
     mode = f"DynamoDB Local ({ENDPOINT_URL})" if ENDPOINT_URL else f"AWS {REGION}"
     sep()
-    print(f"  DynamoDB → Moss  demo")
+    print("  DynamoDB → Moss  demo")
     print(f"  DynamoDB : {mode}")
     print(f"  Table    : {TABLE_NAME}")
     print(f"  Index    : {INDEX_NAME}")

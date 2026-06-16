@@ -28,12 +28,25 @@ from pathlib import Path
 
 import boto3
 import pytest
-from dotenv import load_dotenv
 
-from boto3.dynamodb.conditions import Attr, Key  # noqa: E402
+try:
+    from dotenv import load_dotenv
 
-from moss import DocumentInfo, MossClient, QueryOptions  # noqa: E402
-from moss_connector_dynamodb import DynamoDBConnector, DynamoDBQueryConnector, ingest  # noqa: E402
+    _here = Path(__file__).resolve()
+    for _candidate in (
+        _here.parents[1] / ".env",  # this package's own .env
+        _here.parents[2] / ".env",  # shared creds at moss-data-connector/.env
+        _here.parents[4] / ".env",  # <repo>/.env
+    ):
+        if _candidate.exists():
+            load_dotenv(_candidate, override=False)
+            break
+except ImportError:
+    pass
+
+from boto3.dynamodb.conditions import Attr
+from moss import DocumentInfo, MossClient, QueryOptions
+from moss_connector_dynamodb import DynamoDBConnector, ingest
 
 PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
 PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
@@ -150,9 +163,7 @@ async def test_dynamodb_scan_live_ingest_to_moss(dynamo_table):
         assert result.doc_count == 5
 
         await client.load_index(index_name)
-        result = await client.query(
-            index_name, "how long do refunds take", QueryOptions(top_k=3)
-        )
+        result = await client.query(index_name, "how long do refunds take", QueryOptions(top_k=3))
 
         assert result.docs, "expected at least one document in the search result"
         top_ids = [d.id for d in result.docs]

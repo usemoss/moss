@@ -18,10 +18,9 @@ import pytest
 
 pytest.importorskip("moto")
 
-from moto import mock_aws  # noqa: E402
-
 from moss import DocumentInfo  # noqa: E402
 from moss_connector_dynamodb import DynamoDBConnector, DynamoDBQueryConnector, ingest  # noqa: E402
+from moto import mock_aws  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fake Moss client
@@ -113,9 +112,7 @@ def _simple_mapper(item: dict[str, Any]) -> DocumentInfo:
 async def test_scan_ingest_end_to_end(ddb_table):
     fake_moss = FakeMossClient()
 
-    with mock_aws(), patch(
-        "moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss
-    ):
+    with patch("moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss):
         source = DynamoDBConnector(
             table_name=TABLE_NAME,
             mapper=_simple_mapper,
@@ -142,9 +139,7 @@ async def test_scan_ingest_end_to_end(ddb_table):
 async def test_scan_auto_id_defaults_to_false(ddb_table):
     fake_moss = FakeMossClient()
 
-    with mock_aws(), patch(
-        "moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss
-    ):
+    with patch("moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss):
         source = DynamoDBConnector(
             table_name=TABLE_NAME,
             mapper=_simple_mapper,
@@ -160,17 +155,13 @@ async def test_scan_auto_id_defaults_to_false(ddb_table):
 async def test_scan_auto_id_replaces_mapper_id(ddb_table):
     fake_moss = FakeMossClient()
 
-    with mock_aws(), patch(
-        "moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss
-    ):
+    with patch("moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss):
         source = DynamoDBConnector(
             table_name=TABLE_NAME,
             mapper=_simple_mapper,
             region_name=REGION,
         )
-        await ingest(
-            source, "fake_id", "fake_key", index_name="articles", auto_id=True
-        )
+        await ingest(source, "fake_id", "fake_key", index_name="articles", auto_id=True)
 
     docs = fake_moss.calls[0]["docs"]
     assert len(docs) == 3
@@ -187,9 +178,7 @@ async def test_scan_filter_expression(ddb_table):
 
     fake_moss = FakeMossClient()
 
-    with mock_aws(), patch(
-        "moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss
-    ):
+    with patch("moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss):
         source = DynamoDBConnector(
             table_name=TABLE_NAME,
             mapper=_simple_mapper,
@@ -207,9 +196,7 @@ async def test_scan_pagination(ddb_table):
     """page_size=1 forces multiple Scan pages; all items still arrive."""
     fake_moss = FakeMossClient()
 
-    with mock_aws(), patch(
-        "moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss
-    ):
+    with patch("moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss):
         source = DynamoDBConnector(
             table_name=TABLE_NAME,
             mapper=_simple_mapper,
@@ -286,9 +273,7 @@ async def test_query_connector_returns_only_matching_partition(ddb_query_table):
 
     fake_moss = FakeMossClient()
 
-    with mock_aws(), patch(
-        "moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss
-    ):
+    with patch("moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss):
         source = DynamoDBQueryConnector(
             table_name=QUERY_TABLE,
             key_condition_expression=Key("tenant_id").eq("tenant-A"),
