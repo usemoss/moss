@@ -1,0 +1,16 @@
+[project]
+name = "openai-agents-cookbook"
+version = "0.1.0"
+description = "Cookbook for integrating Moss semantic search with OpenAI Agents"
+requires-python = ">=3.10"
+dependencies = [
+    "openai-agents>=0.1.0",
+    "moss>=0.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23.0",
+]
