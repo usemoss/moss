@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Firecrawl integration for Moss semantic search"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
-license = { text = "Apache-2.0" }
+license = { text = "BSD-2-Clause" }
 authors = [
     { name = "InferEdge Inc.", email = "contact@moss.dev" }
 ]
