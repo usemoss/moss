@@ -50,7 +50,7 @@ async def main() -> None:
 
     # 2. Define the search tool using @function_tool
     @function_tool
-    async def moss_search(query: str) -> list[str]:
+    async def moss_search(query: str) -> str:
         """Search the knowledge base for answers to the user's question.
 
         Args:
@@ -62,7 +62,9 @@ async def main() -> None:
             query,
             options=QueryOptions(top_k=3),
         )
-        return [doc.text for doc in result.docs]
+        if not result.docs:
+            return "No relevant results found."
+        return "\n\n".join(doc.text for doc in result.docs)
 
     # 3. Create the OpenAI Agent with the search tool
     agent = Agent(
