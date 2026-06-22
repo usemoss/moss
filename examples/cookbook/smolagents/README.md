@@ -16,9 +16,9 @@ uv sync
 
 Or install dependencies directly:
 
-```bash
-uv pip install smolagents moss python-dotenv
-```
+~~~bash
+uv pip install smolagents moss python-dotenv nest-asyncio
+~~~
 
 ## Setup
 
