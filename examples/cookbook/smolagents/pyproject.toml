@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smolagents-moss-cookbook"
+version = "0.1.0"
+description = "Smolagents cookbook example for Moss semantic search"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "BSD-2-Clause" }
+authors = [
+    { name = "InferEdge Inc.", email = "contact@moss.dev" }
+]
+dependencies = [
+    "moss>=1.1.1",
+    "smolagents>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "nest-asyncio>=1.6.0",
+    "openai",
+]
+
+[tool.setuptools]
+py-modules = ["moss_smolagents", "moss_smol_agent_demo", "test_integration"]
