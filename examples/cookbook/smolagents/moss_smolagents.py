@@ -73,20 +73,22 @@ class MossSearchTool(Tool):
     def forward(self, query: str) -> str:
         """Query the Moss index and return formatted results."""
         try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            try:
+                import nest_asyncio
+                nest_asyncio.apply()
+                return loop.run_until_complete(self._search(query))
+            except ImportError:
+                raise RuntimeError(
+                    "MossSearchTool.forward() cannot be called from a running event loop. "
+                    "Please run this tool in a standard script or install 'nest-asyncio' for notebook/active-loop support."
+                )
+        else:
             return asyncio.run(self._search(query))
-        except RuntimeError as e:
-            if "cannot be called from a running event loop" in str(e):
-                # Fallback for running event loop contexts (like Jupyter notebooks)
-                try:
-                    import nest_asyncio
-                    nest_asyncio.apply()
-                    return asyncio.run(self._search(query))
-                except ImportError:
-                    raise RuntimeError(
-                        "MossSearchTool.forward() cannot be called from a running event loop. "
-                        "Please run this tool in a standard script or install 'nest-asyncio' for notebook support."
-                    ) from e
-            raise
 
     async def _search(self, query: str) -> str:
         """Asynchronous execution of the search query against Moss."""
