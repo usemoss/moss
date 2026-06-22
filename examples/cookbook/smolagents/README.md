@@ -42,8 +42,8 @@ MOSS_INDEX_NAME=your_index_name
 
 | File | Purpose |
 |------|---------|
+| `moss_smolagents.py` | `MossSearchTool` implementation (sync tool wrapping async MossClient) |
 | `moss_smol_agent_demo.py` | End-to-end demo: load index, build agent, run a question |
-
 ## Running the demo
 
 ```bash
