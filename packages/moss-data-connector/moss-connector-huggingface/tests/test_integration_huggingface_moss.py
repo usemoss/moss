@@ -126,7 +126,9 @@ async def test_huggingface_filter_fn_live():
         assert result.doc_count > 0
 
         await client.load_index(index_name)
-        query_result = await client.query(index_name, "football match results", QueryOptions(top_k=3))
+        query_result = await client.query(
+            index_name, "football match results", QueryOptions(top_k=3)
+        )
         categories = [(doc.metadata or {}).get("category") for doc in query_result.docs]
         print(f"\nSports-only index top results: {categories}")
         assert all(cat == "Sports" for cat in categories)

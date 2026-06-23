@@ -49,10 +49,8 @@ import uuid
 from collections.abc import Callable, Iterator
 from typing import Any
 
-from moss import DocumentInfo
 from datasets import load_dataset
-
-
+from moss import DocumentInfo
 
 # ---------------------------------------------------------------------------
 # Shared helpers

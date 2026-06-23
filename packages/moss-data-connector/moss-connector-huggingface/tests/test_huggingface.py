@@ -28,9 +28,24 @@ from moss_connector_huggingface import (  # noqa: E402
 # ---------------------------------------------------------------------------
 
 SAMPLE_ROWS = [
-    {"id": "r1", "title": "Refund policy", "text": "Refunds are processed within 3 to 5 business days.", "label": 0},
-    {"id": "r2", "title": "Shipping time", "text": "Most orders ship within 24 hours of being placed.", "label": 1},
-    {"id": "r3", "title": "Contact support", "text": "You can reach our support team 24/7 via live chat.", "label": 2},
+    {
+        "id": "r1",
+        "title": "Refund policy",
+        "text": "Refunds are processed within 3 to 5 business days.",
+        "label": 0,
+    },
+    {
+        "id": "r2",
+        "title": "Shipping time",
+        "text": "Most orders ship within 24 hours of being placed.",
+        "label": 1,
+    },
+    {
+        "id": "r3",
+        "title": "Contact support",
+        "text": "You can reach our support team 24/7 via live chat.",
+        "label": 2,
+    },
 ]
 
 
