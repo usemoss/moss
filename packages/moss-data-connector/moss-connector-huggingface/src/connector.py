@@ -40,7 +40,8 @@ Both connectors support two modes:
         ),
     )
 
-When ``mapper`` is not provided, the connector defaults to automatic mode (using all columns if parameters are omitted).
+When ``mapper`` is not provided, the connector defaults to automatic mode (using
+all columns if parameters are omitted).
 """
 
 from __future__ import annotations

@@ -350,3 +350,34 @@ async def test_local_explicit_streaming_overrides_kwargs():
     assert call_kwargs["streaming"] is True
 
 
+async def test_auto_mode_sentinels_and_defaults():
+    """Verify default auto mode behavior with list options and 'all' sentinels."""
+    fake_moss = FakeMossClient()
+    mock_ds = _mock_load_dataset(SAMPLE_ROWS[:1])
+
+    with (
+        patch("moss_connector_huggingface.connector.load_dataset", return_value=mock_ds),
+        patch("moss_connector_huggingface.ingest.MossClient", return_value=fake_moss),
+    ):
+        # Default behavior: No mapper, text/metadata columns omitted -> maps everything
+        source = HuggingFaceDatasetConnector(
+            dataset_name="fake/dataset",
+            id_column="id",
+        )
+        await ingest(source, "fake_id", "fake_key", index_name="articles")
+
+    docs = fake_moss.calls[0]["docs"]
+    assert len(docs) == 1
+    # Standard auto mode includes all columns
+    assert "title: Refund policy." in docs[0].text
+    assert "text: Refunds are processed within 3 to 5 business days.." in docs[0].text
+    assert "label: 0." in docs[0].text
+    # Metadata includes all columns except id
+    assert docs[0].metadata == {
+        "title": "Refund policy",
+        "text": "Refunds are processed within 3 to 5 business days.",
+        "label": "0",
+    }
+
+
+
