@@ -40,7 +40,7 @@ Both connectors support two modes:
         ),
     )
 
-Exactly one of ``mapper`` or ``id_column`` / ``text_columns`` must be supplied.
+When ``mapper`` is not provided, the connector defaults to automatic mode (using all columns if parameters are omitted).
 """
 
 from __future__ import annotations
@@ -80,6 +80,8 @@ def auto_mapper(
     # ── text ─────────────────────────────────────────────────────────────────
     if text_columns == _ALL:
         cols_for_text = list(row.keys())
+    elif isinstance(text_columns, str):
+        cols_for_text = [text_columns]
     else:
         cols_for_text = list(text_columns)  # type: ignore[arg-type]
 
@@ -96,6 +98,8 @@ def auto_mapper(
     # ── metadata ─────────────────────────────────────────────────────────────
     if metadata_columns == _ALL:
         meta_keys = [k for k in row.keys() if k != id_column]
+    elif isinstance(metadata_columns, str):
+        meta_keys = [metadata_columns] if metadata_columns != id_column else []
     else:
         meta_keys = [c for c in metadata_columns if c != id_column]  # type: ignore[union-attr]
 
@@ -140,8 +144,8 @@ def _resolve_mapper(
 class HuggingFaceDatasetConnector:
     """Stream rows from a HuggingFace Hub dataset and yield one ``DocumentInfo`` per row.
 
-    Provide either ``mapper`` (custom mode) or ``id_column`` / ``text_columns``
-    (automatic mode).  See module docstring for full details.
+    Provide a custom ``mapper``, or omit it to use automatic mode (configured
+    via ``id_column`` / ``text_columns``).  See module docstring for full details.
 
     Args:
         dataset_name: Hub repo ID, e.g. ``"ag_news"``, ``"squad"``,
@@ -193,7 +197,7 @@ class HuggingFaceDatasetConnector:
         self.load_kwargs = load_kwargs
 
     def __iter__(self) -> Iterator[DocumentInfo]:
-        kwargs: dict[str, Any] = {"streaming": self.streaming, **self.load_kwargs}
+        kwargs: dict[str, Any] = {**self.load_kwargs, "streaming": self.streaming}
         if self.name is not None:
             kwargs["name"] = self.name
         if self.token is not None:
@@ -213,8 +217,8 @@ class HuggingFaceLocalDatasetConnector:
     Supports any format handled by the ``datasets`` library: JSON / JSONL,
     CSV, Parquet, Arrow, text.
 
-    Provide either ``mapper`` (custom mode) or ``id_column`` / ``text_columns``
-    (automatic mode).  See module docstring for full details.
+    Provide a custom ``mapper``, or omit it to use automatic mode (configured
+    via ``id_column`` / ``text_columns``).  See module docstring for full details.
 
     Args:
         data_files: Path(s) to local files — a string, list, or split-keyed
@@ -255,12 +259,12 @@ class HuggingFaceLocalDatasetConnector:
 
     def __iter__(self) -> Iterator[DocumentInfo]:
         pos_args = (self.format,) if self.format is not None else ()
+        kwargs: dict[str, Any] = {**self.load_kwargs, "streaming": self.streaming}
         dataset = load_dataset(
             *pos_args,
             data_files=self.data_files,
             split=self.split,
-            streaming=self.streaming,
-            **self.load_kwargs,
+            **kwargs,
         )
 
         for row in dataset:

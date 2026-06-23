@@ -207,6 +207,31 @@ async def test_hub_passes_name_and_token_to_load_dataset():
     assert call_kwargs["split"] == "train[:10]"
 
 
+async def test_hub_explicit_streaming_overrides_kwargs():
+    """Explicit streaming parameter must override streaming in load_kwargs."""
+    fake_moss = FakeMossClient()
+    mock_ds = _mock_load_dataset(SAMPLE_ROWS[:1])
+
+    with (
+        patch(
+            "moss_connector_huggingface.connector.load_dataset", return_value=mock_ds
+        ) as mock_load,
+        patch("moss_connector_huggingface.ingest.MossClient", return_value=fake_moss),
+    ):
+        source = HuggingFaceDatasetConnector(
+            dataset_name="wikipedia",
+            mapper=_simple_mapper,
+            streaming=True,
+        )
+        source.load_kwargs["streaming"] = False
+        list(source)
+
+    mock_load.assert_called_once()
+    _, call_kwargs = mock_load.call_args
+    assert call_kwargs["streaming"] is True  # defaults to True, overrides keyword args
+
+
+
 # ---------------------------------------------------------------------------
 # HuggingFaceLocalDatasetConnector tests
 # ---------------------------------------------------------------------------
@@ -276,3 +301,52 @@ async def test_local_passes_format_and_data_files():
     pos_args, call_kwargs = mock_load.call_args
     assert pos_args == ("parquet",)
     assert call_kwargs["data_files"] == ["train.parquet", "train2.parquet"]
+
+
+async def test_auto_mode_single_string_columns():
+    """Passing a single string to text_columns/metadata_columns shouldn't split characters."""
+    fake_moss = FakeMossClient()
+    mock_ds = _mock_load_dataset(SAMPLE_ROWS[:1])
+
+    with (
+        patch("moss_connector_huggingface.connector.load_dataset", return_value=mock_ds),
+        patch("moss_connector_huggingface.ingest.MossClient", return_value=fake_moss),
+    ):
+        source = HuggingFaceDatasetConnector(
+            dataset_name="fake/dataset",
+            id_column="id",
+            text_columns="text",
+            metadata_columns="title",
+        )
+        await ingest(source, "fake_id", "fake_key", index_name="articles")
+
+    docs = fake_moss.calls[0]["docs"]
+    assert len(docs) == 1
+    assert docs[0].text == "text: Refunds are processed within 3 to 5 business days.."
+    assert docs[0].metadata == {"title": "Refund policy"}
+
+
+async def test_local_explicit_streaming_overrides_kwargs():
+    """Explicit streaming parameter must override streaming in load_kwargs for local connector."""
+    fake_moss = FakeMossClient()
+    mock_ds = _mock_load_dataset(SAMPLE_ROWS[:1])
+
+    with (
+        patch(
+            "moss_connector_huggingface.connector.load_dataset", return_value=mock_ds
+        ) as mock_load,
+        patch("moss_connector_huggingface.ingest.MossClient", return_value=fake_moss),
+    ):
+        source = HuggingFaceLocalDatasetConnector(
+            data_files=["train.parquet"],
+            mapper=_simple_mapper,
+            streaming=True,
+        )
+        source.load_kwargs["streaming"] = False
+        list(source)
+
+    mock_load.assert_called_once()
+    _, call_kwargs = mock_load.call_args
+    assert call_kwargs["streaming"] is True
+
+
