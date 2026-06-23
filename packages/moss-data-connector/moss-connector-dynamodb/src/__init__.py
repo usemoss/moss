@@ -1,6 +1,6 @@
 """DynamoDB source connector for Moss.
 
-from moss_connector_dynamodb import DynamoDBConnector, DynamoDBQueryConnector, ingest
+    from moss_connector_dynamodb import DynamoDBConnector, DynamoDBQueryConnector, ingest
 """
 
 from .connector import DynamoDBConnector, DynamoDBQueryConnector
