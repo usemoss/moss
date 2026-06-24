@@ -1,0 +1,182 @@
+[
+  {
+    "id": "ho3-overview",
+    "text": "HO-3 Special Form is the most common homeowners insurance policy. It provides open-peril (all-risk) coverage on the dwelling (Coverage A) and other structures (Coverage B), meaning all causes of loss are covered except those specifically excluded. Personal property (Coverage C) is covered on a named-peril basis — only causes of loss listed in the policy are covered. The policy also provides loss-of-use coverage (Coverage D), personal liability (Coverage E), and medical payments to others (Coverage F).",
+    "metadata": {"section": "overview", "policy_form": "HO-3", "topic": "policy_structure"}
+  },
+  {
+    "id": "coverage-a-dwelling",
+    "text": "Coverage A — Dwelling covers the dwelling itself and structures attached to it, including permanently installed fixtures, equipment, and appliances. It also covers materials and supplies on or next to the residence for construction, alteration, or repair. Coverage A limit is shown on the declarations page and should reflect the full replacement cost to rebuild. Open-peril basis: all physical losses are covered unless specifically excluded.",
+    "metadata": {"section": "coverage_a", "policy_form": "HO-3", "topic": "dwelling_coverage"}
+  },
+  {
+    "id": "coverage-b-other-structures",
+    "text": "Coverage B — Other Structures covers structures on the residence premises separated from the dwelling by clear space, such as detached garages, fences, sheds, and swimming pool enclosures. The limit is typically 10% of Coverage A limit unless a separate endorsement increases it. Structures used for business purposes or rented to non-residents are not covered under Coverage B. Open-peril basis same as Coverage A.",
+    "metadata": {"section": "coverage_b", "policy_form": "HO-3", "topic": "other_structures"}
+  },
+  {
+    "id": "coverage-c-personal-property",
+    "text": "Coverage C — Personal Property covers household contents and personal belongings owned or used by residents of the household, anywhere in the world. Named-peril basis: covered causes of loss are fire, lightning, windstorm, hail, explosion, riot, aircraft, vehicles, smoke, vandalism, theft, falling objects, weight of ice/snow/sleet, accidental discharge of water or steam, sudden tearing apart of appliances, freezing, sudden cracking from artificially generated electrical current, and volcanic eruption. The limit is shown on the declarations page; sub-limits apply to jewelry, cash, firearms, electronics, and fine art.",
+    "metadata": {"section": "coverage_c", "policy_form": "HO-3", "topic": "personal_property"}
+  },
+  {
+    "id": "coverage-c-sublimits",
+    "text": "Coverage C sub-limits under standard HO-3: Money, bank notes, and coins — $200. Securities, checks, and deeds — $1,500. Watercraft including trailers — $1,500. Trailers not used with watercraft — $1,500. Jewelry, watches, furs — $1,500 for theft. Firearms and related equipment — $2,500 for theft. Silverware and goldware — $2,500 for theft. Business property on premises — $2,500. Business property away from premises — $1,500. Electronic apparatus in vehicles — $1,500. These sub-limits are per-occurrence; scheduled personal property endorsements can increase individual item limits.",
+    "metadata": {"section": "coverage_c", "policy_form": "HO-3", "topic": "sublimits"}
+  },
+  {
+    "id": "coverage-d-loss-of-use",
+    "text": "Coverage D — Loss of Use (Additional Living Expenses) covers the necessary increase in living expenses incurred when the insured residence is uninhabitable due to a covered loss. Coverage applies for the shortest time required to repair or replace the damage, or if the insured permanently relocates, the shortest time for the household to settle elsewhere. Sub-limit is typically 20–30% of Coverage A. Also covers rental income lost if the insured rents a portion of the dwelling and it becomes uninhabitable.",
+    "metadata": {"section": "coverage_d", "policy_form": "HO-3", "topic": "loss_of_use"}
+  },
+  {
+    "id": "section1-exclusions-flood",
+    "text": "FLOOD EXCLUSION: The HO-3 policy excludes flood, surface water, waves, tidal water, overflow of a body of water, spray from these (whether or not driven by wind), water below the surface of the ground including pressure on foundations or walls, and water that backs up through sewers or drains. This exclusion applies whether or not there is a concurrent or contributing cause. Flood damage is not covered under a standard HO-3 policy regardless of the cause of the flood — including hurricane storm surge. Separate NFIP or private flood insurance is required. Adjuster note: Water damage from a burst pipe (sudden and accidental) is covered; flood water intrusion is not.",
+    "metadata": {"section": "exclusions", "policy_form": "HO-3", "topic": "flood_exclusion"}
+  },
+  {
+    "id": "section1-exclusions-earth-movement",
+    "text": "EARTH MOVEMENT EXCLUSION: Earthquake, landslide, mudflow, subsidence, sinkhole (in most states), and earth movement caused by volcanic eruption are excluded. This exclusion applies whether the earth movement is natural or man-made. Damage to a dwelling from an earthquake is not covered under a standard HO-3 without an earthquake endorsement. However, fire resulting from earthquake is covered under fire coverage even without an earthquake endorsement.",
+    "metadata": {"section": "exclusions", "policy_form": "HO-3", "topic": "earth_movement_exclusion"}
+  },
+  {
+    "id": "section1-exclusions-water-backup",
+    "text": "WATER BACKUP AND SUMP OVERFLOW EXCLUSION: Standard HO-3 excludes water that backs up through sewers or drains, and overflow or discharge from a sump pump. This is one of the most commonly disputed exclusions. A Water Backup and Sump Overflow endorsement (HO 04 95) can be added to provide this coverage for an additional premium. Without the endorsement, sewer backup claims are denied. Adjuster note: Distinguish between (1) sudden pipe burst [covered], (2) sewer backup [excluded without endorsement], and (3) flood/surface water [always excluded].",
+    "metadata": {"section": "exclusions", "policy_form": "HO-3", "topic": "water_backup_exclusion"}
+  },
+  {
+    "id": "section1-exclusions-neglect",
+    "text": "NEGLECT EXCLUSION: Loss resulting from failure of an insured to use reasonable means to save and preserve property at and after the time of a loss is excluded. Additionally, continuous or repeated seepage or leakage of water over a period of weeks, months, or years is excluded. Adjuster note: A sudden pipe burst is covered; a slow leak that caused gradual damage over time (visible staining, mold, rot) is excluded as neglect or continuous seepage. The burden is on the insurer to show the damage was gradual.",
+    "metadata": {"section": "exclusions", "policy_form": "HO-3", "topic": "neglect_exclusion"}
+  },
+  {
+    "id": "section1-exclusions-ordinance-law",
+    "text": "ORDINANCE OR LAW EXCLUSION: Standard HO-3 excludes costs to comply with building codes, ordinances, or laws when repairing or rebuilding after a covered loss. If a home is 50% or more destroyed and local ordinance requires bringing the entire structure up to code, the additional cost to comply is excluded without an Ordinance or Law endorsement (HO 04 77). This exclusion frequently applies in jurisdictions with strict building codes, older homes, or post-hurricane reconstruction. An Ordinance or Law endorsement is critical for older homes.",
+    "metadata": {"section": "exclusions", "policy_form": "HO-3", "topic": "ordinance_law_exclusion"}
+  },
+  {
+    "id": "section1-exclusions-intentional",
+    "text": "INTENTIONAL LOSS EXCLUSION: Loss arising out of an act committed by or at the direction of an insured with intent to cause a loss is excluded. Coverage remains for innocent co-insureds who did not participate in the intentional act, unless applicable state law provides otherwise. Arson committed by the insured voids the claim.",
+    "metadata": {"section": "exclusions", "policy_form": "HO-3", "topic": "intentional_exclusion"}
+  },
+  {
+    "id": "section1-exclusions-mold",
+    "text": "MOLD AND FUNGI EXCLUSION: Mold, fungus, wet rot, and dry rot are excluded in most standard HO-3 policies or subject to a sub-limit (commonly $10,000). Mold resulting from a covered peril (e.g., burst pipe) may be covered up to the sub-limit. Pre-existing mold or mold resulting from long-term moisture is excluded. Adjuster note: Determine the cause. If water intrusion was from a covered peril and mold developed as a direct result, the mold remediation may be covered up to any applicable sub-limit. Check the specific policy for the mold endorsement terms.",
+    "metadata": {"section": "exclusions", "policy_form": "HO-3", "topic": "mold_exclusion"}
+  },
+  {
+    "id": "section1-exclusions-foundation-slab",
+    "text": "FOUNDATION AND SLAB EXCLUSION: Damage to foundations, slabs, or below-grade structures is typically excluded from flood, earth movement, and continuous seepage. A slab crack from soil settlement or earth movement (not earthquake) is generally excluded. Slab damage from a sudden pipe burst under the slab (plumbing collapse) is typically covered as a sudden and accidental discharge of water. Adjuster note: Inspect whether the pipe failure caused slab damage versus whether earth movement or settlement caused both the pipe failure and the slab cracking — the latter is excluded.",
+    "metadata": {"section": "exclusions", "policy_form": "HO-3", "topic": "foundation_exclusion"}
+  },
+  {
+    "id": "acv-vs-replacement-cost",
+    "text": "ACTUAL CASH VALUE vs. REPLACEMENT COST: ACV equals replacement cost minus depreciation. Replacement cost (RC) pays the cost to repair or replace with like kind and quality without deducting for depreciation, subject to the policy limit. Most HO-3 policies pay RC for Coverage A (dwelling) if the insured carries at least 80% of the replacement cost value. If underinsured, the claim is settled on a proportional basis. Coverage C (personal property) is typically ACV unless a replacement cost endorsement (HO 04 90) is added. Adjuster note: Always verify the policy declarations for RC vs ACV designation on both dwelling and contents.",
+    "metadata": {"section": "valuation", "policy_form": "HO-3", "topic": "acv_replacement_cost"}
+  },
+  {
+    "id": "deductibles-standard",
+    "text": "DEDUCTIBLES: The standard HO-3 deductible applies to each occurrence and is deducted from the total covered loss before payment. Common deductibles: $500, $1,000, $2,500, $5,000. Some policies have a percentage deductible (e.g., 1% of Coverage A). The deductible shown on the declarations page applies unless a separate peril-specific deductible applies (e.g., wind/hail, hurricane). Deductibles do not apply to Coverage D (loss of use) in most policies.",
+    "metadata": {"section": "deductibles", "policy_form": "HO-3", "topic": "standard_deductible"}
+  },
+  {
+    "id": "deductibles-wind-hail",
+    "text": "WIND/HAIL AND HURRICANE DEDUCTIBLES: In coastal and hurricane-prone states (FL, TX, NC, SC, LA, AL, MS, GA, VA, NY, NJ, CT, MD, DE, MA, RI, ME, NH), a separate wind or hurricane deductible is common and is typically expressed as a percentage of Coverage A (1%, 2%, 3%, 5%, 10%). The hurricane deductible applies only when a hurricane causes the loss (as declared by the National Hurricane Center). A wind/hail deductible applies to all wind-related losses regardless of hurricane status. Adjuster note: Always check whether the active deductible is the standard all-peril deductible or the wind/hurricane deductible before settling the claim.",
+    "metadata": {"section": "deductibles", "policy_form": "HO-3", "topic": "wind_hurricane_deductible"}
+  },
+  {
+    "id": "water-damage-distinctions",
+    "text": "WATER DAMAGE — KEY DISTINCTIONS FOR ADJUSTERS: (1) Sudden and accidental discharge from plumbing, HVAC, or appliances — COVERED under Coverage A. (2) Continuous seepage or leakage over time — EXCLUDED (neglect). (3) Water backing up through sewers or drains — EXCLUDED unless Water Backup endorsement is present. (4) Flood/surface water/storm surge — EXCLUDED; requires separate NFIP or private flood policy. (5) Ice dam causing water intrusion through roof — COVERED under weight of ice/snow/sleet peril (HO-3 open peril covers this as long as no applicable exclusion). (6) Roof leak from storm damage — COVERED. (7) Roof leak from wear and deterioration — EXCLUDED (maintenance exclusion). Document the source of water entry carefully; the classification determines coverage.",
+    "metadata": {"section": "claims_guidance", "policy_form": "HO-3", "topic": "water_damage_matrix"}
+  },
+  {
+    "id": "fire-smoke-damage",
+    "text": "FIRE AND SMOKE DAMAGE: Fire is a covered peril under both Coverage A (open peril) and Coverage C (named peril). Smoke damage from a covered fire is also covered. Smoke damage from fireplace puff-back is covered. Smoke damage from a neighboring property's fire is covered. Adjuster note: Document all smoke penetration. HVAC systems can distribute smoke throughout the home; all affected areas including ductwork should be assessed. Smoke damage to clothing and electronics is covered under Coverage C up to the applicable sub-limits.",
+    "metadata": {"section": "claims_guidance", "policy_form": "HO-3", "topic": "fire_coverage"}
+  },
+  {
+    "id": "wind-hail-roof-damage",
+    "text": "WIND AND HAIL ROOF DAMAGE: Wind and hail are covered perils under HO-3 for both dwelling and personal property. A wind/hail deductible may apply (see deductibles section). For roof claims, adjusters must distinguish between storm damage and pre-existing deterioration. Cosmetic damage only (denting of metal roofing without functional impairment) may be excluded by a cosmetic damage exclusion endorsement in some states. Insurance must pay to repair or replace the damaged portion; some states require the insurer to match undamaged portions if a match cannot be made. Adjuster note: Document all storm-related damage separately from maintenance-related wear.",
+    "metadata": {"section": "claims_guidance", "policy_form": "HO-3", "topic": "wind_hail_coverage"}
+  },
+  {
+    "id": "theft-coverage",
+    "text": "THEFT COVERAGE: Theft is a covered peril under Coverage C (personal property). Coverage applies to theft of property from the dwelling and away from the premises (worldwide). Sub-limits apply to jewelry ($1,500), firearms ($2,500), silverware ($2,500), money ($200), and securities ($1,500). A scheduled personal property endorsement (HO 04 61) can remove these sub-limits for specific items. Theft from a vehicle is covered only if there is evidence of forced entry. Identity theft is not covered without a specific endorsement.",
+    "metadata": {"section": "claims_guidance", "policy_form": "HO-3", "topic": "theft_coverage"}
+  },
+  {
+    "id": "collapse-coverage",
+    "text": "COLLAPSE COVERAGE: HO-3 covers sudden and entire collapse of a building or any part of a building caused by: hidden decay (not known to the insured), hidden insect or vermin damage, weight of contents/equipment/animals/people, weight of rain on the roof, or use of defective construction materials. Gradual settling, cracking, shrinking, bulging, or expansion is NOT collapse and is not covered. Adjuster note: A partial collapse that renders the structure unsafe may qualify as collapse. A cracked foundation wall alone is not collapse. Document the structural assessment from a licensed engineer.",
+    "metadata": {"section": "claims_guidance", "policy_form": "HO-3", "topic": "collapse_coverage"}
+  },
+  {
+    "id": "liability-coverage-e",
+    "text": "Coverage E — Personal Liability covers bodily injury or property damage caused by an occurrence for which the insured is legally liable. Standard limit is $100,000 (commonly increased to $300,000 or $500,000). Does not cover bodily injury or property damage expected or intended by the insured; business pursuits; professional services; or auto liability. If a guest slips and falls on the insured property, Coverage E responds for the insured's legal liability.",
+    "metadata": {"section": "coverage_e", "policy_form": "HO-3", "topic": "liability"}
+  },
+  {
+    "id": "medical-payments-coverage-f",
+    "text": "Coverage F — Medical Payments to Others covers reasonable medical expenses for bodily injury to a person other than an insured, sustained on the insured location or as a result of the insured's activities. No-fault coverage — the insured does not need to be legally liable. Standard limit is $1,000–$5,000 per person. Does not cover residents of the household. Purpose is to settle minor injury claims quickly without litigation.",
+    "metadata": {"section": "coverage_f", "policy_form": "HO-3", "topic": "medical_payments"}
+  },
+  {
+    "id": "endorsement-water-backup",
+    "text": "ENDORSEMENT HO 04 95 — Water Backup and Sump Overflow: Adds coverage for water or waterborne material that backs up through sewers or drains, or overflows or is discharged from a sump pump. Coverage limit is shown on the endorsement (commonly $5,000–$25,000). Adjuster note: Verify this endorsement is listed on the declarations page before denying a sewer backup claim under the standard water backup exclusion.",
+    "metadata": {"section": "endorsements", "policy_form": "HO-3", "topic": "water_backup_endorsement"}
+  },
+  {
+    "id": "endorsement-earthquake",
+    "text": "ENDORSEMENT HO 04 54 — Earthquake: Adds coverage for direct physical loss to covered property caused by earthquake. Coverage also includes land shock waves or tremors before, during, or after a volcanic eruption. A separate earthquake deductible applies, typically 2%–20% of Coverage A. Adjuster note: California Fair Plan (FAIR Plan) and California Earthquake Authority (CEA) write separate earthquake policies in California; the HO-3 earthquake endorsement may not be available from all carriers in CA.",
+    "metadata": {"section": "endorsements", "policy_form": "HO-3", "topic": "earthquake_endorsement"}
+  },
+  {
+    "id": "endorsement-scheduled-property",
+    "text": "ENDORSEMENT HO 04 61 — Scheduled Personal Property: Removes sub-limits and provides broader (open-peril) coverage for specific high-value items scheduled on the endorsement: jewelry, furs, cameras, musical instruments, silverware, fine arts, stamps, coins, and golf equipment. Each item is listed with an agreed value. No deductible typically applies. Adjuster note: When settling a claim involving jewelry or fine art, check whether a scheduled property endorsement is in force — the claim may be settled at the agreed value without applying the standard sub-limit or deductible.",
+    "metadata": {"section": "endorsements", "policy_form": "HO-3", "topic": "scheduled_property_endorsement"}
+  },
+  {
+    "id": "endorsement-ordinance-law",
+    "text": "ENDORSEMENT HO 04 77 — Ordinance or Law: Provides three coverages: (1) Loss to the undamaged portion of the dwelling required by ordinance to be demolished, (2) Cost to rebuild the demolished undamaged portion, (3) Increased cost of construction to bring the repaired/rebuilt dwelling into compliance with current building codes. Critical for older homes and jurisdictions with strict codes. Without this endorsement, code upgrade costs are excluded. Adjuster note: In Florida, the 50% rule (if a structure is 50%+ damaged, the entire structure must be rebuilt to current code) makes this endorsement especially important.",
+    "metadata": {"section": "endorsements", "policy_form": "HO-3", "topic": "ordinance_law_endorsement"}
+  },
+  {
+    "id": "endorsement-inflation-guard",
+    "text": "ENDORSEMENT HO 04 46 — Inflation Guard: Automatically increases Coverage A (and optionally B, C, D) limits quarterly by an annual percentage (e.g., 4%–8%) to keep pace with construction cost inflation. Helps prevent underinsurance over time. Adjuster note: Check the current Coverage A limit on the declarations page, not the original policy limit — the inflation guard may have increased it since issue.",
+    "metadata": {"section": "endorsements", "policy_form": "HO-3", "topic": "inflation_guard_endorsement"}
+  },
+  {
+    "id": "florida-state-guidelines",
+    "text": "FLORIDA-SPECIFIC GUIDELINES: (1) Hurricane deductible applies when NOAA's National Hurricane Center has named a storm and issued a hurricane watch or warning for any part of Florida. (2) Citizens Property Insurance Corporation is the state insurer of last resort. (3) Florida law requires insurers to pay a replacement cost claim within 90 days of proof of loss. (4) The 50% rule: if a residential structure is more than 50% destroyed, it must be rebuilt to current Florida Building Code standards — the Ordinance or Law endorsement is critical. (5) Assignment of Benefits (AOB) restrictions: Florida SB 2-A (2023) eliminated post-loss AOBs for property insurance, meaning contractors cannot accept assignment of insurance rights from policyholders. (6) Post-loss duties: insured must give notice of loss within a reasonable time; Florida law bars late-reported claims beyond the applicable statute of limitations.",
+    "metadata": {"section": "state_guidelines", "state": "FL", "topic": "florida_rules"}
+  },
+  {
+    "id": "california-state-guidelines",
+    "text": "CALIFORNIA-SPECIFIC GUIDELINES: (1) California does not use ISO HO-3 forms directly; carriers file their own forms with the California Department of Insurance. (2) Proposition 103 requires prior approval of rate changes. (3) Fair Claims Settlement Practices Regulations (Title 10, CCR §2695): insurers must accept or deny a claim within 40 days of receiving proof of loss. (4) California FAIR Plan provides basic fire coverage for properties unable to obtain standard coverage. (5) California Earthquake Authority (CEA) writes most residential earthquake policies. (6) Wildfire risk: many carriers have non-renewed in high-risk zones; FAIR Plan is the backstop. (7) Mold: California has specific mold disclosure laws (SB 655); mold coverage in HO-3 policies is subject to endorsement sub-limits, typically $10,000.",
+    "metadata": {"section": "state_guidelines", "state": "CA", "topic": "california_rules"}
+  },
+  {
+    "id": "texas-state-guidelines",
+    "text": "TEXAS-SPECIFIC GUIDELINES: (1) Texas uses HO-A, HO-B, and HO-C policy forms (not ISO HO-3); HO-B is roughly equivalent to HO-3. (2) Texas Windstorm Insurance Association (TWIA) provides wind and hail coverage in the 14 coastal counties where private insurers have limited appetite. (3) Appraisal clause: Texas HO policies include a mandatory appraisal clause — either party can invoke it to resolve disagreements on the amount of loss; each party selects an appraiser, who together select an umpire. (4) Prompt payment: Texas law (Ins. Code Ch. 542) requires acknowledgment within 15 days, acceptance/denial within 15 business days of all items, and payment within 5 business days of agreement. (5) Hail litigation: Texas is a high-frequency hail-claim state; cosmetic damage exclusions are permitted and common on roof claims.",
+    "metadata": {"section": "state_guidelines", "state": "TX", "topic": "texas_rules"}
+  },
+  {
+    "id": "nfip-flood-policy-overview",
+    "text": "NFIP STANDARD FLOOD INSURANCE POLICY (SFIP): The National Flood Insurance Program provides federally backed flood coverage. Building coverage limit: $250,000 for residential buildings. Contents coverage limit: $100,000 (must be purchased separately). NFIP defines flood as: a general and temporary condition of partial or complete inundation of two or more acres of normally dry land area, or of two or more properties from overflow of inland or tidal waters, unusual and rapid accumulation of surface water runoff, mudflow, or collapse/subsidence of land along a lake or similar body of water. NFIP does not cover: personal property in a basement, currency, precious metals, valuable papers, vehicles, outdoor property, living expenses. 30-day waiting period applies to new policies (with exceptions). Private flood insurance is increasingly available with higher limits.",
+    "metadata": {"section": "nfip", "topic": "flood_insurance"}
+  },
+  {
+    "id": "claim-process-steps",
+    "text": "CLAIM PROCESS FOR ADJUSTERS: (1) Notice of loss: policyholder must notify the insurer promptly after a loss. (2) Site inspection: adjuster inspects damage, documents with photos and notes, obtains signed statement from insured. (3) Proof of loss: policyholder completes a signed sworn statement of loss within 60 days (or as specified by policy). (4) Coverage determination: adjuster applies policy language to determine covered versus excluded damages. (5) Valuation: estimate repair/replacement costs; apply deductible; determine ACV or RC payment. (6) Payment: issue payment within the timeframe required by the applicable state. (7) Supplemental claims: if additional damage is discovered during repair, a supplemental claim may be submitted. Adjuster note: Always document the basis for each coverage determination in the claim file.",
+    "metadata": {"section": "claims_process", "topic": "adjuster_workflow"}
+  },
+  {
+    "id": "damage-categories",
+    "text": "COMMON DAMAGE CATEGORIES FOR CLAIM DOCUMENTATION: Structural (foundation, framing, roof deck, load-bearing walls). Roofing (shingles, flashing, gutters, fascia). Exterior (siding, windows, doors, decking). Interior (drywall, flooring, ceilings, cabinetry, fixtures). Mechanical/Electrical (HVAC, plumbing, electrical panel, wiring). Personal property (appliances, furniture, clothing, electronics, jewelry). Additional living expenses (temporary housing, meals, storage). Each category should be documented separately with quantities, unit costs, and depreciation where applicable. Use Xactimate or similar estimating software for line-item estimates.",
+    "metadata": {"section": "claims_process", "topic": "damage_categories"}
+  },
+  {
+    "id": "subrogation",
+    "text": "SUBROGATION: After paying a claim, the insurer acquires the insured's right to recover from a negligent third party. Common subrogation scenarios: contractor negligence causing a fire or water loss; neighbor's tree falling on the insured's property (if the neighbor had prior knowledge of a diseased tree); appliance manufacturer defect. Adjuster note: Preserve subrogation rights by documenting the cause of loss and retaining evidence. Do not release a negligent party from liability without authorization from the claims supervisor.",
+    "metadata": {"section": "claims_process", "topic": "subrogation"}
+  }
+]

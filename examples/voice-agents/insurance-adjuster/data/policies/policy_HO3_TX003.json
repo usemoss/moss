@@ -1,0 +1,72 @@
+[
+  {
+    "id": "policy-summary",
+    "text": "Policy number TX-HO3-003. Policyholder: Marcus and Latoya Washington. Property address: 5508 Sycamore Bend Lane, Katy, TX 77494. Policy type: HO-B (Texas Homeowners Form B, equivalent to HO-3). Policy period: January 1, 2025 to January 1, 2026. Insurer: Lone Star Home Assurance Company. Agent: Derrick Avila, Avila Insurance Group, Houston TX.",
+    "metadata": {"section": "summary", "policy_number": "TX-HO3-003", "state": "TX"}
+  },
+  {
+    "id": "adjuster-access",
+    "text": "Authorized field adjusters for policy TX-HO3-003: Adjuster ID A-4412, Adjuster ID A-8823, Adjuster ID A-1155. Claim must be reported by insured Marcus Washington or Latoya Washington. Contact: Marcus Washington, cell 281-555-0411. Latoya Washington, cell 281-555-0522.",
+    "metadata": {"section": "adjuster_access", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "property-details",
+    "text": "Insured property: 5508 Sycamore Bend Lane, Katy TX 77494. Single-family residence in the Cinco Ranch subdivision. Year built: 2011. Construction type: brick veneer over wood frame. Roof type: gable, 30-year architectural asphalt shingles. Roof year: 2011 (original). Square footage: 3,150 sq ft. Detached structure: two-car attached garage (part of dwelling). Outdoor features: in-ground pool with attached spa, covered back porch. FEMA flood zone: X500 (moderate flood hazard — 0.2% annual chance flood). Located in Harris County.",
+    "metadata": {"section": "property", "policy_number": "TX-HO3-003", "state": "TX"}
+  },
+  {
+    "id": "coverage-a-limit",
+    "text": "Coverage A — Dwelling: $540,000. Replacement cost basis. Attached two-car garage is included in Coverage A. Pool and spa are included in Coverage A as attached structures.",
+    "metadata": {"section": "coverage_a", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "coverage-b-limit",
+    "text": "Coverage B — Other Structures: $54,000 (10% of Coverage A). Covers the covered back porch/pergola structure and perimeter privacy fence.",
+    "metadata": {"section": "coverage_b", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "coverage-c-limit",
+    "text": "Coverage C — Personal Property: $270,000 (50% of Coverage A). Replacement cost endorsement active — personal property is settled on replacement cost basis, not ACV. Standard sub-limits apply: jewelry theft $1,500, firearms theft $2,500, money $200.",
+    "metadata": {"section": "coverage_c", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "coverage-d-limit",
+    "text": "Coverage D — Loss of Use: $108,000 (20% of Coverage A). Covers additional living expenses during covered repairs.",
+    "metadata": {"section": "coverage_d", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "coverage-e-limit",
+    "text": "Coverage E — Personal Liability: $300,000 per occurrence.",
+    "metadata": {"section": "coverage_e", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "coverage-f-limit",
+    "text": "Coverage F — Medical Payments to Others: $5,000 per person.",
+    "metadata": {"section": "coverage_f", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "deductibles",
+    "text": "Deductibles for policy TX-HO3-003: Standard all-peril deductible: $5,000. Wind and Hail deductible: 1% of Coverage A = $5,400 (applies to all wind and hail losses, including but not limited to tornado, thunderstorm wind, and hail; no separate hurricane deductible as Katy is inland). Adjuster: determine whether the cause of loss is wind/hail or another peril before applying deductible. In Texas, the wind/hail deductible commonly applies to roof claims.",
+    "metadata": {"section": "deductibles", "policy_number": "TX-HO3-003", "state": "TX"}
+  },
+  {
+    "id": "endorsements",
+    "text": "Active endorsements on policy TX-HO3-003: (1) Personal Property Replacement Cost (HO 04 90) — personal property settled at replacement cost, not ACV. (2) Water Backup and Sump Overflow — limit $10,000. (3) Cosmetic Damage Exclusion for Roof — this endorsement excludes payment for cosmetic damage to the roof surface (denting, scratching, scuffing) that does not affect the roof's ability to prevent water intrusion. Functional damage from hail is still covered. (4) Identity Theft Coverage — $25,000 limit. Not on this policy: no earthquake endorsement, no flood endorsement.",
+    "metadata": {"section": "endorsements", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "appraisal-clause",
+    "text": "TEXAS APPRAISAL CLAUSE: This policy includes the mandatory Texas appraisal clause. If the insured and insurer disagree on the amount of the loss, either party may make a written demand for appraisal. Each party selects a competent and impartial appraiser within 20 days of the written demand. The two appraisers select an umpire within 15 days; if they cannot agree, the umpire is selected by a judge of a district court. Agreement by any two of the three is binding. Each party pays its own appraiser; umpire costs are shared. Appraisal does not waive any coverage defenses.",
+    "metadata": {"section": "appraisal", "policy_number": "TX-HO3-003", "state": "TX"}
+  },
+  {
+    "id": "prior-claims",
+    "text": "Prior claims on policy TX-HO3-003: (1) 2021-06-22: Hail damage to roof and fence. Covered loss $28,900 (functional damage to shingles, fence panels). Wind/hail deductible applied $4,900 (Coverage A was $490,000 at the time). Payment $24,000. Roof replaced, fence repaired. Closed. (2) 2024-02-03: Winter storm — burst exterior hose bib and supply line to second bathroom. Covered loss $9,400. Standard deductible $5,000 applied. Payment $4,400. Closed. No open claims.",
+    "metadata": {"section": "prior_claims", "policy_number": "TX-HO3-003"}
+  },
+  {
+    "id": "special-conditions",
+    "text": "Special conditions for policy TX-HO3-003: (1) Cosmetic damage exclusion is active on the roof — hail claims must distinguish between cosmetic denting (not covered) and functional damage that compromises water-shedding ability (covered). Adjuster should obtain an independent engineering opinion if the functional vs. cosmetic distinction is disputed. (2) Pool and spa are attached to the dwelling and covered under Coverage A; any equipment (pump, heater) is covered under Coverage C as personal property. (3) Texas prompt payment statute applies: acknowledge claim within 15 days, accept or deny within 15 business days of receiving all required items, pay within 5 business days of agreement or denial. (4) 2011 original roof is 13 years old — document condition carefully; insurer may invoke ACV on the roof if the cosmetic exclusion does not apply but roof has significant pre-existing wear.",
+    "metadata": {"section": "special_conditions", "policy_number": "TX-HO3-003"}
+  }
+]

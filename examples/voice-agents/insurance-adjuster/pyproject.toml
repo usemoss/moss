@@ -1,0 +1,20 @@
+[project]
+name = "insurance-adjuster-voice-agent"
+version = "0.1.0"
+description = "Field insurance claims adjuster voice agent. Per-policy Moss index for policyholder data; shared claims-kb index for HO-3 policy language, state guidelines, and coverage rules. Multi-index ambient retrieval on every adjuster turn."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "moss>=1.1.1",
+    "livekit-agents[openai,deepgram,silero,turn-detector,cartesia]>=1.0",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "pdfplumber>=0.11",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]

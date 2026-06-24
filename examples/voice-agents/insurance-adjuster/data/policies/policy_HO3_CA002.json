@@ -1,0 +1,72 @@
+[
+  {
+    "id": "policy-summary",
+    "text": "Policy number CA-HO3-002. Policyholder: Jennifer and David Chen. Property address: 2891 Hillcrest Court, Pasadena, CA 91107. Policy type: HO-3 Special Form (California edition). Policy period: July 15, 2025 to July 15, 2026. Insurer: Pacific Crest Mutual Insurance. Agent: Grace Tanaka, Tanaka & Associates Insurance, Pasadena CA.",
+    "metadata": {"section": "summary", "policy_number": "CA-HO3-002", "state": "CA"}
+  },
+  {
+    "id": "adjuster-access",
+    "text": "Authorized field adjusters for policy CA-HO3-002: Adjuster ID A-4412, Adjuster ID A-2278, Adjuster ID A-5590. Claim must be reported by insured Jennifer Chen or David Chen. Contact: Jennifer Chen, cell 626-555-0217. David Chen, cell 626-555-0338.",
+    "metadata": {"section": "adjuster_access", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "property-details",
+    "text": "Insured property: 2891 Hillcrest Court, Pasadena CA 91107. Single-family residence. Year built: 1962. Construction type: wood frame, stucco exterior. Roof type: low-slope (flat) with built-up roofing membrane. Roof year: 2018. Square footage: 2,050 sq ft. Detached structure: single-car detached garage, approx 280 sq ft. No pool. FEMA flood zone: X (minimal flood hazard). Wildfire risk zone: Moderate (Cal Fire designation per FHSZ maps). Located in Los Angeles County.",
+    "metadata": {"section": "property", "policy_number": "CA-HO3-002", "state": "CA"}
+  },
+  {
+    "id": "coverage-a-limit",
+    "text": "Coverage A — Dwelling: $620,000. Replacement cost basis. Home is a 1962 wood-frame construction; replacement cost reflects the cost of rebuilding to current California Building Code standards including Title 24 energy compliance.",
+    "metadata": {"section": "coverage_a", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "coverage-b-limit",
+    "text": "Coverage B — Other Structures: $62,000 (10% of Coverage A). Covers the detached single-car garage and perimeter fencing.",
+    "metadata": {"section": "coverage_b", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "coverage-c-limit",
+    "text": "Coverage C — Personal Property: $310,000 (50% of Coverage A). Actual cash value basis unless replacement cost endorsement is noted. Scheduled personal property endorsement active (see endorsements). Standard sub-limits apply to unscheduled items.",
+    "metadata": {"section": "coverage_c", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "coverage-d-limit",
+    "text": "Coverage D — Loss of Use: $186,000 (30% of Coverage A). Extended loss-of-use limit reflects California regulatory requirement and the high cost of temporary housing in the Los Angeles metropolitan area.",
+    "metadata": {"section": "coverage_d", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "coverage-e-limit",
+    "text": "Coverage E — Personal Liability: $500,000 per occurrence.",
+    "metadata": {"section": "coverage_e", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "coverage-f-limit",
+    "text": "Coverage F — Medical Payments to Others: $5,000 per person.",
+    "metadata": {"section": "coverage_f", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "deductibles",
+    "text": "Deductibles for policy CA-HO3-002: Standard all-peril deductible: $1,500. No separate wind deductible (California does not mandate a wind deductible for non-coastal properties). Earthquake: separate CEA policy is in force — see earthquake note. Wildfire deductible: same as standard $1,500 all-peril deductible.",
+    "metadata": {"section": "deductibles", "policy_number": "CA-HO3-002", "state": "CA"}
+  },
+  {
+    "id": "endorsements",
+    "text": "Active endorsements on policy CA-HO3-002: (1) Scheduled Personal Property (HO 04 61) — covers a diamond engagement ring ($18,500 agreed value), two vintage wristwatches ($6,200 combined agreed value), and a Canon camera kit ($4,100). No deductible on scheduled items. (2) Ordinance or Law (HO 04 77) — 50% of Coverage A = $310,000 (critical given 1962 construction and California Title 24 requirements). (3) Water Backup and Sump Overflow (HO 04 95) — limit $15,000. (4) Inflation Guard (HO 04 46) — 7% annual increase. Not on this policy: no mold endorsement beyond standard sub-limit of $10,000.",
+    "metadata": {"section": "endorsements", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "earthquake-note",
+    "text": "California Earthquake Authority (CEA) policy is separately in force: CEA policy number CEA-5541892. Dwelling coverage: $620,000. Deductible: 15% of dwelling coverage = $93,000. Contents coverage: $100,000 with $5,000 deductible. Loss-of-use coverage: $50,000. CEA policy excludes masonry fences, pools, and detached structures. Earthquake claims must be filed separately with CEA. This HO-3 policy does not cover earthquake damage.",
+    "metadata": {"section": "earthquake_note", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "prior-claims",
+    "text": "Prior claims on policy CA-HO3-002: (1) 2023-03-14: Water damage — kitchen dishwasher supply line failure. Covered loss $11,800. Standard deductible $1,500 applied. Payment $10,300. Closed. No open claims.",
+    "metadata": {"section": "prior_claims", "policy_number": "CA-HO3-002"}
+  },
+  {
+    "id": "special-conditions",
+    "text": "Special conditions for policy CA-HO3-002: (1) 1962 wood-frame construction — Ordinance or Law endorsement is critical given California seismic and energy code upgrade requirements upon major reconstruction. (2) Wildfire risk: property is in a Cal Fire-designated moderate FHSZ zone; standard policy remains in force but insurer may non-renew at next renewal if risk increases. Adjuster should note any defensible space deficiencies. (3) Low-slope built-up roof: flat roof is susceptible to ponding water; a claim for roof leak must distinguish storm damage from ponding/maintenance issues. (4) Mold sub-limit: $10,000 applies; California SB 655 mold disclosure laws may affect the claim timeline.",
+    "metadata": {"section": "special_conditions", "policy_number": "CA-HO3-002"}
+  }
+]

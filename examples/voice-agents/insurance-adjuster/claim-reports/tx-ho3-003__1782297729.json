@@ -1,0 +1,20 @@
+{
+  "policy": "TX-HO3-003",
+  "duration_sec": 133,
+  "findings": [
+    {
+      "description": "living room ceiling water damage\u2014leak from above, sudden event",
+      "estimated_value": 2000.0,
+      "covered": true,
+      "note": "Sudden water discharge from above\u2014covered peril under HO-3. Policy deductible applies."
+    },
+    {
+      "description": "garage door\u2014hail dents, cosmetic only",
+      "estimated_value": 1000.0,
+      "covered": true,
+      "note": "Hail cosmetic damage to garage door is covered\u2014cosmetic exclusion applies only to the roof, not the garage door."
+    }
+  ],
+  "total_covered": 3000.0,
+  "total_not_covered": 0
+}
