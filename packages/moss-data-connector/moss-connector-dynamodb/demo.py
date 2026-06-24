@@ -5,8 +5,7 @@ DynamoDB → Moss end-to-end demo script
 Reads creds from .env (repo root, package dir, or environment variables).
 
 Steps:
-  1. Create a DynamoDB table (local Docker on port 8000)
-  2. Insert sample product-support articles
+  1. Create a DynamoDB table (DynamoDB Local if DYNAMODB_ENDPOINT_URL is set; otherwise real AWS only with explicit opt-in)  2. Insert sample product-support articles
   3. Scan the table → ingest into a Moss index
   4. Query the Moss index with a natural-language question
   5. Print the top results
@@ -59,7 +58,7 @@ from moss_connector_dynamodb import DynamoDBConnector, ingest
 TABLE_NAME = f"moss-demo-{uuid.uuid4().hex[:6]}"
 INDEX_NAME = f"moss-demo-{uuid.uuid4().hex[:6]}"
 REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-ENDPOINT_URL = os.getenv("DYNAMODB_ENDPOINT_URL")  # None → real AWS
+ENDPOINT_URL = os.getenv("DYNAMODB_ENDPOINT_URL")  # None → real AWS (guarded by MOSS_CONNECTOR_DYNAMODB_ALLOW_AWS=1)
 MOSS_ID = os.getenv("MOSS_PROJECT_ID")
 MOSS_KEY = os.getenv("MOSS_PROJECT_KEY")
 

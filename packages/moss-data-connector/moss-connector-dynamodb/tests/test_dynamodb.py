@@ -87,6 +87,7 @@ def ddb_table():
             AttributeDefinitions=[{"AttributeName": "sku", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
+        table.wait_until_exists()
         for item in SAMPLE_ITEMS:
             table.put_item(Item=item)
         yield table
@@ -215,12 +216,13 @@ async def test_scan_empty_table():
 
     with mock_aws():
         ddb = boto3.resource("dynamodb", region_name=REGION)
-        ddb.create_table(
+        table=ddb.create_table(
             TableName="empty",
             KeySchema=[{"AttributeName": "pk", "KeyType": "HASH"}],
             AttributeDefinitions=[{"AttributeName": "pk", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
+        table.wait_until_exists()
 
         with patch("moss_connector_dynamodb.ingest.MossClient", return_value=fake_moss):
             source = DynamoDBConnector(
@@ -258,6 +260,7 @@ def ddb_query_table():
             ],
             BillingMode="PAY_PER_REQUEST",
         )
+        table.wait_until_exists()
         rows = [
             {"tenant_id": "tenant-A", "event_id": "ev-1", "body": "First event for A"},
             {"tenant_id": "tenant-A", "event_id": "ev-2", "body": "Second event for A"},
