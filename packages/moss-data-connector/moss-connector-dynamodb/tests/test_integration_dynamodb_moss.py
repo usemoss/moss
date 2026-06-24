@@ -146,6 +146,7 @@ def dynamo_table():
         yield table_name
     finally:
         table.delete()
+        table.wait_until_not_exists()
 
 
 async def test_dynamodb_scan_live_ingest_to_moss(dynamo_table):
