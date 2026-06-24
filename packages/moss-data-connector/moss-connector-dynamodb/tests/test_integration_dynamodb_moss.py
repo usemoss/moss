@@ -5,18 +5,21 @@ such as DynamoDB Local / LocalStack), ingests it into a live Moss project via
 ``ingest()``, runs a real semantic query, and cleans everything up on exit.
 
 SKIPPED unless both MOSS_PROJECT_ID and MOSS_PROJECT_KEY are set.
+SKIPPED unless DYNAMODB_ENDPOINT_URL is set (local endpoint) or
+    MOSS_CONNECTOR_DYNAMODB_ALLOW_AWS=1 explicitly opts in to real AWS.
 
 Run with:
     pytest tests/test_integration_dynamodb_moss.py -v -s
 
 Environment variables (set in .env or the shell):
-    MOSS_PROJECT_ID      — required
-    MOSS_PROJECT_KEY     — required
-    AWS_ACCESS_KEY_ID    — required (or configure via ~/.aws/credentials)
+    MOSS_PROJECT_ID                    — required
+    MOSS_PROJECT_KEY                   — required
+    AWS_ACCESS_KEY_ID                  — required (or configure via ~/.aws/credentials)
     AWS_SECRET_ACCESS_KEY
-    AWS_DEFAULT_REGION   — defaults to us-east-1
-    DYNAMODB_TABLE       — name of the test table to create (default: moss-connector-test)
-    DYNAMODB_ENDPOINT_URL — optional; set to http://localhost:8000 for DynamoDB Local
+    AWS_DEFAULT_REGION                 — defaults to us-east-1
+    DYNAMODB_TABLE                     — name of the test table to create (default: moss-connector-test)
+    DYNAMODB_ENDPOINT_URL              — set to http://localhost:8000 for DynamoDB Local
+    MOSS_CONNECTOR_DYNAMODB_ALLOW_AWS  — set to 1 to run against real AWS instead
 """
 
 from __future__ import annotations
@@ -53,11 +56,21 @@ PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
 REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 TABLE_BASE = os.getenv("DYNAMODB_TABLE", "moss-connector-test")
 ENDPOINT_URL = os.getenv("DYNAMODB_ENDPOINT_URL")  # None → real AWS
+_ALLOW_AWS = os.getenv("MOSS_CONNECTOR_DYNAMODB_ALLOW_AWS") == "1"
 
-pytestmark = pytest.mark.skipif(
-    not (PROJECT_ID and PROJECT_KEY),
-    reason="Set MOSS_PROJECT_ID and MOSS_PROJECT_KEY to run this live test.",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not (PROJECT_ID and PROJECT_KEY),
+        reason="Set MOSS_PROJECT_ID and MOSS_PROJECT_KEY to run this live test.",
+    ),
+    pytest.mark.skipif(
+        not (ENDPOINT_URL or _ALLOW_AWS),
+        reason=(
+            "Set DYNAMODB_ENDPOINT_URL (e.g. http://localhost:8000) for DynamoDB Local, "
+            "or set MOSS_CONNECTOR_DYNAMODB_ALLOW_AWS=1 to run against real AWS."
+        ),
+    ),
+]
 
 ARTICLES = [
     {

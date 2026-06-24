@@ -1,6 +1,8 @@
 """DynamoDB source connector for Moss.
 
-from moss_connector_dynamodb import DynamoDBConnector, DynamoDBQueryConnector, ingest
+Provides ``DynamoDBConnector`` (Scan-based) and ``DynamoDBQueryConnector`` (Query-based)
+along with the ``ingest`` helper for loading DynamoDB items into a Moss index.
+See the README for usage examples.
 """
 
 from .connector import DynamoDBConnector, DynamoDBQueryConnector

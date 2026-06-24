@@ -246,6 +246,12 @@ async def main(skip_cleanup: bool) -> None:
         print("Copy .env.example → .env and fill in your credentials.")
         sys.exit(1)
 
+    if not ENDPOINT_URL and os.getenv("MOSS_CONNECTOR_DYNAMODB_ALLOW_AWS") != "1":
+        print("Error: DYNAMODB_ENDPOINT_URL is not set.")
+        print("This demo targets DynamoDB Local by default.")
+        print("To run against real AWS, set MOSS_CONNECTOR_DYNAMODB_ALLOW_AWS=1.")
+        sys.exit(1)
+
     mode = f"DynamoDB Local ({ENDPOINT_URL})" if ENDPOINT_URL else f"AWS {REGION}"
     sep()
     print("  DynamoDB → Moss  demo")
