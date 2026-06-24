@@ -231,7 +231,9 @@ async def cleanup() -> None:
     # drop DynamoDB table
     try:
         ddb = boto3.resource("dynamodb", **boto3_kwargs())
-        ddb.Table(TABLE_NAME).delete()
+        table = ddb.Table(TABLE_NAME)
+        table.delete()
+        table.wait_until_not_exists()
         print(f"  ✓ DynamoDB table '{TABLE_NAME}' deleted")
     except Exception as exc:
         print(f"  ⚠ Could not delete DynamoDB table: {exc}")
