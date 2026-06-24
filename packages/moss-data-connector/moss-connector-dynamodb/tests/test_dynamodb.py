@@ -216,7 +216,7 @@ async def test_scan_empty_table():
 
     with mock_aws():
         ddb = boto3.resource("dynamodb", region_name=REGION)
-        table=ddb.create_table(
+        table = ddb.create_table(
             TableName="empty",
             KeySchema=[{"AttributeName": "pk", "KeyType": "HASH"}],
             AttributeDefinitions=[{"AttributeName": "pk", "AttributeType": "S"}],
