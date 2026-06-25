@@ -62,6 +62,14 @@ Open a local-first `SessionIndex`, add documents in real time (no cloud round tr
 npx tsx session_sample.ts
 ```
 
+### Session Cache Sample
+
+Build a local-first `SessionIndex`, persist it to the local filesystem with `saveToDisk`, then restore it into a fresh session with `loadFromDisk` — so a session survives a process restart with no cloud round trip (no `pushIndex`). Also shows the client-level `cachePath` option (requires `@moss-dev/moss` >= 1.2.1).
+
+```bash
+npx tsx session_cache_sample.ts
+```
+
 ## Requirements
 
 - Node.js (version 20 or higher)
