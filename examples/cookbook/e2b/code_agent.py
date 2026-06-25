@@ -90,7 +90,7 @@ async def _prepare_moss_index(
             await client.load_index(index_name)
             print("Reusing Moss index.")
             return client, False
-        except Exception:
+        except RuntimeError:
             print("Reusable Moss index not found; creating it...")
 
     await _create_moss_index(client, project_root, index_name)

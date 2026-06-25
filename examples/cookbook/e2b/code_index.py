@@ -109,7 +109,9 @@ def build_code_documents(
         relative_path = path.relative_to(root).as_posix()
         content = path.read_text(encoding="utf-8")
         digest = hashlib.sha1(content.encode("utf-8")).hexdigest()[:12]
-        symbols = extract_python_symbols(content) if path.suffix == ".py" else []
+        symbols = (
+            extract_python_symbols(content) if path.suffix.lower() == ".py" else []
+        )
         documents.append(
             DocumentInfo(
                 id=f"{relative_path}::{digest}",

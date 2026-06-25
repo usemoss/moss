@@ -23,7 +23,7 @@ dependencies = [
 dev = ["pytest", "ruff"]
 
 [tool.setuptools]
-py-modules = ["code_agent", "code_index", "sandbox_runner", "test_integration"]
+py-modules = ["code_agent", "code_index", "sandbox_runner"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
