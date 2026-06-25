@@ -70,6 +70,14 @@ Build a local-first `SessionIndex`, persist it to the local filesystem with `sav
 npx tsx session_cache_sample.ts
 ```
 
+### Session + Custom Authenticator Sample
+
+Open a local-first session when the client is built with a custom `IAuthenticator` (short-lived tokens / delegated auth) instead of a static project key — the session authenticates through the same token source, so the project key never has to live on the device. Requires `@moss-dev/moss` >= 1.3.0.
+
+```bash
+npx tsx session_custom_auth_sample.ts
+```
+
 ## Requirements
 
 - Node.js (version 20 or higher)
