@@ -12,6 +12,7 @@ from rich.console import Console
 from moss import MossClient, MutationOptions
 
 from .. import output
+from ..completion import complete_index_name
 from ..config import resolve_credentials
 from ..documents import load_documents
 from ..job_waiter import wait_for_job
@@ -66,7 +67,7 @@ async def _upsert_file(
 def sync_command(
     ctx: typer.Context,
     directory: Path = typer.Argument(..., help="Directory containing document files"),
-    index_name: str = typer.Argument(..., help="Index to upsert documents into"),
+    index_name: str = typer.Argument(..., help="Index to upsert documents into", autocompletion=complete_index_name),
     watch: bool = typer.Option(False, "--watch", "-w", help="Keep watching for file changes"),
     ext: str = typer.Option("json,jsonl,csv", "--ext", help="Comma-separated file extensions to include"),
     scan_interval: float = typer.Option(2.0, "--scan-interval", help="Seconds between directory scans (watch mode)"),
