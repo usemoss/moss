@@ -7,6 +7,7 @@ from typing import Optional
 
 import typer
 
+from .commands.completions import completions_command
 from .commands.doc import doc_app
 from .commands.index import index_app
 from .commands.init_cmd import init_command
@@ -37,6 +38,7 @@ app.command(name="init")(init_command)
 app.command(name="version")(version_command)
 app.command(name="validate")(validate_command)
 app.command(name="sync")(sync_command)
+app.command(name="completions")(completions_command)
 
 
 @app.callback()
