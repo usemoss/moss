@@ -39,8 +39,17 @@ def completions_command(
     json_mode = ctx.obj.get("json_output", False) if ctx.obj else False
 
     try:
-        from typer._completion_shared import get_completion_script
-    except Exception:  # pragma: no cover - depends on Typer internals
+        # Prefer a public API when available.
+        from typer.main import get_completion_script  # type: ignore[attr-defined]
+    except Exception:  # pragma: no cover
+        try:
+            from typer._completion_shared import get_completion_script  # type: ignore
+        except Exception:  # pragma: no cover - depends on Typer installation
+            output.print_error(
+                "Shell completion is unavailable in this Typer installation.",
+                json_mode,
+            )
+            raise typer.Exit(1)
         output.print_error(
             "Shell completion is unavailable in this Typer installation.",
             json_mode,
