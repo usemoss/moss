@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import os
+from pathlib import Path
 import sys
 import types
 import unittest
@@ -47,19 +48,41 @@ def load_dotenv():
     return None
 
 
-sys.modules["moss"] = types.SimpleNamespace(
-    DocumentInfo=DocumentInfo,
-    MossClient=MossClient,
-    QueryOptions=QueryOptions,
-)
-sys.modules["agents"] = types.SimpleNamespace(
-    Agent=Agent,
-    Runner=Runner,
-    function_tool=function_tool,
-)
-sys.modules["dotenv"] = types.SimpleNamespace(load_dotenv=load_dotenv)
+def _import_example_with_stubs():
+    cookbook_dir = Path(__file__).resolve().parent
+    original_sys_path = sys.path[:]
+    missing = object()
+    original_modules = {
+        name: sys.modules.get(name, missing)
+        for name in ("moss", "agents", "dotenv", "example")
+    }
 
-example = importlib.import_module("example")
+    try:
+        sys.path.insert(0, str(cookbook_dir))
+        sys.modules["moss"] = types.SimpleNamespace(
+            DocumentInfo=DocumentInfo,
+            MossClient=MossClient,
+            QueryOptions=QueryOptions,
+        )
+        sys.modules["agents"] = types.SimpleNamespace(
+            Agent=Agent,
+            Runner=Runner,
+            function_tool=function_tool,
+        )
+        sys.modules["dotenv"] = types.SimpleNamespace(load_dotenv=load_dotenv)
+        sys.modules.pop("example", None)
+
+        return importlib.import_module("example")
+    finally:
+        for name, module in original_modules.items():
+            if module is missing:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
+        sys.path[:] = original_sys_path
+
+
+example = _import_example_with_stubs()
 
 
 def _doc(doc_id="d1", text="sample text", score=0.9, metadata=None):
