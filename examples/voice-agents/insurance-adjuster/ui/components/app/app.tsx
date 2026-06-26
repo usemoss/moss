@@ -45,7 +45,7 @@ export function App() {
 
   if (conn.status === 'connecting') {
     return (
-      <div className="flex h-full items-center justify-center gap-3 bg-[#09090b]">
+      <div className="flex h-full items-center justify-center gap-3 bg-[#0d1117]">
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
         <span className="text-sm text-zinc-400">Connecting…</span>
       </div>
@@ -54,7 +54,7 @@ export function App() {
 
   if (conn.status === 'error') {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#09090b] p-8 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#0d1117] p-8 text-center">
         <p className="text-sm text-rose-400">{conn.message}</p>
         <button
           onClick={() => setConn({ status: 'idle' })}

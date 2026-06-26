@@ -1,47 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #09090b;        /* zinc-950 */
-  --color-surface: #18181b;           /* zinc-900 */
-  --color-surface-raised: #27272a;    /* zinc-800 */
-  --color-border: #3f3f46;            /* zinc-700 */
-  --color-border-subtle: #27272a;     /* zinc-800 */
+  /* Base */
+  --color-bg:            #0d1117;
+  --color-surface:       #161c28;
+  --color-raised:        #1c2438;
+  --color-border:        #263044;
+  --color-border-subtle: #1c2438;
 
-  --color-foreground: #f4f4f5;        /* zinc-100 */
-  --color-muted: #a1a1aa;             /* zinc-400 */
-  --color-muted-subtle: #71717a;      /* zinc-500 */
+  /* Text */
+  --color-text:          #d9e1ec;
+  --color-muted:         #6b7a8d;
+  --color-dim:           #3f4f63;
 
-  --color-accent: #f59e0b;            /* amber-500 */
-  --color-accent-dim: #78350f;        /* amber-900 */
-  --color-accent-text: #fef3c7;       /* amber-50 */
+  /* Accent — steel blue, not amber */
+  --color-accent:        #2563eb;
+  --color-accent-light:  #3b82f6;
+  --color-accent-dim:    #0f2050;
+  --color-accent-text:   #bfdbfe;
 
-  --color-covered: #10b981;           /* emerald-500 */
-  --color-covered-dim: #064e3b;       /* emerald-900 */
-  --color-not-covered: #f43f5e;       /* rose-500 */
-  --color-not-covered-dim: #4c0519;   /* rose-950 */
-  --color-pending: #f59e0b;           /* amber-500 */
-  --color-pending-dim: #451a03;       /* amber-950 */
+  /* Status */
+  --color-ok:            #16a34a;
+  --color-ok-dim:        #052e16;
+  --color-ok-text:       #86efac;
+  --color-err:           #dc2626;
+  --color-err-dim:       #1c0505;
+  --color-err-text:      #fca5a5;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background-color: #0d1117;
+  color: #d9e1ec;
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 9999px;
-}
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #263044; border-radius: 9999px; }
