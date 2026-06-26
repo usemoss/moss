@@ -24,10 +24,9 @@ import json
 import logging
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator
-from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -138,7 +137,9 @@ INTER_REQUEST_DELAY = 1.5  # seconds — polite crawling
 def fetch_html(url: str, client: httpx.Client) -> str | None:
     """Fetch a page and return the HTML string, or None on error."""
     try:
-        resp = client.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT, follow_redirects=True)
+        resp = client.get(
+            url, headers=HEADERS, timeout=REQUEST_TIMEOUT, follow_redirects=True
+        )
         resp.raise_for_status()
         return resp.text
     except httpx.HTTPStatusError as e:
@@ -153,7 +154,14 @@ def fetch_html(url: str, client: httpx.Client) -> str | None:
 # ---------------------------------------------------------------------------
 
 # Tags whose text we want; these typically contain the article body
-CONTENT_TAGS = ("article", "main", "section", "[role=main]", "div.content", "div.article-body")
+CONTENT_TAGS = (
+    "article",
+    "main",
+    "section",
+    "[role=main]",
+    "div.content",
+    "div.article-body",
+)
 
 # Tags to strip (navigation, ads, footers)
 STRIP_TAGS = ("nav", "header", "footer", "aside", "script", "style", "noscript", "form")
@@ -164,7 +172,9 @@ def extract_text(html: str, url: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
     # Remove boilerplate tags
-    for tag in soup.find_all(["nav", "header", "footer", "aside", "script", "style", "noscript", "form"]):
+    for tag in soup.find_all(
+        ["nav", "header", "footer", "aside", "script", "style", "noscript", "form"]
+    ):
         tag.decompose()
 
     # Try to find the main content area
@@ -189,6 +199,7 @@ def extract_text(html: str, url: str) -> str:
 # ---------------------------------------------------------------------------
 # Chunking
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RawChunk:
@@ -220,7 +231,9 @@ def _split_into_paragraphs(text: str, min_len: int = 80) -> list[str]:
     return out
 
 
-def _window_chunks(paragraphs: list[str], max_chars: int = 800, overlap: int = 1) -> Generator[str, None, None]:
+def _window_chunks(
+    paragraphs: list[str], max_chars: int = 800, overlap: int = 1
+) -> Generator[str, None, None]:
     """Sliding-window over paragraphs to produce ~max_chars chunks with 1-para overlap."""
     i = 0
     while i < len(paragraphs):
@@ -239,7 +252,9 @@ def _window_chunks(paragraphs: list[str], max_chars: int = 800, overlap: int = 1
         i = max(i + 1, j - overlap)
 
 
-def chunk_text(text: str, source_url: str, source: str, topic: str, max_chars: int = 800) -> list[RawChunk]:
+def chunk_text(
+    text: str, source_url: str, source: str, topic: str, max_chars: int = 800
+) -> list[RawChunk]:
     """Chunk extracted page text into retrieval-sized pieces."""
     if len(text) < 100:
         return []
@@ -248,18 +263,21 @@ def chunk_text(text: str, source_url: str, source: str, topic: str, max_chars: i
     for chunk_text in _window_chunks(paras, max_chars=max_chars):
         if len(chunk_text.strip()) < 60:
             continue
-        chunks.append(RawChunk(
-            text=chunk_text.strip(),
-            source_url=source_url,
-            source=source,
-            topic=topic,
-        ))
+        chunks.append(
+            RawChunk(
+                text=chunk_text.strip(),
+                source_url=source_url,
+                source=source,
+                topic=topic,
+            )
+        )
     return chunks
 
 
 # ---------------------------------------------------------------------------
 # Document ID generation
 # ---------------------------------------------------------------------------
+
 
 def _chunk_id(source: str, topic: str, index: int) -> str:
     base = f"{source}::{topic}::{index}"
@@ -271,7 +289,10 @@ def _chunk_id(source: str, topic: str, index: int) -> str:
 # Main pipeline
 # ---------------------------------------------------------------------------
 
-def crawl_all(targets: list[tuple[str, str, str]], delay: float = INTER_REQUEST_DELAY) -> list[dict]:
+
+def crawl_all(
+    targets: list[tuple[str, str, str]], delay: float = INTER_REQUEST_DELAY
+) -> list[dict]:
     """Crawl all targets and return a list of MOSS document dicts."""
     docs: list[dict] = []
 
@@ -280,14 +301,16 @@ def crawl_all(targets: list[tuple[str, str, str]], delay: float = INTER_REQUEST_
             logger.info(f"[{i + 1}/{len(targets)}] Fetching {url}")
             html = fetch_html(url, client)
             if html is None:
-                logger.warning(f"  Skipped (fetch failed)")
+                logger.warning("  Skipped (fetch failed)")
                 if i < len(targets) - 1:
                     time.sleep(delay)
                 continue
 
             text = extract_text(html, url)
             if len(text) < 200:
-                logger.warning(f"  Skipped (too little text extracted: {len(text)} chars)")
+                logger.warning(
+                    f"  Skipped (too little text extracted: {len(text)} chars)"
+                )
                 if i < len(targets) - 1:
                     time.sleep(delay)
                 continue
@@ -296,16 +319,18 @@ def crawl_all(targets: list[tuple[str, str, str]], delay: float = INTER_REQUEST_
             logger.info(f"  {len(chunks)} chunks from {len(text)} chars")
 
             for idx, chunk in enumerate(chunks):
-                docs.append({
-                    "id": _chunk_id(source, topic, idx),
-                    "text": chunk.text,
-                    "metadata": {
-                        "source": chunk.source,
-                        "source_url": chunk.source_url,
-                        "topic": chunk.topic,
-                        "chunk_index": str(idx),
-                    },
-                })
+                docs.append(
+                    {
+                        "id": _chunk_id(source, topic, idx),
+                        "text": chunk.text,
+                        "metadata": {
+                            "source": chunk.source,
+                            "source_url": chunk.source_url,
+                            "topic": chunk.topic,
+                            "chunk_index": str(idx),
+                        },
+                    }
+                )
 
             if i < len(targets) - 1:
                 time.sleep(delay)
@@ -314,7 +339,9 @@ def crawl_all(targets: list[tuple[str, str, str]], delay: float = INTER_REQUEST_
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Crawl public insurance sources for the claims-kb index.")
+    parser = argparse.ArgumentParser(
+        description="Crawl public insurance sources for the claims-kb index."
+    )
     parser.add_argument(
         "--out",
         default="data/crawled_kb.json",

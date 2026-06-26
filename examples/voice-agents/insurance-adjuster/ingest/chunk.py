@@ -25,6 +25,7 @@ from typing import Sequence
 
 try:
     import pdfplumber
+
     _PDFPLUMBER_AVAILABLE = True
 except ImportError:
     _PDFPLUMBER_AVAILABLE = False
@@ -33,6 +34,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Data types
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PolicyChunk:
@@ -88,6 +90,7 @@ def _detect_section(text: str) -> str:
 # PDF ingestion
 # ---------------------------------------------------------------------------
 
+
 def chunk_policy_pdf(
     pdf_path: str | Path,
     *,
@@ -101,7 +104,9 @@ def chunk_policy_pdf(
     Requires pdfplumber (`pip install pdfplumber`).
     """
     if not _PDFPLUMBER_AVAILABLE:
-        raise ImportError("pdfplumber is required for PDF ingestion: pip install pdfplumber")
+        raise ImportError(
+            "pdfplumber is required for PDF ingestion: pip install pdfplumber"
+        )
 
     path = Path(pdf_path)
     with pdfplumber.open(path) as pdf:
@@ -124,6 +129,7 @@ def chunk_policy_pdf(
 # ---------------------------------------------------------------------------
 # Text chunking
 # ---------------------------------------------------------------------------
+
 
 def _split_on_sections(text: str) -> list[tuple[str, str]]:
     """Split text on detected section headers, returning (section_label, content) pairs."""
@@ -204,13 +210,17 @@ def chunk_policy_text(
         for idx, sub in enumerate(sub_chunks):
             if len(sub.strip()) < 40:
                 continue
-            chunk_section = _detect_section(sub) if section_label == "preamble" else section_label
+            chunk_section = (
+                _detect_section(sub) if section_label == "preamble" else section_label
+            )
             meta = {**base_meta, "section": chunk_section, "chunk_index": str(idx)}
-            chunks.append(PolicyChunk(
-                id=_chunk_id(doc_id_prefix, chunk_section, len(chunks)),
-                text=sub.strip(),
-                metadata=meta,
-            ))
+            chunks.append(
+                PolicyChunk(
+                    id=_chunk_id(doc_id_prefix, chunk_section, len(chunks)),
+                    text=sub.strip(),
+                    metadata=meta,
+                )
+            )
 
     return chunks
 
@@ -218,6 +228,7 @@ def chunk_policy_text(
 # ---------------------------------------------------------------------------
 # Merge helper
 # ---------------------------------------------------------------------------
+
 
 def merge_doc_lists(*lists: Sequence[dict]) -> list[dict]:
     """Deduplicate and merge multiple lists of MOSS document dicts by ID."""

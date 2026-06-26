@@ -15,14 +15,16 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const policyNumber: string = body?.policyNumber ?? '';
+    // Sanitize adjuster ID: keep only alphanumeric and hyphens, lowercase
+    const rawId: string = body?.adjusterId ?? '';
+    const adjusterId = rawId.toLowerCase().replace(/[^a-z0-9-]/g, '') || `adjuster-${Math.floor(Math.random() * 10_000)}`;
 
-    const participantIdentity = `adjuster_${Math.floor(Math.random() * 10_000)}`;
     const roomName = `claim_${Math.floor(Math.random() * 10_000)}`;
 
     const at = new AccessToken(API_KEY, API_SECRET, {
-      identity: participantIdentity,
-      name: 'adjuster',
-      metadata: policyNumber,   // agent reads this to pre-load the policy
+      identity: adjusterId,       // traceable in LiveKit logs and agent logs
+      name: rawId.toUpperCase(), // display name shown in the room
+      metadata: policyNumber,    // agent reads this to pre-load the policy
       ttl: '30m',
     });
     const grant: VideoGrant = {

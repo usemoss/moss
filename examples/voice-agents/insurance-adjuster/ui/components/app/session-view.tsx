@@ -5,11 +5,10 @@ import { useClaimState } from '@/hooks/useClaimState';
 import { useMossInsuranceEvents } from '@/hooks/useMossInsuranceEvents';
 
 interface SessionViewProps {
-  policyNumber: string;
   onDisconnect: () => void;
 }
 
-export function SessionView({ policyNumber, onDisconnect }: SessionViewProps) {
+export function SessionView({ onDisconnect }: SessionViewProps) {
   const claimState = useClaimState();
   const { events: mossEvents } = useMossInsuranceEvents();
 

@@ -20,7 +20,7 @@ export function App() {
       const res = await fetch('/api/connection-details', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ policyNumber }),
+        body: JSON.stringify({ policyNumber, adjusterId }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -77,7 +77,7 @@ export function App() {
       onDisconnected={handleDisconnect}
       className="h-full"
     >
-      <SessionView policyNumber={conn.policyNumber} onDisconnect={handleDisconnect} />
+      <SessionView onDisconnect={handleDisconnect} />
     </LiveKitRoom>
   );
 }

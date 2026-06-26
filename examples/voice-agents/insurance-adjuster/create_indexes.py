@@ -66,6 +66,7 @@ def _require_env(name: str) -> str:
 # Policy fixture discovery
 # ---------------------------------------------------------------------------
 
+
 def _discover_policies() -> dict[str, Path]:
     """Map policy_number (uppercase) to its fixture JSON path."""
     out: dict[str, Path] = {}
@@ -78,6 +79,7 @@ def _discover_policies() -> dict[str, Path]:
             # Extract policy number from the summary text: "Policy number FL-HO3-001."
             text = summary["text"]
             import re
+
             m = re.search(r"Policy number\s+([\w\-]+)", text, re.I)
             if m:
                 policy_num = m.group(1).strip().upper()
@@ -92,6 +94,7 @@ def _index_name_for(policy_number: str) -> str:
 # ---------------------------------------------------------------------------
 # Document loading
 # ---------------------------------------------------------------------------
+
 
 def _load_json_docs(path: Path) -> list[DocumentInfo]:
     raw = json.loads(path.read_text())
@@ -112,6 +115,7 @@ def _load_raw_dicts(path: Path) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Index builders
 # ---------------------------------------------------------------------------
+
 
 async def build_policy_index(client: MossClient, policy_number: str, path: Path) -> str:
     index = _index_name_for(policy_number)
@@ -160,6 +164,7 @@ async def build_claims_kb(
 # Main
 # ---------------------------------------------------------------------------
 
+
 async def run(
     only_policy: str | None = None,
     kb_only: bool = False,
@@ -186,7 +191,7 @@ async def run(
             await build_policy_index(client, policy_num, path)
 
     if not skip_kb:
-        print(f"\nBuilding shared claims-kb index...")
+        print("\nBuilding shared claims-kb index...")
         await build_claims_kb(client, extra_paths=extra_crawled)
 
     print("\nAll indexes ready.")
@@ -198,7 +203,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build per-policy and shared claims-kb Moss indexes."
     )
-    parser.add_argument("--policy", help="Build a single policy index (e.g. FL-HO3-001).")
+    parser.add_argument(
+        "--policy", help="Build a single policy index (e.g. FL-HO3-001)."
+    )
     parser.add_argument(
         "--kb-only",
         action="store_true",
