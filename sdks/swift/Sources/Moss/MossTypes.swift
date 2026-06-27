@@ -122,10 +122,33 @@ public struct SessionOptions: Sendable {
     public var modelId: String?
     /// On-disk vector precision used by `MossSession.save(toCachePath:)`.
     public var vectorQuantization: VectorQuantization
+    /// When `true` (the default), `MossClient.session(_:)` auto-loads the named
+    /// index from the cloud at creation time (resolve + download + hydrate)
+    /// before returning. Set `false` for a local-only session: creation returns
+    /// immediately and you populate it yourself — e.g. restore from the on-disk
+    /// cache first and only hit the cloud on a miss:
+    ///
+    /// ```swift
+    /// let session = try await client.session(name, options: SessionOptions(autoLoadOnInit: false))
+    /// if try await session.loadFromDisk(cachePath: cachePath) > 0 { return session }
+    /// _ = try await session.loadIndex(name, options: LoadIndexOptions())
+    /// try await session.save(toCachePath: cachePath)
+    /// ```
+    ///
+    /// - Warning: with `false`, the session starts empty until you load it, so
+    ///   calling `addDocs`/`pushIndex` before a load overwrites the cloud index
+    ///   instead of appending to it. Use this only for read / load-then-mutate
+    ///   flows.
+    public var autoLoadOnInit: Bool
 
-    public init(modelId: String? = nil, vectorQuantization: VectorQuantization = .default) {
+    public init(
+        modelId: String? = nil,
+        vectorQuantization: VectorQuantization = .default,
+        autoLoadOnInit: Bool = true
+    ) {
         self.modelId = modelId
         self.vectorQuantization = vectorQuantization
+        self.autoLoadOnInit = autoLoadOnInit
     }
 }
 
