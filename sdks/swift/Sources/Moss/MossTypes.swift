@@ -135,10 +135,11 @@ public struct SessionOptions: Sendable {
     /// try await session.save(toCachePath: cachePath)
     /// ```
     ///
-    /// - Warning: with `false`, the session starts empty until you load it, so
-    ///   calling `addDocs`/`pushIndex` before a load overwrites the cloud index
-    ///   instead of appending to it. Use this only for read / load-then-mutate
-    ///   flows.
+    /// - Warning: with `false`, the session starts empty until you load it.
+    ///   `addDocs` only mutates the in-memory session, but calling `pushIndex()`
+    ///   on a session you never loaded pushes that near-empty session to the
+    ///   cloud and overwrites the existing index instead of appending. Use this
+    ///   for read-only or load-then-mutate flows.
     public var autoLoadOnInit: Bool
 
     public init(
