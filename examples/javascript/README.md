@@ -62,6 +62,22 @@ Open a local-first `SessionIndex`, add documents in real time (no cloud round tr
 npx tsx session_sample.ts
 ```
 
+### Session Cache Sample
+
+Build a local-first `SessionIndex`, persist it to the local filesystem with `saveToDisk`, then restore it into a fresh session with `loadFromDisk` — so a session survives a process restart with no cloud round trip (no `pushIndex`). Also shows the client-level `cachePath` option (requires `@moss-dev/moss` >= 1.2.1).
+
+```bash
+npx tsx session_cache_sample.ts
+```
+
+### Session + Custom Authenticator Sample
+
+Open a local-first session when the client is built with a custom `IAuthenticator` (short-lived tokens / delegated auth) instead of a static project key — the session authenticates through the same token source, so the project key never has to live on the device. Requires `@moss-dev/moss` >= 1.3.0.
+
+```bash
+npx tsx session_custom_auth_sample.ts
+```
+
 ## Requirements
 
 - Node.js (version 20 or higher)

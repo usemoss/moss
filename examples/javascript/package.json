@@ -37,10 +37,12 @@
     "format": "prettier --write .",
     "cached-load": "tsx cached_load_sample.ts",
     "session": "tsx session_sample.ts",
+    "session-cache": "tsx session_cache_sample.ts",
+    "session-custom-auth": "tsx session_custom_auth_sample.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@moss-dev/moss": "^1.1.0",
+    "@moss-dev/moss": "^1.3.0",
     "dotenv": "^17.4.2",
     "openai": "^6.42.0"
   },
