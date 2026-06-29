@@ -1,8 +1,14 @@
 import SwiftUI
 
+enum SearchMode: String, CaseIterable {
+    case results = "Results"
+    case answer  = "AI Answer"
+}
+
 struct SearchView: View {
     @EnvironmentObject private var store: IndexStore
     @State private var query = ""
+    @State private var mode:  SearchMode = .results
 
     var body: some View {
         NavigationStack {
@@ -10,43 +16,169 @@ struct SearchView: View {
 
                 // ── Search bar ────────────────────────────────────────────
                 HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                     TextField("Search your documents and contacts…", text: $query)
                         .submitLabel(.search)
+                        .onSubmit { triggerSearch() }
                         .onChange(of: query) { _, newValue in
-                            Task { await store.search(query: newValue) }
+                            if newValue.isEmpty {
+                                store.searchHits = []
+                                store.llmAnswer  = ""
+                            } else {
+                                // Live search only in Results mode; Answer needs explicit submit
+                                if mode == .results {
+                                    Task { await store.search(query: newValue) }
+                                }
+                            }
                         }
                     if !query.isEmpty {
                         Button { query = "" } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                         }
                     }
                 }
                 .padding(10)
                 .background(Color(.systemGray6))
                 .cornerRadius(10)
-                .padding()
+                .padding([.horizontal, .top])
+                .padding(.bottom, 8)
 
-                // ── Results ───────────────────────────────────────────────
+                // ── Mode picker ───────────────────────────────────────────
+                Picker("Mode", selection: $mode) {
+                    ForEach(SearchMode.allCases, id: \.self) { m in
+                        Text(m.rawValue).tag(m)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                .onChange(of: mode) { _, _ in
+                    triggerSearch()
+                }
+
+                Divider()
+
+                // ── Content ───────────────────────────────────────────────
                 if query.isEmpty {
                     emptyPrompt
-                } else if store.searchHits.isEmpty {
-                    noResults
                 } else {
-                    resultsList
+                    switch mode {
+                    case .results: resultsPane
+                    case .answer:  answerPane
+                    }
                 }
 
                 // ── Status bar ────────────────────────────────────────────
-                Text(store.statusMessage)
+                Text(store.status)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-                    .padding(.bottom, 4)
+                    .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .navigationTitle("Personal Context")
+        }
+    }
+
+    // MARK: - Trigger
+
+    private func triggerSearch() {
+        guard !query.isEmpty else { return }
+        Task {
+            if mode == .results {
+                await store.search(query: query)
+            } else {
+                await store.generateAnswer(query: query)
+            }
+        }
+    }
+
+    // MARK: - Results pane
+
+    private var resultsPane: some View {
+        Group {
+            if store.searchHits.isEmpty {
+                ContentUnavailableView.search(text: query)
+            } else {
+                List(store.searchHits) { hit in
+                    HitRow(hit: hit)
+                }
+                .listStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - Answer pane
+
+    private var answerPane: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+
+                if !store.hasOpenAI {
+                    HStack(spacing: 10) {
+                        Image(systemName: "info.circle").foregroundStyle(.orange)
+                        Text("Add an OpenAI key in Settings to get AI answers.")
+                            .font(.caption)
+                    }
+                    .padding(10)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(8)
+                }
+
+                if store.isAnswering {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Retrieving from Moss + generating answer…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                } else if !store.llmAnswer.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Answer", systemImage: "sparkles")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.purple)
+                        Text(store.llmAnswer)
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                }
+
+                // Source chunks used as context
+                if !store.searchHits.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Sources used (\(store.searchHits.count))")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        ForEach(Array(store.searchHits.enumerated()), id: \.element.id) { i, hit in
+                            HStack(alignment: .top, spacing: 10) {
+                                Text("[\(i + 1)]")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 24, alignment: .leading)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(hit.sourceName)
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                    Text(hit.excerpt)
+                                        .font(.caption)
+                                        .lineLimit(3)
+                                }
+                                Spacer()
+                                ScoreBadge(score: hit.score)
+                            }
+                            .padding(8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+            }
+            .padding()
         }
     }
 
@@ -56,45 +188,31 @@ struct SearchView: View {
         ContentUnavailableView(
             "What do you want to find?",
             systemImage: "sparkle.magnifyingglass",
-            description: Text("Ask anything — topics, names, ideas from your files and contacts.")
+            description: Text("Search for topics, names, or ideas across your files and contacts.")
         )
     }
 
-    private var noResults: some View {
-        ContentUnavailableView.search(text: query)
-    }
+}
 
-    private var resultsList: some View {
-        List(store.searchHits) { hit in
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(hit.sourceName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    ScoreBadge(score: hit.score)
-                }
-                Text(highlightedExcerpt(hit.excerpt, query: query))
-                    .font(.body)
-                    .lineLimit(4)
-            }
-            .padding(.vertical, 4)
-        }
-        .listStyle(.plain)
-    }
+// MARK: - Hit row
 
-    /// Bold the query terms in the excerpt (simple string match).
-    private func highlightedExcerpt(_ text: String, query: String) -> AttributedString {
-        var result = AttributedString(text)
-        let terms = query.split(separator: " ").map(String.init)
-        for term in terms {
-            var searchRange = result.startIndex..<result.endIndex
-            while let range = result[searchRange].range(of: term, options: .caseInsensitive) {
-                result[range].font = .body.bold()
-                searchRange = range.upperBound..<result.endIndex
+struct HitRow: View {
+    let hit: SearchHit
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(hit.sourceName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                ScoreBadge(score: hit.score)
             }
+            Text(hit.excerpt)
+                .font(.body)
+                .lineLimit(4)
         }
-        return result
+        .padding(.vertical, 4)
     }
 }
 
@@ -108,12 +226,12 @@ struct ScoreBadge: View {
             .font(.caption2.monospacedDigit())
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
-            .background(badgeColor.opacity(0.15))
-            .foregroundStyle(badgeColor)
+            .background(color.opacity(0.15))
+            .foregroundStyle(color)
             .clipShape(Capsule())
     }
 
-    private var badgeColor: Color {
+    private var color: Color {
         switch score {
         case 0.8...: return .green
         case 0.5...: return .orange
@@ -122,7 +240,7 @@ struct ScoreBadge: View {
     }
 }
 
-// MARK: - StatusMessage extension for views
+// MARK: - StatusMessage alias
 
 extension IndexStore {
     var statusMessage: String { status }

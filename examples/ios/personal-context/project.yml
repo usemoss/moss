@@ -8,7 +8,7 @@ options:
 packages:
   Moss:
     url: https://github.com/usemoss/moss
-    from: 0.4.1
+    exactVersion: "0.6.2"
 
 targets:
   PersonalContext:

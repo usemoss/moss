@@ -2,19 +2,65 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var store: IndexStore
+    @AppStorage("openai_key") private var openAIKey: String = ""
+
     let onSignOut: () -> Void
 
-    @State private var showSyncConfirm  = false
-    @State private var showClearConfirm = false
+    @State private var showSyncConfirm = false
+    @State private var draftAIKey:    String = ""
+    @State private var editingAIKey   = false
 
     var body: some View {
         NavigationStack {
             List {
 
-                // ── Stats ─────────────────────────────────────────────────
+                // ── Index stats ───────────────────────────────────────────
                 Section("Index") {
-                    LabeledContent("Sources",   value: "\(store.sources.count)")
+                    LabeledContent("Sources",    value: "\(store.sources.count)")
                     LabeledContent("Cloud sync", value: store.cloudSynced ? "Up to date ✓" : "Not synced")
+                }
+
+                // ── OpenAI key ────────────────────────────────────────────
+                Section {
+                    if editingAIKey {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SecureField("sk-…", text: $draftAIKey)
+                                .textFieldStyle(.roundedBorder)
+                            HStack {
+                                Button("Save") {
+                                    openAIKey       = draftAIKey.trimmingCharacters(in: .whitespaces)
+                                    store.openAIKey = openAIKey
+                                    editingAIKey    = false
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+
+                                Button("Cancel") { editingAIKey = false }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } else {
+                        HStack {
+                            Label(
+                                store.hasOpenAI ? "OpenAI key set ✓" : "Add OpenAI key",
+                                systemImage: store.hasOpenAI ? "checkmark.circle.fill" : "key"
+                            )
+                            .foregroundStyle(store.hasOpenAI ? .green : .primary)
+                            Spacer()
+                            Button("Edit") {
+                                draftAIKey   = openAIKey
+                                editingAIKey = true
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                        }
+                    }
+                } header: {
+                    Text("AI Answers")
+                } footer: {
+                    Text("Required for the AI Answer tab in Search. Key is stored on this device only.")
                 }
 
                 // ── Cloud sync ────────────────────────────────────────────
@@ -22,18 +68,16 @@ struct SettingsView: View {
                     Button {
                         showSyncConfirm = true
                     } label: {
-                        Label("Sync to cloud", systemImage: "icloud.and.arrow.up")
+                        Label("Sync index to cloud", systemImage: "icloud.and.arrow.up")
                     }
                     .disabled(store.isWorking || store.sources.isEmpty)
                 } footer: {
-                    Text("Pushes your on-device index to Moss cloud so you can load it on other devices. No content leaves your project.")
+                    Text("Pushes your on-device Moss index to the cloud so you can load it on other devices.")
                 }
 
-                // ── Danger zone ───────────────────────────────────────────
+                // ── Account ───────────────────────────────────────────────
                 Section("Account") {
-                    Button(role: .destructive) {
-                        onSignOut()
-                    } label: {
+                    Button(role: .destructive, action: onSignOut) {
                         Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 }
@@ -41,41 +85,29 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .overlay {
                 if store.isWorking {
-                    syncingOverlay
+                    VStack(spacing: 10) {
+                        ProgressView()
+                        Text(store.status).font(.caption).multilineTextAlignment(.center)
+                    }
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .cornerRadius(14)
                 }
             }
-            .confirmationDialog(
-                "Sync to cloud?",
-                isPresented: $showSyncConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Sync") {
-                    Task { await store.syncToCloud() }
-                }
+            .confirmationDialog("Sync to cloud?", isPresented: $showSyncConfirm, titleVisibility: .visible) {
+                Button("Sync") { Task { await store.syncToCloud() } }
             } message: {
-                Text("This uploads your index to Moss cloud. The operation may take a minute.")
+                Text("This uploads your index to Moss cloud. May take up to a minute.")
             }
-            // Status footer
             .safeAreaInset(edge: .bottom) {
                 Text(store.status)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .padding(8)
+                    .font(.caption2).foregroundStyle(.secondary).padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.ultraThinMaterial)
             }
         }
-    }
-
-    private var syncingOverlay: some View {
-        VStack(spacing: 10) {
-            ProgressView()
-            Text(store.status)
-                .font(.caption)
-                .multilineTextAlignment(.center)
+        .onAppear {
+            store.openAIKey = openAIKey
         }
-        .padding(20)
-        .background(.regularMaterial)
-        .cornerRadius(14)
     }
 }

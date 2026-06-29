@@ -1,0 +1,76 @@
+# ── Xcode ────────────────────────────────────────────────────────────────────
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.xcarchive
+*.dSYM.zip
+*.dSYM
+
+# ── XcodeGen (generated — always regenerate from project.yml) ────────────────
+PersonalContext.xcodeproj/
+# Keep project.yml (the source of truth) and ignore the generated .xcodeproj
+
+# ── Swift Package Manager ─────────────────────────────────────────────────────
+.build/
+.swiftpm/
+*.resolved
+# Uncomment to commit resolved versions for reproducible builds:
+# !Package.resolved
+
+# ── Model files (large binary — distribute separately) ───────────────────────
+PersonalContext/models/
+*.gguf
+*.mlpackage/
+*.mlmodel
+*.bin
+*.safetensors
+# MLC model folders
+*-MLC/
+*-q4f16*/
+*-q0f16*/
+
+# ── Credentials / secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+*.pem
+*.p12
+*.mobileprovision
+AuthKey_*.p8
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+*.AppleDouble
+*.LSOverride
+
+# ── Simulators ────────────────────────────────────────────────────────────────
+*.app/
+
+# ── Logs & temp ───────────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.swp
+*~
+
+# ── Python (for any tooling scripts) ─────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/

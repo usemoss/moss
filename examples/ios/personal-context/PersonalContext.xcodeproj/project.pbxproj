@@ -11,16 +11,22 @@
 		0ED1C3C75D48EBE58976CC10 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D52FC16C4298CF659D92A059 /* SearchView.swift */; };
 		4BC9ED49AD3D6FB32F0B0F82 /* FileIngester.swift in Sources */ = {isa = PBXBuildFile; fileRef = A579FE666132CAAD66F9043A /* FileIngester.swift */; };
 		8EF8C18266083DD3BA7DB07F /* SourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 237F199BB4C6D5912CAF781F /* SourcesView.swift */; };
+		AB3929306BCBF279B6338D8E /* LlamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F9E20875591E98752D6FEFC /* LlamaService.swift */; };
 		AD89F01BDF8C28E05A29A270 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5EE6A182F4DBBDB7588D40F /* ContentView.swift */; };
+		B0AEED2E170D117F99B3B24A /* LocalLLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 601BB1C928B4ADB7D52FB10D /* LocalLLMService.swift */; };
 		C9B5C86274D28A797D4E64B1 /* IndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A9BC90FD6CF0B30E537529 /* IndexStore.swift */; };
 		D48218D0842213D744AF566D /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A8C0649EBA841972D067053 /* App.swift */; };
+		DE4401A015BBEFA52B77AB70 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 282ACA6FD35F286BE3258D3C /* LLMService.swift */; };
 		ECA9510B1F0988FD5FAF6269 /* Moss in Frameworks */ = {isa = PBXBuildFile; productRef = 92AD7F99626EB7A206350CB8 /* Moss */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0A8C0649EBA841972D067053 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		237F199BB4C6D5912CAF781F /* SourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesView.swift; sourceTree = "<group>"; };
+		282ACA6FD35F286BE3258D3C /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
+		601BB1C928B4ADB7D52FB10D /* LocalLLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalLLMService.swift; sourceTree = "<group>"; };
 		7CB763C78357F21BD7C53F4E /* PersonalContext.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PersonalContext.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F9E20875591E98752D6FEFC /* LlamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlamaService.swift; sourceTree = "<group>"; };
 		96A9BC90FD6CF0B30E537529 /* IndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexStore.swift; sourceTree = "<group>"; };
 		A579FE666132CAAD66F9043A /* FileIngester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileIngester.swift; sourceTree = "<group>"; };
 		D2469815978248B6DABA1C9A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -57,6 +63,9 @@
 				A579FE666132CAAD66F9043A /* FileIngester.swift */,
 				96A9BC90FD6CF0B30E537529 /* IndexStore.swift */,
 				F8F138138DF769CE409869BE /* Info.plist */,
+				7F9E20875591E98752D6FEFC /* LlamaService.swift */,
+				282ACA6FD35F286BE3258D3C /* LLMService.swift */,
+				601BB1C928B4ADB7D52FB10D /* LocalLLMService.swift */,
 				D52FC16C4298CF659D92A059 /* SearchView.swift */,
 				D2469815978248B6DABA1C9A /* SettingsView.swift */,
 				237F199BB4C6D5912CAF781F /* SourcesView.swift */,
@@ -139,6 +148,9 @@
 				AD89F01BDF8C28E05A29A270 /* ContentView.swift in Sources */,
 				4BC9ED49AD3D6FB32F0B0F82 /* FileIngester.swift in Sources */,
 				C9B5C86274D28A797D4E64B1 /* IndexStore.swift in Sources */,
+				DE4401A015BBEFA52B77AB70 /* LLMService.swift in Sources */,
+				AB3929306BCBF279B6338D8E /* LlamaService.swift in Sources */,
+				B0AEED2E170D117F99B3B24A /* LocalLLMService.swift in Sources */,
 				0ED1C3C75D48EBE58976CC10 /* SearchView.swift in Sources */,
 				041EE6C950D8B19E16E3643C /* SettingsView.swift in Sources */,
 				8EF8C18266083DD3BA7DB07F /* SourcesView.swift in Sources */,
@@ -337,8 +349,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/usemoss/moss";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.4.1;
+				kind = exactVersion;
+				version = 0.6.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

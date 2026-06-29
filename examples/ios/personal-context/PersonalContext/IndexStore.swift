@@ -35,23 +35,32 @@ final class IndexStore: ObservableObject {
 
     // ── Published state (SwiftUI observes these) ─────────────────────────
 
-    @Published var sources:     [IndexedSource] = []
-    @Published var searchHits:  [SearchHit]     = []
-    @Published var status:      String          = "Not connected"
-    @Published var isWorking:   Bool            = false
-    @Published var cloudSynced: Bool            = false
+    @Published var sources:       [IndexedSource] = []
+    @Published var searchHits:    [SearchHit]     = []
+    @Published var llmAnswer:     String          = ""
+    @Published var isAnswering:   Bool            = false
+    @Published var status:        String          = "Not connected"
+    @Published var isWorking:     Bool            = false
+    @Published var cloudSynced:   Bool            = false
+
+    // ── LLM ───────────────────────────────────────────────────────────────
+
+    var openAIKey: String = ""
+    var hasOpenAI: Bool { !openAIKey.isEmpty }
+    var canAnswer: Bool { hasOpenAI }
 
     // ── Private Moss objects ──────────────────────────────────────────────
 
-    private var client:  MossClient?
-    private var session: MossSession?
+    private var client:    MossClient?
+    private var session:   MossSession?
 
     // Persisted source list so we survive app kills
     private let sourcesKey = "indexed_sources_v1"
 
     // MARK: - Setup
 
-    func setup(projectId: String, projectKey: String) async {
+    func setup(projectId: String, projectKey: String, openAIKey: String = "") async {
+        self.openAIKey = openAIKey
         guard client == nil else { return }   // already set up
         isWorking = true
         status    = "Connecting…"
@@ -62,7 +71,7 @@ final class IndexStore: ObservableObject {
             session = try await client!.session("personal-context")
 
             // Restore on-device index from disk (survives app restarts, no network)
-            try? await session!.loadFromDisk(cachePath: cacheDir())
+            try await session!.loadFromDisk(cachePath: cacheDir())
 
             // Restore source list from UserDefaults
             sources = loadSources()
@@ -203,13 +212,13 @@ final class IndexStore: ObservableObject {
 
     // MARK: - Search
 
-    func search(query: String) async {
+    func search(query: String, topK: Int = 10) async {
         guard let session, !query.trimmingCharacters(in: .whitespaces).isEmpty else {
             searchHits = []
             return
         }
         do {
-            let result = try await session.query(query, options: .init(topK: 10))
+            let result = try await session.query(query, options: .init(topK: topK))
             searchHits = result.docs.map { doc in
                 SearchHit(
                     id:         doc.id,
@@ -222,6 +231,43 @@ final class IndexStore: ObservableObject {
         } catch {
             searchHits = []
             status = "Search error: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - LLM answer (RAG: Moss retrieval → OpenAI synthesis)
+
+    /// Retrieve top hits from Moss, then send them as context to OpenAI.
+    /// Populates `llmAnswer`. `searchHits` is also populated so both views
+    /// can be shown simultaneously.
+    func generateAnswer(query: String) async {
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
+            llmAnswer = ""
+            return
+        }
+        isAnswering = true
+        llmAnswer   = ""
+        defer { isAnswering = false }
+
+        // Step 1 — Moss retrieval (top 8 for LLM context)
+        await search(query: query, topK: 8)
+        let context = searchHits
+
+        guard !context.isEmpty else {
+            llmAnswer = "No relevant documents found for: \"\(query)\""
+            return
+        }
+
+        // Step 2 — OpenAI synthesis
+        do {
+            let response = try await LLMService.answer(
+                query:  query,
+                hits:   context,
+                apiKey: openAIKey
+            )
+            llmAnswer = response.answer
+            status    = "Answer via \(response.model) · \(response.tokens) tokens"
+        } catch {
+            llmAnswer = "LLM error: \(error.localizedDescription)"
         }
     }
 
