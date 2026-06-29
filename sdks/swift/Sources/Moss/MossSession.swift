@@ -113,35 +113,83 @@ public final class MossSession: @unchecked Sendable {
         }.value
     }
 
-    /// Return documents by id. Passing nil returns all docs in the
-    /// index — convenient for inspection, but expensive on large indexes.
-    /// An empty array returns nothing (vs nil's "everything") so callers
-    /// can distinguish "no filter" from "asked for no docs".
-    public func getDocs(_ docIds: [String]? = nil) async throws -> [DocumentInfo] {
-        try await Task.detached { [self] () throws -> [DocumentInfo] in
+    /// Deterministic fetch — no embedding, no similarity ranking. Returns docs
+    /// by exact id and/or a metadata predicate, optionally sorted and collapsed
+    /// by parent unit. See [GetDocsOptions].
+    public func getDocs(options: GetDocsOptions) async throws -> [DocumentInfo] {
+        let opts = options
+        return try await Task.detached { [self] () throws -> [DocumentInfo] in
             let h = try borrowHandle()
             defer { returnHandle() }
-            if let docIds {
-                return try withCStringArray(docIds) { ptrs in
-                    try Self.runGetDocs(h, idsPtr: ptrs, idCount: UInt(docIds.count))
-                }
-            }
-            return try Self.runGetDocs(h, idsPtr: nil, idCount: 0)
+            return try Self.runGetDocs(h, options: opts)
         }.value
+    }
+
+    /// Return documents by id, in the order requested. Passing nil returns all
+    /// docs (convenient for inspection, expensive on large indexes). An empty
+    /// array returns nothing (vs nil's "everything").
+    public func getDocs(_ docIds: [String]? = nil) async throws -> [DocumentInfo] {
+        try await getDocs(options: GetDocsOptions(ids: docIds))
+    }
+
+    /// Fetch exact ids, returned in the order requested.
+    public func getDocs(ids: [String]) async throws -> [DocumentInfo] {
+        try await getDocs(options: GetDocsOptions(ids: ids))
+    }
+
+    /// Fetch by a metadata predicate — deterministic, ordered, no query vector.
+    public func getDocs(
+        where filter: Filter, sortBy: String? = nil, ascending: Bool = true
+    ) async throws -> [DocumentInfo] {
+        try await getDocs(options: GetDocsOptions(
+            filter: filter, sortBy: sortBy, ascending: ascending))
     }
 
     private static func runGetDocs(
         _ h: OpaquePointer,
-        idsPtr: UnsafePointer<UnsafePointer<CChar>?>?,
-        idCount: UInt
+        options: GetDocsOptions
     ) throws -> [DocumentInfo] {
-        var outDocs: UnsafeMutablePointer<MossDocumentInfo>?
-        var outCount: UInt = 0
-        let r = moss_session_get_docs(h, idsPtr, idCount, &outDocs, &outCount)
-        try MossClient.throwIfErr(r)
-        guard let outDocs else { return [] }
-        defer { moss_free_documents(outDocs, outCount) }
-        return parseDocuments(outDocs, count: outCount)
+        // An explicit empty id list fetches nothing (vs nil = all docs).
+        if let ids = options.ids, ids.isEmpty { return [] }
+        var filterJson: String? = nil
+        if let f = options.filter {
+            guard let encoded = f.encoded() else {
+                throw MossError(code: -2, message: "could not encode metadata filter")
+            }
+            filterJson = encoded
+        }
+        let group = options.groupByParent
+
+        func call(
+            _ idsPtr: UnsafePointer<UnsafePointer<CChar>?>?, _ idCount: UInt
+        ) throws -> [DocumentInfo] {
+            try withOptionalCString(filterJson) { filterC in
+                try withOptionalCString(options.sortBy) { sortC in
+                    try withOptionalCString(group?.parentField) { parentC in
+                        try withOptionalCString(group?.orderField) { orderC in
+                            var outDocs: UnsafeMutablePointer<MossDocumentInfo>?
+                            var outCount: UInt = 0
+                            let r = moss_session_get_docs(
+                                h, idsPtr, idCount, filterC, sortC,
+                                options.ascending, parentC, orderC,
+                                &outDocs, &outCount
+                            )
+                            try MossClient.throwIfErr(r)
+                            guard let outDocs else { return [] }
+                            defer { moss_free_documents(outDocs, outCount) }
+                            return parseDocuments(outDocs, count: outCount)
+                        }
+                    }
+                }
+            }
+        }
+
+        if let ids = options.ids {
+            return try withCStringArray(ids) { ptrs in
+                try call(ptrs, UInt(ids.count))
+            }
+        }
+        return try call(nil, 0)
     }
 
     // ── Query ────────────────────────────────────────────────────────
@@ -193,40 +241,50 @@ public final class MossSession: @unchecked Sendable {
         return try await Task.detached { [self] () throws -> SearchResult in
             let h = try borrowHandle()
             defer { returnHandle() }
+            // Typed filter takes precedence over the legacy JSON string;
+            // surface an encode failure rather than silently dropping the filter.
+            var filterJson = opts.filterJson
+            if let f = opts.filter {
+                guard let encoded = f.encoded() else {
+                    throw MossError(code: -2, message: "could not encode metadata filter")
+                }
+                filterJson = encoded
+            }
+            let group = opts.groupByParent
             return try q.withCString { cq in
-                try withOptionalCString(opts.filterJson) { filter in
-                    // `embedding` is captured by-ref in the closure
-                    // body; need to give it a stable pointer for the
-                    // lifetime of the C call. `withUnsafeBufferPointer`
-                    // on an Array of Float gives us that without
-                    // copying out of Swift-managed storage.
-                    let result: UnsafeMutablePointer<MossSearchResult>? = try {
-                        var resultLocal: UnsafeMutablePointer<MossSearchResult>?
-                        // `MossResult` is emitted by cbindgen as both an
-                        // enum and a typedef; Swift sees that as
-                        // ambiguous. Treat the wire value as Int32 and
-                        // hand it straight to `throwIfErr`.
-                        let invoke: (UnsafePointer<Float>?, Int) -> Int32 = { embPtr, embLen in
-                            var nativeOpts = MossQueryOptions(
-                                top_k: UInt(opts.topK),
-                                alpha: opts.alpha,
-                                filter_json: filter,
-                                embedding: embPtr,
-                                embedding_dim: UInt(embLen)
-                            )
-                            return moss_session_query(h, cq, &nativeOpts, &resultLocal)
+                try withOptionalCString(filterJson) { filter in
+                    try withOptionalCString(group?.parentField) { parentC in
+                        try withOptionalCString(group?.orderField) { orderC in
+                            // `embedding` is captured by-ref; give it a stable
+                            // pointer for the C call via withUnsafeBufferPointer.
+                            let result: UnsafeMutablePointer<MossSearchResult>? = try {
+                                var resultLocal: UnsafeMutablePointer<MossSearchResult>?
+                                // `MossResult` is emitted as both enum + typedef
+                                // (ambiguous in Swift); treat the wire value as Int32.
+                                let invoke: (UnsafePointer<Float>?, Int) -> Int32 = { embPtr, embLen in
+                                    var nativeOpts = MossQueryOptions(
+                                        top_k: UInt(opts.topK),
+                                        alpha: opts.alpha,
+                                        filter_json: filter,
+                                        embedding: embPtr,
+                                        embedding_dim: UInt(embLen)
+                                    )
+                                    return moss_session_query(
+                                        h, cq, &nativeOpts, parentC, orderC, &resultLocal)
+                                }
+                                let r: Int32 = if let emb = embedding {
+                                    emb.withUnsafeBufferPointer { bp in invoke(bp.baseAddress, bp.count) }
+                                } else {
+                                    invoke(nil, 0)
+                                }
+                                try MossClient.throwIfErr(r)
+                                return resultLocal
+                            }()
+                            guard let result else { throw MossClient.lastError(code: -7) }
+                            defer { moss_free_search_result(result) }
+                            return MossClient.parseSearchResult(result.pointee)
                         }
-                        let r: Int32 = if let emb = embedding {
-                            emb.withUnsafeBufferPointer { bp in invoke(bp.baseAddress, bp.count) }
-                        } else {
-                            invoke(nil, 0)
-                        }
-                        try MossClient.throwIfErr(r)
-                        return resultLocal
-                    }()
-                    guard let result else { throw MossClient.lastError(code: -7) }
-                    defer { moss_free_search_result(result) }
-                    return MossClient.parseSearchResult(result.pointee)
+                    }
                 }
             }
         }.value
@@ -371,6 +429,7 @@ public final class MossSession: @unchecked Sendable {
         var embHolders: [UnsafeMutablePointer<Float>] = []
         var metaHolders: [UnsafeMutablePointer<MossMetadataEntry>] = []
         var metaKVHolders: [UnsafeMutablePointer<CChar>] = []
+        var payloadHolders: [UnsafeMutablePointer<CChar>] = []
 
         defer {
             for p in idHolders { free(p) }
@@ -378,6 +437,7 @@ public final class MossSession: @unchecked Sendable {
             for p in embHolders { p.deallocate() }
             for p in metaHolders { p.deallocate() }
             for p in metaKVHolders { free(p) }
+            for p in payloadHolders { free(p) }
         }
 
         var native: [MossDocumentInfo] = []
@@ -420,13 +480,21 @@ public final class MossSession: @unchecked Sendable {
                 metaCount = UInt(m.count)
             }
 
+            var payloadPtr: UnsafeMutablePointer<CChar>? = nil
+            if let p = d.payload {
+                let pp = strdup(p)!
+                payloadHolders.append(pp)
+                payloadPtr = pp
+            }
+
             native.append(MossDocumentInfo(
                 id: idPtr,
                 text: textPtr,
                 metadata: metaPtr,
                 metadata_count: metaCount,
                 embedding: embPtr,
-                embedding_dim: embLen
+                embedding_dim: embLen,
+                payload: payloadPtr
             ))
         }
 
@@ -456,7 +524,8 @@ public final class MossSession: @unchecked Sendable {
                 id: cstr(d.id),
                 text: cstr(d.text),
                 metadata: metadata,
-                embedding: embedding
+                embedding: embedding,
+                payload: d.payload.map { String(cString: $0) }
             ))
         }
         return out
