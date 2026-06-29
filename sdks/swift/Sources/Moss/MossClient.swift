@@ -553,7 +553,9 @@ public final class MossClient: @unchecked Sendable {
                 try withOptionalCString(opts.modelId) { cmodel in
                     var nativeOpts = MossSessionOptions(
                         model_id: cmodel,
-                        vector_quantization: opts.vectorQuantization.rawValue
+                        vector_quantization: opts.vectorQuantization.rawValue,
+                        // C ABI field is uint8_t: 1 = skip auto-load, 0 = keep it.
+                        skip_auto_load_on_init: opts.autoLoadOnInit ? 0 : 1
                     )
                     var raw: OpaquePointer?
                     let r = moss_client_session(h, cname, &nativeOpts, &raw)
