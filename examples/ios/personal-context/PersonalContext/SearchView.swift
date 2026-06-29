@@ -239,9 +239,3 @@ struct ScoreBadge: View {
         }
     }
 }
-
-// MARK: - StatusMessage alias
-
-extension IndexStore {
-    var statusMessage: String { status }
-}

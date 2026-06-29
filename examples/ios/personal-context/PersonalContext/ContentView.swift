@@ -1,6 +1,9 @@
 import SwiftUI
 
 /// Root view. Shows credentials screen on first launch; main tabs once set up.
+ ///
+ /// NOTE: This example persists Moss credentials and the optional OpenAI key via `@AppStorage`
+ /// (`UserDefaults`). That’s fine for a demo, but real apps should store secrets in the Keychain.
 struct ContentView: View {
     @AppStorage("project_id")   private var projectId:   String = ""
     @AppStorage("project_key")  private var projectKey:  String = ""
