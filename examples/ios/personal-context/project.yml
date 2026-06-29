@@ -1,0 +1,42 @@
+name: PersonalContext
+options:
+  bundleIdPrefix: dev.moss
+  deploymentTarget:
+    iOS: "17.0"
+  groupSortPosition: top
+
+packages:
+  Moss:
+    url: https://github.com/usemoss/moss
+    from: 0.4.1
+
+targets:
+  PersonalContext:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PersonalContext
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.moss.personalcontext
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        ARCHS: "arm64"
+        ONLY_ACTIVE_ARCH: "YES"
+    info:
+      path: PersonalContext/Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleDisplayName: Personal Context
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiresFullScreen: true
+        ITSAppUsesNonExemptEncryption: false
+        NSContactsUsageDescription: "To index your contacts for semantic search."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    dependencies:
+      - package: Moss
+        product: Moss
