@@ -21,5 +21,6 @@ venv/
 *.egg-info
 .moss-cache
 
-# Swift / SwiftPM build artifacts
+# Swift / SwiftPM build artifacts and user-specific Xcode state
 .build/
+.swiftpm/
