@@ -89,9 +89,11 @@ public struct DocumentInfo: Sendable, Codable {
         embedding: [Float]? = nil, structured: P
     ) throws {
         let data = try JSONEncoder().encode(structured)
+        // JSONEncoder always emits UTF-8; a non-failable decode avoids ever
+        // storing a nil payload on a (impossible) decode failure.
         self.init(
             id: id, text: text, metadata: metadata, embedding: embedding,
-            payload: String(data: data, encoding: .utf8)
+            payload: String(decoding: data, as: UTF8.self)
         )
     }
 
@@ -252,7 +254,7 @@ public indirect enum Filter: Sendable {
     /// Escape hatch: a raw engine-format filter JSON string.
     case raw(String)
 
-    private func jsonObject() -> Any {
+    private func jsonObject() -> Any? {
         func field(_ f: String, _ op: String, _ v: Any) -> [String: Any] {
             ["field": f, "condition": [op: v]]
         }
@@ -267,16 +269,28 @@ public indirect enum Filter: Sendable {
         case .notIn(let f, let vs): return field(f, "$nin", vs.map(\.jsonValue))
         case .near(let f, let lat, let lng, let m):
             return field(f, "$near", "\(lat),\(lng),\(m)")
-        case .and(let fs): return ["$and": fs.map { $0.jsonObject() }]
-        case .or(let fs): return ["$or": fs.map { $0.jsonObject() }]
+        case .and(let fs):
+            // A child that fails to encode must abort the whole filter rather
+            // than be dropped — dropping it would silently broaden the query.
+            let children = fs.compactMap { $0.jsonObject() }
+            guard children.count == fs.count else { return nil }
+            return ["$and": children]
+        case .or(let fs):
+            let children = fs.compactMap { $0.jsonObject() }
+            guard children.count == fs.count else { return nil }
+            return ["$or": children]
         case .raw(let s):
-            return (try? JSONSerialization.jsonObject(with: Data(s.utf8))) ?? [String: Any]()
+            // Invalid raw JSON returns nil (→ encode failure) instead of
+            // falling back to `{}`, which would drop the filter entirely.
+            return try? JSONSerialization.jsonObject(with: Data(s.utf8))
         }
     }
 
-    /// Serialize to the engine's filter JSON. `nil` only if serialization fails.
+    /// Serialize to the engine's filter JSON. `nil` if serialization fails —
+    /// including invalid `.raw` JSON anywhere in the tree.
     public func encoded() -> String? {
-        guard let data = try? JSONSerialization.data(withJSONObject: jsonObject()) else {
+        guard let obj = jsonObject(),
+              let data = try? JSONSerialization.data(withJSONObject: obj) else {
             return nil
         }
         return String(data: data, encoding: .utf8)
