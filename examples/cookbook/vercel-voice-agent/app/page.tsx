@@ -16,7 +16,7 @@ export default function Page() {
   const { status, connect, disconnect, startAudioCapture, stopAudioCapture, isCapturing } =
     useRealtime({
       model,
-      api: { token: '/api/token' },
+      api: { token: `/api/token?s=${process.env.NEXT_PUBLIC_DEMO_SECRET ?? ''}` },
       sessionConfig: {
         voice: 'alloy',
         turnDetection: { type: 'server-vad' },
@@ -34,7 +34,7 @@ export default function Page() {
         const { query, topK } = toolCall.args as { query: string; topK?: number };
         setLog((l) => [`🔍 "${query}"`, ...l.slice(0, 9)]);
 
-        const res = await fetch('/api/token', {
+        const res = await fetch(`/api/token?s=${process.env.NEXT_PUBLIC_DEMO_SECRET ?? ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query, topK: topK ?? 5 }),

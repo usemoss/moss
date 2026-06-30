@@ -19,6 +19,8 @@ Browser (useRealtime)  ──WebSocket──  Vercel AI Gateway  ──  gpt-rea
 
 ### 1. Install dependencies
 
+Requires **Node.js ≥ 22** (`ai@7` and `@ai-sdk/gateway@4` require it).
+
 ```bash
 npm install
 ```

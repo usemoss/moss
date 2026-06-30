@@ -17,10 +17,11 @@ const searchTool = mossSearchTool({
 });
 
 // Load the index into local memory at startup.
-// Cloud query is broken (503) for this project — local queries work fine.
-void client.loadIndex(process.env.MOSS_INDEX_NAME!)
+// Cloud query returns 503 for this project — local queries work fine.
+// Storing the promise lets search requests await it and fail fast on load error.
+const indexReady = client.loadIndex(process.env.MOSS_INDEX_NAME!)
   .then(() => console.log('[MOSS] index loaded locally'))
-  .catch((err: unknown) => console.error('[MOSS] loadIndex failed:', err));
+  .catch((err: unknown) => { console.error('[MOSS] loadIndex failed:', err); throw err; });
 
 const MOSS_TOOL = {
   type: 'function' as const,
@@ -39,9 +40,19 @@ const MOSS_TOOL = {
 // POST (empty body)  → mint a short-lived WebSocket token via Vercel AI Gateway
 // POST ({ query })   → execute MOSS search on behalf of the realtime model's tool call
 export async function POST(req: Request) {
+  const secret = process.env.DEMO_SECRET;
+  if (secret && new URL(req.url).searchParams.get('s') !== secret) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
 
   if (typeof body.query === 'string') {
+    try {
+      await indexReady;
+    } catch {
+      return new Response('Search index unavailable', { status: 503 });
+    }
     const topK = typeof body.topK === 'number' ? body.topK : 5;
     const result = await searchTool.execute!(
       { query: body.query, topK },
