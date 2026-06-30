@@ -10,7 +10,7 @@ import pytest
 from importlib.metadata import version
 
 from moss import __version__, MossClient
-from moss.client.moss_client import _get_query_url
+from moss.client.moss_client import _get_manage_url, _get_query_url
 
 
 class TestUnloadIndex:
@@ -205,18 +205,58 @@ class TestDictToSearchResult:
 class TestURLHelpers:
     """Tests for URL helper functions."""
 
-    def test_get_query_url_default(self):
+    def test_get_manage_url_default(self):
         with patch.dict("os.environ", {}, clear=True):
-            url = _get_query_url()
-            assert "usemoss.dev" in url
+            url = _get_manage_url()
+            assert "/v1/manage" in url
 
-    def test_get_query_url_overridden_by_env(self):
+    def test_get_manage_url_overridden_by_env(self):
         with patch.dict(
             "os.environ",
-            {"MOSS_QUERY_URL": "https://query.example.com/search"},
+            {"MOSS_CLOUD_API_MANAGE_URL": "https://custom.example.com/v1/manage"},
+        ):
+            url = _get_manage_url()
+            assert url == "https://custom.example.com/v1/manage"
+
+    def test_get_query_url_derived_from_manage_url(self):
+        with patch.dict(
+            "os.environ",
+            {"MOSS_CLOUD_API_MANAGE_URL": "https://api.example.com/v1/manage"},
+            clear=True,
+        ):
+            url = _get_query_url()
+            assert url == "https://api.example.com/query"
+
+    def test_get_query_url_legacy_env_var(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "MOSS_CLOUD_API_MANAGE_URL": "https://api.example.com/v1/manage",
+                "MOSS_CLOUD_QUERY_URL": "https://query.example.com/search",
+            },
         ):
             url = _get_query_url()
             assert url == "https://query.example.com/search"
+
+    def test_get_query_url_alias_env_var(self):
+        with patch.dict(
+            "os.environ",
+            {"MOSS_QUERY_URL": "https://query.alias.com/search"},
+            clear=True,
+        ):
+            url = _get_query_url()
+            assert url == "https://query.alias.com/search"
+
+    def test_get_query_url_legacy_takes_precedence_over_alias(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "MOSS_CLOUD_QUERY_URL": "https://legacy.example.com/q",
+                "MOSS_QUERY_URL": "https://alias.example.com/q",
+            },
+        ):
+            url = _get_query_url()
+            assert url == "https://legacy.example.com/q"
 
 
 class TestVersionExport:

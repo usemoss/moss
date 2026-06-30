@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
+_DEFAULT_MANAGE_URL = "https://service.usemoss.dev/v1/manage"
+
 from moss_core import (
     ManageClient,
     DocumentInfo,
@@ -29,9 +31,23 @@ from .session_index import SessionIndex
 logger = logging.getLogger(__name__)
 
 
+def _get_manage_url() -> str:
+    """Manage URL, overridable via env for staging/local/self-hosted setups."""
+    return os.getenv("MOSS_CLOUD_API_MANAGE_URL", _DEFAULT_MANAGE_URL)
+
+
 def _get_query_url() -> str:
-    """Query URL, overridable via env for local development."""
-    return os.getenv("MOSS_QUERY_URL", "https://service.usemoss.dev/query")
+    """
+    Query URL resolution order:
+      1. MOSS_CLOUD_QUERY_URL  (legacy name)
+      2. MOSS_QUERY_URL        (shorter alias)
+      3. Derived from manage URL by replacing /v1/manage → /query
+         so staging and self-hosted setups get the right endpoint automatically.
+    """
+    explicit = os.getenv("MOSS_CLOUD_QUERY_URL") or os.getenv("MOSS_QUERY_URL")
+    if explicit:
+        return explicit
+    return _get_manage_url().replace("/v1/manage", "/query")
 
 
 @dataclass
@@ -77,8 +93,9 @@ class MossClient:
         self._project_id = project_id
         self._project_key = project_key
         self._client_id = str(uuid.uuid4())
-        self._manage = ManageClient(project_id, project_key, client_id=self._client_id)
-        self._manager = IndexManager(project_id, project_key, client_id=self._client_id)
+        manage_url = _get_manage_url()
+        self._manage = ManageClient(project_id, project_key, manage_url, self._client_id)
+        self._manager = IndexManager(project_id, project_key, manage_url, self._client_id)
 
     # -- Mutations --------------------------------------------------
 
@@ -217,14 +234,32 @@ class MossClient:
         Bulk-load many indexes into memory. Best-effort: failures on individual
         names do not roll back successes. Returns a LoadIndexesResult with
         ``loaded`` (list of names) and ``failed`` (dict mapping name -> error).
+
+        Mirrors load_index(): warms the query model for each successfully loaded
+        index so text queries work without caller-supplied embeddings.
         """
-        return await asyncio.to_thread(
+        result = await asyncio.to_thread(
             self._manager.load_indexes,
             names,
             auto_refresh,
             polling_interval_in_seconds,
             None,
         )
+        # Warm query models in parallel — load_query_model is idempotent so
+        # indexes sharing a model only pay the cost once.
+        warm_results = await asyncio.gather(
+            *[
+                asyncio.to_thread(self._manager.load_query_model, name)
+                for name in result.loaded
+            ],
+            return_exceptions=True,
+        )
+        for name, exc in zip(result.loaded, warm_results):
+            if isinstance(exc, Exception):
+                logger.warning(
+                    "Failed to warm query model for '%s' after bulk load: %s", name, exc
+                )
+        return result
 
     async def unload_indexes(self, names: List[str]) -> None:
         """Bulk-unload many indexes. Idempotent for names that aren't loaded."""
@@ -356,10 +391,14 @@ class MossClient:
             client_id=self._client_id,
         )
 
-        loaded_doc_count = await asyncio.to_thread(sess._inner.load_index, index_name)
-        if loaded_doc_count > 0:
-            loaded_model_id = sess._inner.model_id
-            if model_id is not None and loaded_model_id != resolved_model_id:
+        await asyncio.to_thread(sess._inner.load_index, index_name)
+        # Always inspect the model after load — an existing empty cloud index still
+        # carries its original model. Gating on doc_count > 0 silently bypasses the
+        # mismatch check for empty indexes and can silently convert a custom or
+        # moss-mediumlm index into a moss-minilm session.
+        loaded_model_id = sess._inner.model_id
+        if loaded_model_id != resolved_model_id:
+            if model_id is not None:
                 raise ValueError(
                     f"Existing session index '{index_name}' uses model_id='{loaded_model_id}', "
                     f"but session() was called with model_id='{resolved_model_id}'. "
