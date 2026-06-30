@@ -271,12 +271,24 @@ class MossClient:
             ],
             return_exceptions=True,
         )
+        # Any index whose query-model warm-up failed cannot serve text queries.
+        # Move it from loaded → failed so callers see an accurate picture and
+        # query_multi_index() doesn't silently fail on an "loaded" index.
+        warm_failed: Dict[str, str] = {}
         for name, exc in zip(result.loaded, warm_results):
             if isinstance(exc, Exception):
                 logger.warning(
                     "Failed to warm query model for '%s' after bulk load: %s", name, exc
                 )
-        return result
+                warm_failed[name] = str(exc)
+
+        if not warm_failed:
+            return result
+
+        return LoadIndexesResult(
+            loaded=[n for n in result.loaded if n not in warm_failed],
+            failed={**result.failed, **warm_failed},
+        )
 
     async def unload_indexes(self, names: List[str]) -> None:
         """Bulk-unload many indexes. Idempotent for names that aren't loaded."""
@@ -409,15 +421,22 @@ class MossClient:
         )
 
         # Attempt to load an existing cloud index into the session.
-        # not-found/404 → fresh session (loaded=False); auth/network errors propagate.
+        # On failure, confirm the index truly doesn't exist via get_index() before
+        # treating this as a fresh session — avoids masking artifact-missing, bad-endpoint,
+        # or other non-index-not-found failures that would otherwise silently overwrite
+        # the cloud index on push_index().
         loaded = False
         try:
             await asyncio.to_thread(sess._inner.load_index, index_name)
             loaded = True
-        except RuntimeError as e:
-            msg = str(e).lower()
-            if "not found" not in msg and "404" not in msg:
-                raise
+        except RuntimeError as load_error:
+            try:
+                await asyncio.to_thread(self._manage.get_index, index_name)
+                # get_index succeeded → index exists, so the load failure is real.
+                raise load_error
+            except RuntimeError:
+                # get_index also failed → index genuinely doesn't exist → fresh session.
+                pass
 
         if loaded:
             # Always inspect the model regardless of doc count — an existing empty
