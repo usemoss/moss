@@ -42,27 +42,56 @@ def client():
 
 TURN_DOCS = [
     DocumentInfo(id="turn-1", text="Customer was charged twice for the March renewal."),
-    DocumentInfo(id="turn-2", text="Agent confirmed a refund for the duplicate charge."),
+    DocumentInfo(
+        id="turn-2", text="Agent confirmed a refund for the duplicate charge."
+    ),
     DocumentInfo(id="turn-3", text="Customer also asked to cancel auto-renew."),
-    DocumentInfo(id="turn-4", text="Agent placed a cancellation request for auto-renew."),
+    DocumentInfo(
+        id="turn-4", text="Agent placed a cancellation request for auto-renew."
+    ),
 ]
 
 PRODUCT_DOCS = [
-    DocumentInfo(id="p1", text="Sony WH-1000XM5 wireless headphones, 30-hour battery.", metadata={"category": "electronics"}),
-    DocumentInfo(id="p2", text="Bose QuietComfort Ultra over-ear headphones with ANC.", metadata={"category": "electronics"}),
-    DocumentInfo(id="p3", text="Apple AirPods Max with spatial audio and H1 chip.", metadata={"category": "electronics"}),
+    DocumentInfo(
+        id="p1",
+        text="Sony WH-1000XM5 wireless headphones, 30-hour battery.",
+        metadata={"category": "electronics"},
+    ),
+    DocumentInfo(
+        id="p2",
+        text="Bose QuietComfort Ultra over-ear headphones with ANC.",
+        metadata={"category": "electronics"},
+    ),
+    DocumentInfo(
+        id="p3",
+        text="Apple AirPods Max with spatial audio and H1 chip.",
+        metadata={"category": "electronics"},
+    ),
 ]
 
 REVIEW_DOCS = [
-    DocumentInfo(id="r1", text="Battery lasts a full transatlantic week easily.", metadata={"stars": "5"}),
-    DocumentInfo(id="r2", text="Comfortable but noise cancelling could be stronger.", metadata={"stars": "4"}),
-    DocumentInfo(id="r3", text="Sound quality incredible but battery degrades after a year.", metadata={"stars": "3"}),
+    DocumentInfo(
+        id="r1",
+        text="Battery lasts a full transatlantic week easily.",
+        metadata={"stars": "5"},
+    ),
+    DocumentInfo(
+        id="r2",
+        text="Comfortable but noise cancelling could be stronger.",
+        metadata={"stars": "4"},
+    ),
+    DocumentInfo(
+        id="r3",
+        text="Sound quality incredible but battery degrades after a year.",
+        metadata={"stars": "3"},
+    ),
 ]
 
 
 # ---------------------------------------------------------------------------
 # SessionIndex
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.e2e
 class TestSessionE2E:
@@ -101,7 +130,9 @@ class TestSessionE2E:
             assert len(all_docs) == len(TURN_DOCS)
 
             # get_docs — specific IDs
-            specific = await session.get_docs(GetDocumentsOptions(doc_ids=["turn-1", "turn-2"]))
+            specific = await session.get_docs(
+                GetDocumentsOptions(doc_ids=["turn-1", "turn-2"])
+            )
             assert len(specific) == 2
             ids = {d.id for d in specific}
             assert ids == {"turn-1", "turn-2"}
@@ -112,7 +143,9 @@ class TestSessionE2E:
             assert session.doc_count == len(TURN_DOCS) - 1
 
             # Confirm deleted doc is gone
-            after_delete = await session.get_docs(GetDocumentsOptions(doc_ids=["turn-4"]))
+            after_delete = await session.get_docs(
+                GetDocumentsOptions(doc_ids=["turn-4"])
+            )
             assert len(after_delete) == 0
 
             # Push to cloud
@@ -122,7 +155,9 @@ class TestSessionE2E:
             assert pushed.job_id
             assert pushed.index_name == index_name
             assert pushed.doc_count == len(TURN_DOCS) - 1
-            print(f"\n  session push: {elapsed:.1f}s, job={pushed.job_id}, status={pushed.status}")
+            print(
+                f"\n  session push: {elapsed:.1f}s, job={pushed.job_id}, status={pushed.status}"
+            )
 
         finally:
             try:
@@ -180,6 +215,7 @@ class TestSessionE2E:
 # load_indexes / unload_indexes / query_multi_index
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.e2e
 class TestMultiIndexE2E:
     @pytest.mark.asyncio
@@ -215,7 +251,9 @@ class TestMultiIndexE2E:
             # Each result must carry its source index name
             for doc in results.docs:
                 assert doc.index_name in (products_idx, reviews_idx)
-            print(f"\n  multi-index query: {len(results.docs)} docs across {len(load_result.loaded)} indexes")
+            print(
+                f"\n  multi-index query: {len(results.docs)} docs across {len(load_result.loaded)} indexes"
+            )
 
             # Bulk-unload
             await client.unload_indexes(load_result.loaded)
@@ -241,7 +279,9 @@ class TestMultiIndexE2E:
             load_result = await client.load_indexes([real_idx, "does-not-exist-xyz"])
             assert real_idx in load_result.loaded
             assert "does-not-exist-xyz" in load_result.failed
-            print(f"\n  partial load — loaded: {load_result.loaded}, failed: {load_result.failed}")
+            print(
+                f"\n  partial load — loaded: {load_result.loaded}, failed: {load_result.failed}"
+            )
 
             await client.unload_indexes(load_result.loaded)
 
@@ -266,6 +306,7 @@ class TestMultiIndexE2E:
 # ParseFileInput + create_index_from_files
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.e2e
 class TestCreateIndexFromFilesE2E:
     @pytest.mark.asyncio
@@ -274,14 +315,20 @@ class TestCreateIndexFromFilesE2E:
         with pytest.raises(ValueError, match="custom"):
             await client.create_index_from_files(
                 "irrelevant",
-                [ParseFileInput(name="f.pdf", content_type="application/pdf", data=b"%PDF-1.4")],
+                [
+                    ParseFileInput(
+                        name="f.pdf", content_type="application/pdf", data=b"%PDF-1.4"
+                    )
+                ],
                 model_id="custom",
             )
 
 
 class TestParseFileInput:
     def test_path_only(self):
-        f = ParseFileInput(name="doc.pdf", content_type="application/pdf", path="/tmp/doc.pdf")
+        f = ParseFileInput(
+            name="doc.pdf", content_type="application/pdf", path="/tmp/doc.pdf"
+        )
         assert f.name == "doc.pdf"
         assert f.content_type == "application/pdf"
         assert f.path == "/tmp/doc.pdf"

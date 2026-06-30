@@ -9,8 +9,6 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-_DEFAULT_MANAGE_URL = "https://service.usemoss.dev/v1/manage"
-
 from moss_core import (
     ManageClient,
     DocumentInfo,
@@ -29,6 +27,8 @@ from moss_core import (
 from .session_index import SessionIndex
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_MANAGE_URL = "https://service.usemoss.dev/v1/manage"
 
 
 def _get_manage_url() -> str:
@@ -59,6 +59,7 @@ class ParseFileInput:
     Both ``name`` and ``content_type`` are required. Only ``"application/pdf"``
     is currently supported as ``content_type``.
     """
+
     name: str
     content_type: str
     path: Optional[str] = None
@@ -94,8 +95,12 @@ class MossClient:
         self._project_key = project_key
         self._client_id = str(uuid.uuid4())
         manage_url = _get_manage_url()
-        self._manage = ManageClient(project_id, project_key, manage_url, self._client_id)
-        self._manager = IndexManager(project_id, project_key, manage_url, self._client_id)
+        self._manage = ManageClient(
+            project_id, project_key, manage_url, self._client_id
+        )
+        self._manager = IndexManager(
+            project_id, project_key, manage_url, self._client_id
+        )
 
     # -- Mutations --------------------------------------------------
 
@@ -108,7 +113,10 @@ class MossClient:
         """Create a new index and populate it with documents."""
         resolved_model_id = self._resolve_model_id(docs, model_id)
         return await asyncio.to_thread(
-            self._manage.create_index, name, docs, resolved_model_id,
+            self._manage.create_index,
+            name,
+            docs,
+            resolved_model_id,
         )
 
     async def create_index_from_files(
@@ -139,6 +147,7 @@ class MossClient:
                 "Use create_index() with pre-computed embeddings instead."
             )
         from moss_core import ParseFileInput as CoreParseFileInput
+
         core_files = [
             CoreParseFileInput(f.name, f.content_type, path=f.path, data=f.data)
             for f in files
@@ -155,7 +164,10 @@ class MossClient:
     ) -> MutationResult:
         """Add or update documents in an index."""
         return await asyncio.to_thread(
-            self._manage.add_docs, name, docs, options,
+            self._manage.add_docs,
+            name,
+            docs,
+            options,
         )
 
     async def delete_docs(
@@ -165,7 +177,9 @@ class MossClient:
     ) -> MutationResult:
         """Delete documents from an index by their IDs."""
         return await asyncio.to_thread(
-            self._manage.delete_docs, name, doc_ids,
+            self._manage.delete_docs,
+            name,
+            doc_ids,
         )
 
     async def get_job_status(self, job_id: str) -> JobStatusResponse:
@@ -210,7 +224,10 @@ class MossClient:
         """
         try:
             await asyncio.to_thread(
-                self._manager.load_index, name, auto_refresh, polling_interval_in_seconds,
+                self._manager.load_index,
+                name,
+                auto_refresh,
+                polling_interval_in_seconds,
             )
             await asyncio.to_thread(self._manager.load_query_model, name)
             return name
@@ -429,7 +446,12 @@ class MossClient:
         if query_embedding is None:
             try:
                 return await asyncio.to_thread(
-                    self._manager.query_text, name, query, top_k, alpha, filter_,
+                    self._manager.query_text,
+                    name,
+                    query,
+                    top_k,
+                    alpha,
+                    filter_,
                 )
             except RuntimeError as e:
                 if "requires explicit query embeddings" in str(e):
@@ -440,7 +462,13 @@ class MossClient:
                 raise
 
         return await asyncio.to_thread(
-            self._manager.query, name, query, list(query_embedding), top_k, alpha, filter_,
+            self._manager.query,
+            name,
+            query,
+            list(query_embedding),
+            top_k,
+            alpha,
+            filter_,
         )
 
     async def _query_cloud(
