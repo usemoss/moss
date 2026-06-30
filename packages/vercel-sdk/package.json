@@ -36,7 +36,7 @@
     "zod": "^3.25.76 || ^4.1.8"
   },
   "devDependencies": {
-    "@moss-dev/moss": "latest",
+    "@moss-dev/moss": "^1.0.0",
     "@types/node": "22.13.14",
     "ai": "7.0.8",
     "tsup": "8.4.0",
