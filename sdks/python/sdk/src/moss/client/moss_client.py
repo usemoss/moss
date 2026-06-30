@@ -408,20 +408,31 @@ class MossClient:
             client_id=self._client_id,
         )
 
-        await asyncio.to_thread(sess._inner.load_index, index_name)
-        # Always inspect the model after load — an existing empty cloud index still
-        # carries its original model. Gating on doc_count > 0 silently bypasses the
-        # mismatch check for empty indexes and can silently convert a custom or
-        # moss-mediumlm index into a moss-minilm session.
-        loaded_model_id = sess._inner.model_id
-        if loaded_model_id != resolved_model_id:
-            if model_id is not None:
-                raise ValueError(
-                    f"Existing session index '{index_name}' uses model_id='{loaded_model_id}', "
-                    f"but session() was called with model_id='{resolved_model_id}'. "
-                    "Omit model_id to adopt the stored model or pass the matching model_id."
-                )
-            sess._model_id = loaded_model_id
+        # Attempt to load an existing cloud index into the session.
+        # not-found/404 → fresh session (loaded=False); auth/network errors propagate.
+        loaded = False
+        try:
+            await asyncio.to_thread(sess._inner.load_index, index_name)
+            loaded = True
+        except RuntimeError as e:
+            msg = str(e).lower()
+            if "not found" not in msg and "404" not in msg:
+                raise
+
+        if loaded:
+            # Always inspect the model regardless of doc count — an existing empty
+            # cloud index still carries its original model, so gating on doc_count > 0
+            # would silently convert a custom/moss-mediumlm index into a moss-minilm
+            # session.
+            loaded_model_id = sess._inner.model_id
+            if loaded_model_id != resolved_model_id:
+                if model_id is not None:
+                    raise ValueError(
+                        f"Existing session index '{index_name}' uses model_id='{loaded_model_id}', "
+                        f"but session() was called with model_id='{resolved_model_id}'. "
+                        "Omit model_id to adopt the stored model or pass the matching model_id."
+                    )
+                sess._model_id = loaded_model_id
 
         if sess._model_id != "custom":
             await sess._get_embedding_service()
