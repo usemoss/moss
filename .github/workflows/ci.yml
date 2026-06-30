@@ -125,17 +125,28 @@ jobs:
 
   vercel-sdk-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - node-version: '20'
+            ai-version: '^6.0.0'
+          - node-version: '22'
+            ai-version: '^7.0.0'
+    name: vercel-sdk-test (ai@${{ matrix.ai-version }}, node@${{ matrix.node-version }})
     steps:
     - uses: actions/checkout@v4
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22'
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
         cache-dependency-path: packages/vercel-sdk/package-lock.json
     - name: Install dependencies
       working-directory: packages/vercel-sdk
       run: npm ci
+    - name: Override ai version
+      working-directory: packages/vercel-sdk
+      run: npm install --no-save ai@${{ matrix.ai-version }}
     - name: Build
       working-directory: packages/vercel-sdk
       run: npm run build
