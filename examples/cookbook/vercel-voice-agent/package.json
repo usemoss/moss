@@ -8,14 +8,14 @@
     "start": "next start"
   },
   "dependencies": {
-    "@ai-sdk/deepgram": "^3.0.2",
     "@ai-sdk/gateway": "^4.0.6",
+    "@ai-sdk/react": "^4.0.9",
     "@moss-dev/moss": "latest",
+    "@moss-tools/vercel-sdk": "^0.1.1",
     "ai": "^7.0.8",
     "next": "^15.0.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zod": "^3.25.76"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
