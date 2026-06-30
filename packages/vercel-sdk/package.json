@@ -1,6 +1,6 @@
 {
   "name": "@moss-tools/vercel-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Vercel AI SDK tools for MOSS semantic search",
   "type": "module",
   "sideEffects": false,
@@ -32,16 +32,16 @@
   "license": "BSD-2-Clause",
   "peerDependencies": {
     "@moss-dev/moss": "^1.0.0",
-    "ai": "^6.0.0",
+    "ai": "^6.0.0 || ^7.0.0",
     "zod": "^3.25.76 || ^4.1.8"
   },
   "devDependencies": {
-    "@moss-dev/moss": "1.0.0",
-    "ai": "6.0.97",
-    "zod": "3.25.76",
+    "@moss-dev/moss": "latest",
     "@types/node": "22.13.14",
+    "ai": "7.0.8",
     "tsup": "8.4.0",
     "typescript": "5.8.2",
-    "vitest": "3.2.6"
+    "vitest": "3.2.6",
+    "zod": "3.25.76"
   }
 }
