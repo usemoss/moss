@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moss"
-version = "1.0.0b19"
-description = "Python SDK for semantic search with on-device AI capabilities"
+version = "1.4.1"
+description = "Python SDK for semantic search with on-device AI capabilities, including local-first session indexing"
 readme = "README.md"
 license-files = ["LICENSE"]
 authors = [
@@ -28,7 +28,7 @@ requires-python = ">=3.10"
 dependencies = [
     "typing-extensions>=4.0.0",
     "httpx>=0.25.0",
-    "inferedge-moss-core==0.8.7",
+    "inferedge-moss-core==0.17.0",
 ]
 
 [project.optional-dependencies]
@@ -77,6 +77,13 @@ target-version = ['py310']
 [tool.isort]
 profile = "black"
 line_length = 88
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+markers = [
+    "e2e: integration tests that require real cloud credentials (MOSS_TEST_PROJECT_ID / MOSS_TEST_PROJECT_KEY)",
+    "slow: tests that take a long time to run (large indexes, etc.)",
+]
 
 [tool.mypy]
 python_version = "3.10"

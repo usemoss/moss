@@ -23,7 +23,7 @@ def raw_mocks():
 
 
 class TestConstructor:
-    def test_manage_client_created_with_manage_url(self, raw_mocks):
+    def test_manage_client_created_with_credentials(self, raw_mocks):
         mock_manage_cls, mock_mgr_cls = raw_mocks
         MossClient("pid", "pkey")
 
@@ -31,9 +31,10 @@ class TestConstructor:
         args = mock_manage_cls.call_args[0]
         assert args[0] == "pid"
         assert args[1] == "pkey"
-        assert "/v1/manage" in args[2]
+        # client_id is passed as a keyword arg; URL is now Rust-internal
+        assert "client_id" in mock_manage_cls.call_args[1]
 
-    def test_index_manager_created_with_manage_url(self, raw_mocks):
+    def test_index_manager_created_with_credentials(self, raw_mocks):
         mock_manage_cls, mock_mgr_cls = raw_mocks
         MossClient("pid", "pkey")
 
@@ -41,7 +42,7 @@ class TestConstructor:
         args = mock_mgr_cls.call_args[0]
         assert args[0] == "pid"
         assert args[1] == "pkey"
-        assert "/v1/manage" in args[2]
+        assert "client_id" in mock_mgr_cls.call_args[1]
 
 
 # -- Model ID Resolution ----------------------------------------------

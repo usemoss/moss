@@ -4,16 +4,18 @@ import asyncio
 import logging
 import os
 import uuid
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import httpx
+
 from moss_core import (
-    CLOUD_API_MANAGE_URL,
     ManageClient,
     DocumentInfo,
     GetDocumentsOptions,
     IndexInfo,
     IndexManager,
+    LoadIndexesResult,
     MutationOptions,
     MutationResult,
     JobStatusResponse,
@@ -22,20 +24,29 @@ from moss_core import (
     SearchResult,
 )
 
+from .session_index import SessionIndex
+
 logger = logging.getLogger(__name__)
 
 
-def _get_manage_url() -> str:
-    """Manage URL, overridable via env for local development."""
-    return os.getenv("MOSS_CLOUD_API_MANAGE_URL", CLOUD_API_MANAGE_URL)
-
-
 def _get_query_url() -> str:
-    """Query URL, derived from manage URL or overridable via env."""
-    explicit = os.getenv("MOSS_CLOUD_QUERY_URL")
-    if explicit:
-        return explicit
-    return _get_manage_url().replace("/v1/manage", "/query")
+    """Query URL, overridable via env for local development."""
+    return os.getenv("MOSS_QUERY_URL", "https://service.usemoss.dev/query")
+
+
+@dataclass
+class ParseFileInput:
+    """
+    Input descriptor for a single file in the parse pipeline.
+
+    Either ``path`` (filesystem path) or ``data`` (raw bytes) must be provided.
+    Both ``name`` and ``content_type`` are required. Only ``"application/pdf"``
+    is currently supported as ``content_type``.
+    """
+    name: str
+    content_type: str
+    path: Optional[str] = None
+    data: Optional[bytes] = None
 
 
 class MossClient:
@@ -66,15 +77,10 @@ class MossClient:
         self._project_id = project_id
         self._project_key = project_key
         self._client_id = str(uuid.uuid4())
-        manage_url = _get_manage_url()
-        self._manage = ManageClient(
-            project_id, project_key, manage_url, self._client_id
-        )
-        self._manager = IndexManager(
-            project_id, project_key, manage_url, self._client_id
-        )
+        self._manage = ManageClient(project_id, project_key, client_id=self._client_id)
+        self._manager = IndexManager(project_id, project_key, client_id=self._client_id)
 
-    # -- Mutations (via Rust ManageClient) --------------------------
+    # -- Mutations --------------------------------------------------
 
     async def create_index(
         self,
@@ -85,10 +91,43 @@ class MossClient:
         """Create a new index and populate it with documents."""
         resolved_model_id = self._resolve_model_id(docs, model_id)
         return await asyncio.to_thread(
-            self._manage.create_index,
-            name,
-            docs,
-            resolved_model_id,
+            self._manage.create_index, name, docs, resolved_model_id,
+        )
+
+    async def create_index_from_files(
+        self,
+        name: str,
+        files: List[ParseFileInput],
+        model_id: Optional[str] = None,
+    ) -> MutationResult:
+        """
+        Create a new index by uploading raw files (PDFs) for server-side
+        parsing and embedding. At most 20 files per call.
+
+        Args:
+            name: Name for the new index.
+            files: List of ParseFileInput. Each requires ``name`` and
+                   ``content_type``, plus at least one of ``path`` or ``data``.
+            model_id: Embedding model. Defaults to 'moss-minilm'. 'custom' is
+                      not supported (embeddings are generated server-side).
+
+        Raises:
+            ValueError: If model_id is 'custom'.
+        """
+        resolved = model_id or self.DEFAULT_MODEL_ID
+        if resolved == "custom":
+            raise ValueError(
+                "create_index_from_files does not support model_id='custom' — "
+                "the parse pipeline generates embeddings server-side. "
+                "Use create_index() with pre-computed embeddings instead."
+            )
+        from moss_core import ParseFileInput as CoreParseFileInput
+        core_files = [
+            CoreParseFileInput(f.name, f.content_type, path=f.path, data=f.data)
+            for f in files
+        ]
+        return await asyncio.to_thread(
+            self._manage.create_index_from_files, name, core_files, resolved
         )
 
     async def add_docs(
@@ -99,10 +138,7 @@ class MossClient:
     ) -> MutationResult:
         """Add or update documents in an index."""
         return await asyncio.to_thread(
-            self._manage.add_docs,
-            name,
-            docs,
-            options,
+            self._manage.add_docs, name, docs, options,
         )
 
     async def delete_docs(
@@ -112,16 +148,14 @@ class MossClient:
     ) -> MutationResult:
         """Delete documents from an index by their IDs."""
         return await asyncio.to_thread(
-            self._manage.delete_docs,
-            name,
-            doc_ids,
+            self._manage.delete_docs, name, doc_ids,
         )
 
     async def get_job_status(self, job_id: str) -> JobStatusResponse:
         """Get the status of a bulk operation job."""
         return await asyncio.to_thread(self._manage.get_job_status, job_id)
 
-    # -- Read operations (via Rust ManageClient) --------------------
+    # -- Read operations --------------------------------------------
 
     async def get_index(self, name: str) -> IndexInfo:
         """Get information about a specific index."""
@@ -143,7 +177,7 @@ class MossClient:
         """Retrieve documents from an index."""
         return await asyncio.to_thread(self._manage.get_docs, name, options)
 
-    # -- Index loading & querying -----------------------------------
+    # -- Index loading ----------------------------------------------
 
     async def load_index(
         self,
@@ -152,17 +186,14 @@ class MossClient:
         polling_interval_in_seconds: int = 600,
     ) -> str:
         """
-        Downloads an index from the cloud into memory for fast local querying.
+        Download an index from the cloud into memory for fast local querying.
 
         Without load_index(), query() falls back to the cloud API (~100-500ms).
         With load_index(), queries run entirely in-memory (~1-10ms).
         """
         try:
             await asyncio.to_thread(
-                self._manager.load_index,
-                name,
-                auto_refresh,
-                polling_interval_in_seconds,
+                self._manager.load_index, name, auto_refresh, polling_interval_in_seconds,
             )
             await asyncio.to_thread(self._manager.load_query_model, name)
             return name
@@ -176,6 +207,31 @@ class MossClient:
         except RuntimeError as e:
             raise RuntimeError(f"Failed to unload index '{name}': {e}") from e
 
+    async def load_indexes(
+        self,
+        names: List[str],
+        auto_refresh: bool = False,
+        polling_interval_in_seconds: int = 600,
+    ) -> LoadIndexesResult:
+        """
+        Bulk-load many indexes into memory. Best-effort: failures on individual
+        names do not roll back successes. Returns a LoadIndexesResult with
+        ``loaded`` (list of names) and ``failed`` (dict mapping name -> error).
+        """
+        return await asyncio.to_thread(
+            self._manager.load_indexes,
+            names,
+            auto_refresh,
+            polling_interval_in_seconds,
+            None,
+        )
+
+    async def unload_indexes(self, names: List[str]) -> None:
+        """Bulk-unload many indexes. Idempotent for names that aren't loaded."""
+        await asyncio.to_thread(self._manager.unload_indexes, names)
+
+    # -- Querying ---------------------------------------------------
+
     async def query(
         self,
         name: str,
@@ -185,8 +241,8 @@ class MossClient:
         """
         Perform a semantic similarity search.
 
-        If the index is loaded locally (via load_index), queries run in-memory.
-        Otherwise, falls back to the cloud query API.
+        Queries run in-memory if the index is loaded via load_index(),
+        otherwise falls back to the cloud query API.
 
         Args:
             options: Query options (top_k, alpha, embedding, filter). Example filter:
@@ -208,6 +264,114 @@ class MossClient:
             )
         return await self._query_cloud(name, query, options)
 
+    async def query_multi_index(
+        self,
+        names: List[str],
+        query: str,
+        options: Optional[QueryOptions] = None,
+    ) -> SearchResult:
+        """
+        Search across multiple loaded indexes and return the global top-K.
+
+        All requested indexes must be loaded locally and share the same
+        embedding model. Each result document is tagged with its source
+        ``index_name``.
+
+        Multi-index search is embedding-only — ``options.alpha`` is ignored
+        (forced to 1.0) because BM25 IDF is per-corpus and not comparable
+        across indexes.
+
+        Args:
+            names: Names of indexes to search; must be non-empty and all loaded.
+            query: The query text.
+            options: Query options (top_k, embedding, filter). ``alpha`` is ignored.
+        """
+        if not names:
+            raise ValueError("query_multi_index requires at least one index name")
+
+        top_k = getattr(options, "top_k", None) or 10
+        query_embedding = getattr(options, "embedding", None)
+        filter_ = getattr(options, "filter", None)
+
+        if query_embedding is not None:
+            return await asyncio.to_thread(
+                self._manager.query_multi_index,
+                names,
+                query,
+                list(query_embedding),
+                top_k,
+                filter_,
+            )
+
+        try:
+            return await asyncio.to_thread(
+                self._manager.query_multi_index_text,
+                names,
+                query,
+                top_k,
+                filter_,
+            )
+        except RuntimeError as e:
+            if "requires explicit query embeddings" in str(e):
+                raise ValueError(
+                    "One or more indexes use custom embeddings. "
+                    "Query embeddings must be provided via QueryOptions.embedding."
+                ) from e
+            raise
+
+    # -- Sessions ---------------------------------------------------
+
+    async def session(
+        self,
+        index_name: str,
+        model_id: Optional[str] = None,
+    ) -> SessionIndex:
+        """
+        Create or resume a local session index.
+
+        If a cloud index with the given name already exists it is automatically
+        loaded into the session; otherwise the session starts empty. The
+        workflow is the same either way — add docs, query, push at the end.
+
+        Args:
+            index_name: Cloud index name used as the push target.
+            model_id: Embedding model. Defaults to "moss-minilm".
+                      Other options: "moss-mediumlm", "custom".
+
+        Returns:
+            SessionIndex: A local index ready to use.
+
+        Raises:
+            RuntimeError: If project credentials are invalid.
+            ValueError: If an existing cloud index uses a different model than
+                        the explicit model_id passed here.
+        """
+        resolved_model_id = model_id or self.DEFAULT_MODEL_ID
+
+        sess = SessionIndex._create(
+            name=index_name,
+            model_id=resolved_model_id,
+            project_id=self._project_id,
+            project_key=self._project_key,
+            client_id=self._client_id,
+        )
+
+        loaded_doc_count = await asyncio.to_thread(sess._inner.load_index, index_name)
+        if loaded_doc_count > 0:
+            loaded_model_id = sess._inner.model_id
+            if model_id is not None and loaded_model_id != resolved_model_id:
+                raise ValueError(
+                    f"Existing session index '{index_name}' uses model_id='{loaded_model_id}', "
+                    f"but session() was called with model_id='{resolved_model_id}'. "
+                    "Omit model_id to adopt the stored model or pass the matching model_id."
+                )
+            sess._model_id = loaded_model_id
+
+        if sess._model_id != "custom":
+            await sess._get_embedding_service()
+
+        return sess
+
     # -- Internal ---------------------------------------------------
 
     async def _query_local(
@@ -216,24 +380,17 @@ class MossClient:
         query: str,
         options: Optional[QueryOptions],
     ) -> SearchResult:
-        top_k = getattr(options, "top_k", None)
-        if top_k is None:
-            top_k = 5
-        alpha = getattr(options, "alpha", None)
-        if alpha is None:
-            alpha = 0.8
+        top_k_raw = getattr(options, "top_k", None)
+        top_k = 5 if top_k_raw is None else top_k_raw
+        alpha_raw = getattr(options, "alpha", None)
+        alpha = 0.8 if alpha_raw is None else alpha_raw
         query_embedding = getattr(options, "embedding", None)
-        filter = getattr(options, "filter", None)
+        filter_ = getattr(options, "filter", None)
 
         if query_embedding is None:
             try:
                 return await asyncio.to_thread(
-                    self._manager.query_text,
-                    name,
-                    query,
-                    top_k,
-                    alpha,
-                    filter,
+                    self._manager.query_text, name, query, top_k, alpha, filter_,
                 )
             except RuntimeError as e:
                 if "requires explicit query embeddings" in str(e):
@@ -244,13 +401,7 @@ class MossClient:
                 raise
 
         return await asyncio.to_thread(
-            self._manager.query,
-            name,
-            query,
-            list(query_embedding),
-            top_k,
-            alpha,
-            filter,
+            self._manager.query, name, query, list(query_embedding), top_k, alpha, filter_,
         )
 
     async def _query_cloud(

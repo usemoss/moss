@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import ClassVar, Dict, List, Optional, Sequence
+from typing import ClassVar, Dict, List, Optional, Sequence, Tuple
 
 
 class MossClient:
@@ -10,11 +10,24 @@ class MossClient:
 
     def __init__(self, project_id: str, project_key: str) -> None: ...
 
+    async def session(
+        self,
+        index_name: str,
+        model_id: Optional[str] = None,
+    ) -> SessionIndex: ...
+
     async def create_index(
         self,
         name: str,
         docs: List[DocumentInfo],
         model_id: Optional[str] = ...,
+    ) -> MutationResult: ...
+
+    async def create_index_from_files(
+        self,
+        name: str,
+        files: List[ParseFileInput],
+        model_id: Optional[str] = None,
     ) -> MutationResult: ...
 
     async def add_docs(
@@ -53,6 +66,15 @@ class MossClient:
 
     async def unload_index(self, name: str) -> None: ...
 
+    async def load_indexes(
+        self,
+        names: List[str],
+        auto_refresh: bool = False,
+        polling_interval_in_seconds: int = 600,
+    ) -> LoadIndexesResult: ...
+
+    async def unload_indexes(self, names: List[str]) -> None: ...
+
     async def query(
         self,
         name: str,
@@ -60,9 +82,83 @@ class MossClient:
         options: Optional[QueryOptions] = None,
     ) -> SearchResult: ...
 
+    async def query_multi_index(
+        self,
+        names: List[str],
+        query: str,
+        options: Optional[QueryOptions] = None,
+    ) -> SearchResult: ...
+
+
+class SessionIndex:
+    """Local in-session index for real-time indexing and querying."""
+
+    name: str
+    doc_count: int
+
+    async def add_docs(
+        self,
+        docs: List[DocumentInfo],
+        options: Optional[MutationOptions] = None,
+    ) -> Tuple[int, int]: ...
+
+    async def delete_docs(self, doc_ids: List[str]) -> int: ...
+
+    async def get_docs(
+        self,
+        options: Optional[GetDocumentsOptions] = None,
+    ) -> List[DocumentInfo]: ...
+
+    async def query(
+        self,
+        query: str,
+        options: Optional[QueryOptions] = None,
+    ) -> SearchResult: ...
+
+    async def push_index(self) -> PushIndexResult: ...
+
+
+class ParseFileInput:
+    """Input descriptor for a single file in the parse pipeline."""
+
+    name: str
+    content_type: str
+    path: Optional[str]
+    data: Optional[bytes]
+
+    def __init__(
+        self,
+        name: str,
+        content_type: str,
+        path: Optional[str] = None,
+        data: Optional[bytes] = None,
+    ) -> None: ...
+
+
+class PushIndexResult:
+    """Result from SessionIndex.push_index()."""
+
+    job_id: str
+    index_name: str
+    doc_count: int
+    status: str
+
+
+class LoadIndexesResult:
+    """Outcome of a load_indexes call. Best-effort across the batch."""
+
+    loaded: List[str]
+    failed: Dict[str, str]
+
+    def __init__(
+        self,
+        loaded: Optional[List[str]] = None,
+        failed: Optional[Dict[str, str]] = None,
+    ) -> None: ...
+
 
 class MutationResult:
-    """Return value from create_index/add_docs/delete_docs."""
+    """Return value from create_index / add_docs / delete_docs."""
 
     job_id: str
     index_name: str
@@ -86,8 +182,6 @@ class GetDocumentsOptions:
 
 
 class JobStatus:
-    """Enum-like class for job status values."""
-
     PENDING_UPLOAD: ClassVar[str]
     UPLOADING: ClassVar[str]
     BUILDING: ClassVar[str]
@@ -98,8 +192,6 @@ class JobStatus:
 
 
 class JobPhase:
-    """Enum-like class for job phase values."""
-
     DOWNLOADING: ClassVar[str]
     DESERIALIZING: ClassVar[str]
     GENERATING_EMBEDDINGS: ClassVar[str]
@@ -111,8 +203,6 @@ class JobPhase:
 
 
 class JobProgress:
-    """Progress update for a job."""
-
     job_id: str
     status: JobStatus
     progress: float
@@ -120,8 +210,6 @@ class JobProgress:
 
 
 class JobStatusResponse:
-    """Full status response from get_job_status."""
-
     job_id: str
     status: JobStatus
     progress: float
@@ -143,12 +231,14 @@ class QueryResultDocumentInfo:
     text: str
     metadata: Optional[Dict[str, str]]
     score: float
+    index_name: Optional[str]
     def __init__(
         self,
         id: str,
         text: str,
         metadata: Optional[Dict[str, str]] = ...,
         score: float = ...,
+        index_name: Optional[str] = ...,
     ) -> None: ...
 
 
@@ -230,6 +320,10 @@ __version__: str
 
 __all__ = [
     "MossClient",
+    "SessionIndex",
+    "ParseFileInput",
+    "PushIndexResult",
+    "LoadIndexesResult",
     "DocumentInfo",
     "GetDocumentsOptions",
     "IndexInfo",
