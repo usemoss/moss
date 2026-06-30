@@ -91,11 +91,6 @@ def _index_name_for(policy_number: str) -> str:
     return f"policy-{policy_number.lower()}"
 
 
-# ---------------------------------------------------------------------------
-# Document loading
-# ---------------------------------------------------------------------------
-
-
 def _load_json_docs(path: Path) -> list[DocumentInfo]:
     raw = json.loads(path.read_text())
     return [

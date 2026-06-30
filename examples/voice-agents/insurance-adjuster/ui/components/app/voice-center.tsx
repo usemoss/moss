@@ -11,7 +11,6 @@ import {
 } from '@livekit/components-react';
 import { cn } from '@/lib/utils';
 import type { ClaimState } from '@/hooks/useClaimState';
-import type { MossInsuranceEvent } from '@/hooks/useMossInsuranceEvents';
 
 // ---- Agent state label ----
 
@@ -104,35 +103,6 @@ function TopBar({
   );
 }
 
-// ---- Moss retrieval strip ----
-
-function RetrievalStrip({ events }: { events: MossInsuranceEvent[] }) {
-  if (events.length === 0) return null;
-  const recent = events.slice(-3).reverse();
-
-  return (
-    <div className="flex items-center gap-3 border-b border-[#1c2438] px-5 py-1.5">
-      <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-[#263044]">Moss</span>
-      <div className="flex items-center gap-4">
-        {recent.map((e) => (
-          <span key={e.id} className="flex items-center gap-1 text-[10px] text-[#3f4f63]">
-            <span className={cn(
-              'font-medium',
-              e.source === 'policy' ? 'text-[#4b6cb7]' :
-              e.source === 'claims-kb' ? 'text-[#3f4f63]' : 'text-[#16a34a]'
-            )}>
-              {e.source === 'policy' ? 'Policy' : e.source === 'claims-kb' ? 'KB' : 'Session'}
-            </span>
-            {e.timeTakenMs != null && (
-              <span className="font-mono text-[#16a34a]">{e.timeTakenMs.toFixed(0)}ms</span>
-            )}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ---- Transcript entry ----
 
 function TranscriptEntry({ text, isAgent }: { text: string; isAgent: boolean }) {
@@ -172,11 +142,10 @@ function TranscriptEntry({ text, isAgent }: { text: string; isAgent: boolean }) 
 
 interface VoiceCenterProps {
   claimState: ClaimState;
-  mossEvents: MossInsuranceEvent[];
   onDisconnect: () => void;
 }
 
-export function VoiceCenter({ claimState, mossEvents, onDisconnect }: VoiceCenterProps) {
+export function VoiceCenter({ claimState, onDisconnect }: VoiceCenterProps) {
   const { localParticipant } = useLocalParticipant();
   const transcriptions = useTranscriptions();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -201,8 +170,6 @@ export function VoiceCenter({ claimState, mossEvents, onDisconnect }: VoiceCente
         isMuted={isMuted}
         onToggleMic={toggleMic}
       />
-
-      <RetrievalStrip events={mossEvents} />
 
       {/* Transcript */}
       <div className="flex-1 overflow-y-auto px-5 py-5">

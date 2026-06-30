@@ -9,8 +9,6 @@ dependencies = [
     "moss>=1.1.1",
     "livekit-agents[openai,deepgram,silero,turn-detector,cartesia]>=1.0",
     "httpx>=0.27",
-    "beautifulsoup4>=4.12",
-    "pdfplumber>=0.11",
 ]
 
 [dependency-groups]
