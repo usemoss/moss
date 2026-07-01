@@ -7,10 +7,12 @@ on:
   issue_comment:
     types: [created]
 
-# Only collide for runs that review the same PR (a push or a trusted @codex review
-# on PR #N share group codex-review-N). The comment branch mirrors the full authorize
-# gate, including author_association, so an untrusted comment can never land in the
-# shared group and cancel an in-flight review; it falls back to the unique run id.
+# Only collide for runs that review the same PR (a push, or a trusted @codex review
+# on PR #N, share group codex-review-N). The comment branch mirrors the authorize
+# TRIGGER conditions (event + @codex review + trusted author_association) so an
+# untrusted comment can't land in the shared group and cancel an in-flight review;
+# it falls back to the unique run id. The same-repo/fork check needs an API call and
+# so can't run in this expression -- it is enforced inside the authorize job.
 concurrency:
   group: >-
     codex-review-${{
