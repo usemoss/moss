@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "e2b-moss-code-agent"
+version = "0.1.0"
+description = "Self-healing code agent powered by Moss + E2B"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "BSD-2-Clause" }
+authors = [
+    { name = "InferEdge Inc.", email = "contact@moss.dev" }
+]
+dependencies = [
+    "moss>=1.0.0",
+    "e2b>=2.13.0",
+    "groq>=0.22.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools]
+py-modules = ["code_agent", "code_index", "sandbox_runner"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["test_integration.py"]
