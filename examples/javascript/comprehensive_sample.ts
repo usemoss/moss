@@ -170,9 +170,10 @@ async function comprehensiveMossExample(): Promise<void> {
     }
   ];
 
-  // Create dynamic index name with timestamp
+  // Create dynamic index names with timestamp
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const indexName = `comprehensive-demo-${timestamp}`;
+  const sessionName = `${indexName}-session`;
 
   try {
     console.log(`\nStep 1: Creating index '${indexName}' with ${documents.length} documents...`);
@@ -352,7 +353,7 @@ async function comprehensiveMossExample(): Promise<void> {
     });
 
     console.log(`\nStep 13: Demonstrating SessionIndex — local in-memory indexing...`);
-    const session = await client.session(`${indexName}-session`);
+    const session = await client.session(sessionName);
     const sessionDocs = [
       { id: 'sess-1', text: 'Customer was charged twice for the March renewal.' },
       { id: 'sess-2', text: 'Agent confirmed a refund for the duplicate charge.' },
@@ -369,10 +370,6 @@ async function comprehensiveMossExample(): Promise<void> {
 
     const pushed = await session.pushIndex();
     console.log(`Session pushed to cloud: ${pushed.docCount} docs (job ${pushed.jobId})`);
-
-    console.log(`\nStep 14: Cleaning up - deleting test indexes...`);
-    const deleted = await client.deleteIndex(indexName);
-    console.log(`Index deleted: ${deleted}`);
 
     console.log(`\nComprehensive Moss SDK Example Completed Successfully! (Ctrl+C to exit)`);
     console.log('='.repeat(60));
@@ -391,14 +388,15 @@ async function comprehensiveMossExample(): Promise<void> {
         console.error(`   Status code: ${(error as { status: unknown }).status}`);
       }
     }
-
-    // Attempt cleanup even if there was an error
-    try {
-      console.log(`\nAttempting cleanup due to error...`);
-      await client.deleteIndex(indexName);
-      console.log(`Cleanup completed`);
-    } catch {
-      console.log(`Cleanup failed - manual cleanup may be required`);
+  } finally {
+    console.log(`\nStep 14: Cleaning up - deleting test indexes...`);
+    for (const name of [indexName, sessionName]) {
+      try {
+        await client.deleteIndex(name);
+        console.log(`  Deleted: ${name}`);
+      } catch {
+        console.log(`  Could not delete '${name}' — may not exist yet or already gone`);
+      }
     }
   }
 }
