@@ -155,7 +155,7 @@ npm run comprehensive
 - Steps 1–14 complete without errors
 - Step 9 (metadata filter) returns only `technology` category docs
 - Step 13 (SessionIndex) shows in-memory add + query + push
-- Step 14 prints `Index deleted: true`
+- Step 14 prints `Deleted: <indexName>` (and `Deleted: <indexName>-session`)
 
 ---
 
