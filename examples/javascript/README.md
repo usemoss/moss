@@ -118,7 +118,7 @@ npm run session-cache
 - `Fresh session docs before restore: 0`
 - `Restored 3 docs from disk` after `loadFromDisk`
 - Query against the restored session returns results
-- Device ID file path printed at the end
+- `Device id (anonymous): ...` is printed at the end
 
 ---
 
