@@ -45,6 +45,7 @@ final class IndexStore: ObservableObject {
     @Published var status:        String          = "Not connected"
     @Published var isWorking:     Bool            = false
     @Published var cloudSynced:   Bool            = false
+    @Published var indexDocCount: Int             = 0
 
     // ── LLM ───────────────────────────────────────────────────────────────
 
@@ -59,6 +60,12 @@ final class IndexStore: ObservableObject {
 
     // Current project — used to scope the cache path and UserDefaults key
     private var currentProjectId: String?
+
+    // Incremented on every setup() and signOut(). Ingest operations capture
+    // this at start and abort after each await if it has changed, preventing
+    // a sign-out mid-ingest from writing into the new project's cache or
+    // persisting sources under the wrong project key.
+    private var sessionGeneration: Int = 0
 
     // sourcesKey and cacheDir are scoped by project so switching accounts
     // cannot leak one user's data into another project.
@@ -77,6 +84,7 @@ final class IndexStore: ObservableObject {
 
         do {
             currentProjectId = projectId
+            sessionGeneration += 1
             client  = try MossClient(projectId: projectId, projectKey: projectKey)
             // autoLoadOnInit: false — this app is local-first. The index is
             // restored from the on-device disk cache below. Cloud data is only
@@ -95,6 +103,7 @@ final class IndexStore: ObservableObject {
             // Restore source list from UserDefaults
             sources = loadSources()
 
+            indexDocCount = session!.docCount
             status = "Ready — \(session!.docCount) documents indexed"
         } catch {
             currentProjectId = nil
@@ -110,6 +119,8 @@ final class IndexStore: ObservableObject {
         // Stop any in-flight work
         session = nil
         client  = nil
+
+        sessionGeneration += 1
 
         if let pid = currentProjectId {
             // Wipe the scoped source list
@@ -133,6 +144,7 @@ final class IndexStore: ObservableObject {
 
     func ingestFile(url: URL) async {
         guard let session else { status = "Not connected"; return }
+        let generation = sessionGeneration
         isWorking = true
         defer { isWorking = false }
 
@@ -167,7 +179,10 @@ final class IndexStore: ObservableObject {
             }
 
             let (added, updated) = try await session.addDocs(docs)
+            guard sessionGeneration == generation else { return }
+
             try await session.save(toCachePath: cacheDir(for: currentProjectId ?? ""))
+            guard sessionGeneration == generation else { return }
 
             let source = IndexedSource(
                 id:       sourceId,
@@ -187,6 +202,7 @@ final class IndexStore: ObservableObject {
 
     func ingestContacts() async {
         guard let session else { status = "Not connected"; return }
+        let generation = sessionGeneration
         isWorking = true
         defer { isWorking = false }
         status = "Requesting contacts permission…"
@@ -257,10 +273,14 @@ final class IndexStore: ObservableObject {
             if !stale.isEmpty {
                 _ = try await session.deleteDocs(Array(stale))
             }
+            guard sessionGeneration == generation else { return }
 
             status = "Indexing \(docs.count) contacts…"
             let (added, updated) = try await session.addDocs(docs)
+            guard sessionGeneration == generation else { return }
+
             try await session.save(toCachePath: cacheDir(for: currentProjectId ?? ""))
+            guard sessionGeneration == generation else { return }
 
             let source = IndexedSource(
                 id:       "contacts",
@@ -341,6 +361,14 @@ final class IndexStore: ObservableObject {
 
     func syncToCloud() async {
         guard let session, let client else { return }
+        // Guard on the live doc count, not just the source list. If iOS purged
+        // Application Support (shouldn't happen, but defensive), sources would
+        // still be populated while the index is empty — pushing would silently
+        // zero out the cloud copy.
+        guard session.docCount > 0 else {
+            status = "Nothing to sync — index is empty."
+            return
+        }
         isWorking = true
         defer { isWorking = false }
         status = "Pushing to cloud…"
@@ -368,6 +396,7 @@ final class IndexStore: ObservableObject {
 
     func removeSource(_ source: IndexedSource) async {
         guard let session else { return }
+        let generation = sessionGeneration
         isWorking = true
         defer { isWorking = false }
         status = "Removing \(source.name)…"
@@ -385,9 +414,13 @@ final class IndexStore: ObservableObject {
                 }
                 .map(\.id)
 
+            guard sessionGeneration == generation else { return }
+
             if !toDelete.isEmpty {
                 _ = try await session.deleteDocs(toDelete)
+                guard sessionGeneration == generation else { return }
                 try await session.save(toCachePath: cacheDir(for: currentProjectId ?? ""))
+                guard sessionGeneration == generation else { return }
             }
 
             sources.removeAll { $0.id == source.id }
@@ -401,7 +434,11 @@ final class IndexStore: ObservableObject {
     // MARK: - Persistence helpers
 
     private func cacheDir(for projectId: String) -> String {
-        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        // Application Support is not purged by iOS, unlike Caches.
+        // A purged Caches dir would leave sources populated but the index
+        // empty, allowing syncToCloud() to overwrite the cloud copy with
+        // zero documents.
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let dir  = base.appendingPathComponent("moss-\(projectId)", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.path
@@ -429,5 +466,6 @@ final class IndexStore: ObservableObject {
             sources.append(source)
         }
         saveSources()
+        indexDocCount = session?.docCount ?? 0
     }
 }

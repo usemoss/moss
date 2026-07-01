@@ -70,7 +70,7 @@ struct SettingsView: View {
                     } label: {
                         Label("Sync index to cloud", systemImage: "icloud.and.arrow.up")
                     }
-                    .disabled(store.isWorking || store.sources.isEmpty)
+                    .disabled(store.isWorking || store.sources.isEmpty || store.indexDocCount == 0)
                 } footer: {
                     Text("Pushes your on-device Moss index to the cloud so you can load it on other devices.")
                 }
