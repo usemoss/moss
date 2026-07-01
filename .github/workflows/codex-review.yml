@@ -2,7 +2,6 @@ name: Codex PR Review
 
 on:
   pull_request:
-    branches: [main]
     types: [opened, synchronize, reopened]
   issue_comment:
     types: [created]
@@ -274,9 +273,7 @@ jobs:
               try {
                 await github.rest.pulls.createReview({
                   owner, repo, pull_number, commit_id: headSha,
-                  event: 'COMMENT',
-                  body: `${SUMMARY_MARKER.replace('summary','review-header')}\nCodex flagged ${inline.length} item(s) inline below.`,
-                  comments: inline,
+                  event: 'COMMENT', comments: inline,
                 });
                 inlinePosted = true;
               } catch (err) {
