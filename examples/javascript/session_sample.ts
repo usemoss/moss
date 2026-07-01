@@ -4,7 +4,7 @@
  * A `SessionIndex` is a local, in-process index: documents are embedded and
  * queried entirely in memory with no cloud round-trip. At the end of a session
  * call `pushIndex()` to persist it to the cloud so another agent or device can
- * resume it via `loadIndex()`.
+ * resume it by opening a new session with `client.session()`.
  *
  * Typical use-cases:
  *  - Indexing a live conversation turn-by-turn as it happens
