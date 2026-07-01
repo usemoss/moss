@@ -1,29 +1,19 @@
 /**
- * @fileoverview Comprehensive End-to-End Moss JavaScript SDK Sample
- * @description This example demonstrates the complete workflow of the Moss JavaScript SDK,
- * showcasing ALL available functions with a dynamic index name based on timestamp.
- * 
- * Features demonstrated:
- * - Index creation and management
- * - Document operations (add, retrieve, update, delete)
- * - Semantic search functionality
- * - Advanced querying with metadata filtering
- * - Index lifecycle management
- * - Error handling best practices
- * 
- * @author Moss SDK Examples
- * @version 1.0.0
- * @since 2024-10-09
- * 
+ * Moss SDK - Comprehensive End-to-End Sample
+ *
+ * Covers every major API surface in one runnable script:
+ *   createIndex, getIndex, listIndexes, addDocs, getDocs,
+ *   loadIndex, query (with metadata filter), deleteDocs,
+ *   session (local in-memory index), pushIndex, deleteIndex.
+ *
+ * Required Environment Variables:
+ * - MOSS_PROJECT_ID: Your Moss project ID
+ * - MOSS_PROJECT_KEY: Your Moss project key
+ *
  * @example
  * ```bash
- * # Run this comprehensive example
- * npx tsx comprehensive_sample.ts
+ * npm run comprehensive
  * ```
- * 
- * @requires @moss-dev/moss ^1.0.0
- * @requires dotenv ^17.2.3
- * @requires node >=20.0.0
  */
 
 import { MossClient, DocumentInfo } from "@moss-dev/moss";
@@ -31,7 +21,6 @@ import { config } from 'dotenv';
 
 // Load environment variables
 config();
-
 /**
  * Comprehensive end-to-end example demonstrating ALL Moss SDK functionality.
  * 
@@ -181,12 +170,13 @@ async function comprehensiveMossExample(): Promise<void> {
     }
   ];
 
-  // Create dynamic index name with timestamp
+  // Create dynamic index names with timestamp
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const indexName = `comprehensive-demo-${timestamp}`;
+  const sessionName = `${indexName}-session`;
 
   try {
-    console.log(`\n📝 Step 1: Creating index '${indexName}' with ${documents.length} documents...`);
+    console.log(`\nStep 1: Creating index '${indexName}' with ${documents.length} documents...`);
     const created = await client.createIndex(indexName, documents, { modelId: 'moss-minilm' });
     console.log(`Index created successfully (job: ${created.jobId}, index: ${created.indexName}, docs: ${created.docCount})`);
 
@@ -293,7 +283,7 @@ async function comprehensiveMossExample(): Promise<void> {
     const loadedIndex = await client.loadIndex(indexName);
     console.log(`Index loaded for querying: ${loadedIndex}`);
 
-    console.log(`\n🔎 Step 8: Performing comprehensive semantic search tests...`);
+    console.log(`\nStep 8: Performing semantic search tests...`);
     const searchQueries = [
       { query: 'artificial intelligence and machine learning', topK: 4 },
       { query: 'data analysis and business insights', topK: 3 },
@@ -322,16 +312,31 @@ async function comprehensiveMossExample(): Promise<void> {
       });
     }
 
-    console.log(`\n🗑️  Step 9: Demonstrating document deletion...`);
+    console.log(`\nStep 9: Demonstrating metadata-filtered query...`);
+    const filteredResults = await client.query(indexName, 'machine learning', {
+      topK: 3,
+      filter: {
+        $and: [
+          { field: 'category', condition: { $eq: 'technology' } },
+          { field: 'difficulty', condition: { $in: ['beginner', 'intermediate'] } },
+        ],
+      },
+    });
+    console.log(`Filtered query returned ${filteredResults.docs.length} results (category=technology, difficulty in [beginner,intermediate]):`);
+    filteredResults.docs.forEach((doc) => {
+      console.log(`   [${doc.id}] score=${doc.score.toFixed(3)} | ${doc.metadata?.difficulty}`);
+    });
+
+    console.log(`\nStep 10: Demonstrating document deletion...`);
     const docsToDelete = ['health-biotech-009', 'env-sustainability-010'];
     const deleteResult = await client.deleteDocs(indexName, docsToDelete);
     console.log(`Delete operation result (job: ${deleteResult.jobId}, remaining docs: ${deleteResult.docCount})`);
 
-    console.log(`\nStep 10: Verifying document count after deletion...`);
+    console.log(`\nStep 11: Verifying document count after deletion...`);
     const remainingDocs = await client.getDocs(indexName);
     console.log(`Remaining documents: ${remainingDocs.length}`);
 
-    console.log(`\nStep 11: Final search validation...`);
+    console.log(`\nStep 12: Final search validation...`);
     const finalSearch = await client.query(
       indexName,
       'technology innovation and automation',
@@ -347,23 +352,33 @@ async function comprehensiveMossExample(): Promise<void> {
       console.log(`   ${i + 1}. [${item.id}] Score: ${item.score.toFixed(3)}`);
     });
 
-    console.log(`\nStep 12: Cleaning up - deleting the test index...`);
-    const deleted = await client.deleteIndex(indexName);
-    console.log(`Index deleted: ${deleted}`);
+    console.log(`\nStep 13: Demonstrating SessionIndex — local in-memory indexing...`);
+    const session = await client.session(sessionName);
+    const sessionDocs = [
+      { id: 'sess-1', text: 'Customer was charged twice for the March renewal.' },
+      { id: 'sess-2', text: 'Agent confirmed a refund for the duplicate charge.' },
+      { id: 'sess-3', text: 'Customer asked to cancel auto-renew going forward.' },
+    ];
+    const { added: sessAdded } = await session.addDocs(sessionDocs);
+    console.log(`Session: ${sessAdded} docs added in-memory (no cloud round-trip, model: ${session.modelId})`);
 
-    console.log(`\nComprehensive Moss SDK Example Completed Successfully!`);
+    const sessResults = await session.query('billing refund request', { topK: 2 });
+    console.log(`Session query: ${sessResults.docs.length} results in ${sessResults.timeTakenInMs}ms`);
+    sessResults.docs.forEach((doc) => {
+      console.log(`   [${doc.id}] score=${doc.score.toFixed(3)}  ${doc.text.substring(0, 60)}...`);
+    });
+
+    const pushed = await session.pushIndex();
+    console.log(`Session pushed to cloud: ${pushed.docCount} docs (job ${pushed.jobId})`);
+
+    console.log(`\nComprehensive Moss SDK Example Completed Successfully! (Ctrl+C to exit)`);
     console.log('='.repeat(60));
-    console.log('Summary of operations performed:');
-    console.log('   Index creation with initial documents');
-    console.log('   Index information retrieval');
-    console.log('   Index listing');
-    console.log('   Document addition with upsert');
-    console.log('   Document retrieval (all and specific)');
-    console.log('   Index loading for querying');
-    console.log('   Multiple semantic search operations');
-    console.log('   Document deletion');
-    console.log('   Index cleanup');
-    console.log('   Comprehensive error handling');
+    console.log('Operations covered:');
+    console.log('  createIndex, getIndex, listIndexes');
+    console.log('  addDocs (upsert), getDocs (all + by ID)');
+    console.log('  loadIndex, query, query with metadata filter');
+    console.log('  deleteDocs, deleteIndex');
+    console.log('  session, session.addDocs, session.query, session.pushIndex');
 
   } catch (error) {
     console.error(`Error occurred: ${error}`);
@@ -373,23 +388,19 @@ async function comprehensiveMossExample(): Promise<void> {
         console.error(`   Status code: ${(error as { status: unknown }).status}`);
       }
     }
-
-    // Attempt cleanup even if there was an error
-    try {
-      console.log(`\nAttempting cleanup due to error...`);
-      await client.deleteIndex(indexName);
-      console.log(`Cleanup completed`);
-    } catch {
-      console.log(`Cleanup failed - manual cleanup may be required`);
+  } finally {
+    console.log(`\nStep 14: Cleaning up - deleting test indexes...`);
+    for (const name of [indexName, sessionName]) {
+      try {
+        await client.deleteIndex(name);
+        console.log(`  Deleted: ${name}`);
+      } catch {
+        console.log(`  Could not delete '${name}' — may not exist yet or already gone`);
+      }
     }
   }
 }
 
-/**
- * Export the main example function for use in tests or other modules
- * 
- * @exports comprehensiveMossExample - Complete Moss SDK demonstration function
- */
 export { comprehensiveMossExample };
 
 // Run the example if this file is executed directly
