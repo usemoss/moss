@@ -12,11 +12,18 @@ This cookbook shows a focused ingestion pipeline:
 
 ## Setup
 
+Python 3.11 or newer is required. From the repository root:
+
 ```bash
 cd examples/cookbook/unstructured
-uv sync
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
 cp .env.example .env
 ```
+
+If you already use [uv](https://docs.astral.sh/uv/), `uv sync` can replace the
+virtual-environment and `pip install` commands above.
 
 Fill in `.env` with your Moss credentials:
 
@@ -31,22 +38,44 @@ MOSS_INDEX_NAME=unstructured-docs
 Index the sample documents:
 
 ```bash
-uv run python ingest.py --input-dir sample_docs
+python ingest.py --input-dir sample_docs
 ```
 
 Index your own folder:
 
 ```bash
-uv run python ingest.py --input-dir /path/to/files --index-name company-docs
+python ingest.py --input-dir /path/to/files --index-name company-docs
 ```
 
 Ask a query after ingestion:
 
 ```bash
-uv run python ingest.py \
+python ingest.py \
   --input-dir sample_docs \
   --query "What does the onboarding policy say about access?"
 ```
+
+The command runs the complete pipeline against Moss: it partitions and chunks each
+source file, creates or incrementally updates the index, waits for every ingestion
+job to complete, loads the finished index, and runs the query. A successful run
+prints each stage, for example:
+
+```text
+Parsed onboarding.html -> 1 chunks
+Parsed release-notes.txt -> 1 chunks
+
+Prepared 2 chunks from .../sample_docs
+Created index 'unstructured-docs' with 2 chunks
+Job <job-id> completed
+
+Query: What does the onboarding policy say about access?
+1. onboarding.html (score=...)
+New hires receive repository access after completing security training...
+```
+
+Rerun the same command to demonstrate incremental ingestion. The second run reports
+that the index already exists and upserts the stable chunk IDs instead of creating
+duplicates.
 
 ## What Gets Stored
 
