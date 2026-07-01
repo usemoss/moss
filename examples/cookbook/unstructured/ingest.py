@@ -15,6 +15,8 @@ from unstructured.partition.auto import partition
 DEFAULT_MAX_CHARACTERS = 1_500
 DEFAULT_NEW_AFTER_N_CHARS = 1_200
 DEFAULT_COMBINE_UNDER_N_CHARS = 300
+DEFAULT_JOB_POLL_INTERVAL = 2.0
+DEFAULT_JOB_TIMEOUT = 300.0
 
 
 def parse_args() -> argparse.Namespace:
@@ -143,6 +145,46 @@ def _batches(docs: list[DocumentInfo], batch_size: int) -> list[list[DocumentInf
     return [docs[i : i + batch_size] for i in range(0, len(docs), batch_size)]
 
 
+async def _index_exists(client: MossClient, index_name: str) -> bool:
+    try:
+        await client.get_index(index_name)
+        return True
+    except RuntimeError:
+        # The SDK currently uses RuntimeError for both a missing index and request
+        # failures. Listing indexes gives us an unambiguous existence check without
+        # depending on error-message text.
+        indexes = await client.list_indexes()
+        return any(index.name == index_name for index in indexes)
+
+
+def _job_status_value(status: Any) -> str:
+    value = getattr(status.status, "value", status.status)
+    return str(value).upper()
+
+
+async def _wait_for_job(
+    client: MossClient,
+    job_id: str,
+    poll_interval: float = DEFAULT_JOB_POLL_INTERVAL,
+    timeout: float = DEFAULT_JOB_TIMEOUT,
+) -> None:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+
+    while True:
+        status = await client.get_job_status(job_id)
+        status_value = _job_status_value(status)
+        if status_value == "COMPLETED":
+            print(f"Job {job_id} completed")
+            return
+        if status_value == "FAILED":
+            detail = getattr(status, "error", None) or "unknown error"
+            raise RuntimeError(f"Moss job {job_id} failed: {detail}")
+        if loop.time() >= deadline:
+            raise TimeoutError(f"Moss job {job_id} did not finish within {timeout:g}s")
+        await asyncio.sleep(poll_interval)
+
+
 async def upsert_documents(
     client: MossClient,
     index_name: str,
@@ -156,19 +198,19 @@ async def upsert_documents(
     batches = _batches(docs, batch_size)
     upsert_options = MutationOptions(upsert=True)
 
-    try:
-        await client.create_index(index_name, batches[0])
-        print(f"Created index '{index_name}' with {len(batches[0])} chunks")
-        start = 1
-    except RuntimeError as exc:
-        if "already exists" not in str(exc).lower():
-            raise
+    if await _index_exists(client, index_name):
         print(f"Index '{index_name}' already exists; upserting chunks")
         start = 0
+    else:
+        result = await client.create_index(index_name, batches[0])
+        print(f"Created index '{index_name}' with {len(batches[0])} chunks")
+        await _wait_for_job(client, result.job_id)
+        start = 1
 
     for batch_number, batch in enumerate(batches[start:], start=start + 1):
-        await client.add_docs(index_name, batch, upsert_options)
+        result = await client.add_docs(index_name, batch, upsert_options)
         print(f"Upserted batch {batch_number}/{len(batches)} ({len(batch)} chunks)")
+        await _wait_for_job(client, result.job_id)
 
 
 async def query_index(

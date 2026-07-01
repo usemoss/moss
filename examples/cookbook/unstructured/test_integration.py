@@ -78,10 +78,10 @@ def _restore_modules(previous_modules: dict[str, types.ModuleType | None]) -> No
 
 
 _PREVIOUS_MODULES = _install_dependency_stubs()
-
-ingest = importlib.import_module("ingest")
-
-_restore_modules(_PREVIOUS_MODULES)
+try:
+    ingest = importlib.import_module("ingest")
+finally:
+    _restore_modules(_PREVIOUS_MODULES)
 
 
 class FakeMetadata:
@@ -163,8 +163,12 @@ class TestUnstructuredIngestion(unittest.TestCase):
 
     def test_upsert_documents_creates_index_then_upserts_remaining_batches(self):
         client = types.SimpleNamespace(
-            create_index=AsyncMock(),
-            add_docs=AsyncMock(),
+            get_index=AsyncMock(side_effect=RuntimeError("not found")),
+            list_indexes=AsyncMock(return_value=[]),
+            create_index=AsyncMock(
+                return_value=types.SimpleNamespace(job_id="create-job")
+            ),
+            add_docs=AsyncMock(return_value=types.SimpleNamespace(job_id="add-job")),
         )
         docs = [
             FakeDocumentInfo(id="doc-1", text="one"),
@@ -172,20 +176,30 @@ class TestUnstructuredIngestion(unittest.TestCase):
             FakeDocumentInfo(id="doc-3", text="three"),
         ]
 
-        with contextlib.redirect_stdout(io.StringIO()):
+        with (
+            contextlib.redirect_stdout(io.StringIO()),
+            patch.object(ingest, "_wait_for_job", new=AsyncMock()) as wait_for_job,
+        ):
             asyncio.run(ingest.upsert_documents(client, "unstructured-test", docs, 2))
 
+        client.get_index.assert_awaited_once_with("unstructured-test")
+        client.list_indexes.assert_awaited_once()
         client.create_index.assert_awaited_once_with("unstructured-test", docs[:2])
         client.add_docs.assert_awaited_once()
         args = client.add_docs.await_args.args
         self.assertEqual(args[0], "unstructured-test")
         self.assertEqual(args[1], docs[2:])
         self.assertTrue(args[2].upsert)
+        self.assertEqual(wait_for_job.await_count, 2)
+        self.assertEqual(wait_for_job.await_args_list[0].args[1], "create-job")
+        self.assertEqual(wait_for_job.await_args_list[1].args[1], "add-job")
 
     def test_upsert_documents_upserts_all_batches_when_index_exists(self):
         client = types.SimpleNamespace(
-            create_index=AsyncMock(side_effect=RuntimeError("index already exists")),
-            add_docs=AsyncMock(),
+            get_index=AsyncMock(return_value=types.SimpleNamespace()),
+            list_indexes=AsyncMock(),
+            create_index=AsyncMock(),
+            add_docs=AsyncMock(return_value=types.SimpleNamespace(job_id="add-job")),
         )
         docs = [
             FakeDocumentInfo(id="doc-1", text="one"),
@@ -193,13 +207,30 @@ class TestUnstructuredIngestion(unittest.TestCase):
             FakeDocumentInfo(id="doc-3", text="three"),
         ]
 
-        with contextlib.redirect_stdout(io.StringIO()):
+        with (
+            contextlib.redirect_stdout(io.StringIO()),
+            patch.object(ingest, "_wait_for_job", new=AsyncMock()) as wait_for_job,
+        ):
             asyncio.run(ingest.upsert_documents(client, "unstructured-test", docs, 2))
 
+        client.get_index.assert_awaited_once_with("unstructured-test")
+        client.list_indexes.assert_not_awaited()
+        client.create_index.assert_not_awaited()
         self.assertEqual(client.add_docs.await_count, 2)
+        self.assertEqual(wait_for_job.await_count, 2)
         first_call, second_call = client.add_docs.await_args_list
         self.assertEqual(first_call.args[1], docs[:2])
         self.assertEqual(second_call.args[1], docs[2:])
+
+    def test_wait_for_job_raises_when_ingestion_fails(self):
+        status = types.SimpleNamespace(
+            status=types.SimpleNamespace(value="FAILED"),
+            error="embedding generation failed",
+        )
+        client = types.SimpleNamespace(get_job_status=AsyncMock(return_value=status))
+
+        with self.assertRaisesRegex(RuntimeError, "embedding generation failed"):
+            asyncio.run(ingest._wait_for_job(client, "failed-job", poll_interval=0))
 
 
 if __name__ == "__main__":
