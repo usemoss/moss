@@ -6,15 +6,29 @@ on:
   issue_comment:
     types: [created]
 
+# Only collide for runs that review the same PR (a push, or a trusted @codex review
+# on PR #N, share group codex-review-N). The comment branch mirrors the authorize
+# TRIGGER conditions (event + @codex review + trusted author_association) so an
+# untrusted comment can't land in the shared group and cancel an in-flight review;
+# it falls back to the unique run id. The same-repo/fork check needs an API call and
+# so can't run in this expression -- it is enforced inside the authorize job.
 concurrency:
-  group: codex-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  group: >-
+    codex-review-${{
+      (github.event_name == 'pull_request' && github.event.pull_request.number) ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       contains(github.event.comment.body, '@codex review') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+       github.event.issue.number) ||
+      github.run_id }}
   cancel-in-progress: true
 
 jobs:
   authorize:
-    # Trigger gate: PR events always, comment events only for "@codex review" from a
-    # trusted commenter. The step then restricts to same-repo (non-fork) PRs so a
-    # public fork can never reach the privileged checkout below.
+    # Trigger gate: PR events and "@codex review" from a trusted commenter. The
+    # step then restricts to same-repo (non-fork) PRs so fork-controlled content
+    # can never reach the secret-backed checkout/review below.
     if: >
       github.event_name == 'pull_request' ||
       (github.event.issue.pull_request != null &&
@@ -91,40 +105,61 @@ jobs:
               "required": ["summary", "findings"]
             }
           prompt: |
-            You are reviewing pull request #${{ needs.authorize.outputs.pr }} in ${{ github.repository }}.
+            You are a senior staff engineer doing a deep, context-aware review of pull
+            request #${{ needs.authorize.outputs.pr }} in ${{ github.repository }}. Do not
+            skim the diff: investigate the whole repository to judge each change in the
+            context of the code around it. The full repo is checked out at the PR merge
+            commit and you have a read-only shell, so actually explore.
 
-            The PR's changes are exactly the diff between the merge commit's two parents.
-            Run `git diff HEAD^1 HEAD^2` to see everything that changed, and
-            `git diff HEAD^1 HEAD^2 -- <path>` to focus on a single file.
+            Step 1 - establish what changed. The checkout is the PR merge commit, whose
+            parents are the base tip (HEAD^1) and the PR head (HEAD^2). Diff from the
+            MERGE BASE so you see only this PR's changes, never commits that landed on the
+            base branch after the branch was cut (a plain `HEAD^1 HEAD^2` diff is wrong for
+            stale branches). This also matches the line numbers GitHub maps comments to:
+            - `BASE=$(git merge-base HEAD^1 HEAD^2)`
+            - `git diff "$BASE" HEAD^2 --stat` for the shape, then
+              `git diff "$BASE" HEAD^2 -- <path>` per file for the exact changes.
 
-            Review ONLY those changes. Report high-signal findings only.
+            Step 2 - crawl the repository for context. Do not review a hunk in isolation:
+            - Open each changed file IN FULL (not just the diff window) to understand
+              surrounding logic, invariants, and intent.
+            - Trace every symbol the change touches outward through the repo. For each
+              changed function/class/constant/export/route/env var, find its definition
+              and ALL usages with `git grep -n` / ripgrep, and read those call sites.
+            - Follow imports both directions: what this code depends on, and what depends
+              on it. Read the real implementations being called, never assume behavior.
+            - Pull in the related files the diff did NOT touch but should be checked
+              against: callers, tests, type definitions, schemas/migrations, configs,
+              API contracts, fixtures, and docs.
 
-            Correctness & safety:
-            - logic errors, unhandled edge cases, broken assumptions
-            - security vulnerabilities
-            - data loss, concurrency hazards, resource leaks
+            Step 3 - assess impact across the whole repo, not just the changed lines:
+            - Ripple effects: does this change break or silently require updates in
+              callers, tests, types, serialization, DB schema, or public contracts
+              elsewhere in the repo? Did the PR update everything it needed to?
+            - Consistency: does it match this repo's established conventions and patterns
+              (naming, error handling, logging, layering, auth)? Cite the existing pattern.
+            - Correctness & safety: logic errors, unhandled edge cases, broken
+              assumptions, security holes, data loss, concurrency hazards, resource leaks.
+            - Design: soundness of the overall approach; a simpler/cleaner way; the right
+              abstraction without over-engineering; duplicated logic / dead code / DRY.
 
-            Design & code quality:
-            - the soundness of the overall approach, not just line-level bugs
-            - elegance: is there a simpler, cleaner way to achieve the same result?
-            - abstraction: prefer the most general clean abstraction that fits the problem,
-              without over-engineering for cases that don't exist
-            - redundancy: flag duplicated logic, dead code, and anything that violates DRY
-
-            Skip pure formatting and style nits.
-
-            Report at most the 5 most important findings. Consolidate an issue that
-            recurs in several places into one finding at the most representative location.
+            Report high-signal findings only; skip pure formatting and style nits. Report
+            at most the 5 most important findings, consolidating a recurring issue into a
+            single finding at the most representative location. A finding may be rooted in
+            an untouched file (e.g. a caller this PR breaks): anchor it to the changed line
+            that causes the problem and name the affected file(s) in the comment.
 
             Output JSON matching the provided schema:
-            - `summary`: one or two sentences on the PR overall. If there are no real
-              issues, set summary to "No issues found." and findings to [].
+            - `summary`: one or two sentences on the PR overall, reflecting repo-wide
+              impact. If there are no real issues, set summary to "No issues found." and
+              findings to [].
             - `findings[].path`: repository-relative file path, exactly as git reports it.
             - `findings[].line`: the line number in the NEW (post-change) version of the
               file. It MUST be a line the PR adds or modifies.
             - `findings[].severity`: "blocking" or "consider".
-            - `findings[].comment`: markdown review comment with a short code snippet and a
-              concrete fix.
+            - `findings[].comment`: markdown review comment that explains the repo-wide
+              impact (reference the specific other files/call sites you inspected), with a
+              short code snippet and a concrete fix.
 
   post_review:
     needs: [authorize, review]
@@ -147,6 +182,14 @@ jobs:
             const SUMMARY_MARKER = '<!-- codex-review-summary -->';
             const INLINE_MARKER = '<!-- codex-review-inline -->';
             const MAX_COMMENTS = 5;
+
+            // Only ever mutate comments this workflow itself authored, identified by
+            // the GITHUB_TOKEN bot actor plus our hidden marker. Never touch a human's
+            // (or another bot's) comment even if it happens to quote a marker.
+            const isOurComment = (c, marker) =>
+              c.user?.type === 'Bot' &&
+              c.user?.login === 'github-actions[bot]' &&
+              c.body?.includes(marker);
 
             // Parse Codex JSON. With --output-schema the result is already pure JSON,
             // and its findings may contain fenced code blocks, so never grab an inner
@@ -208,14 +251,16 @@ jobs:
               }
             }
 
-            // Always clear our prior inline comments first, so findings resolved in a
-            // later push disappear even when this run produces no inline comments.
+            // Clear our own prior inline comments so resolved findings disappear on a
+            // later push, but never delete a thread that has replies (someone engaged
+            // with it) or a comment we did not author.
             try {
               const prior = await github.paginate(github.rest.pulls.listReviewComments, {
                 owner, repo, pull_number, per_page: 100,
               });
+              const repliedTo = new Set(prior.filter(c => c.in_reply_to_id).map(c => c.in_reply_to_id));
               for (const c of prior) {
-                if (c.body && c.body.includes(INLINE_MARKER)) {
+                if (isOurComment(c, INLINE_MARKER) && !c.in_reply_to_id && !repliedTo.has(c.id)) {
                   try { await github.rest.pulls.deleteReviewComment({ owner, repo, comment_id: c.id }); }
                   catch {}
                 }
@@ -247,11 +292,11 @@ jobs:
               for (const o of leftover) body += `\n- \`${o.path}:${o.line}\` **${o.sev}** ${o.comment}`;
             }
 
-            // Upsert one rolling summary comment instead of stacking on each push.
+            // Upsert our own rolling summary comment (never overwrite a human's).
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner, repo, issue_number: pull_number, per_page: 100,
             });
-            const existing = comments.find(c => c.body && c.body.includes(SUMMARY_MARKER));
+            const existing = comments.find(c => isOurComment(c, SUMMARY_MARKER));
             if (existing) {
               await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
             } else {
