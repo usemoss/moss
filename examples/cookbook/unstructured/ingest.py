@@ -213,33 +213,6 @@ async def upsert_documents(
         await _wait_for_job(client, result.job_id)
 
 
-async def query_index(
-    client: MossClient,
-    index_name: str,
-    query: str,
-    top_k: int,
-) -> None:
-    await client.load_index(index_name)
-    results = await client.query(
-        index_name,
-        query,
-        QueryOptions(top_k=top_k, alpha=0.7),
-    )
-
-    print(f"\nQuery: {query}")
-    if not results.docs:
-        print("No results found.")
-        return
-
-    for i, doc in enumerate(results.docs, 1):
-        metadata = doc.metadata or {}
-        source = metadata.get("source_path", "?")
-        page = metadata.get("page_number")
-        location = f"{source} page {page}" if page else source
-        print(f"\n{i}. {location} (score={doc.score:.3f})")
-        print(doc.text[:500])
-
-
 async def main() -> None:
     load_dotenv()
     args = parse_args()
@@ -262,7 +235,23 @@ async def main() -> None:
     await upsert_documents(client, args.index_name, docs, args.batch_size)
 
     if args.query:
-        await query_index(client, args.index_name, args.query, args.top_k)
+        await client.load_index(args.index_name)
+        results = await client.query(
+            args.index_name,
+            args.query,
+            QueryOptions(top_k=args.top_k, alpha=0.7),
+        )
+
+        print(f"\nQuery: {args.query}")
+        if not results.docs:
+            print("No results found.")
+        for i, doc in enumerate(results.docs, 1):
+            metadata = doc.metadata or {}
+            source = metadata.get("source_path", "?")
+            page = metadata.get("page_number")
+            location = f"{source} page {page}" if page else source
+            print(f"\n{i}. {location} (score={doc.score:.3f})")
+            print(doc.text[:500])
 
 
 if __name__ == "__main__":
