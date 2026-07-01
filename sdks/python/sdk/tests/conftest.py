@@ -29,6 +29,7 @@ CLOUD_TEST_FILES = {
     "test_e2e.py",
     "test_hot_reload.py",
     "test_metadata_filter_e2e.py",
+    "test_new_apis_e2e.py",
     "test_search.py",
 }
 

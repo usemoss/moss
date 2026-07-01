@@ -31,9 +31,7 @@ def moss_client():
 
 
 class TestHotReloadE2E:
-
     class TestLoadIndexWithAutoRefresh:
-
         @pytest_asyncio.fixture
         async def test_index(self, moss_client):
             """Create a test index for auto-refresh tests."""
@@ -72,9 +70,7 @@ class TestHotReloadE2E:
             assert loaded_name == test_index
 
         @pytest.mark.asyncio
-        async def test_accept_custom_polling_interval(
-            self, moss_client, test_index
-        ):
+        async def test_accept_custom_polling_interval(self, moss_client, test_index):
             """Should accept custom polling interval."""
             # Load with a custom polling interval (5 minutes)
             loaded_name = await moss_client.load_index(
@@ -183,9 +179,7 @@ class TestHotReloadE2E:
                 pass
 
         @pytest.mark.asyncio
-        async def test_query_cloud_when_index_not_loaded(
-            self, moss_client, test_index
-        ):
+        async def test_query_cloud_when_index_not_loaded(self, moss_client, test_index):
             """Should query cloud when index is not loaded locally."""
             # Query without loading - should fall back to cloud
             results = await moss_client.query(
@@ -199,9 +193,7 @@ class TestHotReloadE2E:
             assert len(results.docs) > 0
 
         @pytest.mark.asyncio
-        async def test_query_locally_after_loading_index(
-            self, moss_client, test_index
-        ):
+        async def test_query_locally_after_loading_index(self, moss_client, test_index):
             """Should query locally after loading index."""
             # Load index locally
             await moss_client.load_index(test_index)

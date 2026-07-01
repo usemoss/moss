@@ -123,7 +123,7 @@ class TestDictToSearchResult:
             "timeTakenMs": 42,
         }
 
-        result = MossClient._dict_to_search_result(data)
+        result = MossClient._dict_to_search_result(data)  # type: ignore[attr-defined]
 
         assert len(result.docs) == 2
         assert result.docs[0].id == "d1"
@@ -138,7 +138,7 @@ class TestDictToSearchResult:
     def test_empty_docs(self):
         data = {"docs": [], "query": "", "indexName": "idx", "timeTakenMs": 0}
 
-        result = MossClient._dict_to_search_result(data)
+        result = MossClient._dict_to_search_result(data)  # type: ignore[attr-defined]
 
         assert len(result.docs) == 0
 
@@ -149,7 +149,7 @@ class TestDictToSearchResult:
             "indexName": "idx",
         }
 
-        result = MossClient._dict_to_search_result(data)
+        result = MossClient._dict_to_search_result(data)  # type: ignore[attr-defined]
 
         assert result.docs[0].id == "d1"
         assert result.docs[0].text == ""
@@ -172,7 +172,7 @@ class TestDictToSearchResult:
             "indexName": "idx",
         }
 
-        result = MossClient._dict_to_search_result(data)
+        result = MossClient._dict_to_search_result(data)  # type: ignore[attr-defined]
 
         assert result.docs[0].metadata == {"city": "NYC"}
 
@@ -186,7 +186,7 @@ class TestDictToSearchResult:
             "indexName": "idx",
         }
 
-        result = MossClient._dict_to_search_result(data)
+        result = MossClient._dict_to_search_result(data)  # type: ignore[attr-defined]
 
         assert result.docs[0].score == pytest.approx(0.95, abs=1e-6)
         assert result.docs[1].score == pytest.approx(1.0, abs=1e-6)
@@ -194,7 +194,7 @@ class TestDictToSearchResult:
     def test_missing_top_level_fields(self):
         data = {}
 
-        result = MossClient._dict_to_search_result(data)
+        result = MossClient._dict_to_search_result(data)  # type: ignore[attr-defined]
 
         assert len(result.docs) == 0
         assert result.query == ""
@@ -210,7 +210,7 @@ class TestURLHelpers:
             url = _get_manage_url()
             assert "/v1/manage" in url
 
-    def test_get_manage_url_from_env(self):
+    def test_get_manage_url_overridden_by_env(self):
         with patch.dict(
             "os.environ",
             {"MOSS_CLOUD_API_MANAGE_URL": "https://custom.example.com/v1/manage"},
@@ -218,15 +218,16 @@ class TestURLHelpers:
             url = _get_manage_url()
             assert url == "https://custom.example.com/v1/manage"
 
-    def test_get_query_url_derived(self):
+    def test_get_query_url_derived_from_manage_url(self):
         with patch.dict(
             "os.environ",
             {"MOSS_CLOUD_API_MANAGE_URL": "https://api.example.com/v1/manage"},
+            clear=True,
         ):
             url = _get_query_url()
             assert url == "https://api.example.com/query"
 
-    def test_get_query_url_explicit(self):
+    def test_get_query_url_legacy_env_var(self):
         with patch.dict(
             "os.environ",
             {
@@ -236,6 +237,26 @@ class TestURLHelpers:
         ):
             url = _get_query_url()
             assert url == "https://query.example.com/search"
+
+    def test_get_query_url_alias_env_var(self):
+        with patch.dict(
+            "os.environ",
+            {"MOSS_QUERY_URL": "https://query.alias.com/search"},
+            clear=True,
+        ):
+            url = _get_query_url()
+            assert url == "https://query.alias.com/search"
+
+    def test_get_query_url_legacy_takes_precedence_over_alias(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "MOSS_CLOUD_QUERY_URL": "https://legacy.example.com/q",
+                "MOSS_QUERY_URL": "https://alias.example.com/q",
+            },
+        ):
+            url = _get_query_url()
+            assert url == "https://legacy.example.com/q"
 
 
 class TestVersionExport:
@@ -345,9 +366,9 @@ class TestClientIdGeneration:
     """Tests for client ID generation."""
 
     def test_client_id_is_uuid(self, client):
-        assert client._client_id is not None
-        assert len(client._client_id) == 36
-        assert client._client_id.count("-") == 4
+        assert client._client_id is not None  # type: ignore[attr-defined]
+        assert len(client._client_id) == 36  # type: ignore[attr-defined]
+        assert client._client_id.count("-") == 4  # type: ignore[attr-defined]
 
     def test_client_id_is_unique(self):
         with (
@@ -356,15 +377,15 @@ class TestClientIdGeneration:
         ):
             c1 = MossClient("pid", "pkey")
             c2 = MossClient("pid", "pkey")
-            assert c1._client_id != c2._client_id
+            assert c1._client_id != c2._client_id  # type: ignore[attr-defined]
 
 
 class TestProjectCredentials:
     """Tests for project credential handling."""
 
     def test_credentials_stored(self, client):
-        assert client._project_id == "test-project"
-        assert client._project_key == "test-key"
+        assert client._project_id == "test-project"  # type: ignore[attr-defined]
+        assert client._project_key == "test-key"  # type: ignore[attr-defined]
 
     def test_credentials_passed_to_manage_client(self):
         with (

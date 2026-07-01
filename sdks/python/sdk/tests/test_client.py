@@ -43,6 +43,16 @@ class TestConstructor:
         assert args[1] == "pkey"
         assert "/v1/manage" in args[2]
 
+    def test_manage_url_env_override_propagated(self, raw_mocks):
+        mock_manage_cls, _ = raw_mocks
+        with patch.dict(
+            "os.environ",
+            {"MOSS_CLOUD_API_MANAGE_URL": "https://staging.example.com/v1/manage"},
+        ):
+            MossClient("pid", "pkey")
+        args = mock_manage_cls.call_args[0]
+        assert args[2] == "https://staging.example.com/v1/manage"
+
 
 # -- Model ID Resolution ----------------------------------------------
 

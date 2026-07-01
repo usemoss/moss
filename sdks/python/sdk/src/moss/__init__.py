@@ -16,6 +16,16 @@ Example:
     await client.load_index('my-index')
     results = await client.query('my-index', 'search query')
     ```
+
+Local-first session indexing:
+    ```python
+    session = await client.session("call-abc123")
+
+    await session.add_docs([DocumentInfo(id="1", text="Customer asked about billing")])
+    results = await session.query("billing issue")
+
+    result = await session.push_index()
+    ```
 """
 
 from moss_core import (
@@ -24,6 +34,7 @@ from moss_core import (
     IndexInfo,
     IndexStatus,
     IndexStatusValues,
+    LoadIndexesResult,
     ModelRef,
     MutationOptions,
     MutationResult,
@@ -31,17 +42,23 @@ from moss_core import (
     JobPhase,
     JobProgress,
     JobStatusResponse,
+    PushIndexResult,
     QueryOptions,
     QueryResultDocumentInfo,
     SearchResult,
 )
 
-from .client.moss_client import MossClient
+from .client.moss_client import MossClient, ParseFileInput
+from .client.session_index import SessionIndex
 
-__version__ = "1.0.0b19"
+__version__ = "1.4.1"
 
 __all__ = [
     "MossClient",
+    "ParseFileInput",
+    "SessionIndex",
+    "PushIndexResult",
+    "LoadIndexesResult",
     # Core data types
     "DocumentInfo",
     "GetDocumentsOptions",
