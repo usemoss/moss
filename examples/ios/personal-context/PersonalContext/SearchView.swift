@@ -113,6 +113,17 @@ struct SearchView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
 
+                // Data-leaving-device disclosure — always visible in this tab
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "arrow.up.circle").foregroundStyle(.secondary)
+                    Text("Matching excerpts from your files and contacts are sent to OpenAI to generate an answer.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(10)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+
                 if !store.hasOpenAI {
                     HStack(spacing: 10) {
                         Image(systemName: "info.circle").foregroundStyle(.orange)
@@ -127,7 +138,7 @@ struct SearchView: View {
                 if store.isAnswering {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text("Retrieving from Moss + generating answer…")
+                        Text("Retrieving from Moss, sending context to OpenAI…")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }

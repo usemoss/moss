@@ -5,8 +5,11 @@ import Contacts
 // MARK: - Data models
 
 struct IndexedSource: Identifiable, Codable {
-    let id: String          // stable key (filename or contact group)
-    let name: String        // display name
+    /// Stable UUID minted at ingest time — never changes, even if the file
+    /// is renamed or another file with the same name is imported later.
+    let id: String
+    /// Human-readable display name only; not used for identity or querying.
+    let name: String
     let kind: SourceKind
     let docCount: Int
     let addedAt: Date
@@ -54,8 +57,14 @@ final class IndexStore: ObservableObject {
     private var client:    MossClient?
     private var session:   MossSession?
 
-    // Persisted source list so we survive app kills
-    private let sourcesKey = "indexed_sources_v1"
+    // Current project — used to scope the cache path and UserDefaults key
+    private var currentProjectId: String?
+
+    // sourcesKey and cacheDir are scoped by project so switching accounts
+    // cannot leak one user's data into another project.
+    private func sourcesKey(for projectId: String) -> String {
+        "indexed_sources_v1_\(projectId)"
+    }
 
     // MARK: - Setup
 
@@ -67,19 +76,49 @@ final class IndexStore: ObservableObject {
         defer { isWorking = false }
 
         do {
+            currentProjectId = projectId
             client  = try MossClient(projectId: projectId, projectKey: projectKey)
             session = try await client!.session("personal-context")
 
-            // Restore on-device index from disk (survives app restarts, no network)
-            try await session!.loadFromDisk(cachePath: cacheDir())
+            // Restore on-device index from disk (survives app restarts, no network).
+            // On first launch there is no cache yet — that's fine, start empty.
+            try? await session!.loadFromDisk(cachePath: cacheDir(for: projectId))
 
             // Restore source list from UserDefaults
             sources = loadSources()
 
             status = "Ready — \(session!.docCount) documents indexed"
         } catch {
+            currentProjectId = nil
             status = "Setup failed: \(error.localizedDescription)"
         }
+    }
+
+    // MARK: - Sign out
+
+    /// Clears all on-device state for the current project so a subsequent
+    /// call to `setup` with different credentials starts from a clean slate.
+    func signOut() {
+        // Stop any in-flight work
+        session = nil
+        client  = nil
+
+        if let pid = currentProjectId {
+            // Wipe the scoped source list
+            UserDefaults.standard.removeObject(forKey: sourcesKey(for: pid))
+
+            // Delete the scoped on-device index cache
+            let dir = cacheDir(for: pid)
+            try? FileManager.default.removeItem(atPath: dir)
+
+            currentProjectId = nil
+        }
+
+        sources      = []
+        searchHits   = []
+        llmAnswer    = ""
+        cloudSynced  = false
+        status       = "Signed out"
     }
 
     // MARK: - Ingest: files
@@ -103,24 +142,27 @@ final class IndexStore: ObservableObject {
                 return
             }
 
-            // Build DocumentInfo objects.
-            // metadata is [String: String] — store the filename so we can
-            // surface it in search results.
+            // Mint a stable UUID for this import. Two files named README.md
+            // get different IDs; renaming a file does not affect its docs.
+            let sourceId = UUID().uuidString
+
             let docs = chunks.enumerated().map { i, text in
                 DocumentInfo(
-                    id: "\(filename)::chunk::\(i)",
+                    id:   "\(sourceId)::chunk::\(i)",
                     text: text,
-                    metadata: ["source": filename, "chunk": "\(i)"]
+                    metadata: [
+                        "sourceId":    sourceId,   // used for precise removal
+                        "displayName": filename,   // used for display only
+                        "chunk":       "\(i)",
+                    ]
                 )
             }
 
             let (added, updated) = try await session.addDocs(docs)
-
-            // Save to disk immediately so the index survives a kill
-            try await session.save(toCachePath: cacheDir())
+            try await session.save(toCachePath: cacheDir(for: currentProjectId ?? ""))
 
             let source = IndexedSource(
-                id:       filename,
+                id:       sourceId,
                 name:     filename,
                 kind:     .file,
                 docCount: added + updated,
@@ -158,13 +200,15 @@ final class IndexStore: ObservableObject {
         }
 
         status = "Fetching contacts…"
+        // CNContactNoteKey requires the restricted "Contacts Notes" entitlement
+        // (explicit Apple approval). Omitted here so the demo builds and runs
+        // for any developer without special provisioning.
         let keys: [CNKeyDescriptor] = [
-            CNContactGivenNameKey   as CNKeyDescriptor,
-            CNContactFamilyNameKey  as CNKeyDescriptor,
+            CNContactGivenNameKey        as CNKeyDescriptor,
+            CNContactFamilyNameKey       as CNKeyDescriptor,
             CNContactOrganizationNameKey as CNKeyDescriptor,
-            CNContactJobTitleKey    as CNKeyDescriptor,
-            CNContactNoteKey        as CNKeyDescriptor,
-            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactJobTitleKey         as CNKeyDescriptor,
+            CNContactEmailAddressesKey   as CNKeyDescriptor,
         ]
 
         do {
@@ -181,12 +225,14 @@ final class IndexStore: ObservableObject {
                 if let email = contact.emailAddresses.first {
                     parts.append("email: \(email.value as String)")
                 }
-                if !contact.note.isEmpty { parts.append("notes: \(contact.note)") }
 
                 docs.append(DocumentInfo(
                     id:       "contact::\(contact.identifier)",
                     text:     parts.joined(separator: ". "),
-                    metadata: ["source": "Contacts", "name": name]
+                    metadata: [
+                        "sourceId":    "contacts",   // fixed logical source
+                        "displayName": name,
+                    ]
                 ))
             }
 
@@ -194,7 +240,7 @@ final class IndexStore: ObservableObject {
 
             status = "Indexing \(docs.count) contacts…"
             let (added, updated) = try await session.addDocs(docs)
-            try await session.save(toCachePath: cacheDir())
+            try await session.save(toCachePath: cacheDir(for: currentProjectId ?? ""))
 
             let source = IndexedSource(
                 id:       "contacts",
@@ -222,7 +268,7 @@ final class IndexStore: ObservableObject {
             searchHits = result.docs.map { doc in
                 SearchHit(
                     id:         doc.id,
-                    sourceName: doc.metadata?["source"] ?? doc.id,
+                    sourceName: doc.metadata?["displayName"] ?? doc.id,
                     excerpt:    String(doc.text.prefix(220)),
                     score:      doc.score
                 )
@@ -307,15 +353,21 @@ final class IndexStore: ObservableObject {
         status = "Removing \(source.name)…"
 
         do {
-            // Delete all docs whose "source" metadata matches
+            // Filter by the stable sourceId stored in metadata, not the
+            // display name, so two files with the same name stay independent.
             let allDocs = try await session.getDocs()
             let toDelete = allDocs
-                .filter { $0.metadata?["source"] == source.name || $0.id.hasPrefix("contact::") && source.kind == .contacts }
+                .filter { doc in
+                    if source.kind == .contacts {
+                        return doc.id.hasPrefix("contact::")
+                    }
+                    return doc.metadata?["sourceId"] == source.id
+                }
                 .map(\.id)
 
             if !toDelete.isEmpty {
                 _ = try await session.deleteDocs(toDelete)
-                try await session.save(toCachePath: cacheDir())
+                try await session.save(toCachePath: cacheDir(for: currentProjectId ?? ""))
             }
 
             sources.removeAll { $0.id == source.id }
@@ -328,20 +380,25 @@ final class IndexStore: ObservableObject {
 
     // MARK: - Persistence helpers
 
-    private func cacheDir() -> String {
-        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].path
+    private func cacheDir(for projectId: String) -> String {
+        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        let dir  = base.appendingPathComponent("moss-\(projectId)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.path
     }
 
     private func loadSources() -> [IndexedSource] {
-        guard let data = UserDefaults.standard.data(forKey: sourcesKey),
+        guard let pid = currentProjectId,
+              let data = UserDefaults.standard.data(forKey: sourcesKey(for: pid)),
               let decoded = try? JSONDecoder().decode([IndexedSource].self, from: data)
         else { return [] }
         return decoded
     }
 
     private func saveSources() {
+        guard let pid = currentProjectId else { return }
         if let data = try? JSONEncoder().encode(sources) {
-            UserDefaults.standard.set(data, forKey: sourcesKey)
+            UserDefaults.standard.set(data, forKey: sourcesKey(for: pid))
         }
     }
 

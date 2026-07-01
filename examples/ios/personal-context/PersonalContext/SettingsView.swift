@@ -60,7 +60,7 @@ struct SettingsView: View {
                 } header: {
                     Text("AI Answers")
                 } footer: {
-                    Text("Required for the AI Answer tab in Search. Key is stored on this device only.")
+                    Text("Required for the AI Answer tab. When you submit a query, Moss retrieves matching excerpts from your indexed files and contacts and sends them to OpenAI to generate an answer. Your API key is stored on this device only; the retrieved text is transmitted to OpenAI's servers.")
                 }
 
                 // ── Cloud sync ────────────────────────────────────────────
