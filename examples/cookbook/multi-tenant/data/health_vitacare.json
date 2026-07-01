@@ -1,0 +1,52 @@
+[
+  {
+    "id": "vitacare-services",
+    "text": "VitaCare Clinic offers general practice, preventive care, women's health, pediatrics, chronic disease management (diabetes, hypertension, asthma), and minor procedure care. We do not handle emergencies — call 911 for life-threatening conditions.",
+    "metadata": {"business_id": "health-vitacare", "category": "services"}
+  },
+  {
+    "id": "vitacare-doctors",
+    "text": "Our physicians: Dr. Sarah Okonkwo MD (General Practice), Dr. James Park MD (Pediatrics), Dr. Aisha Rahman MD (Women's Health), Dr. Carlos Mendez MD (Chronic Disease Management). All board-certified. New patients accepted.",
+    "metadata": {"business_id": "health-vitacare", "category": "team"}
+  },
+  {
+    "id": "vitacare-hours",
+    "text": "Clinic hours: Monday–Friday 8am–7pm, Saturday 9am–2pm, closed Sunday. Walk-ins welcome Monday–Friday until 5pm. After-hours nurse line available 24/7 for existing patients at (415) 555-0301.",
+    "metadata": {"business_id": "health-vitacare", "category": "info"}
+  },
+  {
+    "id": "vitacare-appointments",
+    "text": "Booking appointments: Online at vitacareclinic.com, by phone (415) 555-0300, or walk in. Same-day appointments available for urgent but non-emergency needs. Annual physicals should be booked 2–3 weeks in advance.",
+    "metadata": {"business_id": "health-vitacare", "category": "onboarding"}
+  },
+  {
+    "id": "vitacare-insurance",
+    "text": "Accepted insurance: Blue Cross Blue Shield, Aetna, UnitedHealthcare, Cigna, Medicare, Medicaid, and most major plans. Self-pay patients welcome — sliding scale fees available based on income. Call to verify your specific plan before your visit.",
+    "metadata": {"business_id": "health-vitacare", "category": "billing"}
+  },
+  {
+    "id": "vitacare-fees",
+    "text": "Self-pay fees: New patient comprehensive exam $180, follow-up visit $120, annual physical $150, sick visit $110, telehealth visit $90. Lab work billed separately. Payment due at time of service. We accept all major cards and HSA/FSA.",
+    "metadata": {"business_id": "health-vitacare", "category": "billing"}
+  },
+  {
+    "id": "vitacare-telehealth",
+    "text": "Telehealth available for follow-ups, prescription refills, minor illnesses, and chronic disease check-ins. Appointments via Zoom — link sent by email. Telehealth sessions are 20 minutes. Same insurance coverage as in-person visits.",
+    "metadata": {"business_id": "health-vitacare", "category": "services"}
+  },
+  {
+    "id": "vitacare-prescriptions",
+    "text": "Prescription refills: Request online via the patient portal or call 48 hours before you run out. Controlled substances require an in-person visit every 90 days. Electronic prescriptions sent directly to your pharmacy of choice.",
+    "metadata": {"business_id": "health-vitacare", "category": "services"}
+  },
+  {
+    "id": "vitacare-location",
+    "text": "Located at 2240 Market Street, Suite 4, San Francisco, CA 94114. Street parking and a paid garage on the block. Accessible by Muni Metro (Castro Station, F and K lines). Wheelchair accessible entrance on the ground floor.",
+    "metadata": {"business_id": "health-vitacare", "category": "info"}
+  },
+  {
+    "id": "vitacare-new-patient",
+    "text": "New patient checklist: Bring a valid photo ID, insurance card, list of current medications, and any recent lab results. Arrive 15 minutes early to complete intake forms, or fill them out online via the patient portal before your visit.",
+    "metadata": {"business_id": "health-vitacare", "category": "onboarding"}
+  }
+]

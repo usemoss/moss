@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "multi-tenant-moss"
+version = "0.1.0"
+description = "Multi-tenant runtime context routing with Moss semantic search"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "BSD-2-Clause" }
+authors = [
+    { name = "InferEdge Inc.", email = "contact@moss.dev" }
+]
+dependencies = [
+    "moss>=1.0.0",
+    "langchain-openai",
+    "langchain-core",
+    "python-dotenv",
+    "pydantic",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["moss_multitenant.py"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "README.md",
+    "moss_multitenant.py",
+]
