@@ -78,7 +78,15 @@ final class IndexStore: ObservableObject {
         do {
             currentProjectId = projectId
             client  = try MossClient(projectId: projectId, projectKey: projectKey)
-            session = try await client!.session("personal-context")
+            // autoLoadOnInit: false — this app is local-first. The index is
+            // restored from the on-device disk cache below. Cloud data is only
+            // pulled when the user explicitly taps "Sync index to cloud" in
+            // Settings, preventing an implicit network fetch on every launch
+            // and keeping the Sources tab consistent with the local index.
+            session = try await client!.session(
+                "personal-context",
+                options: SessionOptions(autoLoadOnInit: false)
+            )
 
             // Restore on-device index from disk (survives app restarts, no network).
             // On first launch there is no cache yet — that's fine, start empty.
@@ -237,6 +245,18 @@ final class IndexStore: ObservableObject {
             }
 
             guard !docs.isEmpty else { status = "No contacts found."; return }
+
+            // Remove stale docs for contacts that have been deleted from the
+            // device since the last import. Diff the incoming IDs against what
+            // is already in the index so we don't leave ghost entries.
+            let incomingIds = Set(docs.map(\.id))
+            let existingContactIds = (try? await session.getDocs())
+                .map { all in Set(all.filter { $0.id.hasPrefix("contact::") }.map(\.id)) }
+                ?? []
+            let stale = existingContactIds.subtracting(incomingIds)
+            if !stale.isEmpty {
+                _ = try await session.deleteDocs(Array(stale))
+            }
 
             status = "Indexing \(docs.count) contacts…"
             let (added, updated) = try await session.addDocs(docs)

@@ -77,7 +77,10 @@ struct SettingsView: View {
 
                 // ── Account ───────────────────────────────────────────────
                 Section("Account") {
-                    Button(role: .destructive, action: onSignOut) {
+                    Button(role: .destructive) {
+                        store.signOut()
+                        onSignOut()
+                    } label: {
                         Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 }
