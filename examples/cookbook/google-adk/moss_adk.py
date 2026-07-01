@@ -120,8 +120,12 @@ async def ask(runner: Runner, session_id: str, question: str) -> str:
 
 
 async def main() -> None:
-    client = MossClient(os.getenv("MOSS_PROJECT_ID"), os.getenv("MOSS_PROJECT_KEY"))
-    await ensure_demo_index(client, INDEX_NAME)
+    load_dotenv()
+    project_id = os.getenv("MOSS_PROJECT_ID")
+    project_key = os.getenv("MOSS_PROJECT_KEY")
+    if not project_id or not project_key:
+        raise RuntimeError("Missing MOSS_PROJECT_ID or MOSS_PROJECT_KEY environment variables.")
+    client = MossClient(project_id, project_key)
 
     search = create_moss_search_tool(client, INDEX_NAME)
 
