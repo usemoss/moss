@@ -9,7 +9,6 @@ This demo builds an "Onboarding Assistant" that answers new-hire questions
 by searching a small company-handbook index, using OpenAI's GPT models via
 ADK's LiteLLM integration.
 """
-
 import asyncio
 import os
 
@@ -31,6 +30,9 @@ INDEX_NAME = "onboarding-handbook"
 
 async def ensure_demo_index(client: MossClient, index_name: str) -> None:
     """Create a small onboarding-handbook index if it doesn't already exist."""
+    existing = await client.list_indexes()
+    if any(index.name == index_name for index in existing):
+        return
     docs = [
         DocumentInfo(
             id="pto-policy",
@@ -94,8 +96,7 @@ def create_moss_search_tool(client: MossClient, index_name: str, top_k: int = 3)
         result = await client.query(index_name, query, QueryOptions(top_k=top_k))
         if not result.docs:
             return {"status": "success", "results": [], "message": "No relevant information found."}
-        
-        print(result.docs[0].text)
+
         return {
             "status": "success",
             "results": [{"id": doc.id, "text": doc.text, "score": doc.score} for doc in result.docs],
