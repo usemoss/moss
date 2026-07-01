@@ -20,7 +20,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from moss import DocumentInfo, MossClient, QueryOptions
 
-load_dotenv()
+# NOTE: load_dotenv() is called in main() to avoid side effects on import.
 
 MODEL = LiteLlm(model="openai/gpt-4.1-mini")
 APP_NAME = "moss-adk-onboarding-assistant"
