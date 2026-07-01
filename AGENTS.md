@@ -95,6 +95,7 @@ asks for an experimental landing spot.
 | `crewai/` | CrewAI | Moss as a retrieval tool for CrewAI agents; travel-planning demo with structured JSON data |
 | `daytona/` | Daytona | Log ingestion Q&A agent — runs Moss search and code execution inside isolated Daytona sandboxes |
 | `dspy/` | DSPy | Notebook-based DSPy + Moss integration |
+| `google-adk/` | Google ADK | Moss search wrapped as an async ADK function tool; single-file onboarding-assistant demo using OpenAI via ADK's LiteLLM integration |
 | `haystack/` | Haystack | `MossDocumentStore` and `MossRetriever` drop-in components for Haystack RAG pipelines |
 | `langchain/` | LangChain | `MossRetriever` (BaseRetriever) + `get_moss_tool()` factory; the canonical pattern for new Python cookbook integrations |
 | `mastra/` | Mastra | Moss wrapped as a `createTool()` primitive for Mastra conversational agents (TypeScript) |

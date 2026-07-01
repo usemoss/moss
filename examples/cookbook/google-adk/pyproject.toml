@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "google-adk-moss"
+version = "0.1.0"
+description = "Google Agent Development Kit (ADK) integration for Moss semantic search"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = { text = "BSD-2-Clause" }
+authors = [
+    { name = "InferEdge Inc.", email = "contact@moss.dev" }
+]
+dependencies = [
+    "google-adk",
+    "litellm",
+    "moss>=1.1.1",
+    "python-dotenv",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["moss_adk.py"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "README.md",
+    "moss_adk.py",
+]
