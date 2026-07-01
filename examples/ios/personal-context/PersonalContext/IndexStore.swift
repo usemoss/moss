@@ -371,7 +371,10 @@ final class IndexStore: ObservableObject {
         }
         isWorking = true
         defer { isWorking = false }
-        status = "Pushing to cloud…"
+        // This replaces the cloud index with the current local copy.
+        // It does not pull or merge existing cloud content first.
+        // On a shared project, this overwrites documents from other devices.
+        status = "Replacing cloud index…"
 
         do {
             let push = try await session.pushIndex()
@@ -381,7 +384,7 @@ final class IndexStore: ObservableObject {
                 if ["ready", "completed", "done", "succeeded"]
                     .contains(st.status.lowercased()) {
                     cloudSynced = true
-                    status = "Synced ✓ — index: \(push.indexName)"
+                    status = "Uploaded ✓ — index: \(push.indexName)"
                     return
                 }
                 try await Task.sleep(nanoseconds: 1_000_000_000)
@@ -421,6 +424,7 @@ final class IndexStore: ObservableObject {
                 guard sessionGeneration == generation else { return }
                 try await session.save(toCachePath: cacheDir(for: currentProjectId ?? ""))
                 guard sessionGeneration == generation else { return }
+                cloudSynced = false   // local index diverged from last cloud push
             }
 
             sources.removeAll { $0.id == source.id }
@@ -467,5 +471,6 @@ final class IndexStore: ObservableObject {
         }
         saveSources()
         indexDocCount = session?.docCount ?? 0
+        cloudSynced   = false   // local index diverged from last cloud push
     }
 }

@@ -63,16 +63,16 @@ struct SettingsView: View {
                     Text("Required for the AI Answer tab. When you submit a query, Moss retrieves matching excerpts from your indexed files and contacts and sends them to OpenAI to generate an answer. Your API key is stored on this device only; the retrieved text is transmitted to OpenAI's servers.")
                 }
 
-                // ── Cloud sync ────────────────────────────────────────────
+                // ── Cloud upload ──────────────────────────────────────────
                 Section {
-                    Button {
+                    Button(role: .destructive) {
                         showSyncConfirm = true
                     } label: {
-                        Label("Sync index to cloud", systemImage: "icloud.and.arrow.up")
+                        Label("Replace cloud index", systemImage: "icloud.and.arrow.up")
                     }
                     .disabled(store.isWorking || store.sources.isEmpty || store.indexDocCount == 0)
                 } footer: {
-                    Text("Pushes your on-device Moss index to the cloud so you can load it on other devices.")
+                    Text("Uploads this device's index to the cloud, replacing whatever is stored there. This does not pull or merge content from other devices first.")
                 }
 
                 // ── Account ───────────────────────────────────────────────
@@ -97,10 +97,10 @@ struct SettingsView: View {
                     .cornerRadius(14)
                 }
             }
-            .confirmationDialog("Sync to cloud?", isPresented: $showSyncConfirm, titleVisibility: .visible) {
-                Button("Sync") { Task { await store.syncToCloud() } }
+            .confirmationDialog("Replace cloud index?", isPresented: $showSyncConfirm, titleVisibility: .visible) {
+                Button("Replace", role: .destructive) { Task { await store.syncToCloud() } }
             } message: {
-                Text("This uploads your index to Moss cloud. May take up to a minute.")
+                Text("This replaces the cloud copy with this device's local index. Any documents added on other devices will be lost. May take up to a minute.")
             }
             .safeAreaInset(edge: .bottom) {
                 Text(store.status)
