@@ -105,14 +105,19 @@ jobs:
             }
           prompt: |
             You are a senior staff engineer doing a deep, context-aware review of pull
-            request #${{ needs.authorize.outputs.pr }} in ${{ github.repository }}. Review
-            like Devin: do not skim the diff, investigate the whole repository to judge
-            each change in the context of the code around it. The full repo is checked
-            out at the PR merge commit and you have a read-only shell, so actually explore.
+            request #${{ needs.authorize.outputs.pr }} in ${{ github.repository }}. Do not
+            skim the diff: investigate the whole repository to judge each change in the
+            context of the code around it. The full repo is checked out at the PR merge
+            commit and you have a read-only shell, so actually explore.
 
-            Step 1 - establish what changed:
-            - `git diff HEAD^1 HEAD^2 --stat` for the shape, then
-              `git diff HEAD^1 HEAD^2 -- <path>` per file for the exact changes.
+            Step 1 - establish what changed. The checkout is the PR merge commit, whose
+            parents are the base tip (HEAD^1) and the PR head (HEAD^2). Diff from the
+            MERGE BASE so you see only this PR's changes, never commits that landed on the
+            base branch after the branch was cut (a plain `HEAD^1 HEAD^2` diff is wrong for
+            stale branches). This also matches the line numbers GitHub maps comments to:
+            - `BASE=$(git merge-base HEAD^1 HEAD^2)`
+            - `git diff "$BASE" HEAD^2 --stat` for the shape, then
+              `git diff "$BASE" HEAD^2 -- <path>` per file for the exact changes.
 
             Step 2 - crawl the repository for context. Do not review a hunk in isolation:
             - Open each changed file IN FULL (not just the diff window) to understand
