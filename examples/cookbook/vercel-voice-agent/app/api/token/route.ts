@@ -17,8 +17,8 @@ const searchTool = mossSearchTool({
 });
 
 // Load the index into local memory at startup.
-// Cloud query returns 503 for this project — local queries work fine.
-// Storing the promise lets search requests await it and fail fast on load error.
+// Cloud query returns 503 — local queries work fine after loadIndex.
+// Storing the promise means search requests block until ready, or fail fast if it rejects.
 const indexReady = client.loadIndex(process.env.MOSS_INDEX_NAME!)
   .then(() => console.log('[MOSS] index loaded locally'))
   .catch((err: unknown) => { console.error('[MOSS] loadIndex failed:', err); throw err; });
@@ -37,14 +37,14 @@ const MOSS_TOOL = {
   },
 };
 
+// ⚠️  DEMO ONLY — this route is intentionally unauthenticated.
+// Before deploying publicly, add a real auth check (e.g. verify a
+// NextAuth session cookie) so arbitrary callers cannot mint Gateway
+// tokens or query your MOSS index.
+//
 // POST (empty body)  → mint a short-lived WebSocket token via Vercel AI Gateway
 // POST ({ query })   → execute MOSS search on behalf of the realtime model's tool call
 export async function POST(req: Request) {
-  const secret = process.env.DEMO_SECRET;
-  if (secret && new URL(req.url).searchParams.get('s') !== secret) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
 
   if (typeof body.query === 'string') {
@@ -59,7 +59,9 @@ export async function POST(req: Request) {
       { toolCallId: 'realtime', messages: [], abortSignal: req.signal },
     );
     const docs = (result as { docs: Array<{ text: string }> }).docs ?? [];
-    return Response.json(docs.map((d) => d.text).join('\n\n'));
+    return new Response(docs.map((d) => d.text).join('\n\n---\n\n'), {
+      headers: { 'Content-Type': 'text/plain' },
+    });
   }
 
   const { token, url } = await gateway.experimental_realtime.getToken({
