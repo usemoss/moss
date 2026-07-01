@@ -29,6 +29,7 @@ export default function Page() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+
   const model = useMemo(
     () => gateway.experimental_realtime('openai/gpt-realtime-2'),
     [],
@@ -75,13 +76,16 @@ export default function Page() {
       setConnected(false);
       setIsSpeaking(false);
     } else {
+      let stream: MediaStream | undefined;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         });
         await connect();
         startAudioCapture(stream);
       } catch (err) {
+        stream?.getTracks().forEach((t) => t.stop());
+        disconnect();
         setError(err instanceof Error ? err.message : String(err));
       }
     }

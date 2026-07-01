@@ -31,20 +31,22 @@ const MOSS_TOOL = {
     type: 'object',
     properties: {
       query: { type: 'string', description: 'Concise search query' },
-      topK: { type: 'number', description: 'Number of results (default 5)' },
+      topK: { type: 'integer', minimum: 1, maximum: 100, description: 'Number of results to return (1–100, default 5)' },
     },
     required: ['query'],
   },
 };
 
-// ⚠️  DEMO ONLY — this route is intentionally unauthenticated.
-// Before deploying publicly, add a real auth check (e.g. verify a
-// NextAuth session cookie) so arbitrary callers cannot mint Gateway
-// tokens or query your MOSS index.
-//
 // POST (empty body)  → mint a short-lived WebSocket token via Vercel AI Gateway
 // POST ({ query })   → execute MOSS search on behalf of the realtime model's tool call
+//
+// Auth: fails closed (401) unless ALLOW_UNAUTHENTICATED_DEMO=true is explicitly set.
+// For production, replace this check with a real session/token verification.
 export async function POST(req: Request) {
+  if (process.env.ALLOW_UNAUTHENTICATED_DEMO !== 'true') {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
 
   if (typeof body.query === 'string') {
@@ -53,7 +55,7 @@ export async function POST(req: Request) {
     } catch {
       return new Response('Search index unavailable', { status: 503 });
     }
-    const topK = typeof body.topK === 'number' ? body.topK : 5;
+    const topK = Number.isInteger(body.topK) ? Math.min(100, Math.max(1, body.topK as number)) : 5;
     const result = await searchTool.execute!(
       { query: body.query, topK },
       { toolCallId: 'realtime', messages: [], abortSignal: req.signal },
