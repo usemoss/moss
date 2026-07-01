@@ -22,6 +22,7 @@ from moss import (
     GetDocumentsOptions,
     MossClient,
     MutationOptions,
+    ParseFileInput,
     QueryOptions,
 )
 
@@ -344,6 +345,24 @@ async def comprehensive_moss_example():
         deleted = await client.delete_index(index_name)
         print(f"Index deleted: {deleted}")
 
+        # Step 13: File-based index creation (optional — requires a PDF path).
+        # Set MOSS_SAMPLE_PDF_PATH to a local PDF file to run this step.
+        pdf_path = os.getenv("MOSS_SAMPLE_PDF_PATH")
+        if pdf_path:
+            file_index = f"file-index-demo-{timestamp}"
+            print(f"\nStep 13: Creating index from file '{pdf_path}'...")
+            try:
+                file_result = await client.create_index_from_files(
+                    file_index,
+                    [ParseFileInput(name="sample.pdf", content_type="application/pdf", path=pdf_path)],
+                )
+                print(f"File index created (job: {file_result.job_id}, docs: {file_result.doc_count})")
+                await client.delete_index(file_index)
+            except Exception as fe:
+                print(f"File index step skipped: {fe}")
+        else:
+            print("\nStep 13: Skipped (set MOSS_SAMPLE_PDF_PATH to a PDF file to demo create_index_from_files)")
+
         print("\nComprehensive Moss SDK Example Completed Successfully!")
         print("=" * 60)
         print("Summary of operations performed:")
@@ -356,6 +375,7 @@ async def comprehensive_moss_example():
         print("   - Multiple semantic search operations")
         print("   - Document deletion")
         print("   - Index cleanup")
+        print("   - File-based index creation (create_index_from_files)")
         print("   - Comprehensive error handling")
 
     except Exception as error:

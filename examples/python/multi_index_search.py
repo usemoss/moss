@@ -118,13 +118,17 @@ async def multi_index_search_sample() -> None:
         print(f"   created: {all_indexes}")
 
         # load_indexes is best-effort: failures on individual names do not
-        # roll back the others. Inspect ``load_result.failed`` to see
-        # which (if any) names failed and why; downstream ops should use
+        # roll back the others. ``load_result.failed`` is a dict mapping
+        # name -> error string; downstream ops should use
         # ``load_result.loaded`` rather than the original list.
         print("\n2. Bulk-loading all three with load_indexes...")
         load_result: LoadIndexesResult = await client.load_indexes(all_indexes)
         print(f"   loaded: {load_result.loaded}")
-        print(f"   failed: {load_result.failed}")
+        if load_result.failed:
+            for name, err in load_result.failed.items():
+                print(f"   failed: {name} — {err}")
+        else:
+            print("   failed: none")
 
         print("\n3. Querying across all loaded indexes in one call.")
         print("   Each result is tagged with its source index_name.")

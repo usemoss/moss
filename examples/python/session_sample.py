@@ -14,7 +14,7 @@ Required Environment Variables:
 import asyncio
 import os
 from dotenv import load_dotenv
-from moss import MossClient, DocumentInfo, QueryOptions
+from moss import MossClient, DocumentInfo, QueryOptions, GetDocumentsOptions
 
 # Load environment variables
 load_dotenv()
@@ -42,7 +42,7 @@ async def session_sample():
         # auto-loads; otherwise the session starts empty. No cloud round trip on add/query.
         print(f"\nOpening session '{index_name}'...")
         session = await client.session(index_name=index_name)
-        print(f"Session open ({session.doc_count} existing docs)")
+        print(f"Session '{session.name}' open ({session.doc_count} existing docs)")
 
         # Add documents as they arrive (e.g. transcript turns). Embedded locally.
         print("\nAdding documents locally...")
@@ -50,8 +50,23 @@ async def session_sample():
             DocumentInfo(id="turn-1", text="Customer was charged twice for the March renewal."),
             DocumentInfo(id="turn-2", text="Agent confirmed a refund for the duplicate charge."),
             DocumentInfo(id="turn-3", text="Customer also asked to cancel auto-renew."),
+            DocumentInfo(id="turn-4", text="Agent placed a cancellation request for auto-renew."),
         ])
         print(f"{added} added, {updated} updated ({session.doc_count} total)")
+
+        # Retrieve all documents currently in the session index.
+        print("\nRetrieving all session documents...")
+        all_docs = await session.get_docs()
+        print(f"Found {len(all_docs)} docs:")
+        for doc in all_docs:
+            print(f"  [{doc.id}] {doc.text}")
+
+        # Retrieve specific documents by ID.
+        print("\nRetrieving specific documents by ID...")
+        specific = await session.get_docs(GetDocumentsOptions(doc_ids=["turn-1", "turn-3"]))
+        print(f"Fetched {len(specific)} docs:")
+        for doc in specific:
+            print(f"  [{doc.id}] {doc.text}")
 
         # Query the in-memory session (~1-10 ms, no network).
         print("\nQuerying the session...")
@@ -59,10 +74,21 @@ async def session_sample():
         for doc in results.docs:
             print(f"  [{doc.id}] {doc.score:.3f}  {doc.text}")
 
+        # Delete a document that is no longer needed.
+        print("\nDeleting 'turn-4' from session...")
+        deleted_count = await session.delete_docs(["turn-4"])
+        print(f"Deleted {deleted_count} doc(s) ({session.doc_count} remaining)")
+
+        # Query again to confirm the deletion.
+        print("\nQuerying after deletion...")
+        results_after = await session.query("auto-renew cancellation", QueryOptions(top_k=3))
+        for doc in results_after.docs:
+            print(f"  [{doc.id}] {doc.score:.3f}  {doc.text}")
+
         # Push the session to the cloud so another agent or device can resume it.
         print("\nPushing session to the cloud...")
         pushed = await session.push_index()
-        print(f"Pushed {pushed.doc_count} docs (job {pushed.job_id})")
+        print(f"Pushed {pushed.doc_count} docs to '{pushed.index_name}' (job {pushed.job_id}, status: {pushed.status})")
 
         print("\nSample completed successfully!")
 
