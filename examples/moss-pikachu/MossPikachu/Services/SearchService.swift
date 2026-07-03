@@ -68,9 +68,17 @@ final class SearchService: ObservableObject {
         }
         indexManager.updateScopeFingerprint(policy.scopeFingerprint)
 
+        let isFirstLaunch = requiresBootstrapIndex
+        if isFirstLaunch && docCount > 0 {
+            AppLogger.shared.log("Fresh local manifest with existing Moss session — clearing remote session for current scope")
+            try? await mossBridge?.clearIndex()
+            sessionDocCount = 0
+            sessionStatusMessage = "Reset Moss session for current scope"
+            hasUnpushedSessionChanges = true
+        }
+
         _ = fileMonitor.start()
 
-        let isFirstLaunch = requiresBootstrapIndex
         let needsRehydrate = docCount == 0 && indexManager.indexedFileCount > 0
         await performInitialScan(forceAll: isFirstLaunch || needsRehydrate)
         isReady = true
@@ -106,7 +114,9 @@ final class SearchService: ObservableObject {
         }
         await pruneStaleEntries()
         let results = try await mossBridge.query(indexName: IndexingPolicy.sessionName, query: query, topK: 8)
-        return results.filter { FileManager.default.fileExists(atPath: $0.path) }
+        return results.filter { result in
+            FileManager.default.fileExists(atPath: result.path) && policy.shouldIndex(path: result.path)
+        }
     }
 
     func reindexNow() async throws {
@@ -128,7 +138,7 @@ final class SearchService: ObservableObject {
     // MARK: - Private
 
     private var missingScopeMessage: String {
-        "Folder not found: ~/Downloads/\(IndexingPolicy.testScopeFolderName)"
+        "No enabled folders found for indexing."
     }
 
     private func refreshWatchedPaths() {
@@ -259,39 +269,59 @@ final class SearchService: ObservableObject {
 
         let batchSize = 15
         var offset = 0
-        var batchChunkCounts: [String: Int] = [:]
 
         while offset < inScope.count {
             let end = min(offset + batchSize, inScope.count)
             let batch = Array(inScope[offset..<end])
-            do {
-                let result = try await mossBridge.addDocs(files: batch)
-                let perFileChunks = batch.isEmpty ? 0 : max(1, result.chunks / batch.count)
+            let succeeded = await indexBatch(batch, using: mossBridge)
+            if !succeeded {
+                // Batch hung or failed — retry files one at a time and skip poison files.
                 for path in batch {
-                    batchChunkCounts[path] = perFileChunks
+                    let ok = await indexBatch([path], using: mossBridge)
+                    if !ok {
+                        AppLogger.shared.log("Skipping file after timeout/error: \(path)")
+                        indexManager.markIndexed(paths: [path], chunkCounts: [path: 0], policy: policy)
+                        skippedFileCount += 1
+                        indexedFileCount = indexManager.indexedFileCount
+                        lastIndexedDate = indexManager.lastIndexedDate
+                    }
                 }
-                indexManager.markIndexed(paths: batch, chunkCounts: batchChunkCounts, policy: policy)
-                indexedFileCount = indexManager.indexedFileCount
-                indexedChunkCount += result.chunks
-                skippedFileCount += result.skipped
-                sessionDocCount = result.docCount
-                hasUnpushedSessionChanges = true
-                sessionStatusMessage = "Local session updated"
-                lastIndexedDate = indexManager.lastIndexedDate
-                statusMessage = "Indexed \(indexedFileCount) files (\(indexedChunkCount) chunks)"
-                AppLogger.shared.log(
-                    "Indexed batch: \(result.filesIndexed) files, \(result.chunks) chunks, skipped \(result.skipped)"
-                )
-            } catch {
-                AppLogger.shared.log("Index error: \(error.localizedDescription)")
-                NotificationManager.shared.showError(error.localizedDescription)
             }
+            queuedFileCount = max(0, inScope.count - end)
+            statusMessage = "Indexed \(indexedFileCount) files (\(indexedChunkCount) chunks)"
             offset = end
         }
 
         isIndexing = false
         queuedFileCount = 0
         scheduleSessionPush()
+    }
+
+    /// Returns false when the worker times out or errors so the caller can skip poison files.
+    private func indexBatch(_ batch: [String], using mossBridge: MossBridge) async -> Bool {
+        var batchChunkCounts: [String: Int] = [:]
+        do {
+            let result = try await mossBridge.addDocs(files: batch)
+            let perFileChunks = batch.isEmpty ? 0 : max(1, result.chunks / batch.count)
+            for path in batch {
+                batchChunkCounts[path] = perFileChunks
+            }
+            indexManager.markIndexed(paths: batch, chunkCounts: batchChunkCounts, policy: policy)
+            indexedFileCount = indexManager.indexedFileCount
+            indexedChunkCount += result.chunks
+            skippedFileCount += result.skipped
+            sessionDocCount = result.docCount
+            hasUnpushedSessionChanges = true
+            sessionStatusMessage = "Local session updated"
+            lastIndexedDate = indexManager.lastIndexedDate
+            AppLogger.shared.log(
+                "Indexed batch: \(result.filesIndexed) files, \(result.chunks) chunks, skipped \(result.skipped)"
+            )
+            return true
+        } catch {
+            AppLogger.shared.log("Index error: \(error.localizedDescription)")
+            return false
+        }
     }
 
     private func scheduleSessionPush() {

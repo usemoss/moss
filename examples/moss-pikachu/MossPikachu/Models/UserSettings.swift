@@ -4,7 +4,7 @@ nonisolated struct UserSettings: Codable, Equatable, Sendable {
     var indexDocuments: Bool = true
     var indexDesktop: Bool = true
     var indexDownloads: Bool = true
-    var indexICloudDrive: Bool = true
+    var indexICloudDrive: Bool = false
     var launchAtLogin: Bool = false
     var mossCloudSync: Bool = false
 

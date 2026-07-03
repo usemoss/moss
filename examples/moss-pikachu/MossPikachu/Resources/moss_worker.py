@@ -16,6 +16,10 @@ from typing import Any
 
 CONTENT_EXTENSIONS = {".md", ".txt", ".html", ".rtf", ".pdf", ".docx"}
 
+# Avoid hanging the indexer on huge/corrupt documents.
+MAX_CONTENT_BYTES = 8 * 1024 * 1024
+MAX_PDF_PAGES = 40
+
 CHUNK_CHARS = 1800
 CHUNK_OVERLAP = 300
 
@@ -88,7 +92,10 @@ def read_pdf(path: Path) -> str | None:
 
         reader = PdfReader(str(path))
         parts = []
-        for page in reader.pages:
+        for index, page in enumerate(reader.pages):
+            if index >= MAX_PDF_PAGES:
+                log_stderr(f"PDF truncated to {MAX_PDF_PAGES} pages: {path}")
+                break
             parts.append(page.extract_text() or "")
         return "\n".join(parts)
     except Exception as exc:
@@ -110,6 +117,18 @@ def read_docx(path: Path) -> str | None:
 def read_file_text(path: str) -> str | None:
     p = Path(path)
     ext = p.suffix.lower()
+    if ext not in CONTENT_EXTENSIONS:
+        return None
+
+    try:
+        size = p.stat().st_size
+    except OSError as exc:
+        log_stderr(f"Stat failed {path}: {exc}")
+        return None
+
+    if size > MAX_CONTENT_BYTES:
+        log_stderr(f"Using metadata only for large file ({size} bytes): {path}")
+        return None
 
     if ext in {".md", ".txt", ".rtf"}:
         return read_plain(p)

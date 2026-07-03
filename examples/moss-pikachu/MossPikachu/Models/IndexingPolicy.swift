@@ -2,11 +2,9 @@ import Foundation
 
 /// Central indexing policy: which roots to watch, what to exclude, and what file types to index.
 nonisolated struct IndexingPolicy: Equatable, Sendable {
-    /// Temporary test scope: keep indexing fast while validating Pikachu Spotlight.
-    nonisolated static let testScopeFolderName = "cwp-stuff"
-    nonisolated static let isTestScopeEnabled = true
-    nonisolated static let sessionName = "cwp-stuff-test"
-    nonisolated static let manifestFilename = "index-manifest-cwp-stuff-test.json"
+    nonisolated static let isTestScopeEnabled = false
+    nonisolated static let sessionName = "local-files"
+    nonisolated static let manifestFilename = "index-manifest.json"
     nonisolated static let manifestVersion = 2
     nonisolated static let excludedDirectoryNames: Set<String> = [
         ".git", "node_modules", ".venv", "venv", "DerivedData", "build", "dist", "target",
@@ -36,15 +34,6 @@ nonisolated struct IndexingPolicy: Equatable, Sendable {
     /// Resolved watch roots that exist on disk.
     nonisolated func resolvedRoots() -> [IndexingRoot] {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        if Self.isTestScopeEnabled {
-            let testURL = home
-                .appendingPathComponent("Downloads", isDirectory: true)
-                .appendingPathComponent(Self.testScopeFolderName, isDirectory: true)
-            return existingRoots([
-                IndexingRoot(identifier: "cwp-stuff", url: testURL)
-            ])
-        }
-
         var roots: [IndexingRoot] = []
 
         if settings.indexDocuments {
@@ -153,7 +142,6 @@ nonisolated struct IndexingRoot: Equatable, Sendable {
         case "desktop": return "Desktop"
         case "downloads": return "Downloads"
         case "icloud": return "iCloud Drive"
-        case "cwp-stuff": return "Downloads/cwp-stuff"
         default: return url.lastPathComponent
         }
     }

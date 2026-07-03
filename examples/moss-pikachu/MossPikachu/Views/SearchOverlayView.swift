@@ -150,7 +150,7 @@ struct SearchOverlayView: View {
     }
 
     private var noResultsRow: some View {
-        Text("No matches in ~/Downloads/\(IndexingPolicy.testScopeFolderName)")
+        Text("No matches in Downloads, Documents, or Desktop")
             .font(.caption)
             .foregroundColor(.secondary)
             .padding(.horizontal, 14)

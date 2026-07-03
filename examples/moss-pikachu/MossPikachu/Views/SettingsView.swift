@@ -14,21 +14,17 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 settingsSection(title: "Indexed Folders") {
-                    Text("Test mode is enabled: Moss indexes only `~/Downloads/\(IndexingPolicy.testScopeFolderName)` so Spotlight testing stays fast.")
+                    Text("Moss indexes your Downloads, Documents, and Desktop folders locally, then stores the session so it can resume quickly.")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
                     Toggle("Documents", isOn: $settings.indexDocuments)
-                        .disabled(IndexingPolicy.isTestScopeEnabled)
                     Toggle("Desktop", isOn: $settings.indexDesktop)
-                        .disabled(IndexingPolicy.isTestScopeEnabled)
                     Toggle("Downloads", isOn: $settings.indexDownloads)
-                        .disabled(IndexingPolicy.isTestScopeEnabled)
                     Toggle("iCloud Drive", isOn: $settings.indexICloudDrive)
-                        .disabled(IndexingPolicy.isTestScopeEnabled)
 
                     if searchService.watchedFolderPathsList.isEmpty {
-                        Text("Create `~/Downloads/\(IndexingPolicy.testScopeFolderName)` to enable indexing.")
+                        Text("Enable at least one existing folder to start indexing.")
                             .font(.caption)
                             .foregroundColor(.orange)
                     } else {
@@ -49,7 +45,7 @@ struct SettingsView: View {
                     Text("All regular file types are indexed. Text-like files include contents; everything else is searchable by filename, path, extension, and metadata.")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("Current scope is limited to Downloads/cwp-stuff for testing.")
+                    Text("Current scope: Downloads, Documents, and Desktop by default.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

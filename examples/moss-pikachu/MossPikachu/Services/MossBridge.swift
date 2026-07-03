@@ -24,15 +24,25 @@ enum MossBridgeError: LocalizedError {
 }
 
 nonisolated final class MossBridge: @unchecked Sendable {
+    private struct PendingRequest {
+        let id: UUID
+        let continuation: CheckedContinuation<[String: Any], Error>
+    }
+
     private var process: Process?
     private var stdinHandle: FileHandle?
     private let ioQueue = DispatchQueue(label: "dev.moss.pikachu.mossbridge")
     private var readBuffer = ""
-    private var pendingContinuations: [CheckedContinuation<[String: Any], Error>] = []
+    private var pendingRequests: [PendingRequest] = []
     private var isReading = false
 
     private let projectID: String
     private let projectKey: String
+
+    /// Default timeout for Moss worker RPCs. add_docs uses a longer budget.
+    private static let defaultTimeout: TimeInterval = 45
+    private static let addDocsTimeout: TimeInterval = 90
+    private static let pushIndexTimeout: TimeInterval = 120
 
     init(projectID: String, projectKey: String) {
         self.projectID = projectID
@@ -98,7 +108,10 @@ nonisolated final class MossBridge: @unchecked Sendable {
         proc.terminationHandler = { [weak self] _ in
             guard let bridge = self else { return }
             bridge.ioQueue.async { [weak bridge] in
-                bridge?.failPending(MossBridgeError.workerCrashed)
+                guard let bridge, bridge.process === proc || bridge.process == nil else { return }
+                bridge.failPending(MossBridgeError.workerCrashed)
+                bridge.process = nil
+                bridge.stdinHandle = nil
             }
         }
 
@@ -136,12 +149,10 @@ nonisolated final class MossBridge: @unchecked Sendable {
     }
 
     func stop() {
-        if let process, process.isRunning {
-            sendRawLine(#"{"action":"shutdown"}"#)
-            process.terminate()
+        ioQueue.sync {
+            failPending(MossBridgeError.workerCrashed)
+            hardResetWorkerLocked(sendShutdown: true)
         }
-        process = nil
-        stdinHandle = nil
     }
 
     func initSession(indexName: String) async throws -> Int {
@@ -157,7 +168,11 @@ nonisolated final class MossBridge: @unchecked Sendable {
         skipped: Int,
         docCount: Int
     ) {
-        let response = try await send(action: "add_docs", payload: ["files": files])
+        let response = try await send(
+            action: "add_docs",
+            payload: ["files": files],
+            timeout: Self.addDocsTimeout
+        )
         return (
             added: response["added"] as? Int ?? 0,
             updated: response["updated"] as? Int ?? 0,
@@ -194,7 +209,7 @@ nonisolated final class MossBridge: @unchecked Sendable {
     }
 
     func pushIndex() async throws -> (docCount: Int, jobID: String?) {
-        let response = try await send(action: "push_index", payload: [:])
+        let response = try await send(action: "push_index", payload: [:], timeout: Self.pushIndexTimeout)
         return (
             docCount: response["doc_count"] as? Int ?? 0,
             jobID: response["job_id"] as? String
@@ -213,7 +228,11 @@ nonisolated final class MossBridge: @unchecked Sendable {
 
     // MARK: - Private
 
-    private func send(action: String, payload: [String: Any]) async throws -> [String: Any] {
+    private func send(
+        action: String,
+        payload: [String: Any],
+        timeout: TimeInterval = MossBridge.defaultTimeout
+    ) async throws -> [String: Any] {
         try start()
         var body = payload
         body["action"] = action
@@ -221,11 +240,15 @@ nonisolated final class MossBridge: @unchecked Sendable {
         guard let line = String(data: data, encoding: .utf8) else {
             throw MossBridgeError.invalidResponse
         }
+        let requestID = UUID()
         return try await withCheckedThrowingContinuation { continuation in
             ioQueue.async { [weak self] in
                 guard let self else { return }
-                self.pendingContinuations.append(continuation)
+                self.pendingRequests.append(PendingRequest(id: requestID, continuation: continuation))
                 self.sendRawLine(line)
+                self.ioQueue.asyncAfter(deadline: .now() + timeout) { [weak self] in
+                    self?.timeoutRequest(id: requestID)
+                }
             }
         }
     }
@@ -255,21 +278,44 @@ nonisolated final class MossBridge: @unchecked Sendable {
     }
 
     private func completeNext(with result: Result<[String: Any], Error>) {
-        guard !pendingContinuations.isEmpty else { return }
-        let continuation = pendingContinuations.removeFirst()
+        guard !pendingRequests.isEmpty else { return }
+        let request = pendingRequests.removeFirst()
         switch result {
         case .success(let json):
-            continuation.resume(returning: json)
+            request.continuation.resume(returning: json)
         case .failure(let error):
-            continuation.resume(throwing: error)
+            request.continuation.resume(throwing: error)
         }
     }
 
     private func failPending(_ error: Error) {
-        while !pendingContinuations.isEmpty {
-            let c = pendingContinuations.removeFirst()
-            c.resume(throwing: error)
+        let pending = pendingRequests
+        pendingRequests.removeAll()
+        for request in pending {
+            request.continuation.resume(throwing: error)
         }
+    }
+
+    private func timeoutRequest(id: UUID) {
+        guard pendingRequests.contains(where: { $0.id == id }) else { return }
+        AppLogger.shared.log("Moss worker request timed out — restarting worker")
+        failPending(MossBridgeError.timeout)
+        hardResetWorkerLocked(sendShutdown: false)
+    }
+
+    /// Kill the worker so a hung add_docs/query cannot block forever.
+    private func hardResetWorkerLocked(sendShutdown: Bool) {
+        readBuffer = ""
+        if let process {
+            if sendShutdown, process.isRunning {
+                sendRawLine(#"{"action":"shutdown"}"#)
+            }
+            if process.isRunning {
+                process.terminate()
+            }
+        }
+        process = nil
+        stdinHandle = nil
     }
 }
 
