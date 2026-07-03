@@ -71,6 +71,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Setup
 
     private func showBootstrapWindow() {
+        guard bootstrapWindowController == nil else {
+            bootstrapWindowController?.show()
+            return
+        }
         bootstrapWindowController = IndexingBootstrapWindowController(searchService: searchService)
         bootstrapWindowController?.show()
     }
@@ -127,7 +131,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Actions
 
     private func openSearch() {
-        guard searchService.isReady else { return }
+        guard searchService.isReady else {
+            showBootstrapWindow()
+            return
+        }
         if searchOverlayController?.isSearchVisible == true {
             searchOverlayController?.focusSearchField()
         } else {
@@ -144,7 +151,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleSearch() {
-        guard searchService.isReady else { return }
+        guard searchService.isReady else {
+            showBootstrapWindow()
+            return
+        }
         searchOverlayController?.toggle()
     }
 }

@@ -48,7 +48,7 @@ private struct IndexingBootstrapView: View {
                 .font(.title3)
                 .fontWeight(.semibold)
 
-            Text("Building your local search index for Documents, Desktop, Downloads, and iCloud Drive. Moss Pikachu will launch when this finishes.")
+            Text("Building your local search index for ~/Downloads/\(IndexingPolicy.testScopeFolderName). Moss Pikachu will launch when this finishes.")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

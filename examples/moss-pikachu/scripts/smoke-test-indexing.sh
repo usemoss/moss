@@ -14,10 +14,13 @@ set +a
 
 SCOPE_DIR="${TMPDIR:-/tmp}/moss-pikachu-smoke"
 mkdir -p "$SCOPE_DIR"
+SESSION_NAME="moss-pikachu-smoke"
 
 TEST_FILE="$SCOPE_DIR/moss-pikachu-smoke-test.md"
+BINARYISH_FILE="$SCOPE_DIR/moss-pikachu-smoke-artifact.weirdbin"
 UNIQUE="smoke-$(date +%s)"
 echo "Moss Pikachu smoke test unique phrase: $UNIQUE" > "$TEST_FILE"
+printf '\001\002\003metadata-fallback-%s\004' "$UNIQUE" > "$BINARYISH_FILE"
 
 WORKER="$ROOT/MossPikachu/Resources/moss_worker.py"
 PYTHON="$ROOT/.venv/bin/python3"
@@ -25,9 +28,11 @@ PYTHON="$ROOT/.venv/bin/python3"
 
 OUTPUT=$(
   {
-    printf '%s\n' '{"action":"init_session","index_name":"local-files"}'
-    printf '%s\n' "{\"action\":\"add_docs\",\"files\":[\"$TEST_FILE\"]}"
+    printf '%s\n' "{\"action\":\"init_session\",\"index_name\":\"$SESSION_NAME\"}"
+    printf '%s\n' "{\"action\":\"add_docs\",\"files\":[\"$TEST_FILE\",\"$BINARYISH_FILE\"]}"
     printf '%s\n' "{\"action\":\"query\",\"query\":\"$UNIQUE\",\"top_k\":3}"
+    printf '%s\n' "{\"action\":\"query\",\"query\":\"weirdbin artifact\",\"top_k\":3}"
+    printf '%s\n' '{"action":"push_index"}'
   } | "$PYTHON" "$WORKER" 2>&1
 )
 
@@ -36,6 +41,8 @@ echo "$OUTPUT"
 echo "$OUTPUT" | grep -q '"status": "ok"' || { echo "init/add failed"; exit 1; }
 echo "$OUTPUT" | grep -q '"chunks_indexed"' || { echo "add_docs missing chunks"; exit 1; }
 echo "$OUTPUT" | grep -q "$UNIQUE" || { echo "query did not return test content"; exit 1; }
-echo "$OUTPUT" | grep -q "local-files" || { echo "expected local-files session"; exit 1; }
+echo "$OUTPUT" | grep -q "moss-pikachu-smoke-artifact.weirdbin" || { echo "metadata fallback did not index unknown file type"; exit 1; }
+echo "$OUTPUT" | grep -q "$SESSION_NAME" || { echo "expected smoke session"; exit 1; }
+echo "$OUTPUT" | grep -q '"job_id"' || { echo "push_index did not return job_id"; exit 1; }
 
 echo "SMOKE TEST PASSED"

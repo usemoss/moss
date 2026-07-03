@@ -14,8 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-ALLOWED_EXTENSIONS = {".md", ".txt", ".html", ".rtf", ".pdf", ".docx"}
-SKIPPED_EXTENSIONS = {".notes"}
+CONTENT_EXTENSIONS = {".md", ".txt", ".html", ".rtf", ".pdf", ".docx"}
 
 CHUNK_CHARS = 1800
 CHUNK_OVERLAP = 300
@@ -111,11 +110,6 @@ def read_docx(path: Path) -> str | None:
 def read_file_text(path: str) -> str | None:
     p = Path(path)
     ext = p.suffix.lower()
-    if ext in SKIPPED_EXTENSIONS:
-        log_stderr(f"Skipping unsupported format: {path}")
-        return None
-    if ext not in ALLOWED_EXTENSIONS:
-        return None
 
     if ext in {".md", ".txt", ".rtf"}:
         return read_plain(p)
@@ -126,6 +120,25 @@ def read_file_text(path: str) -> str | None:
     if ext == ".docx":
         return read_docx(p)
     return None
+
+
+def fallback_metadata_text(path: str) -> str:
+    p = Path(path)
+    ext = p.suffix.lower().lstrip(".") or "no extension"
+    parent = str(p.parent)
+    try:
+        size = p.stat().st_size
+    except OSError:
+        size = 0
+    return "\n".join(
+        [
+            f"Filename: {p.name}",
+            f"Path: {path}",
+            f"Folder: {parent}",
+            f"File extension: {ext}",
+            f"File size bytes: {size}",
+        ]
+    )
 
 
 def file_mtime_iso(path: str) -> str:
@@ -180,8 +193,7 @@ async def handle_add_docs(payload: dict[str, Any]) -> dict[str, Any]:
     for path in files:
         text = read_file_text(path)
         if not text:
-            files_skipped += 1
-            continue
+            text = fallback_metadata_text(path)
         chunks = chunk_text(text, path)
         if not chunks:
             files_skipped += 1

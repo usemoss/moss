@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 
 @MainActor
 final class NotificationManager {
@@ -18,24 +17,11 @@ final class NotificationManager {
     private func showToast(_ message: String, duration: TimeInterval, isError: Bool) {
         toastWindow?.orderOut(nil)
 
-        let toastView = HStack(spacing: 8) {
-            Image(systemName: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                .foregroundStyle(isError ? .orange : .green)
-            Text(message)
-                .font(.subheadline)
-                .lineLimit(2)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .shadow(radius: 8)
-
-        let hosting = NSHostingView(rootView: toastView)
-        hosting.frame.size = hosting.fittingSize
+        let toastView = ToastView(message: message, isError: isError)
+        let size = toastView.fittingSize
 
         let panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: hosting.frame.size),
+            contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -43,11 +29,11 @@ final class NotificationManager {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.level = .statusBar
-        panel.contentView = hosting
+        panel.contentView = toastView
         panel.hasShadow = false
 
         if let screen = NSScreen.main {
-            let x = screen.visibleFrame.maxX - hosting.frame.width - 20
+            let x = screen.visibleFrame.maxX - size.width - 20
             let y = screen.visibleFrame.minY + 20
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
@@ -59,5 +45,57 @@ final class NotificationManager {
             self?.toastWindow?.orderOut(nil)
             self?.toastWindow = nil
         }
+    }
+}
+
+private final class ToastView: NSVisualEffectView {
+    private let iconView = NSImageView()
+    private let label = NSTextField(labelWithString: "")
+
+    init(message: String, isError: Bool) {
+        super.init(frame: NSRect(x: 0, y: 0, width: 320, height: 52))
+        material = .hudWindow
+        blendingMode = .behindWindow
+        state = .active
+        wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.masksToBounds = true
+
+        iconView.image = NSImage(
+            systemSymbolName: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill",
+            accessibilityDescription: nil
+        )
+        iconView.contentTintColor = isError ? .systemOrange : .systemGreen
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        label.stringValue = message
+        label.font = .systemFont(ofSize: 13)
+        label.textColor = .labelColor
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 2
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(iconView)
+        addSubview(label)
+
+        NSLayoutConstraint.activate([
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 18),
+            iconView.heightAnchor.constraint(equalToConstant: 18),
+
+            label.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 9),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var fittingSize: NSSize {
+        NSSize(width: 320, height: 52)
     }
 }

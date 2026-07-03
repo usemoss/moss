@@ -6,7 +6,6 @@ final class SearchOverlayController: NSObject {
     private let panel: SearchOverlayPanel
     private let searchService: SearchService
     private let presentation: SearchOverlayPresentation
-    private let anchorProvider: () -> NSRect?
     private var hostingView: NSHostingView<SearchOverlayView>?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
@@ -16,9 +15,8 @@ final class SearchOverlayController: NSObject {
     var onClose: (() -> Void)?
     var onPetStateChanged: ((PetState) -> Void)?
 
-    private let panelWidth: CGFloat = 520
-    private let collapsedHeight: CGFloat = 56
-    private let maxExpandedHeight: CGFloat = 320
+    private let panelWidth: CGFloat = 720
+    private let panelHeight: CGFloat = 520
 
     init(
         searchService: SearchService,
@@ -27,10 +25,10 @@ final class SearchOverlayController: NSObject {
     ) {
         self.searchService = searchService
         self.presentation = presentation
-        self.anchorProvider = anchorProvider
+        _ = anchorProvider
 
         panel = SearchOverlayPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 56),
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 520),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -81,8 +79,8 @@ final class SearchOverlayController: NSObject {
         if !isVisible {
             presentation.requestClearQuery()
         }
-        updatePanelHeight(collapsedHeight)
-        positionBelowAnchor()
+        updatePanelHeight(panelHeight)
+        positionSpotlightPanel()
         isVisible = true
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
@@ -117,29 +115,21 @@ final class SearchOverlayController: NSObject {
     }
 
     private func updatePanelHeight(_ contentHeight: CGFloat) {
-        let height = min(max(contentHeight, collapsedHeight), maxExpandedHeight)
+        let height = min(max(contentHeight, panelHeight), panelHeight)
         var frame = panel.frame
-        let oldMaxY = frame.maxY
         frame.size = NSSize(width: panelWidth, height: height)
-        frame.origin.y = oldMaxY - height
         panel.setFrame(frame, display: true, animate: false)
         if isVisible {
-            positionBelowAnchor()
+            positionSpotlightPanel()
         }
     }
 
-    private func positionBelowAnchor() {
-        if let anchor = anchorProvider(), anchor != .zero {
-            let x = anchor.midX - panelWidth / 2
-            let y = anchor.minY - panel.frame.height - 8
-            panel.setFrameOrigin(NSPoint(x: x, y: y))
-            return
-        }
-
-        guard let screen = NSScreen.main else { return }
+    private func positionSpotlightPanel() {
+        let screen = panel.screen ?? NSScreen.main
+        guard let screen else { return }
         let screenFrame = screen.visibleFrame
         let x = screenFrame.midX - panelWidth / 2
-        let y = screenFrame.maxY - panel.frame.height - 12
+        let y = screenFrame.maxY - panel.frame.height - (screenFrame.height * 0.18)
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
@@ -164,9 +154,6 @@ final class SearchOverlayController: NSObject {
 
     private func shouldDismissForClick(at screenPoint: NSPoint) -> Bool {
         if panel.frame.contains(screenPoint) {
-            return false
-        }
-        if let anchor = anchorProvider(), anchor.contains(screenPoint) {
             return false
         }
         return true

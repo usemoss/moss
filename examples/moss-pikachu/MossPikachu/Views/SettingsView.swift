@@ -14,17 +14,21 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 settingsSection(title: "Indexed Folders") {
-                    Text("Moss indexes your personal files locally via SessionIndex. Only changed files are re-indexed after the first scan.")
+                    Text("Test mode is enabled: Moss indexes only `~/Downloads/\(IndexingPolicy.testScopeFolderName)` so Spotlight testing stays fast.")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
                     Toggle("Documents", isOn: $settings.indexDocuments)
+                        .disabled(IndexingPolicy.isTestScopeEnabled)
                     Toggle("Desktop", isOn: $settings.indexDesktop)
+                        .disabled(IndexingPolicy.isTestScopeEnabled)
                     Toggle("Downloads", isOn: $settings.indexDownloads)
+                        .disabled(IndexingPolicy.isTestScopeEnabled)
                     Toggle("iCloud Drive", isOn: $settings.indexICloudDrive)
+                        .disabled(IndexingPolicy.isTestScopeEnabled)
 
                     if searchService.watchedFolderPathsList.isEmpty {
-                        Text("No enabled folders are available on this Mac.")
+                        Text("Create `~/Downloads/\(IndexingPolicy.testScopeFolderName)` to enable indexing.")
                             .font(.caption)
                             .foregroundColor(.orange)
                     } else {
@@ -39,13 +43,13 @@ struct SettingsView: View {
                 }
 
                 settingsSection(title: "Privacy & Exclusions") {
-                    Text("Always excluded: hidden files, `.git`, `node_modules`, `.venv`, caches, logs, app containers, and files over 50 MB.")
+                    Text("Always excluded: `.git`, `node_modules`, `.venv`, caches, logs, and app containers.")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("Indexed types: md, txt, rtf, html, pdf, docx")
+                    Text("All regular file types are indexed. Text-like files include contents; everything else is searchable by filename, path, extension, and metadata.")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("Local-only by default — index data stays on this Mac.")
+                    Text("Current scope is limited to Downloads/cwp-stuff for testing.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -53,8 +57,21 @@ struct SettingsView: View {
                 settingsSection(title: "General") {
                     Toggle("Launch at login", isOn: $settings.launchAtLogin)
                         .disabled(true)
-                    Toggle("Moss Cloud sync", isOn: $settings.mossCloudSync)
-                        .help("Off by default. Enable only if you want cloud backup of the index.")
+                    Text("Moss session storage is enabled with your API keys. Queries still run locally.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                settingsSection(title: "Moss Session") {
+                    settingsRow(label: "Session", value: IndexingPolicy.sessionName)
+                    settingsRow(label: "Session docs", value: "\(searchService.sessionDocCount)")
+                    settingsRow(label: "Storage", value: searchService.sessionStatusMessage)
+                    if let date = searchService.lastSessionPushDate {
+                        settingsRow(label: "Last stored", value: date.formatted(date: .abbreviated, time: .shortened))
+                    }
+                    Text("The session is pushed to Moss for durable resume, then queried locally in-memory.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
                 settingsSection(title: "Index Status") {
@@ -93,7 +110,6 @@ struct SettingsView: View {
 
                 settingsSection(title: "About") {
                     settingsRow(label: "Version", value: "1.0.0")
-                    settingsRow(label: "Session", value: IndexingPolicy.sessionName)
                     settingsRow(label: "Sticker", value: CapvoltSticker.isAvailable ? "Loaded" : "Missing")
                 }
 

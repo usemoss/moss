@@ -2,13 +2,12 @@ import Foundation
 
 /// Central indexing policy: which roots to watch, what to exclude, and what file types to index.
 nonisolated struct IndexingPolicy: Equatable, Sendable {
-    nonisolated static let sessionName = "local-files"
-    nonisolated static let manifestFilename = "index-manifest-local-files.json"
+    /// Temporary test scope: keep indexing fast while validating Pikachu Spotlight.
+    nonisolated static let testScopeFolderName = "cwp-stuff"
+    nonisolated static let isTestScopeEnabled = true
+    nonisolated static let sessionName = "cwp-stuff-test"
+    nonisolated static let manifestFilename = "index-manifest-cwp-stuff-test.json"
     nonisolated static let manifestVersion = 2
-    nonisolated static let maxFileBytes: Int64 = 50 * 1024 * 1024 // 50 MB
-
-    nonisolated static let indexableExtensions: Set<String> = ["md", "txt", "rtf", "html", "pdf", "docx"]
-
     nonisolated static let excludedDirectoryNames: Set<String> = [
         ".git", "node_modules", ".venv", "venv", "DerivedData", "build", "dist", "target",
         "__pycache__", ".Trash", "Caches", "Logs", "Containers"
@@ -36,8 +35,17 @@ nonisolated struct IndexingPolicy: Equatable, Sendable {
 
     /// Resolved watch roots that exist on disk.
     nonisolated func resolvedRoots() -> [IndexingRoot] {
-        var roots: [IndexingRoot] = []
         let home = FileManager.default.homeDirectoryForCurrentUser
+        if Self.isTestScopeEnabled {
+            let testURL = home
+                .appendingPathComponent("Downloads", isDirectory: true)
+                .appendingPathComponent(Self.testScopeFolderName, isDirectory: true)
+            return existingRoots([
+                IndexingRoot(identifier: "cwp-stuff", url: testURL)
+            ])
+        }
+
+        var roots: [IndexingRoot] = []
 
         if settings.indexDocuments {
             roots.append(IndexingRoot(identifier: "documents", url: home.appendingPathComponent("Documents", isDirectory: true)))
@@ -54,7 +62,11 @@ nonisolated struct IndexingPolicy: Equatable, Sendable {
             roots.append(IndexingRoot(identifier: "icloud", url: icloud))
         }
 
-        return roots.filter { root in
+        return existingRoots(roots)
+    }
+
+    nonisolated private func existingRoots(_ roots: [IndexingRoot]) -> [IndexingRoot] {
+        roots.filter { root in
             var isDir: ObjCBool = false
             return FileManager.default.fileExists(atPath: root.url.path, isDirectory: &isDir) && isDir.boolValue
         }
@@ -86,10 +98,7 @@ nonisolated struct IndexingPolicy: Equatable, Sendable {
     nonisolated func shouldIndex(path: String) -> Bool {
         guard contains(path: path) else { return false }
 
-        let url = URL(fileURLWithPath: path)
-        let name = url.lastPathComponent
-
-        if name.hasPrefix(".") { return false }
+        let name = URL(fileURLWithPath: path).lastPathComponent
         if Self.excludedDirectoryNames.contains(name) { return false }
 
         for fragment in Self.excludedPathFragments {
@@ -102,22 +111,12 @@ nonisolated struct IndexingPolicy: Equatable, Sendable {
         }
         if isDir.boolValue { return false }
 
-        let ext = url.pathExtension.lowercased()
-        guard Self.indexableExtensions.contains(ext) else { return false }
-
-        if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
-           let size = attrs[.size] as? Int64,
-           size > Self.maxFileBytes {
-            return false
-        }
-
         return true
     }
 
     /// Background-safe filesystem walk — must not be called from async contexts directly.
     nonisolated static func discoverFiles(in folders: [String], settings: UserSettings) -> [String] {
         let policy = IndexingPolicy(settings: settings)
-        let allowed = indexableExtensions
         var results: [String] = []
         let fm = FileManager.default
 
@@ -137,10 +136,7 @@ nonisolated struct IndexingPolicy: Equatable, Sendable {
                 if !policy.shouldIndex(path: path) { continue }
                 var isDir: ObjCBool = false
                 guard fm.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue else { continue }
-                let ext = fileURL.pathExtension.lowercased()
-                if allowed.contains(ext) {
-                    results.append(path)
-                }
+                results.append(path)
             }
         }
         return results
@@ -157,6 +153,7 @@ nonisolated struct IndexingRoot: Equatable, Sendable {
         case "desktop": return "Desktop"
         case "downloads": return "Downloads"
         case "icloud": return "iCloud Drive"
+        case "cwp-stuff": return "Downloads/cwp-stuff"
         default: return url.lastPathComponent
         }
     }

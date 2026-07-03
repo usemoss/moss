@@ -23,7 +23,7 @@ enum MossBridgeError: LocalizedError {
     }
 }
 
-final class MossBridge: @unchecked Sendable {
+nonisolated final class MossBridge: @unchecked Sendable {
     private var process: Process?
     private var stdinHandle: FileHandle?
     private let ioQueue = DispatchQueue(label: "dev.moss.pikachu.mossbridge")
@@ -96,8 +96,9 @@ final class MossBridge: @unchecked Sendable {
         proc.standardError = Pipe()
 
         proc.terminationHandler = { [weak self] _ in
-            self?.ioQueue.async {
-                self?.failPending(MossBridgeError.workerCrashed)
+            guard let bridge = self else { return }
+            bridge.ioQueue.async { [weak bridge] in
+                bridge?.failPending(MossBridgeError.workerCrashed)
             }
         }
 
@@ -114,8 +115,9 @@ final class MossBridge: @unchecked Sendable {
         readHandle.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            self?.ioQueue.async {
-                self?.appendOutput(data)
+            guard let bridge = self else { return }
+            bridge.ioQueue.async { [weak bridge] in
+                bridge?.appendOutput(data)
             }
         }
         isReading = true
@@ -147,14 +149,22 @@ final class MossBridge: @unchecked Sendable {
         return response["doc_count"] as? Int ?? 0
     }
 
-    func addDocs(files: [String]) async throws -> (added: Int, updated: Int, chunks: Int, filesIndexed: Int, skipped: Int) {
+    func addDocs(files: [String]) async throws -> (
+        added: Int,
+        updated: Int,
+        chunks: Int,
+        filesIndexed: Int,
+        skipped: Int,
+        docCount: Int
+    ) {
         let response = try await send(action: "add_docs", payload: ["files": files])
         return (
             added: response["added"] as? Int ?? 0,
             updated: response["updated"] as? Int ?? 0,
             chunks: response["chunks_indexed"] as? Int ?? 0,
             filesIndexed: response["files_indexed"] as? Int ?? 0,
-            skipped: response["files_skipped"] as? Int ?? 0
+            skipped: response["files_skipped"] as? Int ?? 0,
+            docCount: response["doc_count"] as? Int ?? 0
         )
     }
 
@@ -183,8 +193,12 @@ final class MossBridge: @unchecked Sendable {
         }
     }
 
-    func pushIndex() async throws {
-        _ = try await send(action: "push_index", payload: [:])
+    func pushIndex() async throws -> (docCount: Int, jobID: String?) {
+        let response = try await send(action: "push_index", payload: [:])
+        return (
+            docCount: response["doc_count"] as? Int ?? 0,
+            jobID: response["job_id"] as? String
+        )
     }
 
     func clearIndex() async throws {
@@ -258,7 +272,7 @@ final class MossBridge: @unchecked Sendable {
     }
 }
 
-enum KeychainHelper {
+nonisolated enum KeychainHelper {
     static func read(account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

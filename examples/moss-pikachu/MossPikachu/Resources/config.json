@@ -1,6 +1,6 @@
 {
-  "index_name": "local-files",
-  "watched_folders": ["Documents", "Desktop", "Downloads", "iCloud Drive"],
+  "index_name": "cwp-stuff-test",
+  "watched_folders": ["Downloads/cwp-stuff"],
   "allowed_extensions": ["md", "txt", "html", "rtf", "pdf", "docx"],
   "cache_path": "~/Library/Application Support/MossPikachu/index"
 }

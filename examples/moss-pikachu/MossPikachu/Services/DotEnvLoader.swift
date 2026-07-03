@@ -1,6 +1,6 @@
 import Foundation
 
-enum DotEnvLoader {
+nonisolated enum DotEnvLoader {
     /// Parses a `.env` file for KEY=VALUE pairs. Does not log values.
     static func load(from url: URL) -> [String: String] {
         guard let contents = try? String(contentsOf: url, encoding: .utf8) else {

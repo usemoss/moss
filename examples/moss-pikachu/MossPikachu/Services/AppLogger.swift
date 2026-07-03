@@ -1,7 +1,7 @@
 import Foundation
 import os.log
 
-final class AppLogger {
+nonisolated final class AppLogger: @unchecked Sendable {
     static let shared = AppLogger()
 
     var isDebugEnabled = false

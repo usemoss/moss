@@ -16,6 +16,9 @@ struct SearchOverlayView: View {
     @State private var searchTask: Task<Void, Never>?
     @FocusState private var isSearchFocused: Bool
 
+    private let panelWidth: CGFloat = 720
+    private let panelHeight: CGFloat = 520
+
     init(
         searchService: SearchService,
         presentation: SearchOverlayPresentation,
@@ -31,139 +34,222 @@ struct SearchOverlayView: View {
         self.onPetStateChanged = onPetStateChanged
     }
 
-    private var showResultsArea: Bool {
-        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var preferredHeight: CGFloat {
-        guard showResultsArea else { return 56 }
-        let resultRows = max(1, min(results.count, 4))
-        let base: CGFloat = 56
-        let statusLine: CGFloat = 22
-        let rowHeight: CGFloat = 52
-        if isSearching || results.isEmpty {
-            return base + statusLine + 44
-        }
-        return base + statusLine + CGFloat(resultRows) * rowHeight + 8
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            searchBar
+            searchHeader
 
-            if showResultsArea {
-                Divider()
-                    .padding(.horizontal, 12)
+            Divider()
+                .padding(.horizontal, 18)
 
-                statusLine
-                    .padding(.horizontal, 16)
-                    .padding(.top, 6)
+            contentArea
 
-                ResultsListView(
-                    results: results,
-                    selectedIndex: keyboardBridge.selectedIndex,
-                    isSearching: isSearching,
-                    query: query,
-                    compact: true,
-                    onResultTapped: openResult,
-                    onResultHovered: { keyboardBridge.selectedIndex = $0 }
-                )
-            }
+            Divider()
+                .padding(.horizontal, 18)
+
+            footer
         }
-        .frame(width: 520)
+        .frame(width: panelWidth, height: panelHeight)
         .background(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 22)
                 .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
+                .shadow(color: .black.opacity(0.28), radius: 28, y: 18)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22))
         .onAppear {
             syncKeyboardBridge()
-            onHeightChange(preferredHeight)
+            onHeightChange(panelHeight)
             focusSearchField()
         }
         .onChange(of: presentation.focusToken) { _ in
             focusSearchField()
         }
         .onChange(of: presentation.clearQueryToken) { _ in
-            query = ""
-            results = []
-            isSearching = false
-            presentation.keyboardBridge.resetSelection()
-            lastSearchTimingMs = 0
-            onHeightChange(preferredHeight)
+            clearSearch()
             focusSearchField()
         }
         .onChange(of: query) { newValue in
             performSearch(query: newValue)
-            onHeightChange(preferredHeight)
         }
         .onChange(of: results.count) { _ in
             syncKeyboardBridge()
-            onHeightChange(preferredHeight)
-        }
-        .onChange(of: keyboardBridge.selectedIndex) { _ in
-            onHeightChange(preferredHeight)
         }
         .onChange(of: isSearching) { searching in
-            onHeightChange(preferredHeight)
-            if searching {
-                onPetStateChanged(.searching)
-            }
+            onPetStateChanged(searching ? .searching : .idle)
         }
         .onExitCommand {
             onClose()
         }
     }
 
-    @ViewBuilder
-    private var statusLine: some View {
-        if searchService.isIndexing {
-            Text("Indexing files...")
-                .font(.caption)
+    private var searchHeader: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 24, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else if isSearching {
-            Text("Searching...")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else if lastSearchTimingMs > 0, !results.isEmpty {
-            Text("Found in \(String(format: "%.0f", lastSearchTimingMs))ms")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else if showResultsArea && !isSearching && results.isEmpty {
-            Text("No matching files found")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
+                .frame(width: 30)
 
-    private var searchBar: some View {
-        HStack(spacing: 10) {
-            CapvoltStickerImage(size: 28)
-
-            TextField("Find me a logo on my computer...", text: $query)
+            TextField("Search your files...", text: $query)
                 .textFieldStyle(.plain)
+                .font(.system(size: 27, weight: .regular))
                 .focused($isSearchFocused)
                 .onSubmit {
-                    guard !results.isEmpty else { return }
-                    openResult(results[keyboardBridge.selectedIndex])
+                    openSelectedResult()
                 }
-                .frame(maxWidth: .infinity)
+
+            if searchService.isIndexing {
+                ProgressView()
+                    .controlSize(.small)
+                    .help(searchService.statusMessage)
+            }
 
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
+                    .font(.title3)
                     .foregroundColor(.secondary)
-                    .font(.body)
             }
             .buttonStyle(.plain)
             .help("Close (Esc)")
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 20)
+    }
+
+    @ViewBuilder
+    private var contentArea: some View {
+        if trimmedQuery.isEmpty {
+            emptyState
+        } else if isSearching {
+            searchingState
+        } else if results.isEmpty {
+            noResultsState
+        } else {
+            ResultsListView(
+                results: results,
+                selectedIndex: keyboardBridge.selectedIndex,
+                isSearching: isSearching,
+                query: query,
+                onResultTapped: openResult,
+                onResultHovered: { keyboardBridge.selectedIndex = $0 }
+            )
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 18) {
+            CapvoltStickerImage(size: 70)
+
+            VStack(spacing: 8) {
+                Text("Pikachu Spotlight")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+
+                Text("Search ~/Downloads/\(IndexingPolicy.testScopeFolderName) with your local Moss session.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 430)
+            }
+
+            if searchService.isIndexing {
+                Label(searchService.statusMessage, systemImage: "arrow.triangle.2.circlepath")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                Label("\(searchService.indexedFileCount) files indexed locally", systemImage: "internaldrive")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(28)
+    }
+
+    private var searchingState: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+                .controlSize(.regular)
+            Text("Searching locally...")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var noResultsState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 38))
+                .foregroundColor(.secondary)
+            Text("No matching files")
+                .font(.headline)
+            Text("Try a broader description or check that the folder is enabled in Settings.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(28)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 14) {
+            footerShortcut("↑↓", "Select")
+            footerShortcut("Return", "Open")
+            footerShortcut("Esc", "Close")
+
+            Spacer()
+
+            statusSummary
+        }
+        .font(.caption)
+        .foregroundColor(.secondary)
+        .padding(.horizontal, 22)
         .padding(.vertical, 12)
+    }
+
+    private func footerShortcut(_ key: String, _ label: String) -> some View {
+        HStack(spacing: 5) {
+            Text(key)
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color.primary.opacity(0.08))
+                .cornerRadius(5)
+            Text(label)
+        }
+    }
+
+    @ViewBuilder
+    private var statusSummary: some View {
+        if isSearching {
+            Text("Local query")
+        } else if lastSearchTimingMs > 0, !results.isEmpty {
+            Text("\(results.count) results in \(String(format: "%.0f", lastSearchTimingMs))ms")
+        } else if searchService.lastSessionPushDate != nil {
+            Text(searchService.sessionStatusMessage)
+        } else {
+            Text(searchService.statusMessage)
+        }
+    }
+
+    private func clearSearch() {
+        searchTask?.cancel()
+        query = ""
+        results = []
+        isSearching = false
+        lastSearchTimingMs = 0
+        presentation.keyboardBridge.resetSelection()
+        syncKeyboardBridge()
+        onPetStateChanged(.idle)
     }
 
     private func focusSearchField() {
@@ -185,18 +271,14 @@ struct SearchOverlayView: View {
         searchTask?.cancel()
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            results = []
-            isSearching = false
-            presentation.keyboardBridge.resetSelection()
-            lastSearchTimingMs = 0
-            onPetStateChanged(.idle)
+            clearSearch()
             return
         }
 
         isSearching = true
 
         searchTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 200_000_000)
+            try? await Task.sleep(nanoseconds: 160_000_000)
             guard !Task.isCancelled else { return }
 
             do {
@@ -207,11 +289,7 @@ struct SearchOverlayView: View {
                 syncKeyboardBridge()
                 isSearching = false
                 lastSearchTimingMs = searchResults.first?.timingMs ?? 0
-                if searchResults.isEmpty {
-                    onPetStateChanged(.notFound)
-                } else {
-                    onPetStateChanged(.found(searchResults.count))
-                }
+                onPetStateChanged(searchResults.isEmpty ? .notFound : .found(searchResults.count))
             } catch {
                 guard !Task.isCancelled else { return }
                 isSearching = false
@@ -221,10 +299,15 @@ struct SearchOverlayView: View {
         }
     }
 
+    private func openSelectedResult() {
+        guard !results.isEmpty else { return }
+        let index = min(keyboardBridge.selectedIndex, results.count - 1)
+        openResult(results[index])
+    }
+
     private func openResult(_ result: SearchResult) {
-        let url = URL(fileURLWithPath: result.path)
         if FileManager.default.fileExists(atPath: result.path) {
-            NSWorkspace.shared.open(url)
+            NSWorkspace.shared.open(URL(fileURLWithPath: result.path))
             onClose()
         } else {
             NotificationManager.shared.showError("File no longer exists: \(result.filename)")

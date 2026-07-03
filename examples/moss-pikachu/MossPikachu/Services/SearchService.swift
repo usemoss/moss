@@ -8,7 +8,8 @@ final class SearchService: ObservableObject {
     private let indexManager = IndexManager()
     private var settings = UserSettings.load()
     private var policy = IndexingPolicy()
-    private var saveTask: Task<Void, Never>?
+    private var sessionPushTask: Task<Void, Never>?
+    private var hasUnpushedSessionChanges = false
 
     @Published private(set) var indexedFileCount: Int = 0
     @Published private(set) var indexedChunkCount: Int = 0
@@ -20,6 +21,9 @@ final class SearchService: ObservableObject {
     @Published private(set) var discoveredFileCount: Int = 0
     @Published private(set) var queuedFileCount: Int = 0
     @Published private(set) var isReady: Bool = false
+    @Published private(set) var sessionDocCount: Int = 0
+    @Published private(set) var lastSessionPushDate: Date?
+    @Published private(set) var sessionStatusMessage: String = "Session not opened"
 
     /// True when the app has never completed an initial full index.
     var requiresBootstrapIndex: Bool {
@@ -32,6 +36,10 @@ final class SearchService: ObservableObject {
         let bridge = MossBridge(projectID: projectID, projectKey: projectKey)
         try bridge.start()
         let docCount = try await bridge.initSession(indexName: IndexingPolicy.sessionName)
+        sessionDocCount = docCount
+        sessionStatusMessage = docCount > 0
+            ? "Resumed \(docCount) docs from Moss session"
+            : "Opened \(IndexingPolicy.sessionName) session"
         mossBridge = bridge
 
         policy = IndexingPolicy(settings: settings)
@@ -55,6 +63,8 @@ final class SearchService: ObservableObject {
             indexManager.clear()
             indexedFileCount = 0
             indexedChunkCount = 0
+            sessionDocCount = 0
+            hasUnpushedSessionChanges = true
         }
         indexManager.updateScopeFingerprint(policy.scopeFingerprint)
 
@@ -68,7 +78,7 @@ final class SearchService: ObservableObject {
 
     func shutdown() {
         fileMonitor.stop()
-        if settings.mossCloudSync {
+        if hasUnpushedSessionChanges || indexedFileCount > 0 {
             Task {
                 try? await mossBridge?.pushIndex()
             }
@@ -107,6 +117,8 @@ final class SearchService: ObservableObject {
         indexedFileCount = 0
         indexedChunkCount = 0
         skippedFileCount = 0
+        sessionDocCount = 0
+        hasUnpushedSessionChanges = true
         indexManager.updateScopeFingerprint(policy.scopeFingerprint)
         await performInitialScan(forceAll: true)
     }
@@ -114,7 +126,7 @@ final class SearchService: ObservableObject {
     // MARK: - Private
 
     private var missingScopeMessage: String {
-        "No indexed folders found. Enable Documents, Desktop, Downloads, or iCloud Drive in Settings."
+        "Folder not found: ~/Downloads/\(IndexingPolicy.testScopeFolderName)"
     }
 
     private func refreshWatchedPaths() {
@@ -128,6 +140,8 @@ final class SearchService: ObservableObject {
         indexManager.clear()
         indexedFileCount = 0
         indexedChunkCount = 0
+        sessionDocCount = 0
+        hasUnpushedSessionChanges = true
         indexManager.updateScopeFingerprint(policy.scopeFingerprint)
         await performInitialScan(forceAll: true)
     }
@@ -169,6 +183,8 @@ final class SearchService: ObservableObject {
         let idsToDelete = stale.flatMap { indexManager.chunkIDs(for: $0) }
         if let mossBridge, !idsToDelete.isEmpty {
             try? await mossBridge.deleteDocs(ids: idsToDelete)
+            hasUnpushedSessionChanges = true
+            scheduleSessionPush()
         }
         indexManager.removePaths(stale)
         indexedFileCount = indexManager.indexedFileCount
@@ -202,6 +218,9 @@ final class SearchService: ObservableObject {
                 indexedFileCount = indexManager.indexedFileCount
                 indexedChunkCount += result.chunks
                 skippedFileCount += result.skipped
+                sessionDocCount = result.docCount
+                hasUnpushedSessionChanges = true
+                sessionStatusMessage = "Local session updated"
                 lastIndexedDate = indexManager.lastIndexedDate
                 statusMessage = "Indexed \(indexedFileCount) files (\(indexedChunkCount) chunks)"
                 AppLogger.shared.log(
@@ -216,15 +235,33 @@ final class SearchService: ObservableObject {
 
         isIndexing = false
         queuedFileCount = 0
-        scheduleSave()
+        scheduleSessionPush()
     }
 
-    private func scheduleSave() {
-        saveTask?.cancel()
-        saveTask = Task {
+    private func scheduleSessionPush() {
+        sessionPushTask?.cancel()
+        sessionPushTask = Task {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard !Task.isCancelled, settings.mossCloudSync else { return }
-            try? await mossBridge?.pushIndex()
+            guard !Task.isCancelled else { return }
+            await pushSessionIfNeeded()
+        }
+    }
+
+    private func pushSessionIfNeeded() async {
+        guard hasUnpushedSessionChanges, let mossBridge else { return }
+        sessionStatusMessage = "Storing Moss session..."
+        do {
+            let result = try await mossBridge.pushIndex()
+            hasUnpushedSessionChanges = false
+            sessionDocCount = result.docCount
+            lastSessionPushDate = Date()
+            sessionStatusMessage = "Stored \(result.docCount) docs in Moss session"
+            if let jobID = result.jobID {
+                AppLogger.shared.log("Pushed Moss session job: \(jobID)")
+            }
+        } catch {
+            sessionStatusMessage = "Session storage failed: \(error.localizedDescription)"
+            AppLogger.shared.log(sessionStatusMessage)
         }
     }
 

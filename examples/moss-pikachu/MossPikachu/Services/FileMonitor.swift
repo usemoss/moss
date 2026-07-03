@@ -1,7 +1,7 @@
 import CoreServices
 import Foundation
 
-final class FileMonitor {
+nonisolated final class FileMonitor: @unchecked Sendable {
     var policy = IndexingPolicy()
     var onChange: ([String]) -> Void = { _ in }
 
