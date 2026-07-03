@@ -291,12 +291,22 @@ public final class MossClient: @unchecked Sendable {
         guard opts.topK >= 0 else {
             throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
         }
+        // Typed filter takes precedence over the legacy JSON string; surface an
+        // encode failure rather than silently dropping the filter. (Parent
+        // grouping is a session-only feature and is ignored here.)
+        var filterJson = opts.filterJson
+        if let f = opts.filter {
+            guard let encoded = f.encoded() else {
+                throw MossError(code: -2, message: "could not encode metadata filter")
+            }
+            filterJson = encoded
+        }
         return try await Task.detached { [self] () throws -> SearchResult in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try indexName.withCString { iname in
                 try query.withCString { q in
-                    try withOptionalCString(opts.filterJson) { filter in
+                    try withOptionalCString(filterJson) { filter in
                         var nativeOpts = MossQueryOptions(
                             top_k: UInt(opts.topK),
                             alpha: opts.alpha,
@@ -657,7 +667,8 @@ public final class MossClient: @unchecked Sendable {
                         id: cstr(d.id),
                         score: d.score,
                         text: cstr(d.text),
-                        metadata: parseMetadata(d.metadata, count: d.metadata_count)
+                        metadata: parseMetadata(d.metadata, count: d.metadata_count),
+                        payload: d.payload.map { String(cString: $0) }
                     )
                 )
             }

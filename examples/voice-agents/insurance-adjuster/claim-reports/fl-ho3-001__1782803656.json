@@ -1,0 +1,21 @@
+{
+  "policy": "FL-HO3-001",
+  "claim_session": "claim-fl-ho3-001-1782803656",
+  "duration_sec": 130,
+  "findings": [
+    {
+      "description": "fire damage on door",
+      "estimated_value": 1000.0,
+      "covered": true,
+      "note": "Fire is a covered peril under HO-3 Coverage A."
+    },
+    {
+      "description": "fire damage to ceiling",
+      "estimated_value": 1500.0,
+      "covered": true,
+      "note": "Fire is a covered peril under HO-3 Coverage A."
+    }
+  ],
+  "total_covered": 2500.0,
+  "total_not_covered": 0
+}

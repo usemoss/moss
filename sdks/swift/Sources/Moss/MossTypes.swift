@@ -8,12 +8,25 @@ public struct QueryResult: Sendable {
     /// inspection and filtering. `nil` when the document has no metadata;
     /// values are always strings (matching the native key/value model).
     public let metadata: [String: String]?
+    /// Verbatim structured payload stored at index time (e.g. JSON), returned
+    /// unchanged. `nil` when the document has none. Not embedded or searched.
+    public let payload: String?
 
-    public init(id: String, score: Float, text: String, metadata: [String: String]? = nil) {
+    public init(
+        id: String, score: Float, text: String,
+        metadata: [String: String]? = nil, payload: String? = nil
+    ) {
         self.id = id
         self.score = score
         self.text = text
         self.metadata = metadata
+        self.payload = payload
+    }
+
+    /// Decode `payload` as a `Decodable` type. Returns `nil` when there is no payload.
+    public func decodedPayload<P: Decodable>(_ type: P.Type) throws -> P? {
+        guard let payload, let data = payload.data(using: .utf8) else { return nil }
+        return try JSONDecoder().decode(P.self, from: data)
     }
 }
 
@@ -27,13 +40,24 @@ public struct QueryOptions: Sendable {
     public var topK: Int
     /// Hybrid weight between dense (1.0) and sparse (0.0) scores.
     public var alpha: Float
-    /// Optional metadata filter as a JSON string.
+    /// Typed metadata filter (preferred). Serialized internally; when set it
+    /// takes precedence over `filterJson`.
+    public var filter: Filter?
+    /// Optional metadata filter as a JSON string (escape hatch / legacy).
     public var filterJson: String?
+    /// Collapse sibling hits sharing a parent identifier into one result per
+    /// unit (assembled in `orderField` order). Session queries only.
+    public var groupByParent: ParentGrouping?
 
-    public init(topK: Int = 5, alpha: Float = 0.8, filterJson: String? = nil) {
+    public init(
+        topK: Int = 5, alpha: Float = 0.8, filter: Filter? = nil,
+        filterJson: String? = nil, groupByParent: ParentGrouping? = nil
+    ) {
         self.topK = topK
         self.alpha = alpha
+        self.filter = filter
         self.filterJson = filterJson
+        self.groupByParent = groupByParent
     }
 }
 
@@ -43,12 +67,40 @@ public struct DocumentInfo: Sendable, Codable {
     public let text: String
     public let metadata: [String: String]?
     public let embedding: [Float]?
+    /// Verbatim structured payload (e.g. JSON), stored and returned unchanged.
+    /// Not embedded or searched. Use `decodedPayload(_:)` to read it typed, or
+    /// the `structured:` initializer to write a `Encodable` value.
+    public let payload: String?
 
-    public init(id: String, text: String, metadata: [String: String]? = nil, embedding: [Float]? = nil) {
+    public init(
+        id: String, text: String, metadata: [String: String]? = nil,
+        embedding: [Float]? = nil, payload: String? = nil
+    ) {
         self.id = id
         self.text = text
         self.metadata = metadata
         self.embedding = embedding
+        self.payload = payload
+    }
+
+    /// Store an `Encodable` value as the payload (JSON-encoded).
+    public init<P: Encodable>(
+        id: String, text: String, metadata: [String: String]? = nil,
+        embedding: [Float]? = nil, structured: P
+    ) throws {
+        let data = try JSONEncoder().encode(structured)
+        // JSONEncoder always emits UTF-8; a non-failable decode avoids ever
+        // storing a nil payload on a (impossible) decode failure.
+        self.init(
+            id: id, text: text, metadata: metadata, embedding: embedding,
+            payload: String(decoding: data, as: UTF8.self)
+        )
+    }
+
+    /// Decode `payload` as a `Decodable` type. Returns `nil` when there is no payload.
+    public func decodedPayload<P: Decodable>(_ type: P.Type) throws -> P? {
+        guard let payload, let data = payload.data(using: .utf8) else { return nil }
+        return try JSONDecoder().decode(P.self, from: data)
     }
 }
 
@@ -171,5 +223,139 @@ public struct LoadIndexOptions: Sendable {
         self.autoRefresh = autoRefresh
         self.pollingIntervalSeconds = pollingIntervalSeconds
         self.cachePath = cachePath
+    }
+}
+
+// ── Deterministic (exact / "graph") retrieval ────────────────────────────────
+
+/// A typed metadata value used in a `Filter`. Literal-expressible, so you can
+/// pass `"emotion"`, `27`, `0.7`, or `false` directly.
+public enum FilterValue: Sendable, Hashable {
+    case string(String)
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+
+    /// JSON-native representation handed to the engine's filter parser.
+    fileprivate var jsonValue: Any {
+        switch self {
+        case .string(let s): return s
+        case .int(let i): return i
+        case .double(let d): return d
+        case .bool(let b): return b
+        }
+    }
+}
+
+extension FilterValue: ExpressibleByStringLiteral {
+    public init(stringLiteral value: String) { self = .string(value) }
+}
+extension FilterValue: ExpressibleByIntegerLiteral {
+    public init(integerLiteral value: Int) { self = .int(value) }
+}
+extension FilterValue: ExpressibleByFloatLiteral {
+    public init(floatLiteral value: Double) { self = .double(value) }
+}
+extension FilterValue: ExpressibleByBooleanLiteral {
+    public init(booleanLiteral value: Bool) { self = .bool(value) }
+}
+
+/// A composable metadata predicate. Used to filter both deterministic fetches
+/// (`getDocs(where:)`) and semantic queries. Serialized internally to the
+/// engine's filter format — no JSON to hand-write.
+public indirect enum Filter: Sendable {
+    case equals(String, FilterValue)
+    case notEquals(String, FilterValue)
+    case greaterThan(String, FilterValue)
+    case greaterThanOrEqual(String, FilterValue)
+    case lessThan(String, FilterValue)
+    case lessThanOrEqual(String, FilterValue)
+    case isIn(String, [FilterValue])
+    case notIn(String, [FilterValue])
+    case near(field: String, lat: Double, lng: Double, withinMeters: Double)
+    case and([Filter])
+    case or([Filter])
+    /// Escape hatch: a raw engine-format filter JSON string.
+    case raw(String)
+
+    private func jsonObject() -> Any? {
+        func field(_ f: String, _ op: String, _ v: Any) -> [String: Any] {
+            ["field": f, "condition": [op: v]]
+        }
+        switch self {
+        case .equals(let f, let v): return field(f, "$eq", v.jsonValue)
+        case .notEquals(let f, let v): return field(f, "$ne", v.jsonValue)
+        case .greaterThan(let f, let v): return field(f, "$gt", v.jsonValue)
+        case .greaterThanOrEqual(let f, let v): return field(f, "$gte", v.jsonValue)
+        case .lessThan(let f, let v): return field(f, "$lt", v.jsonValue)
+        case .lessThanOrEqual(let f, let v): return field(f, "$lte", v.jsonValue)
+        case .isIn(let f, let vs): return field(f, "$in", vs.map(\.jsonValue))
+        case .notIn(let f, let vs): return field(f, "$nin", vs.map(\.jsonValue))
+        case .near(let f, let lat, let lng, let m):
+            return field(f, "$near", "\(lat),\(lng),\(m)")
+        case .and(let fs):
+            // A child that fails to encode must abort the whole filter rather
+            // than be dropped — dropping it would silently broaden the query.
+            let children = fs.compactMap { $0.jsonObject() }
+            guard children.count == fs.count else { return nil }
+            return ["$and": children]
+        case .or(let fs):
+            let children = fs.compactMap { $0.jsonObject() }
+            guard children.count == fs.count else { return nil }
+            return ["$or": children]
+        case .raw(let s):
+            // Invalid raw JSON returns nil (→ encode failure) instead of
+            // falling back to `{}`, which would drop the filter entirely.
+            return try? JSONSerialization.jsonObject(with: Data(s.utf8))
+        }
+    }
+
+    /// Serialize to the engine's filter JSON. `nil` if serialization fails —
+    /// including invalid `.raw` JSON anywhere in the tree.
+    public func encoded() -> String? {
+        guard let obj = jsonObject(),
+              let data = try? JSONSerialization.data(withJSONObject: obj) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+}
+
+/// Collapse sibling documents that share a parent identifier into one logical
+/// result. Siblings are assembled in `orderField` order (numeric-aware).
+public struct ParentGrouping: Sendable {
+    public var parentField: String   // e.g. "unit_id"
+    public var orderField: String    // e.g. "chunk_index"
+
+    public init(parentField: String, orderField: String) {
+        self.parentField = parentField
+        self.orderField = orderField
+    }
+}
+
+/// Options for `MossSession.getDocs(_:)` — the deterministic, non-semantic
+/// fetch path (no query vector, no similarity ranking).
+public struct GetDocsOptions: Sendable {
+    /// Fetch these exact ids, returned in this order. Missing ids are skipped.
+    public var ids: [String]?
+    /// Metadata predicate; documents matching it are returned.
+    public var filter: Filter?
+    /// Metadata field to order results by (numeric-aware). Ignored when `ids`
+    /// already fixes the order.
+    public var sortBy: String?
+    /// Sort direction for `sortBy`.
+    public var ascending: Bool
+    /// Collapse siblings into one result per parent unit.
+    public var groupByParent: ParentGrouping?
+
+    public init(
+        ids: [String]? = nil, filter: Filter? = nil, sortBy: String? = nil,
+        ascending: Bool = true, groupByParent: ParentGrouping? = nil
+    ) {
+        self.ids = ids
+        self.filter = filter
+        self.sortBy = sortBy
+        self.ascending = ascending
+        self.groupByParent = groupByParent
     }
 }
