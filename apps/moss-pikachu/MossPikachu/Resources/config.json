@@ -1,0 +1,6 @@
+{
+  "index_name": "documents",
+  "watched_folders": ["Documents", "Desktop", "Downloads"],
+  "allowed_extensions": ["md", "txt", "html", "rtf", "pdf", "docx", "notes"],
+  "cache_path": "~/Library/Application Support/MossPikachu/index"
+}
