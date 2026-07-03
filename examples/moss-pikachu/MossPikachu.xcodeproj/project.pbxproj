@@ -37,6 +37,10 @@
 		MPB0000000000000000028 /* SearchOverlayPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000028 /* SearchOverlayPresentation.swift */; };
 		MPB0000000000000000030 /* IndexingPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000030 /* IndexingPolicy.swift */; };
 		MPB0000000000000000031 /* IndexingBootstrapWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000031 /* IndexingBootstrapWindowController.swift */; };
+		MPB0000000000000000032 /* pet.json in Resources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000032 /* pet.json */; };
+		MPB0000000000000000033 /* spritesheet.webp in Resources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000033 /* spritesheet.webp */; };
+		MPB0000000000000000034 /* CapvoltPetAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000034 /* CapvoltPetAssets.swift */; };
+		MPB0000000000000000035 /* CapvoltSpritesheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000035 /* CapvoltSpritesheetView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -71,6 +75,10 @@
 		MPF0000000000000000028 /* SearchOverlayPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOverlayPresentation.swift; sourceTree = "<group>"; };
 		MPF0000000000000000030 /* IndexingPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexingPolicy.swift; sourceTree = "<group>"; };
 		MPF0000000000000000031 /* IndexingBootstrapWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexingBootstrapWindowController.swift; sourceTree = "<group>"; };
+		MPF0000000000000000032 /* pet.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = pet.json; path = pets/capvolt/pet.json; sourceTree = "<group>"; };
+		MPF0000000000000000033 /* spritesheet.webp */ = {isa = PBXFileReference; lastKnownFileType = file; name = spritesheet.webp; path = pets/capvolt/spritesheet.webp; sourceTree = "<group>"; };
+		MPF0000000000000000034 /* CapvoltPetAssets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapvoltPetAssets.swift; sourceTree = "<group>"; };
+		MPF0000000000000000035 /* CapvoltSpritesheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapvoltSpritesheetView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +128,7 @@
 				MPF0000000000000000004 /* SearchOverlayView.swift */,
 				MPF0000000000000000005 /* ResultsListView.swift */,
 				MPF0000000000000000006 /* PikachuPetView.swift */,
+				MPF0000000000000000035 /* CapvoltSpritesheetView.swift */,
 				MPF0000000000000000027 /* FloatingPetWindowController.swift */,
 				MPF0000000000000000028 /* SearchOverlayPresentation.swift */,
 				MPF0000000000000000007 /* SettingsView.swift */,
@@ -153,6 +162,7 @@
 				MPF0000000000000000019 /* HotKeyManager.swift */,
 				MPF0000000000000000020 /* AppLogger.swift */,
 				MPF0000000000000000025 /* CapvoltSticker.swift */,
+				MPF0000000000000000034 /* CapvoltPetAssets.swift */,
 				MPF0000000000000000026 /* DotEnvLoader.swift */,
 			);
 			path = Services;
@@ -165,6 +175,8 @@
 				MPF0000000000000000022 /* config.json */,
 				MPF0000000000000000023 /* capvolt-sticker.png */,
 				MPF0000000000000000024 /* capvolt-sticker.webp */,
+				MPF0000000000000000032 /* pet.json */,
+				MPF0000000000000000033 /* spritesheet.webp */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -231,6 +243,8 @@
 				MPB0000000000000000022 /* config.json in Resources */,
 				MPB0000000000000000023 /* capvolt-sticker.png in Resources */,
 				MPB0000000000000000024 /* capvolt-sticker.webp in Resources */,
+				MPB0000000000000000032 /* pet.json in Resources */,
+				MPB0000000000000000033 /* spritesheet.webp in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -267,6 +281,8 @@
 				MPB0000000000000000028 /* SearchOverlayPresentation.swift in Sources */,
 				MPB0000000000000000030 /* IndexingPolicy.swift in Sources */,
 				MPB0000000000000000031 /* IndexingBootstrapWindowController.swift in Sources */,
+				MPB0000000000000000034 /* CapvoltPetAssets.swift in Sources */,
+				MPB0000000000000000035 /* CapvoltSpritesheetView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -30,15 +30,17 @@ nonisolated final class FileMonitor: @unchecked Sendable {
             copyDescription: nil
         )
 
-        let callback: FSEventStreamCallback = { _, info, numEvents, eventPaths, _, _ in
+        let callback: FSEventStreamCallback = { _, info, numEvents, eventPaths, eventFlags, _ in
             guard let info else { return }
             let monitor = Unmanaged<FileMonitor>.fromOpaque(info).takeUnretainedValue()
             let paths = eventPaths.bindMemory(to: UnsafePointer<CChar>?.self, capacity: numEvents)
+            let flags = eventFlags
             var changed: [String] = []
             for i in 0..<numEvents {
                 if let cPath = paths[i] {
                     let path = String(cString: cPath)
-                    if monitor.shouldIndex(path: path) {
+                    let isRemoved = flags[i] & UInt32(kFSEventStreamEventFlagItemRemoved) != 0
+                    if isRemoved || monitor.shouldIndex(path: path) {
                         changed.append(path)
                     }
                 }

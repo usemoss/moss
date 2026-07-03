@@ -46,7 +46,7 @@ final class SearchService: ObservableObject {
         fileMonitor.policy = policy
         fileMonitor.onChange = { [weak self] files in
             Task { @MainActor in
-                await self?.indexFiles(files)
+                await self?.handleFilesystemChanges(files)
             }
         }
         refreshWatchedPaths()
@@ -104,7 +104,9 @@ final class SearchService: ObservableObject {
         guard let mossBridge else {
             throw MossBridgeError.workerCrashed
         }
-        return try await mossBridge.query(indexName: IndexingPolicy.sessionName, query: query, topK: 8)
+        await pruneStaleEntries()
+        let results = try await mossBridge.query(indexName: IndexingPolicy.sessionName, query: query, topK: 8)
+        return results.filter { FileManager.default.fileExists(atPath: $0.path) }
     }
 
     func reindexNow() async throws {
@@ -176,19 +178,68 @@ final class SearchService: ObservableObject {
         isIndexing = false
     }
 
+    private func handleFilesystemChanges(_ paths: [String]) async {
+        await pruneStaleEntries()
+
+        let missingPaths = paths.filter { !FileManager.default.fileExists(atPath: $0) }
+        if !missingPaths.isEmpty {
+            await removeIndexedPaths(missingPaths)
+        }
+
+        let existingPaths = paths.filter { path in
+            FileManager.default.fileExists(atPath: path) && policy.shouldIndex(path: path)
+        }
+        guard !existingPaths.isEmpty else { return }
+
+        let needingIndex = indexManager.filesNeedingIndex(in: existingPaths)
+        guard !needingIndex.isEmpty else { return }
+
+        await indexFiles(needingIndex)
+    }
+
+    private func removeIndexedPaths(_ paths: [String]) async {
+        let tracked = paths.filter { indexManager.isTracked($0) }
+        guard !tracked.isEmpty else { return }
+        await removeChunksForPaths(tracked)
+        indexManager.removePaths(tracked)
+        indexedFileCount = indexManager.indexedFileCount
+        hasUnpushedSessionChanges = true
+        scheduleSessionPush()
+        AppLogger.shared.log("Removed \(tracked.count) deleted files from index")
+    }
+
+    private func removeChunksForPaths(_ paths: [String]) async {
+        let idsToDelete = paths.flatMap { indexManager.chunkIDs(for: $0) }
+        guard !idsToDelete.isEmpty, let mossBridge else { return }
+        do {
+            let docCount = try await mossBridge.deleteDocs(ids: idsToDelete)
+            sessionDocCount = docCount
+            hasUnpushedSessionChanges = true
+            sessionStatusMessage = "Local session updated"
+        } catch {
+            AppLogger.shared.log("Delete docs error: \(error.localizedDescription)")
+        }
+    }
+
     private func pruneStaleEntries() async {
         let stale = indexManager.stalePaths(validatingWith: policy)
         guard !stale.isEmpty else { return }
 
         let idsToDelete = stale.flatMap { indexManager.chunkIDs(for: $0) }
         if let mossBridge, !idsToDelete.isEmpty {
-            try? await mossBridge.deleteDocs(ids: idsToDelete)
-            hasUnpushedSessionChanges = true
-            scheduleSessionPush()
+            do {
+                let docCount = try await mossBridge.deleteDocs(ids: idsToDelete)
+                sessionDocCount = docCount
+                hasUnpushedSessionChanges = true
+                sessionStatusMessage = "Local session updated"
+            } catch {
+                AppLogger.shared.log("Prune delete error: \(error.localizedDescription)")
+            }
         }
         indexManager.removePaths(stale)
         indexedFileCount = indexManager.indexedFileCount
         AppLogger.shared.log("Pruned \(stale.count) stale manifest entries")
+        scheduleSessionPush()
     }
 
     private func indexFiles(_ paths: [String]) async {
@@ -196,6 +247,11 @@ final class SearchService: ObservableObject {
             FileManager.default.fileExists(atPath: path) && policy.shouldIndex(path: path)
         }
         guard !inScope.isEmpty, let mossBridge else { return }
+
+        let reindexing = inScope.filter { indexManager.isTracked($0) }
+        if !reindexing.isEmpty {
+            await removeChunksForPaths(reindexing)
+        }
 
         isIndexing = true
         statusMessage = "Indexing \(inScope.count) files..."

@@ -83,6 +83,10 @@ final class IndexManager {
         Array(manifest.files.keys)
     }
 
+    func isTracked(_ path: String) -> Bool {
+        manifest.files[path] != nil
+    }
+
     /// Paths in manifest that no longer exist on disk or are outside current policy.
     func stalePaths(validatingWith policy: IndexingPolicy) -> [String] {
         manifest.files.keys.filter { path in

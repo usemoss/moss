@@ -1,10 +1,12 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 import Combine
 
 @MainActor
 final class PetStateController: ObservableObject {
     @Published var state: PetState = .idle
+    @Published var interaction: PetInteraction = .standing
 }
 
 @MainActor
@@ -17,6 +19,13 @@ final class FloatingPetWindowController: NSObject {
     private let petSize: CGFloat = 80
     private let positionKeyX = "MossPikachu.petOriginX"
     private let positionKeyY = "MossPikachu.petOriginY"
+    private let momentumFactor: CGFloat = 0.22
+    private let slideDuration: TimeInterval = 0.38
+    private var slideTimer: Timer?
+    private var slideStartTime: CFTimeInterval = 0
+    private var slideFrom: NSPoint = .zero
+    private var slideTo: NSPoint = .zero
+    private var isSliding = false
 
     var onPetClicked: (() -> Void)?
     var onShowSettings: (() -> Void)?
@@ -66,11 +75,14 @@ final class FloatingPetWindowController: NSObject {
         )
 
         let hosting = NSHostingView(rootView: wrapper)
+        hosting.wantsLayer = true
+        hosting.layer?.backgroundColor = NSColor.clear.cgColor
         hostingView = hosting
 
         let container = PetWindowContentView(frame: NSRect(x: 0, y: 0, width: petSize, height: petSize))
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor.clear.cgColor
         container.onClick = { [weak self] in
-            // Defer until after mouseUp so click-outside monitors don't interfere.
             DispatchQueue.main.async {
                 self?.onPetClicked?()
             }
@@ -78,9 +90,11 @@ final class FloatingPetWindowController: NSObject {
         container.onRightClick = { [weak self] location in
             self?.showContextMenu(at: location, in: container)
         }
-        container.onDragEnded = { [weak self] in
-            self?.clampToVisibleScreen()
-            self?.savePosition()
+        container.onDragBegan = { [weak self] in
+            self?.handleDragBegan()
+        }
+        container.onDragEnded = { [weak self] velocity in
+            self?.handleDragEnded(velocity: velocity)
         }
         contentView = container
 
@@ -94,6 +108,81 @@ final class FloatingPetWindowController: NSObject {
         ])
 
         panel.contentView = container
+    }
+
+    private func handleDragBegan() {
+        cancelSlideAnimation()
+        petStateController.interaction = .dragging
+    }
+
+    private func handleDragEnded(velocity: CGVector) {
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(panel.frame.origin) }) ?? NSScreen.main else {
+            petStateController.interaction = .standing
+            savePosition()
+            return
+        }
+
+        let current = panel.frame.origin
+        let momentumTarget = NSPoint(
+            x: current.x + velocity.dx * momentumFactor,
+            y: current.y + velocity.dy * momentumFactor
+        )
+        let target = clampedOrigin(momentumTarget, on: screen)
+        animateSlide(from: current, to: target)
+    }
+
+    private func animateSlide(from start: NSPoint, to target: NSPoint) {
+        cancelSlideAnimation()
+
+        let distance = hypot(target.x - start.x, target.y - start.y)
+        if distance < 0.5 {
+            panel.setFrameOrigin(target)
+            petStateController.interaction = .standing
+            savePosition()
+            return
+        }
+
+        slideFrom = start
+        slideTo = target
+        slideStartTime = CACurrentMediaTime()
+        isSliding = true
+        petStateController.interaction = .sliding
+
+        slideTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+            self.tickSlide(timer: timer)
+        }
+        if let slideTimer {
+            RunLoop.main.add(slideTimer, forMode: .common)
+        }
+    }
+
+    private func tickSlide(timer: Timer) {
+        let elapsed = CACurrentMediaTime() - slideStartTime
+        let progress = min(1.0, elapsed / slideDuration)
+        let eased = 1 - pow(1 - progress, 3)
+
+        let x = slideFrom.x + (slideTo.x - slideFrom.x) * eased
+        let y = slideFrom.y + (slideTo.y - slideFrom.y) * eased
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
+
+        guard progress >= 1.0 else { return }
+
+        timer.invalidate()
+        slideTimer = nil
+        isSliding = false
+        panel.setFrameOrigin(slideTo)
+        petStateController.interaction = .standing
+        savePosition()
+    }
+
+    private func cancelSlideAnimation() {
+        slideTimer?.invalidate()
+        slideTimer = nil
+        isSliding = false
     }
 
     private func showContextMenu(at location: NSPoint, in view: NSView) {
@@ -149,11 +238,6 @@ final class FloatingPetWindowController: NSObject {
         UserDefaults.standard.set(origin.y, forKey: positionKeyY)
     }
 
-    private func clampToVisibleScreen() {
-        guard let screen = NSScreen.main else { return }
-        panel.setFrameOrigin(clampedOrigin(panel.frame.origin, on: screen))
-    }
-
     private func clampedOrigin(_ origin: NSPoint, on screen: NSScreen) -> NSPoint {
         let screenFrame = screen.visibleFrame
         let x = min(max(origin.x, screenFrame.minX), screenFrame.maxX - petSize)
@@ -166,18 +250,26 @@ private struct PetStateObservingView: View {
     @ObservedObject var petStateController: PetStateController
 
     var body: some View {
-        PikachuPetView(petState: petStateController.state, size: 64)
+        PikachuPetView(petStateController: petStateController, size: 72)
     }
+}
+
+private struct DragSample {
+    let location: NSPoint
+    let timestamp: TimeInterval
 }
 
 private final class PetWindowContentView: NSView {
     var onClick: (() -> Void)?
     var onRightClick: ((NSPoint) -> Void)?
-    var onDragEnded: (() -> Void)?
+    var onDragBegan: (() -> Void)?
+    var onDragEnded: ((CGVector) -> Void)?
 
     private var dragStartMouseLocation: NSPoint?
     private var dragStartWindowOrigin: NSPoint?
     private var didDrag = false
+    private var dragBeganNotified = false
+    private var dragSamples: [DragSample] = []
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
@@ -187,6 +279,8 @@ private final class PetWindowContentView: NSView {
         dragStartMouseLocation = NSEvent.mouseLocation
         dragStartWindowOrigin = window?.frame.origin
         didDrag = false
+        dragBeganNotified = false
+        dragSamples = [DragSample(location: NSEvent.mouseLocation, timestamp: event.timestamp)]
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -202,7 +296,16 @@ private final class PetWindowContentView: NSView {
         )
 
         if abs(delta.x) > 3 || abs(delta.y) > 3 {
+            if !dragBeganNotified {
+                dragBeganNotified = true
+                onDragBegan?()
+            }
             didDrag = true
+        }
+
+        dragSamples.append(DragSample(location: NSEvent.mouseLocation, timestamp: event.timestamp))
+        if dragSamples.count > 4 {
+            dragSamples.removeFirst(dragSamples.count - 4)
         }
 
         let origin = NSPoint(
@@ -214,7 +317,7 @@ private final class PetWindowContentView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         if didDrag {
-            onDragEnded?()
+            onDragEnded?(estimatedVelocity())
         } else if event.type == .rightMouseUp {
             onRightClick?(event.locationInWindow)
         } else {
@@ -223,9 +326,27 @@ private final class PetWindowContentView: NSView {
         dragStartMouseLocation = nil
         dragStartWindowOrigin = nil
         didDrag = false
+        dragBeganNotified = false
+        dragSamples = []
     }
 
     override func rightMouseDown(with event: NSEvent) {
         onRightClick?(event.locationInWindow)
+    }
+
+    private func estimatedVelocity() -> CGVector {
+        guard dragSamples.count >= 2 else { return .zero }
+
+        let recent = dragSamples.suffix(2)
+        let first = recent[recent.startIndex]
+        let last = recent[recent.index(before: recent.endIndex)]
+
+        let dt = last.timestamp - first.timestamp
+        guard dt > 0.001 else { return .zero }
+
+        return CGVector(
+            dx: (last.location.x - first.location.x) / dt,
+            dy: (last.location.y - first.location.y) / dt
+        )
     }
 }

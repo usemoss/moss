@@ -205,9 +205,10 @@ nonisolated final class MossBridge: @unchecked Sendable {
         _ = try await send(action: "clear_index", payload: [:])
     }
 
-    func deleteDocs(ids: [String]) async throws {
-        guard !ids.isEmpty else { return }
-        _ = try await send(action: "delete_docs", payload: ["ids": ids])
+    func deleteDocs(ids: [String]) async throws -> Int {
+        guard !ids.isEmpty else { return 0 }
+        let response = try await send(action: "delete_docs", payload: ["ids": ids])
+        return response["doc_count"] as? Int ?? 0
     }
 
     // MARK: - Private

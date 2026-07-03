@@ -12,12 +12,13 @@ struct SearchOverlayView: View {
     @State private var query = ""
     @State private var results: [SearchResult] = []
     @State private var isSearching = false
-    @State private var lastSearchTimingMs: Double = 0
     @State private var searchTask: Task<Void, Never>?
     @FocusState private var isSearchFocused: Bool
 
-    private let panelWidth: CGFloat = 720
-    private let panelHeight: CGFloat = 520
+    private let bubbleWidth: CGFloat = 300
+    private let bubbleInputHeight: CGFloat = 54
+    private let resultRowHeight: CGFloat = 44
+    private let maxVisibleResults = 4
 
     init(
         searchService: SearchService,
@@ -38,34 +39,55 @@ struct SearchOverlayView: View {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            searchHeader
-
-            Divider()
-                .padding(.horizontal, 18)
-
-            contentArea
-
-            Divider()
-                .padding(.horizontal, 18)
-
-            footer
+    private var contentHeight: CGFloat {
+        var height = bubbleInputHeight + 24
+        if !trimmedQuery.isEmpty {
+            if isSearching {
+                height += 36
+            } else if results.isEmpty {
+                height += 40
+            } else {
+                let visibleCount = min(results.count, maxVisibleResults)
+                height += CGFloat(visibleCount) * resultRowHeight + 8
+            }
         }
-        .frame(width: panelWidth, height: panelHeight)
-        .background(
-            RoundedRectangle(cornerRadius: 22)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.28), radius: 28, y: 18)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22)
-                .stroke(Color.white.opacity(0.16), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 22))
+        return height
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            VStack(alignment: .leading, spacing: 0) {
+                thoughtBubble
+
+                if !trimmedQuery.isEmpty {
+                    if isSearching {
+                        thinkingRow
+                    } else if results.isEmpty {
+                        noResultsRow
+                    } else {
+                        compactResults
+                    }
+                }
+            }
+            .frame(width: bubbleWidth, alignment: .leading)
+            .background(
+                CloudBubbleShape()
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
+            )
+            .overlay(
+                CloudBubbleShape()
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
+
+            ThoughtBubbleDots()
+                .offset(x: 22, y: 22)
+        }
+        .padding(.bottom, 22)
         .onAppear {
             syncKeyboardBridge()
-            onHeightChange(panelHeight)
+            onHeightChange(contentHeight)
+            onPetStateChanged(.attentive)
             focusSearchField()
         }
         .onChange(of: presentation.focusToken) { _ in
@@ -80,165 +102,72 @@ struct SearchOverlayView: View {
         }
         .onChange(of: results.count) { _ in
             syncKeyboardBridge()
+            onHeightChange(contentHeight)
         }
         .onChange(of: isSearching) { searching in
-            onPetStateChanged(searching ? .searching : .idle)
+            onHeightChange(contentHeight)
+            if searching {
+                onPetStateChanged(.searching)
+            } else if trimmedQuery.isEmpty {
+                onPetStateChanged(.attentive)
+            }
         }
         .onExitCommand {
             onClose()
         }
     }
 
-    private var searchHeader: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 24, weight: .medium))
-                .foregroundColor(.secondary)
-                .frame(width: 30)
-
-            TextField("Search your files...", text: $query)
+    private var thoughtBubble: some View {
+        HStack(spacing: 8) {
+            TextField("What are you looking for?", text: $query)
                 .textFieldStyle(.plain)
-                .font(.system(size: 27, weight: .regular))
+                .font(.system(size: 15))
                 .focused($isSearchFocused)
                 .onSubmit {
                     openSelectedResult()
                 }
 
-            if searchService.isIndexing {
+            if isSearching {
                 ProgressView()
                     .controlSize(.small)
-                    .help(searchService.statusMessage)
+                    .scaleEffect(0.8)
             }
-
-            Button(action: onClose) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help("Close (Esc)")
         }
         .padding(.horizontal, 22)
-        .padding(.vertical, 20)
+        .padding(.vertical, 13)
     }
 
-    @ViewBuilder
-    private var contentArea: some View {
-        if trimmedQuery.isEmpty {
-            emptyState
-        } else if isSearching {
-            searchingState
-        } else if results.isEmpty {
-            noResultsState
-        } else {
-            ResultsListView(
-                results: results,
-                selectedIndex: keyboardBridge.selectedIndex,
-                isSearching: isSearching,
-                query: query,
-                onResultTapped: openResult,
-                onResultHovered: { keyboardBridge.selectedIndex = $0 }
-            )
-        }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 18) {
-            CapvoltStickerImage(size: 70)
-
-            VStack(spacing: 8) {
-                Text("Pikachu Spotlight")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-
-                Text("Search ~/Downloads/\(IndexingPolicy.testScopeFolderName) with your local Moss session.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 430)
-            }
-
-            if searchService.isIndexing {
-                Label(searchService.statusMessage, systemImage: "arrow.triangle.2.circlepath")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } else {
-                Label("\(searchService.indexedFileCount) files indexed locally", systemImage: "internaldrive")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(28)
-    }
-
-    private var searchingState: some View {
-        VStack(spacing: 14) {
+    private var thinkingRow: some View {
+        HStack(spacing: 8) {
             ProgressView()
-                .controlSize(.regular)
-            Text("Searching locally...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var noResultsState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 38))
-                .foregroundColor(.secondary)
-            Text("No matching files")
-                .font(.headline)
-            Text("Try a broader description or check that the folder is enabled in Settings.")
+                .controlSize(.small)
+            Text("Thinking…")
                 .font(.caption)
                 .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(28)
+        .padding(.horizontal, 14)
+        .padding(.bottom, 10)
     }
 
-    private var footer: some View {
-        HStack(spacing: 14) {
-            footerShortcut("↑↓", "Select")
-            footerShortcut("Return", "Open")
-            footerShortcut("Esc", "Close")
-
-            Spacer()
-
-            statusSummary
-        }
-        .font(.caption)
-        .foregroundColor(.secondary)
-        .padding(.horizontal, 22)
-        .padding(.vertical, 12)
+    private var noResultsRow: some View {
+        Text("No matches in ~/Downloads/\(IndexingPolicy.testScopeFolderName)")
+            .font(.caption)
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 10)
     }
 
-    private func footerShortcut(_ key: String, _ label: String) -> some View {
-        HStack(spacing: 5) {
-            Text(key)
-                .font(.caption2)
-                .fontWeight(.semibold)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.primary.opacity(0.08))
-                .cornerRadius(5)
-            Text(label)
-        }
-    }
-
-    @ViewBuilder
-    private var statusSummary: some View {
-        if isSearching {
-            Text("Local query")
-        } else if lastSearchTimingMs > 0, !results.isEmpty {
-            Text("\(results.count) results in \(String(format: "%.0f", lastSearchTimingMs))ms")
-        } else if searchService.lastSessionPushDate != nil {
-            Text(searchService.sessionStatusMessage)
-        } else {
-            Text(searchService.statusMessage)
-        }
+    private var compactResults: some View {
+        ResultsListView(
+            results: Array(results.prefix(maxVisibleResults)),
+            selectedIndex: keyboardBridge.selectedIndex,
+            isSearching: isSearching,
+            query: query,
+            compact: true,
+            onResultTapped: openResult,
+            onResultHovered: { keyboardBridge.selectedIndex = $0 }
+        )
+        .frame(height: CGFloat(min(results.count, maxVisibleResults)) * resultRowHeight)
     }
 
     private func clearSearch() {
@@ -246,10 +175,10 @@ struct SearchOverlayView: View {
         query = ""
         results = []
         isSearching = false
-        lastSearchTimingMs = 0
         presentation.keyboardBridge.resetSelection()
         syncKeyboardBridge()
-        onPetStateChanged(.idle)
+        onHeightChange(contentHeight)
+        onPetStateChanged(.attentive)
     }
 
     private func focusSearchField() {
@@ -276,6 +205,7 @@ struct SearchOverlayView: View {
         }
 
         isSearching = true
+        onPetStateChanged(.searching)
 
         searchTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 160_000_000)
@@ -288,12 +218,13 @@ struct SearchOverlayView: View {
                 presentation.keyboardBridge.resetSelection()
                 syncKeyboardBridge()
                 isSearching = false
-                lastSearchTimingMs = searchResults.first?.timingMs ?? 0
+                onHeightChange(contentHeight)
                 onPetStateChanged(searchResults.isEmpty ? .notFound : .found(searchResults.count))
             } catch {
                 guard !Task.isCancelled else { return }
                 isSearching = false
-                onPetStateChanged(.idle)
+                onHeightChange(contentHeight)
+                onPetStateChanged(.attentive)
                 NotificationManager.shared.showError(error.localizedDescription)
             }
         }
@@ -312,5 +243,60 @@ struct SearchOverlayView: View {
         } else {
             NotificationManager.shared.showError("File no longer exists: \(result.filename)")
         }
+    }
+}
+
+private struct ThoughtBubbleDots: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.82))
+                .frame(width: 11, height: 11)
+                .offset(x: 0, y: 0)
+
+            Circle()
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.74))
+                .frame(width: 7, height: 7)
+                .offset(x: -12, y: 10)
+
+            Circle()
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.62))
+                .frame(width: 4, height: 4)
+                .offset(x: -22, y: 17)
+        }
+        .frame(width: 32, height: 28)
+    }
+}
+
+private struct CloudBubbleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let insetRect = rect.insetBy(dx: 5, dy: 4)
+        var path = Path()
+
+        path.addRoundedRect(
+            in: insetRect,
+            cornerSize: CGSize(width: 24, height: 24)
+        )
+
+        let lobes: [(CGFloat, CGFloat, CGFloat)] = [
+            (0.18, 0.28, 15),
+            (0.38, 0.12, 18),
+            (0.62, 0.13, 17),
+            (0.82, 0.30, 14),
+            (0.22, 0.78, 13),
+            (0.72, 0.84, 14),
+        ]
+
+        for (x, y, radius) in lobes {
+            let center = CGPoint(x: rect.minX + rect.width * x, y: rect.minY + rect.height * y)
+            path.addEllipse(in: CGRect(
+                x: center.x - radius,
+                y: center.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            ))
+        }
+
+        return path
     }
 }

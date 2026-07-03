@@ -24,8 +24,8 @@ struct ResultsListView: View {
                     }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, compact ? 8 : 14)
+            .padding(.vertical, compact ? 4 : 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -49,38 +49,44 @@ struct ResultRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            fileBadge
+        HStack(spacing: compact ? 8 : 12) {
+            if !compact {
+                fileBadge
+            }
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: compact ? 2 : 5) {
                 HStack(spacing: 8) {
                     Text(result.filename)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: compact ? 13 : 15, weight: .semibold))
                         .foregroundColor(.primary)
                         .lineLimit(1)
 
-                    Text(fileExtension)
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.primary.opacity(0.06))
-                        .cornerRadius(4)
+                    if !compact {
+                        Text(fileExtension)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.primary.opacity(0.06))
+                            .cornerRadius(4)
+                    }
 
                     Spacer()
 
-                    Text(String(format: "%.0fms", result.timingMs))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    if !compact {
+                        Text(String(format: "%.0fms", result.timingMs))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
-                Text(result.path)
+                Text(compact ? shortenedPath : result.path)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
 
-                if !snippet.isEmpty {
+                if !compact, !snippet.isEmpty {
                     Text(snippet)
                         .font(.caption)
                         .foregroundColor(.secondary.opacity(0.9))
@@ -88,15 +94,23 @@ struct ResultRowView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, compact ? 10 : 12)
+        .padding(.vertical, compact ? 6 : 10)
         .background(rowBackground)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: compact ? 8 : 12)
                 .stroke(isSelected ? Color.accentColor.opacity(0.25) : Color.clear, lineWidth: 1)
         )
-        .cornerRadius(12)
+        .cornerRadius(compact ? 8 : 12)
         .contentShape(Rectangle())
+    }
+
+    private var shortenedPath: String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        if result.path.hasPrefix(home) {
+            return "~" + result.path.dropFirst(home.count)
+        }
+        return result.path
     }
 
     private var fileBadge: some View {
