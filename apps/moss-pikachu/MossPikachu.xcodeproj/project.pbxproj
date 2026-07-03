@@ -35,6 +35,7 @@
 		MPB0000000000000000026 /* DotEnvLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000026 /* DotEnvLoader.swift */; };
 		MPB0000000000000000027 /* FloatingPetWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000027 /* FloatingPetWindowController.swift */; };
 		MPB0000000000000000028 /* SearchOverlayPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000028 /* SearchOverlayPresentation.swift */; };
+		MPB0000000000000000030 /* IndexScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000030 /* IndexScope.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +68,7 @@
 		MPF0000000000000000026 /* DotEnvLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotEnvLoader.swift; sourceTree = "<group>"; };
 		MPF0000000000000000027 /* FloatingPetWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingPetWindowController.swift; sourceTree = "<group>"; };
 		MPF0000000000000000028 /* SearchOverlayPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOverlayPresentation.swift; sourceTree = "<group>"; };
+		MPF0000000000000000030 /* IndexScope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexScope.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +134,7 @@
 				MPF0000000000000000011 /* PetState.swift */,
 				MPF0000000000000000012 /* FileSystemEvent.swift */,
 				MPF0000000000000000013 /* UserSettings.swift */,
+				MPF0000000000000000030 /* IndexScope.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -259,6 +262,7 @@
 				MPB0000000000000000026 /* DotEnvLoader.swift in Sources */,
 				MPB0000000000000000027 /* FloatingPetWindowController.swift in Sources */,
 				MPB0000000000000000028 /* SearchOverlayPresentation.swift in Sources */,
+				MPB0000000000000000030 /* IndexScope.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

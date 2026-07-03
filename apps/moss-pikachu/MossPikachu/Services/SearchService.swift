@@ -5,9 +5,8 @@ import Combine
 final class SearchService: ObservableObject {
     private var mossBridge: MossBridge?
     private let fileMonitor = FileMonitor()
-    private let indexManager = IndexManager(manifestFilename: "index-manifest-downloads.json")
+    private let indexManager = IndexManager(manifestFilename: IndexScope.manifestFilename)
     private var settings = UserSettings.load()
-    private let indexName = "downloads"
     private var saveTask: Task<Void, Never>?
 
     @Published private(set) var indexedFileCount: Int = 0
@@ -22,7 +21,7 @@ final class SearchService: ObservableObject {
         let (projectID, projectKey) = try MossBridge.loadCredentials()
         let bridge = MossBridge(projectID: projectID, projectKey: projectKey)
         try bridge.start()
-        try await bridge.initSession(indexName: indexName)
+        try await bridge.initSession(indexName: IndexScope.sessionName)
         mossBridge = bridge
 
         fileMonitor.onChange = { [weak self] files in
@@ -31,8 +30,13 @@ final class SearchService: ObservableObject {
             }
         }
         refreshWatchedPaths()
-        _ = fileMonitor.start()
 
+        guard !watchedFolderPathsList.isEmpty else {
+            statusMessage = missingScopeMessage
+            return
+        }
+
+        _ = fileMonitor.start()
         await performInitialScan()
     }
 
@@ -55,7 +59,7 @@ final class SearchService: ObservableObject {
         guard let mossBridge else {
             throw MossBridgeError.workerCrashed
         }
-        return try await mossBridge.query(indexName: indexName, query: query, topK: 8)
+        return try await mossBridge.query(indexName: IndexScope.sessionName, query: query, topK: 8)
     }
 
     func reindexNow() async throws {
@@ -72,6 +76,10 @@ final class SearchService: ObservableObject {
 
     // MARK: - Private
 
+    private var missingScopeMessage: String {
+        "Folder not found: ~/Downloads/\(IndexScope.folderName)"
+    }
+
     private func refreshWatchedPaths() {
         let paths = watchedFolderPaths()
         watchedFolderPathsList = paths
@@ -79,9 +87,16 @@ final class SearchService: ObservableObject {
     }
 
     private func performInitialScan(forceAll: Bool = false) async {
+        let folders = watchedFolderPaths()
+        guard !folders.isEmpty else {
+            statusMessage = missingScopeMessage
+            isIndexing = false
+            return
+        }
+
         isIndexing = true
-        statusMessage = "Scanning Downloads..."
-        let allFiles = discoverFiles(in: watchedFolderPaths())
+        statusMessage = "Scanning \(IndexScope.folderName)..."
+        let allFiles = discoverFiles(in: folders)
         let needingIndex = forceAll ? allFiles : indexManager.filesNeedingIndex(in: allFiles)
         statusMessage = "Found \(allFiles.count) files, indexing \(needingIndex.count)..."
         guard !needingIndex.isEmpty else {
@@ -96,22 +111,22 @@ final class SearchService: ObservableObject {
     }
 
     private func indexFiles(_ paths: [String]) async {
-        let existing = paths.filter { FileManager.default.fileExists(atPath: $0) }
-        guard !existing.isEmpty, let mossBridge else { return }
+        let inScope = paths.filter { path in
+            FileManager.default.fileExists(atPath: path) && IndexScope.contains(path: path)
+        }
+        guard !inScope.isEmpty, let mossBridge else { return }
 
         isIndexing = true
-        statusMessage = "Indexing \(existing.count) files..."
+        statusMessage = "Indexing \(inScope.count) files..."
 
         let batchSize = 15
         var offset = 0
-        var totalChunks = 0
-        while offset < existing.count {
-            let end = min(offset + batchSize, existing.count)
-            let batch = Array(existing[offset..<end])
+        while offset < inScope.count {
+            let end = min(offset + batchSize, inScope.count)
+            let batch = Array(inScope[offset..<end])
             do {
                 let result = try await mossBridge.addDocs(files: batch)
                 indexManager.markIndexed(paths: batch)
-                totalChunks += result.chunks
                 indexedFileCount = indexManager.indexedFileCount
                 indexedChunkCount += result.chunks
                 lastIndexedDate = indexManager.lastIndexedDate
@@ -140,21 +155,17 @@ final class SearchService: ObservableObject {
     }
 
     private func watchedFolderPaths() -> [String] {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let downloads = "\(home)/Downloads"
-        guard FileManager.default.fileExists(atPath: downloads) else {
-            statusMessage = "Downloads folder not found"
-            return []
-        }
-        return [downloads]
+        guard let url = IndexScope.watchedFolderURL else { return [] }
+        return [url.path]
     }
 
     private func discoverFiles(in folders: [String]) -> [String] {
-        let allowed: Set<String> = ["md", "txt", "pdf", "notes", "rtf", "docx", "html"]
+        let allowed = FileMonitor.indexableExtensions
         var results: [String] = []
         let fm = FileManager.default
 
         for folder in folders {
+            guard IndexScope.contains(path: folder) else { continue }
             guard let enumerator = fm.enumerator(
                 at: URL(fileURLWithPath: folder),
                 includingPropertiesForKeys: [.isRegularFileKey],

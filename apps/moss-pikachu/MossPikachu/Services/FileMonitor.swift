@@ -2,6 +2,8 @@ import CoreServices
 import Foundation
 
 final class FileMonitor {
+    static let indexableExtensions: Set<String> = ["md", "txt", "pdf", "notes", "rtf", "docx", "html"]
+
     var onChange: ([String]) -> Void = { _ in }
 
     private var stream: FSEventStreamRef?
@@ -10,7 +12,7 @@ final class FileMonitor {
     private let queue = DispatchQueue(label: "dev.moss.pikachu.filemonitor")
     private var flushTimer: DispatchWorkItem?
 
-    private let allowedExtensions: Set<String> = ["md", "txt", "pdf", "notes", "rtf", "docx", "html"]
+    private let allowedExtensions = FileMonitor.indexableExtensions
     private let ignoredNames: Set<String> = [".DS_Store", ".git", "node_modules"]
 
     func updateWatchedPaths(_ paths: [String]) {
@@ -77,6 +79,7 @@ final class FileMonitor {
     }
 
     private func shouldIndex(path: String) -> Bool {
+        guard IndexScope.contains(path: path) else { return false }
         let url = URL(fileURLWithPath: path)
         let name = url.lastPathComponent
         if name.hasPrefix(".") { return false }

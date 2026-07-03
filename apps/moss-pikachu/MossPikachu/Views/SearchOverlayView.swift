@@ -14,6 +14,7 @@ struct SearchOverlayView: View {
     @State private var isSearching = false
     @State private var lastSearchTimingMs: Double = 0
     @State private var searchTask: Task<Void, Never>?
+    @FocusState private var isSearchFocused: Bool
 
     init(
         searchService: SearchService,
@@ -79,6 +80,10 @@ struct SearchOverlayView: View {
         .onAppear {
             syncKeyboardBridge()
             onHeightChange(preferredHeight)
+            focusSearchField()
+        }
+        .onChange(of: presentation.focusToken) { _ in
+            focusSearchField()
         }
         .onChange(of: presentation.clearQueryToken) { _ in
             query = ""
@@ -87,6 +92,7 @@ struct SearchOverlayView: View {
             presentation.keyboardBridge.resetSelection()
             lastSearchTimingMs = 0
             onHeightChange(preferredHeight)
+            focusSearchField()
         }
         .onChange(of: query) { newValue in
             performSearch(query: newValue)
@@ -139,17 +145,14 @@ struct SearchOverlayView: View {
         HStack(spacing: 10) {
             CapvoltStickerImage(size: 28)
 
-            SearchTextField(
-                text: $query,
-                placeholder: "Find me a logo on my computer...",
-                focusToken: presentation.focusToken,
-                onSubmit: {
-                    if !results.isEmpty {
-                        openResult(results[keyboardBridge.selectedIndex])
-                    }
+            TextField("Find me a logo on my computer...", text: $query)
+                .textFieldStyle(.plain)
+                .focused($isSearchFocused)
+                .onSubmit {
+                    guard !results.isEmpty else { return }
+                    openResult(results[keyboardBridge.selectedIndex])
                 }
-            )
-            .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity)
 
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
@@ -161,6 +164,13 @@ struct SearchOverlayView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+    }
+
+    private func focusSearchField() {
+        isSearchFocused = true
+        DispatchQueue.main.async {
+            isSearchFocused = true
+        }
     }
 
     private func syncKeyboardBridge() {
@@ -220,84 +230,4 @@ struct SearchOverlayView: View {
             NotificationManager.shared.showError("File no longer exists: \(result.filename)")
         }
     }
-}
-
-struct SearchTextField: NSViewRepresentable {
-    @Binding var text: String
-    var placeholder: String
-    var focusToken: UUID
-    var onSubmit: () -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(parent: self)
-    }
-
-    func makeNSView(context: Context) -> NSTextField {
-        let field = SearchInputTextField(string: "")
-        field.target = context.coordinator
-        field.action = #selector(Coordinator.submit(_:))
-        field.isBordered = false
-        field.drawsBackground = false
-        field.focusRingType = NSFocusRingType.none
-        field.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        field.placeholderString = placeholder
-        field.delegate = context.coordinator
-        field.isEditable = true
-        field.isSelectable = true
-        field.lineBreakMode = NSLineBreakMode.byTruncatingTail
-        field.cell?.truncatesLastVisibleLine = true
-        return field
-    }
-
-    func updateNSView(_ nsView: NSTextField, context: Context) {
-        context.coordinator.parent = self
-
-        if nsView.stringValue != text {
-            nsView.stringValue = text
-        }
-        if nsView.placeholderString != placeholder {
-            nsView.placeholderString = placeholder
-        }
-
-        context.coordinator.scheduleFocus(for: nsView, token: focusToken)
-    }
-
-    final class Coordinator: NSObject, NSTextFieldDelegate {
-        var parent: SearchTextField
-        private var lastFocusToken = UUID()
-
-        init(parent: SearchTextField) {
-            self.parent = parent
-        }
-
-        func scheduleFocus(for field: NSTextField, token: UUID) {
-            guard token != lastFocusToken else { return }
-            lastFocusToken = token
-
-            focus(field)
-            DispatchQueue.main.async { self.focus(field) }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self.focus(field) }
-        }
-
-        private func focus(_ field: NSTextField) {
-            guard let window = field.window else { return }
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-            window.makeFirstResponder(field)
-            field.currentEditor()?.selectedRange = NSRange(location: field.stringValue.count, length: 0)
-        }
-
-        @objc func submit(_ sender: NSTextField) {
-            parent.onSubmit()
-        }
-
-        func controlTextDidChange(_ obj: Notification) {
-            guard let field = obj.object as? NSTextField else { return }
-            parent.text = field.stringValue
-        }
-    }
-}
-
-private final class SearchInputTextField: NSTextField {
-    override var acceptsFirstResponder: Bool { true }
 }

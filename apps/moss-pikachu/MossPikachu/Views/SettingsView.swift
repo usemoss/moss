@@ -14,13 +14,13 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 settingsSection(title: "Indexed Folder") {
-                    Text("Moss indexes your Downloads folder using a local SessionIndex.")
+                    Text("Moss indexes only `~/Downloads/\(IndexScope.folderName)` via a local SessionIndex.")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    if let downloadsPath = searchService.watchedFolderPathsList.first {
-                        settingsRow(label: "Folder", value: downloadsPath)
+                    if let scopePath = searchService.watchedFolderPathsList.first {
+                        settingsRow(label: "Folder", value: scopePath)
                     } else {
-                        Text("Downloads folder not found on this Mac.")
+                        Text("Create `~/Downloads/\(IndexScope.folderName)` to enable indexing.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

@@ -22,7 +22,7 @@ CHUNK_OVERLAP = 300
 
 session = None
 client = None
-index_name = "downloads"
+index_name = "cwp-stuff"
 shutdown_requested = False
 
 

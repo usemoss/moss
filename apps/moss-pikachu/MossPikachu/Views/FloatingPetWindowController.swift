@@ -175,30 +175,41 @@ private final class PetWindowContentView: NSView {
     var onRightClick: ((NSPoint) -> Void)?
     var onDragEnded: (() -> Void)?
 
-    private var dragStart: NSPoint?
+    private var dragStartMouseLocation: NSPoint?
+    private var dragStartWindowOrigin: NSPoint?
     private var didDrag = false
 
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
     override func mouseDown(with event: NSEvent) {
-        dragStart = event.locationInWindow
+        dragStartMouseLocation = NSEvent.mouseLocation
+        dragStartWindowOrigin = window?.frame.origin
         didDrag = false
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard let window, let dragStart else { return }
+        guard let window,
+              let dragStartMouseLocation,
+              let dragStartWindowOrigin else {
+            return
+        }
 
         let delta = NSPoint(
-            x: event.locationInWindow.x - dragStart.x,
-            y: event.locationInWindow.y - dragStart.y
+            x: NSEvent.mouseLocation.x - dragStartMouseLocation.x,
+            y: NSEvent.mouseLocation.y - dragStartMouseLocation.y
         )
 
         if abs(delta.x) > 3 || abs(delta.y) > 3 {
             didDrag = true
         }
 
-        var frame = window.frame
-        frame.origin.x += event.deltaX
-        frame.origin.y += event.deltaY
-        window.setFrame(frame, display: true)
+        let origin = NSPoint(
+            x: dragStartWindowOrigin.x + delta.x,
+            y: dragStartWindowOrigin.y + delta.y
+        )
+        window.setFrameOrigin(origin)
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -209,7 +220,8 @@ private final class PetWindowContentView: NSView {
         } else {
             onClick?()
         }
-        dragStart = nil
+        dragStartMouseLocation = nil
+        dragStartWindowOrigin = nil
         didDrag = false
     }
 
