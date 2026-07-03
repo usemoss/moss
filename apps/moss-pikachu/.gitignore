@@ -1,0 +1,21 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Moss / secrets
+.env
+.env.local
+
+# macOS
+.DS_Store
+
+# Vendor submodule build artifacts
+vendor/moss/**/target/
+vendor/moss/**/.venv/
