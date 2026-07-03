@@ -49,7 +49,10 @@ PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
 
 pytestmark = pytest.mark.skipif(
     not (POSTGRES_DSN and PROJECT_ID and PROJECT_KEY),
-    reason="Set POSTGRES_DSN, MOSS_PROJECT_ID, and MOSS_PROJECT_KEY to run the real integration test.",
+    reason=(
+        "Set POSTGRES_DSN, MOSS_PROJECT_ID, and MOSS_PROJECT_KEY "
+        "to run the real integration test."
+    ),
 )
 
 
