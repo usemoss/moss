@@ -1,0 +1,72 @@
+[
+  {
+    "id": "policy-summary",
+    "text": "Policy number FL-HO3-001. Policyholder: Sandra and Robert Morales. Property address: 412 Pelican Drive, Cape Coral, FL 33914. Policy type: HO-3 Special Form. Policy period: April 1, 2025 to April 1, 2026. Insurer: Coastal Shield Insurance Company. Agent: Carlos Reyes, Reyes Insurance Group, Fort Myers FL.",
+    "metadata": {"section": "summary", "policy_number": "FL-HO3-001", "state": "FL"}
+  },
+  {
+    "id": "adjuster-access",
+    "text": "Authorized field adjusters for policy FL-HO3-001: Adjuster ID A-4412, Adjuster ID A-7731, Adjuster ID A-9905. Claim must be reported by insured Sandra Morales or Robert Morales. Contact: Sandra Morales, cell 239-555-0142. Robert Morales, cell 239-555-0189.",
+    "metadata": {"section": "adjuster_access", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "property-details",
+    "text": "Insured property: 412 Pelican Drive, Cape Coral FL 33914. Single-family residence. Year built: 2004. Construction type: concrete block stucco (CBS). Roof type: hip, architectural asphalt shingles. Roof year: 2019. Square footage: 2,340 sq ft under air. FEMA flood zone: AE (high-risk flood zone), flood map panel 12071C0310G. Swimming pool: yes, in-ground, enclosed with screen cage. Detached structure: none.",
+    "metadata": {"section": "property", "policy_number": "FL-HO3-001", "state": "FL"}
+  },
+  {
+    "id": "coverage-a-limit",
+    "text": "Coverage A — Dwelling: $485,000. Replacement cost basis. Insured to at least 80% of replacement cost value at time of loss.",
+    "metadata": {"section": "coverage_a", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "coverage-b-limit",
+    "text": "Coverage B — Other Structures: $48,500 (10% of Coverage A). Covers the screen-enclosed pool cage and any fencing. No detached garage on property.",
+    "metadata": {"section": "coverage_b", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "coverage-c-limit",
+    "text": "Coverage C — Personal Property: $242,500 (50% of Coverage A). Actual cash value basis. Standard sub-limits apply: jewelry theft $1,500, firearms theft $2,500, money $200, securities $1,500.",
+    "metadata": {"section": "coverage_c", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "coverage-d-limit",
+    "text": "Coverage D — Loss of Use: $97,000 (20% of Coverage A). Covers additional living expenses and lost rental income while the dwelling is uninhabitable due to a covered loss.",
+    "metadata": {"section": "coverage_d", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "coverage-e-limit",
+    "text": "Coverage E — Personal Liability: $300,000 per occurrence.",
+    "metadata": {"section": "coverage_e", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "coverage-f-limit",
+    "text": "Coverage F — Medical Payments to Others: $5,000 per person.",
+    "metadata": {"section": "coverage_f", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "deductibles",
+    "text": "Deductibles for policy FL-HO3-001: All-peril (non-hurricane) deductible: $2,500. Hurricane deductible: 2% of Coverage A = $9,700. Hurricane deductible applies when NOAA's National Hurricane Center has issued a hurricane watch or warning for any part of Florida and the loss is directly caused by the named storm. Adjuster: confirm storm designation before applying hurricane deductible.",
+    "metadata": {"section": "deductibles", "policy_number": "FL-HO3-001", "state": "FL"}
+  },
+  {
+    "id": "endorsements",
+    "text": "Active endorsements on policy FL-HO3-001: (1) Water Backup and Sump Overflow (HO 04 95) — limit $10,000. (2) Ordinance or Law (HO 04 77) — 25% of Coverage A = $121,250. (3) Inflation Guard (HO 04 46) — 6% annual increase. Excluded endorsements not on this policy: no earthquake endorsement, no flood endorsement (insured has separate NFIP policy).",
+    "metadata": {"section": "endorsements", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "flood-policy-note",
+    "text": "NFIP flood policy is separately in force for 412 Pelican Drive: NFIP policy number NF-8842271. Building coverage: $250,000. Contents coverage: $100,000. Flood claims are handled separately through the NFIP Write-Your-Own program; this HO-3 policy does not cover flood damage. Property is in FEMA flood zone AE.",
+    "metadata": {"section": "flood_note", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "prior-claims",
+    "text": "Prior claims on policy FL-HO3-001: (1) 2022-09-28: Hurricane Ian wind damage. Covered loss $38,450. Hurricane deductible applied $8,800 (prior Coverage A was $440,000). Payment $29,650. Closed. (2) 2023-07-15: Water damage — burst supply line under kitchen sink. Covered loss $7,200. Standard deductible $2,500 applied. Payment $4,700. Closed. No open claims.",
+    "metadata": {"section": "prior_claims", "policy_number": "FL-HO3-001"}
+  },
+  {
+    "id": "special-conditions",
+    "text": "Special conditions for policy FL-HO3-001: (1) Pool cage is covered under Coverage B up to the $48,500 limit; screen replacement only (not cage frame) may be subject to a cosmetic exclusion — review specific policy form. (2) Property is in a FEMA AE flood zone; flood is excluded from this HO-3 policy and a separate NFIP policy is maintained. (3) Annual roof inspection was completed October 2024; roof is in good condition per inspection report on file.",
+    "metadata": {"section": "special_conditions", "policy_number": "FL-HO3-001"}
+  }
+]

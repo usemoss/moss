@@ -13,6 +13,7 @@ from rich.console import Console
 from moss import MossClient, QueryOptions
 
 from .. import output
+from ..completion import complete_index_name
 from ..config import resolve_credentials
 
 console = Console()
@@ -47,7 +48,7 @@ def _parse_set_command(line: str) -> tuple[Optional[str], Optional[str]]:
 
 def query_command(
     ctx: typer.Context,
-    index_name: str = typer.Argument(..., help="Index name"),
+    index_name: str = typer.Argument(..., help="Index name", autocompletion=complete_index_name),
     query_text: Optional[str] = typer.Argument(None, help="Search query (reads from stdin if omitted)"),
     profile: Optional[str] = typer.Option(
         None, "--profile", help="Credential profile name"

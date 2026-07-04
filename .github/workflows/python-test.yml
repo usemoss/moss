@@ -1,0 +1,20 @@
+name: python-test
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Reports the "python-test" required status check (via the GitHub Actions app).
+# Substantive Python coverage lives in the python-lint and python-sdk-test jobs;
+# this is the gate the branch ruleset still requires by that name. Expand the
+# steps here if a dedicated python-test suite is wanted later.
+jobs:
+  python-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Smoke check
+        run: python -c "print('python-test ok')"
