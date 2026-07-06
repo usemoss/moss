@@ -14,7 +14,7 @@ nonisolated struct UserSettings: Codable, Equatable, Sendable {
     var indexICloudDrive: Bool = false
 
     nonisolated private static let storageKey = "moss.pikachu.userSettings"
-
+    
     nonisolated static func load() -> UserSettings {
         guard let data = UserDefaults.standard.data(forKey: storageKey),
               let settings = try? JSONDecoder().decode(UserSettings.self, from: data) else {
