@@ -149,7 +149,7 @@ final class SearchService: ObservableObject {
         fileMonitor.stop()
         do {
             try await initialize()
-            NotificationManager.shared.showSuccess("Moss Pikachu is ready")
+            NotificationManager.shared.showSuccess("Picklight is ready")
         } catch {
             let message = error.localizedDescription
             markInitializationFailed(message)

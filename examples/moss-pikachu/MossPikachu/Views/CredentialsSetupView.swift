@@ -10,11 +10,11 @@ struct CredentialsSetupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Welcome to Moss Pikachu")
+            Text("Welcome to Picklight")
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            Text("Moss Pikachu uses Moss for semantic search on your Mac. Your Moss API keys stay in the macOS Keychain on this machine.")
+            Text("Picklight uses Moss for semantic search on your Mac. Your Moss API keys stay in the macOS Keychain on this machine.")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

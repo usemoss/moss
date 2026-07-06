@@ -1,9 +1,13 @@
 import Foundation
 
-nonisolated enum MossPikachuPaths {
-    static let appSupportFolderName = "MossPikachu"
-    static let logFilename = "moss-pikachu.log"
-    static let keychainService = "dev.moss.pikachu"
+/// User-facing Picklight paths and identifiers (internal target remains MossPikachu).
+nonisolated enum PicklightPaths {
+    static let appSupportFolderName = "Picklight"
+    static let legacyAppSupportFolderName = "MossPikachu"
+    static let logFilename = "picklight.log"
+    static let legacyLogFilename = "moss-pikachu.log"
+
+    static let keychainService = "dev.picklight"
     static let legacyKeychainService = "dev.moss.pikachu"
 
     nonisolated static func appSupportDirectory() -> URL {

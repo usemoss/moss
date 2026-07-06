@@ -22,7 +22,7 @@ final class SettingsWindowController {
                 backing: .buffered,
                 defer: false
             )
-            window?.title = "Moss Pikachu Settings"
+            window?.title = "Picklight Settings"
             window?.contentView = hostingView
             window?.center()
             window?.isReleasedWhenClosed = false

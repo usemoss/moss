@@ -17,7 +17,7 @@ final class IndexingBootstrapWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Moss Pikachu"
+        window.title = "Picklight"
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
         window.center()

@@ -1,64 +1,81 @@
-# Moss Pikachu
+# Picklight
 
 Native macOS menu bar app for semantic file search powered by [Moss](https://github.com/usemoss/moss).
 
 - **Hotkey:** ⌘⇧M to open search
-- **Pet:** Pikachu animates on search results
+- **Pet:** Capvolt animates on your desktop
 - **Privacy:** Files are indexed and stored on this Mac. Moss API keys authenticate semantic search locally; nothing is uploaded to Moss cloud.
+
+**Works immediately after Moss API keys** (and one automatic/local Python setup).
+
+## Get running in 5 steps
+
+1. **Clone** this repository.
+
+2. **Open in Xcode** — the build phase creates `.venv` automatically if needed:
+   ```bash
+   open MossPikachu.xcodeproj
+   ```
+   Press **⌘R** to build and run. If Python setup fails, check the Xcode build log or run `./scripts/setup-moss-venv.sh`.
+
+3. **Enter Moss keys** — on first launch, Picklight shows a setup window for your [moss.dev](https://moss.dev) Project ID and Project Key. Alternatively, create `.env` in the project root:
+   ```bash
+   cp .env.example .env
+   # Edit MOSS_PROJECT_ID and MOSS_PROJECT_KEY
+   ```
+
+4. **Grant folder access** if macOS prompts for Desktop, Documents, or Downloads.
+
+5. **Search** — click the pet or press **⌘⇧M**.
+
+Default indexing covers **Documents, Desktop, and Downloads** only. Enable Movies, Music, Pictures, Public, or iCloud Drive in **Settings → Indexed Folders**.
+
+## CLI bootstrap (non-Xcode)
+
+```bash
+chmod +x scripts/*.sh
+./scripts/bootstrap.sh          # venv + credential check
+./scripts/bootstrap.sh --smoke  # optional indexing smoke test
+```
 
 ## Prerequisites
 
 - macOS 12+
 - Xcode 15+
-- Python 3.10+
-
-## Setup
-
-1. **Moss credentials** — Sign up at [moss.dev](https://moss.dev) and copy your project ID and key.
-
-2. **Python environment:**
-   ```bash
-   ./scripts/setup-moss-venv.sh
-   ```
-
-3. **Configure credentials** (choose one):
-   ```bash
-   export MOSS_PROJECT_ID=your_id
-   export MOSS_PROJECT_KEY=your_key
-   ```
-   Or create `.env` in the project root (loaded automatically in dev builds):
-   ```bash
-   cp .env.example .env
-   ```
-   Xcode can also use **Scheme → Run → Environment Variables**.
-
-4. **Sticker asset**: place `capvolt-sticker.webp` at project root; setup script generates `MossPikachu/Resources/capvolt-sticker.png`.
-
-5. **Open in Xcode:**
-   ```bash
-   open MossPikachu.xcodeproj
-   ```
-   Build and run (⌘R).
+- Python 3.10+ (used by the automatic venv setup)
 
 ## Development
 
 ```bash
-# Phase validation
 chmod +x scripts/*.sh
 ./scripts/smoke-test-indexing.sh
 ./.cursor/skills/moss-pikachu/scripts/validate-phase.sh 1
 
-# Debug logging
-# Run with --debug argument in Xcode scheme → logs to ~/Library/Application Support/MossPikachu/moss-pikachu.log
+# Debug logging: run with --debug in Xcode scheme
+# Logs: ~/Library/Application Support/Picklight/picklight.log
 ```
 
 ## Architecture
 
 - **Swift app** — Menu bar UI, FSEvents file monitor, search overlay
 - **moss_worker.py** — Python subprocess using `pip install moss>=1.6.0` SessionIndex API
-- **Index manifest** — Swift tracks indexed files across launches (Python session is in-memory)
+- **Local cache** — `~/Library/Application Support/Picklight/moss-session-cache`
 
-See [`.cursor/skills/moss-pikachu/`](.cursor/skills/moss-pikachu/) for agent development guidance.
+## Documentation
+
+| Doc | For |
+|-----|-----|
+| [how-to.md](how-to.md) | Daily use guide |
+| [project-summary.md](project-summary.md) | Full technical reference |
+| [contribution.md](contribution.md) | Contributing |
+
+## Agent skills
+
+Cursor agent skills live in [`.cursor/skills/`](.cursor/skills/).
+
+## Product demo video
+
+Remotion promo project: [`video-2/`](video-2/)
 
 ## Vendor
 

@@ -3,7 +3,7 @@ import Foundation
 final class IndexManager {
     private let manifestURL: URL
     private var manifest = IndexManifest()
-    private let queue = DispatchQueue(label: "dev.moss.pikachu.indexmanager")
+    private let queue = DispatchQueue(label: "dev.picklight.indexmanager")
 
     init(manifestFilename: String = IndexingPolicy.manifestFilename) {
         let dir = IndexingPolicy.appSupportDirectory()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Moss Pikachu worker — line-delimited JSON protocol over stdin/stdout."""
+"""Picklight worker — line-delimited JSON protocol over stdin/stdout."""
 
 from __future__ import annotations
 
@@ -205,7 +205,7 @@ async def ensure_client() -> None:
 
 
 def default_session_cache_path() -> str:
-    return str(Path.home() / "Library" / "Application Support" / "MossPikachu" / "moss-session-cache")
+    return str(Path.home() / "Library" / "Application Support" / "Picklight" / "moss-session-cache")
 
 
 async def ensure_session(

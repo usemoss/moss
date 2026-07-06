@@ -15,7 +15,3 @@ __pycache__/
 
 # macOS
 .DS_Store
-
-# Vendor submodule build artifacts
-vendor/moss/**/target/
-vendor/moss/**/.venv/

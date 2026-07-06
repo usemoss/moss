@@ -7,11 +7,11 @@ nonisolated final class AppLogger: @unchecked Sendable {
 
     var isDebugEnabled = false
     private let logFileURL: URL
-    private let osLog = Logger(subsystem: "dev.moss.pikachu", category: "app")
+    private let osLog = Logger(subsystem: "dev.picklight", category: "app")
 
     private init() {
-        let dir = MossPikachuPaths.appSupportDirectory()
-        logFileURL = dir.appendingPathComponent(MossPikachuPaths.logFilename)
+        let dir = PicklightPaths.appSupportDirectory()
+        logFileURL = dir.appendingPathComponent(PicklightPaths.logFilename)
     }
 
     func log(_ message: String) {

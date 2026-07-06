@@ -37,7 +37,7 @@ nonisolated final class MossBridge: @unchecked Sendable {
 
     private var process: Process?
     private var stdinHandle: FileHandle?
-    private let ioQueue = DispatchQueue(label: "dev.moss.pikachu.mossbridge")
+    private let ioQueue = DispatchQueue(label: "dev.picklight.mossbridge")
     private var readBuffer = ""
     private var pendingRequests: [PendingRequest] = []
     private var isReading = false
@@ -370,8 +370,8 @@ nonisolated final class MossBridge: @unchecked Sendable {
 }
 
 nonisolated enum KeychainHelper {
-  private static let service = MossPikachuPaths.keychainService
-  private static let legacyService = MossPikachuPaths.legacyKeychainService
+  private static let service = PicklightPaths.keychainService
+  private static let legacyService = PicklightPaths.legacyKeychainService
 
   static func read(account: String) -> String? {
     read(account: account, service: service) ?? readLegacy(account: account)

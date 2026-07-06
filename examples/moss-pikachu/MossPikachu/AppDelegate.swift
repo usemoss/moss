@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if debugMode {
             AppLogger.shared.isDebugEnabled = true
-            AppLogger.shared.log("Moss Pikachu starting in debug mode")
+            AppLogger.shared.log("Picklight starting in debug mode")
         }
 
         setupSearchOverlay()
@@ -72,7 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func friendlyInitError(_ error: Error) -> String {
         let text = error.localizedDescription.lowercased()
         if text.contains("credential") || text.contains("missing") {
-            return "Moss API credentials missing or invalid. Add them in Moss Pikachu Settings or the setup window."
+            return "Moss API credentials missing or invalid. Add them in Picklight Settings or the setup window."
         }
         if text.contains("python") || text.contains("moss python") || text.contains("venv") {
             return error.localizedDescription
@@ -171,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 ? "Starting Moss session…"
                 : searchService.statusMessage
         }
-        return "Moss Pikachu is not ready yet. Open Settings and tap Retry Initialize."
+        return "Picklight is not ready yet. Open Settings and tap Retry Initialize."
     }
 
     private func openSearch() {

@@ -35,7 +35,7 @@ nonisolated struct IndexingPolicy: Equatable, Sendable {
     }
 
     nonisolated static func appSupportDirectory() -> URL {
-        MossPikachuPaths.appSupportDirectory()
+        PicklightPaths.appSupportDirectory()
     }
 
     nonisolated static func localSessionCachePath() -> String {

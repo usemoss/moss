@@ -191,7 +191,7 @@ final class FloatingPetWindowController: NSObject {
         let menu = NSMenu()
         let searchItem = NSMenuItem(title: "Search", action: #selector(menuSearch), keyEquivalent: "")
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(menuSettings), keyEquivalent: ",")
-        let quitItem = NSMenuItem(title: "Quit Moss Pikachu", action: #selector(menuQuit), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit Picklight", action: #selector(menuQuit), keyEquivalent: "q")
         [searchItem, settingsItem, quitItem].forEach { $0.target = self }
         menu.addItem(searchItem)
         menu.addItem(NSMenuItem.separator())

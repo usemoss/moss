@@ -13,14 +13,19 @@ nonisolated struct UserSettings: Codable, Equatable, Sendable {
     var indexPublic: Bool = false
     var indexICloudDrive: Bool = false
 
-    nonisolated private static let storageKey = "moss.pikachu.userSettings"
-    
+    nonisolated private static let storageKey = "picklight.userSettings"
+    nonisolated private static let legacyStorageKey = "moss.pikachu.userSettings"
+
     nonisolated static func load() -> UserSettings {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
-              let settings = try? JSONDecoder().decode(UserSettings.self, from: data) else {
-            return UserSettings()
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let settings = try? JSONDecoder().decode(UserSettings.self, from: data) {
+            return settings
         }
-        return settings
+        if let data = UserDefaults.standard.data(forKey: legacyStorageKey),
+           let settings = try? JSONDecoder().decode(UserSettings.self, from: data) {
+            return settings
+        }
+        return UserSettings()
     }
 
     nonisolated func save() {

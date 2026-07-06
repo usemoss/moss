@@ -8,7 +8,7 @@ nonisolated final class FileMonitor: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private var watchedPaths: [String] = []
     private var pendingPaths: Set<String> = []
-    private let queue = DispatchQueue(label: "dev.moss.pikachu.filemonitor")
+    private let queue = DispatchQueue(label: "dev.picklight.filemonitor")
     private var flushTimer: DispatchWorkItem?
 
     func updateWatchedPaths(_ paths: [String]) {

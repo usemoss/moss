@@ -19,7 +19,7 @@ final class CredentialsSetupWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Moss Pikachu Setup"
+        window.title = "Picklight Setup"
         window.center()
         window.contentView = hosting
 
