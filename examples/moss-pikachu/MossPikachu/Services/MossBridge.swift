@@ -23,6 +23,12 @@ enum MossBridgeError: LocalizedError {
     }
 }
 
+nonisolated struct MossSessionInitResult: Sendable {
+    let docCount: Int
+    let loadedFromDisk: Bool
+    let cachePath: String?
+}
+
 nonisolated final class MossBridge: @unchecked Sendable {
     private struct PendingRequest {
         let id: UUID
@@ -41,12 +47,17 @@ nonisolated final class MossBridge: @unchecked Sendable {
 
     /// Default timeout for Moss worker RPCs. add_docs uses a longer budget.
     private static let defaultTimeout: TimeInterval = 45
+    private static let initSessionTimeout: TimeInterval = 120
     private static let addDocsTimeout: TimeInterval = 90
-    private static let pushIndexTimeout: TimeInterval = 120
+    private static let saveSessionTimeout: TimeInterval = 120
 
     init(projectID: String, projectKey: String) {
         self.projectID = projectID
         self.projectKey = projectKey
+    }
+
+    static func hasCredentials() -> Bool {
+        (try? loadCredentials()) != nil
     }
 
     static func loadCredentials() throws -> (String, String) {
@@ -62,6 +73,12 @@ nonisolated final class MossBridge: @unchecked Sendable {
             return (id, key)
         }
 
+        if let id = KeychainHelper.readLegacy(account: "project_id"),
+           let key = KeychainHelper.readLegacy(account: "project_key"),
+           !id.isEmpty, !key.isEmpty {
+            return (id, key)
+        }
+
         if let creds = DotEnvLoader.mossCredentials() {
             return creds
         }
@@ -71,6 +88,7 @@ nonisolated final class MossBridge: @unchecked Sendable {
 
     func start() throws {
         guard process == nil else { return }
+        try PythonEnvironment.preflight()
 
         guard let workerURL = Bundle.main.url(forResource: "moss_worker", withExtension: "py") else {
             // Dev fallback: source tree
@@ -101,9 +119,10 @@ nonisolated final class MossBridge: @unchecked Sendable {
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
         proc.standardInput = stdinPipe
         proc.standardOutput = stdoutPipe
-        proc.standardError = Pipe()
+        proc.standardError = stderrPipe
 
         proc.terminationHandler = { [weak self] _ in
             guard let bridge = self else { return }
@@ -133,19 +152,21 @@ nonisolated final class MossBridge: @unchecked Sendable {
                 bridge?.appendOutput(data)
             }
         }
+
+        let stderrHandle = stderrPipe.fileHandleForReading
+        stderrHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty,
+                  let text = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !text.isEmpty else { return }
+            AppLogger.shared.log("worker stderr: \(text)")
+        }
         isReading = true
     }
 
     private func resolvePythonPath() -> String {
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let venvPython = repoRoot.appendingPathComponent(".venv/bin/python3").path
-        if FileManager.default.isExecutableFile(atPath: venvPython) {
-            return venvPython
-        }
-        return "/usr/bin/python3"
+        PythonEnvironment.resolvePythonPath() ?? "/usr/bin/python3"
     }
 
     func stop() {
@@ -155,9 +176,20 @@ nonisolated final class MossBridge: @unchecked Sendable {
         }
     }
 
-    func initSession(indexName: String) async throws -> Int {
-        let response = try await send(action: "init_session", payload: ["index_name": indexName])
-        return response["doc_count"] as? Int ?? 0
+    func initSession(indexName: String, cachePath: String) async throws -> MossSessionInitResult {
+        let response = try await send(
+            action: "init_session",
+            payload: [
+                "index_name": indexName,
+                "cache_path": cachePath,
+            ],
+            timeout: Self.initSessionTimeout
+        )
+        return MossSessionInitResult(
+            docCount: response["doc_count"] as? Int ?? 0,
+            loadedFromDisk: response["loaded_from_disk"] as? Bool ?? false,
+            cachePath: response["cache_path"] as? String
+        )
     }
 
     func addDocs(files: [String]) async throws -> (
@@ -166,32 +198,49 @@ nonisolated final class MossBridge: @unchecked Sendable {
         chunks: Int,
         filesIndexed: Int,
         skipped: Int,
-        docCount: Int
+        docCount: Int,
+        fileChunkCounts: [String: Int]
     ) {
         let response = try await send(
             action: "add_docs",
             payload: ["files": files],
             timeout: Self.addDocsTimeout
         )
+        let rawCounts = response["file_chunk_counts"] as? [String: Any] ?? [:]
+        let fileChunkCounts = rawCounts.reduce(into: [String: Int]()) { result, entry in
+            if let count = entry.value as? Int {
+                result[entry.key] = count
+            }
+        }
         return (
             added: response["added"] as? Int ?? 0,
             updated: response["updated"] as? Int ?? 0,
             chunks: response["chunks_indexed"] as? Int ?? 0,
             filesIndexed: response["files_indexed"] as? Int ?? 0,
             skipped: response["files_skipped"] as? Int ?? 0,
-            docCount: response["doc_count"] as? Int ?? 0
+            docCount: response["doc_count"] as? Int ?? 0,
+            fileChunkCounts: fileChunkCounts
         )
     }
 
-    func query(indexName: String, query: String, topK: Int = 5) async throws -> [SearchResult] {
+    func query(indexName: String, query: String, topK: Int = 12, alpha: Double = 0.75) async throws -> [SearchResult] {
         let response = try await send(
             action: "query",
-            payload: ["index": indexName, "query": query, "top_k": topK]
+            payload: [
+                "index": indexName,
+                "query": query,
+                "top_k": topK,
+                "alpha": alpha,
+            ]
         )
         if let error = response["error"] as? String {
             throw MossBridgeError.mossError(error)
         }
         let timingMs = response["timing_ms"] as? Double ?? 0
+        let rawCount = response["raw_count"] as? Int
+        if let rawCount {
+            AppLogger.shared.log("Moss query raw chunk hits before slice: \(rawCount)")
+        }
         guard let resultsArray = response["results"] as? [[String: Any]] else {
             return []
         }
@@ -208,12 +257,13 @@ nonisolated final class MossBridge: @unchecked Sendable {
         }
     }
 
-    func pushIndex() async throws -> (docCount: Int, jobID: String?) {
-        let response = try await send(action: "push_index", payload: [:], timeout: Self.pushIndexTimeout)
-        return (
-            docCount: response["doc_count"] as? Int ?? 0,
-            jobID: response["job_id"] as? String
+    func saveLocalSession(cachePath: String) async throws -> Int {
+        let response = try await send(
+            action: "save_session",
+            payload: ["cache_path": cachePath],
+            timeout: Self.saveSessionTimeout
         )
+        return response["doc_count"] as? Int ?? 0
     }
 
     func clearIndex() async throws {
@@ -320,17 +370,57 @@ nonisolated final class MossBridge: @unchecked Sendable {
 }
 
 nonisolated enum KeychainHelper {
-    static func read(account: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "dev.moss.pikachu",
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess, let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+  private static let service = MossPikachuPaths.keychainService
+  private static let legacyService = MossPikachuPaths.legacyKeychainService
+
+  static func read(account: String) -> String? {
+    read(account: account, service: service) ?? readLegacy(account: account)
+  }
+
+  static func readLegacy(account: String) -> String? {
+    read(account: account, service: legacyService)
+  }
+
+  static func save(account: String, value: String) throws {
+    delete(account: account, service: service)
+    let query: [String: Any] = [
+      kSecClass as String: kSecClassGenericPassword,
+      kSecAttrService as String: service,
+      kSecAttrAccount as String: account,
+      kSecValueData as String: Data(value.utf8),
+      kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+    ]
+    let status = SecItemAdd(query as CFDictionary, nil)
+    guard status == errSecSuccess else {
+      throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
     }
+  }
+
+  static func delete(account: String) throws {
+    delete(account: account, service: service)
+    delete(account: account, service: legacyService)
+  }
+
+  private static func read(account: String, service: String) -> String? {
+    let query: [String: Any] = [
+      kSecClass as String: kSecClassGenericPassword,
+      kSecAttrService as String: service,
+      kSecAttrAccount as String: account,
+      kSecReturnData as String: true,
+      kSecMatchLimit as String: kSecMatchLimitOne,
+    ]
+    var item: CFTypeRef?
+    let status = SecItemCopyMatching(query as CFDictionary, &item)
+    guard status == errSecSuccess, let data = item as? Data else { return nil }
+    return String(data: data, encoding: .utf8)
+  }
+
+  private static func delete(account: String, service: String) {
+    let query: [String: Any] = [
+      kSecClass as String: kSecClassGenericPassword,
+      kSecAttrService as String: service,
+      kSecAttrAccount as String: account,
+    ]
+    SecItemDelete(query as CFDictionary)
+  }
 }

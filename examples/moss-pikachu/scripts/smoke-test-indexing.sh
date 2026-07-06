@@ -26,13 +26,16 @@ WORKER="$ROOT/MossPikachu/Resources/moss_worker.py"
 PYTHON="$ROOT/.venv/bin/python3"
 [[ -x "$PYTHON" ]] || PYTHON=python3
 
+CACHE_DIR="${TMPDIR:-/tmp}/moss-pikachu-smoke-cache"
+mkdir -p "$CACHE_DIR"
+
 OUTPUT=$(
   {
-    printf '%s\n' "{\"action\":\"init_session\",\"index_name\":\"$SESSION_NAME\"}"
+    printf '%s\n' "{\"action\":\"init_session\",\"index_name\":\"$SESSION_NAME\",\"cache_path\":\"$CACHE_DIR\"}"
     printf '%s\n' "{\"action\":\"add_docs\",\"files\":[\"$TEST_FILE\",\"$BINARYISH_FILE\"]}"
     printf '%s\n' "{\"action\":\"query\",\"query\":\"$UNIQUE\",\"top_k\":3}"
     printf '%s\n' "{\"action\":\"query\",\"query\":\"weirdbin artifact\",\"top_k\":3}"
-    printf '%s\n' '{"action":"push_index"}'
+    printf '%s\n' "{\"action\":\"save_session\",\"cache_path\":\"$CACHE_DIR\"}"
   } | "$PYTHON" "$WORKER" 2>&1
 )
 
@@ -43,6 +46,6 @@ echo "$OUTPUT" | grep -q '"chunks_indexed"' || { echo "add_docs missing chunks";
 echo "$OUTPUT" | grep -q "$UNIQUE" || { echo "query did not return test content"; exit 1; }
 echo "$OUTPUT" | grep -q "moss-pikachu-smoke-artifact.weirdbin" || { echo "metadata fallback did not index unknown file type"; exit 1; }
 echo "$OUTPUT" | grep -q "$SESSION_NAME" || { echo "expected smoke session"; exit 1; }
-echo "$OUTPUT" | grep -q '"job_id"' || { echo "push_index did not return job_id"; exit 1; }
+echo "$OUTPUT" | grep -q '"doc_count"' || { echo "save_session did not return doc_count"; exit 1; }
 
 echo "SMOKE TEST PASSED"

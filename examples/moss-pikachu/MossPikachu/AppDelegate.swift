@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var searchOverlayController: SearchOverlayController?
     private var settingsWindowController: SettingsWindowController?
     private var bootstrapWindowController: IndexingBootstrapWindowController?
+    private var credentialsWindowController: CredentialsSetupWindowController?
     private let hotKeyManager = HotKeyManager()
     private let searchService = SearchService()
     private let petStateController = PetStateController()
@@ -24,42 +25,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupSearchOverlay()
         setupSettingsWindow()
+        setupFloatingPet()
+        setupHotKey()
 
-        let needsBootstrap = searchService.requiresBootstrapIndex
-        if needsBootstrap {
-            showBootstrapWindow()
-        } else {
-            setupFloatingPet()
-            setupHotKey()
+        guard MossBridge.hasCredentials() else {
+            showCredentialsWindow()
+            return
         }
 
         Task {
-            do {
-                try await searchService.initialize()
-                AppLogger.shared.isDebugEnabled = true
-                AppLogger.shared.log("SearchService initialized")
-
-                if needsBootstrap {
-                    hideBootstrapWindow()
-                    setupFloatingPet()
-                    setupHotKey()
-                }
-
-                if searchService.indexedFileCount > 0 {
-                    NotificationManager.shared.showSuccess(
-                        "Indexed \(searchService.indexedChunkCount) chunks from \(searchService.indexedFileCount) files"
-                    )
-                }
-            } catch {
-                hideBootstrapWindow()
-                if floatingPetController == nil {
-                    setupFloatingPet()
-                    setupHotKey()
-                }
-                AppLogger.shared.isDebugEnabled = true
-                AppLogger.shared.log("SearchService init failed: \(error.localizedDescription)")
-                NotificationManager.shared.showError(error.localizedDescription)
-            }
+            await runInitializeFlow()
         }
     }
 
@@ -68,7 +43,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKeyManager.unregister()
     }
 
+    private func runInitializeFlow() async {
+        let needsBootstrap = searchService.requiresBootstrapIndex
+        if needsBootstrap {
+            showBootstrapWindow()
+        }
+
+        do {
+            try await searchService.initialize()
+            if debugMode {
+                AppLogger.shared.log("SearchService initialized")
+            }
+
+            if needsBootstrap {
+                hideBootstrapWindow()
+            }
+        } catch {
+            hideBootstrapWindow()
+            let message = friendlyInitError(error)
+            searchService.markInitializationFailed(message)
+            if debugMode {
+                AppLogger.shared.log("SearchService init failed: \(message)")
+            }
+            NotificationManager.shared.showError(message)
+        }
+    }
+
+    private func friendlyInitError(_ error: Error) -> String {
+        let text = error.localizedDescription.lowercased()
+        if text.contains("credential") || text.contains("missing") {
+            return "Moss API credentials missing or invalid. Add them in Moss Pikachu Settings or the setup window."
+        }
+        if text.contains("python") || text.contains("moss python") || text.contains("venv") {
+            return error.localizedDescription
+        }
+        if text.contains("usage_limit") || text.contains("429") {
+            return "Moss API quota exceeded. Check your Moss project limits."
+        }
+        return error.localizedDescription
+    }
+
     // MARK: - Setup
+
+    private func showCredentialsWindow() {
+        guard credentialsWindowController == nil else {
+            credentialsWindowController?.show()
+            return
+        }
+        credentialsWindowController = CredentialsSetupWindowController()
+        credentialsWindowController?.onCredentialsSaved = { [weak self] in
+            guard let self else { return }
+            self.credentialsWindowController = nil
+            Task { await self.runInitializeFlow() }
+        }
+        credentialsWindowController?.show()
+    }
 
     private func showBootstrapWindow() {
         guard bootstrapWindowController == nil else {
@@ -130,9 +159,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Actions
 
+    private func searchBlockedMessage() -> String {
+        if !MossBridge.hasCredentials() {
+            return "Add Moss API credentials in Settings to start searching."
+        }
+        if let error = searchService.initializationError, !error.isEmpty {
+            return error
+        }
+        if searchService.isInitializing {
+            return searchService.statusMessage.isEmpty
+                ? "Starting Moss session…"
+                : searchService.statusMessage
+        }
+        return "Moss Pikachu is not ready yet. Open Settings and tap Retry Initialize."
+    }
+
     private func openSearch() {
+        guard MossBridge.hasCredentials() else {
+            showCredentialsWindow()
+            return
+        }
         guard searchService.isReady else {
-            showBootstrapWindow()
+            if searchService.requiresBootstrapIndex || searchService.isInitializing {
+                showBootstrapWindow()
+            } else {
+                NotificationManager.shared.showError(searchBlockedMessage())
+            }
             return
         }
         if searchOverlayController?.isSearchVisible == true {
@@ -151,8 +203,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleSearch() {
+        guard MossBridge.hasCredentials() else {
+            showCredentialsWindow()
+            return
+        }
         guard searchService.isReady else {
-            showBootstrapWindow()
+            if searchService.requiresBootstrapIndex || searchService.isInitializing {
+                showBootstrapWindow()
+            } else {
+                NotificationManager.shared.showError(searchBlockedMessage())
+            }
             return
         }
         searchOverlayController?.toggle()

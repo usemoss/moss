@@ -19,9 +19,9 @@ Uses **PyPI `moss>=1.6.0`**, not editable install from `vendor/moss/sdks/python/
 |--------|-------|--------|
 | `ping` | `{}` | `{"status":"ok"}` |
 | `init_session` | `{"index_name":"documents"}` | `{"status":"ok","doc_count":N}` |
-| `add_docs` | `{"files":["/path/a.md"]}` | `{"status":"ok","added":N,"updated":M}` |
+| `add_docs` | `{"files":["/path/a.md"]}` | `{"status":"ok","chunks_indexed":N,"file_chunk_counts":{"/path/a.md":3}}` |
 | `query` | `{"query":"text","top_k":5}` | `{"results":[...],"timing_ms":4.2}` |
-| `push_index` | `{}` | `{"status":"ok","doc_count":N}` |
+| `save_session` | `{"cache_path":"..."}` | `{"status":"ok","doc_count":N}` |
 | `clear_index` | `{}` | `{"status":"ok"}` |
 
 ### Error shape
@@ -37,7 +37,7 @@ client = MossClient(os.environ["MOSS_PROJECT_ID"], os.environ["MOSS_PROJECT_KEY"
 session = await client.session(index_name="documents")
 await session.add_docs([DocumentInfo(id=path, text=content, metadata={"path": path, "filename": name})])
 results = await session.query("query", QueryOptions(top_k=5, alpha=0.6))
-await session.push_index()  # optional cloud sync
+session._inner.save_to_disk(cache_path)  # local persistence only
 ```
 
 ## Text extraction

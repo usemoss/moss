@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 enum CapvoltSticker {
-    private static let resourceNames = ["capvolt-sticker", "capvolt-sticker.webp"]
+    private static let resourceNames = ["capvolt-sticker"]
 
     static func nsImage(size: CGFloat? = nil) -> NSImage? {
         for name in resourceNames {

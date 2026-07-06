@@ -58,8 +58,18 @@ struct ResultRowView: View {
                 HStack(spacing: 8) {
                     Text(result.filename)
                         .font(.system(size: compact ? 13 : 15, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(result.isMissingOnDisk ? .secondary : .primary)
                         .lineLimit(1)
+
+                    if result.isMissingOnDisk {
+                        Text("Missing")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.orange.opacity(0.12))
+                            .cornerRadius(4)
+                    }
 
                     if !compact {
                         Text(fileExtension)

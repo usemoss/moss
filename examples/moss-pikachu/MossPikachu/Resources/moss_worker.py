@@ -7,7 +7,9 @@ import asyncio
 import json
 import os
 import re
+import resource
 import signal
+import shutil
 import sys
 import time
 from datetime import datetime, timezone
@@ -22,15 +24,30 @@ MAX_PDF_PAGES = 40
 
 CHUNK_CHARS = 1800
 CHUNK_OVERLAP = 300
+QUERY_CANDIDATE_TOP_K = 40
+DEFAULT_ALPHA = 0.75
 
 session = None
 client = None
 index_name = "local-files"
+session_cache_path: str | None = None
+session_loaded_from_disk = False
 shutdown_requested = False
 
 
 def log_stderr(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
+
+
+def log_memory(label: str) -> None:
+    """Log peak resident memory (MB) for the worker process."""
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    # macOS reports ru_maxrss in bytes; Linux reports kilobytes.
+    if sys.platform == "darwin":
+        mb = usage.ru_maxrss / (1024 * 1024)
+    else:
+        mb = usage.ru_maxrss / 1024
+    log_stderr(f"[memory] {label}: {mb:.1f} MB peak RSS")
 
 
 def normalize_whitespace(text: str) -> str:
@@ -60,6 +77,11 @@ def chunk_text(text: str, path: str) -> list[tuple[str, str, int]]:
             break
         start = max(end - CHUNK_OVERLAP, start + 1)
     return chunks
+
+
+def enrich_chunk_body(filename: str, path: str, chunk_body: str) -> str:
+    """Prepend filename/path so hybrid BM25 can match on names and folders."""
+    return f"Filename: {filename}\nPath: {path}\n\n{chunk_body}"
 
 
 def read_plain(path: Path) -> str | None:
@@ -182,21 +204,99 @@ async def ensure_client() -> None:
     client = MossClient(project_id, project_key)
 
 
-async def ensure_session(name: str | None = None) -> None:
-    global session, index_name
+def default_session_cache_path() -> str:
+    return str(Path.home() / "Library" / "Application Support" / "MossPikachu" / "moss-session-cache")
+
+
+async def ensure_session(
+    name: str | None = None,
+    *,
+    cache_path: str | None = None,
+) -> None:
+    global session, index_name, session_cache_path, session_loaded_from_disk
     await ensure_client()
     if name:
         index_name = name
+    if cache_path is not None:
+        session_cache_path = cache_path or default_session_cache_path()
     if session is not None:
         return
-    session = await client.session(index_name=index_name)
-    log_stderr(f"Session opened: {index_name} ({session.doc_count} docs)")
+
+    if session_cache_path is None:
+        session_cache_path = default_session_cache_path()
+
+    from moss.client.session_index import SessionIndex
+
+    project_id = os.environ.get("MOSS_PROJECT_ID")
+    project_key = os.environ.get("MOSS_PROJECT_KEY")
+    if not project_id or not project_key:
+        raise RuntimeError("MOSS_PROJECT_ID and MOSS_PROJECT_KEY must be set")
+
+    log_memory("before session open")
+    session = SessionIndex._create(
+        name=index_name,
+        model_id="moss-minilm",
+        project_id=project_id,
+        project_key=project_key,
+    )
+
+    loaded_count = 0
+    session_loaded_from_disk = False
+    try:
+        log_stderr(f"Loading local session cache: {session_cache_path}/{index_name}")
+        loaded_count = await asyncio.to_thread(session._inner.load_from_disk, session_cache_path)
+        session_loaded_from_disk = loaded_count > 0
+        if loaded_count > 0:
+            session._model_id = session._inner.model_id
+    except Exception as exc:
+        log_stderr(f"No usable local session cache; starting empty: {exc}")
+
+    if session._model_id != "custom":
+        await session._get_embedding_service()
+
+    log_memory("after session open")
+    log_stderr(
+        f"Session opened: {index_name} ({session.doc_count} docs, "
+        f"disk_loaded={session_loaded_from_disk}, loaded_count={loaded_count})"
+    )
 
 
 async def handle_init_session(payload: dict[str, Any]) -> dict[str, Any]:
     name = payload.get("index_name", index_name)
-    await ensure_session(name)
-    return {"status": "ok", "index": index_name, "doc_count": session.doc_count}
+    cache_path = payload.get("cache_path")
+    await ensure_session(name, cache_path=cache_path)
+    return {
+        "status": "ok",
+        "index": index_name,
+        "doc_count": session.doc_count,
+        "loaded_from_disk": session_loaded_from_disk,
+        "cache_path": session_cache_path,
+    }
+
+
+async def handle_save_session(payload: dict[str, Any]) -> dict[str, Any]:
+    global session_cache_path
+    cache_path = payload.get("cache_path")
+    if cache_path is not None:
+        session_cache_path = cache_path or default_session_cache_path()
+    await ensure_session(cache_path=session_cache_path)
+    Path(session_cache_path or default_session_cache_path()).mkdir(parents=True, exist_ok=True)
+    if session.doc_count == 0:
+        cache_dir = Path(session_cache_path or default_session_cache_path()) / index_name
+        if cache_dir.exists():
+            shutil.rmtree(cache_dir)
+        return {
+            "status": "ok",
+            "doc_count": 0,
+            "cache_path": session_cache_path,
+        }
+    await asyncio.to_thread(session._inner.save_to_disk, session_cache_path)
+    log_stderr(f"Saved local session cache: {session_cache_path}/{index_name} ({session.doc_count} docs)")
+    return {
+        "status": "ok",
+        "doc_count": session.doc_count,
+        "cache_path": session_cache_path,
+    }
 
 
 async def handle_add_docs(payload: dict[str, Any]) -> dict[str, Any]:
@@ -204,9 +304,11 @@ async def handle_add_docs(payload: dict[str, Any]) -> dict[str, Any]:
 
     await ensure_session()
     files: list[str] = payload.get("files", [])
+    log_memory(f"before add_docs ({len(files)} files)")
     docs = []
     files_indexed = 0
     files_skipped = 0
+    file_chunk_counts: dict[str, int] = {}
     errors: list[str] = []
 
     for path in files:
@@ -217,14 +319,16 @@ async def handle_add_docs(payload: dict[str, Any]) -> dict[str, Any]:
         if not chunks:
             files_skipped += 1
             continue
+        file_chunk_counts[path] = len(chunks)
         filename = Path(path).name
         ext = Path(path).suffix.lower().lstrip(".")
         mtime = file_mtime_iso(path)
         for chunk_id, chunk_body, chunk_idx in chunks:
+            enriched = enrich_chunk_body(filename, path, chunk_body)
             docs.append(
                 DocumentInfo(
                     id=chunk_id,
-                    text=chunk_body,
+                    text=enriched,
                     metadata={
                         "path": path,
                         "filename": filename,
@@ -244,6 +348,7 @@ async def handle_add_docs(payload: dict[str, Any]) -> dict[str, Any]:
             "chunks_indexed": 0,
             "files_indexed": files_indexed,
             "files_skipped": files_skipped + (len(files) - files_indexed - files_skipped),
+            "file_chunk_counts": file_chunk_counts,
             "errors": errors,
         }
 
@@ -253,6 +358,7 @@ async def handle_add_docs(payload: dict[str, Any]) -> dict[str, Any]:
         errors.append(str(exc))
         raise
 
+    log_memory(f"after add_docs ({len(docs)} chunks)")
     return {
         "status": "ok",
         "added": added,
@@ -260,23 +366,54 @@ async def handle_add_docs(payload: dict[str, Any]) -> dict[str, Any]:
         "chunks_indexed": len(docs),
         "files_indexed": files_indexed,
         "files_skipped": len(files) - files_indexed,
+        "file_chunk_counts": file_chunk_counts,
         "doc_count": session.doc_count,
         "errors": errors,
     }
 
 
 async def handle_query(payload: dict[str, Any]) -> dict[str, Any]:
-    from moss import QueryOptions
+    from moss import ParentGrouping, QueryOptions
 
     await ensure_session()
     query_text = payload.get("query", "")
-    top_k = int(payload.get("top_k", 5))
+    top_k = int(payload.get("top_k", 12))
+    alpha = float(payload.get("alpha", DEFAULT_ALPHA))
+    candidate_top_k = max(top_k * 4, QUERY_CANDIDATE_TOP_K)
+    group_by = ParentGrouping(parent_field="path", order_field="chunk")
+
+    log_stderr(
+        f"[query] q={query_text!r} top_k={top_k} candidates={candidate_top_k} "
+        f"alpha={alpha:.2f} group_by=path"
+    )
+    log_memory("before query")
     start = time.perf_counter()
-    result = await session.query(query_text, QueryOptions(top_k=top_k, alpha=0.6))
+    grouped = True
+    try:
+        result = await session.query(
+            query_text,
+            QueryOptions(
+                top_k=candidate_top_k,
+                alpha=alpha,
+                group_by=group_by,
+            ),
+        )
+    except Exception as exc:
+        # Older sessions may contain docs without the path/chunk metadata needed for grouping.
+        grouped = False
+        log_stderr(f"[query] grouped query failed, retrying without group_by: {exc}")
+        result = await session.query(
+            query_text,
+            QueryOptions(
+                top_k=candidate_top_k,
+                alpha=alpha,
+            ),
+        )
     timing_ms = (time.perf_counter() - start) * 1000
+    log_memory("after query")
 
     results = []
-    for doc in result.docs:
+    for doc in result.docs[:top_k]:
         meta = doc.metadata or {}
         results.append(
             {
@@ -287,16 +424,12 @@ async def handle_query(payload: dict[str, Any]) -> dict[str, Any]:
                 "filename": meta.get("filename", Path(meta.get("path", doc.id)).name),
             }
         )
-    return {"results": results, "timing_ms": timing_ms}
-
-
-async def handle_push_index(_: dict[str, Any]) -> dict[str, Any]:
-    await ensure_session()
-    pushed = await session.push_index()
+    log_stderr(f"[query] returned {len(results)} results grouped={grouped}")
     return {
-        "status": "ok",
-        "doc_count": pushed.doc_count,
-        "job_id": pushed.job_id,
+        "results": results,
+        "timing_ms": timing_ms,
+        "raw_count": len(result.docs),
+        "grouped": grouped,
     }
 
 
@@ -313,13 +446,19 @@ async def handle_delete_docs(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 async def handle_clear_index(_: dict[str, Any]) -> dict[str, Any]:
-    global session
+    global session, session_loaded_from_disk
     await ensure_session()
     docs = await session.get_docs()
     if docs:
         await session.delete_docs([d.id for d in docs])
+    if session_cache_path:
+        cache_dir = Path(session_cache_path) / index_name
+        if cache_dir.exists():
+            shutil.rmtree(cache_dir)
+            log_stderr(f"Removed local session cache: {cache_dir}")
     session = None
-    await ensure_session(index_name)
+    session_loaded_from_disk = False
+    await ensure_session(index_name, cache_path=session_cache_path)
     return {"status": "ok", "doc_count": 0}
 
 
@@ -338,7 +477,7 @@ HANDLERS = {
     "init_session": handle_init_session,
     "add_docs": handle_add_docs,
     "query": handle_query,
-    "push_index": handle_push_index,
+    "save_session": handle_save_session,
     "clear_index": handle_clear_index,
     "delete_docs": handle_delete_docs,
     "shutdown": handle_shutdown,

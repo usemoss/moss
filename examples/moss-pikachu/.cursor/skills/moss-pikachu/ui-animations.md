@@ -2,7 +2,7 @@
 
 ## Search overlay sizing
 
-- Width: 500pt
+- Width: 300pt (thought bubble)
 - Max height: 600pt (results scroll inside)
 - Corner radius: 12pt
 - Shadow: `radius: 20, y: 8, opacity: 0.25`
@@ -28,4 +28,4 @@ Use SwiftUI `.animation(.easeInOut, value:)` and `Timer` for random idle interva
 
 ## Search input debounce
 
-200ms after last keystroke before calling `SearchService.search`.
+160ms after last keystroke before calling `SearchService.search`.

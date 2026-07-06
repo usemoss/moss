@@ -153,7 +153,9 @@ final class FloatingPetWindowController: NSObject {
                 timer.invalidate()
                 return
             }
-            self.tickSlide(timer: timer)
+            MainActor.assumeIsolated {
+                self.tickSlide(timer: timer)
+            }
         }
         if let slideTimer {
             RunLoop.main.add(slideTimer, forMode: .common)
@@ -318,8 +320,6 @@ private final class PetWindowContentView: NSView {
     override func mouseUp(with event: NSEvent) {
         if didDrag {
             onDragEnded?(estimatedVelocity())
-        } else if event.type == .rightMouseUp {
-            onRightClick?(event.locationInWindow)
         } else {
             onClick?()
         }

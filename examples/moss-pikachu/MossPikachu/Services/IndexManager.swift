@@ -6,9 +6,7 @@ final class IndexManager {
     private let queue = DispatchQueue(label: "dev.moss.pikachu.indexmanager")
 
     init(manifestFilename: String = IndexingPolicy.manifestFilename) {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("MossPikachu", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dir = IndexingPolicy.appSupportDirectory()
         manifestURL = dir.appendingPathComponent(manifestFilename)
         load()
     }
@@ -101,9 +99,10 @@ final class IndexManager {
         if !paths.isEmpty { save() }
     }
 
-    func chunkIDs(for path: String, maxChunks: Int = 32) -> [String] {
-        let count = manifest.files[path]?.chunkCount ?? maxChunks
-        let limit = max(1, min(count + 2, maxChunks))
-        return (0..<limit).map { "\(path)#chunk-\(String(format: "%04d", $0))" }
+    func chunkIDs(for path: String, legacyFallback: Int = 32) -> [String] {
+        guard let stored = manifest.files[path]?.chunkCount, stored > 0 else {
+            return (0..<legacyFallback).map { "\(path)#chunk-\(String(format: "%04d", $0))" }
+        }
+        return (0..<stored).map { "\(path)#chunk-\(String(format: "%04d", $0))" }
     }
 }

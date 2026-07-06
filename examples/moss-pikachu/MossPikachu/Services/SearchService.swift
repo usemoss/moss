@@ -7,9 +7,15 @@ final class SearchService: ObservableObject {
     private let fileMonitor = FileMonitor()
     private let indexManager = IndexManager()
     private var settings = UserSettings.load()
-    private var policy = IndexingPolicy()
-    private var sessionPushTask: Task<Void, Never>?
-    private var hasUnpushedSessionChanges = false
+    private var policy = IndexingPolicy(settings: UserSettings.load())
+    private var inaccessibleRootIDs: Set<String> = []
+    private var localCacheSaveTask: Task<Void, Never>?
+    private var backgroundScanTask: Task<Void, Never>?
+    private var hasUnsavedLocalCache = false
+    private var filesIndexedSinceLastSave = 0
+
+    private static let memoryThrottleMB: Double = 1500
+    private static let memoryThrottlePauseNs: UInt64 = 2_000_000_000
 
     @Published private(set) var indexedFileCount: Int = 0
     @Published private(set) var indexedChunkCount: Int = 0
@@ -21,28 +27,66 @@ final class SearchService: ObservableObject {
     @Published private(set) var discoveredFileCount: Int = 0
     @Published private(set) var queuedFileCount: Int = 0
     @Published private(set) var isReady: Bool = false
+    @Published private(set) var isInitializing: Bool = false
+    @Published private(set) var initializationError: String?
     @Published private(set) var sessionDocCount: Int = 0
-    @Published private(set) var lastSessionPushDate: Date?
+    @Published private(set) var lastLocalCacheSaveDate: Date?
     @Published private(set) var sessionStatusMessage: String = "Session not opened"
+    @Published private(set) var pythonEnvironmentStatus: String = "Not checked"
+    @Published private(set) var credentialsConfigured: Bool = MossBridge.hasCredentials()
+    @Published private(set) var inaccessibleFolderMessages: [String] = []
 
-    /// True when the app has never completed an initial full index.
+    /// True on first launch when both manifest and local cache are empty.
     var requiresBootstrapIndex: Bool {
-        indexManager.indexedFileCount == 0 && indexManager.lastIndexedDate == nil
+        indexManager.indexedFileCount == 0
+            && indexManager.lastIndexedDate == nil
+            && !Self.localCacheExistsOnDisk()
+    }
+
+    private static func localCacheExistsOnDisk() -> Bool {
+        let cacheDir = URL(fileURLWithPath: IndexingPolicy.localSessionCachePath())
+            .appendingPathComponent(IndexingPolicy.sessionName, isDirectory: true)
+        return FileManager.default.fileExists(atPath: cacheDir.path)
     }
 
     func initialize() async throws {
+        isInitializing = true
+        initializationError = nil
+        isReady = false
+        credentialsConfigured = MossBridge.hasCredentials()
         statusMessage = "Connecting to Moss..."
+        AppLogger.shared.logMemory("before initSession")
+
+        do {
+            try PythonEnvironment.preflight()
+            pythonEnvironmentStatus = "Python + Moss OK"
+        } catch {
+            let message = error.localizedDescription
+            pythonEnvironmentStatus = message
+            throw error
+        }
+
         let (projectID, projectKey) = try MossBridge.loadCredentials()
         let bridge = MossBridge(projectID: projectID, projectKey: projectKey)
         try bridge.start()
-        let docCount = try await bridge.initSession(indexName: IndexingPolicy.sessionName)
+
+        statusMessage = "Loading local search index..."
+        let initResult = try await bridge.initSession(
+            indexName: IndexingPolicy.sessionName,
+            cachePath: IndexingPolicy.localSessionCachePath()
+        )
+        AppLogger.shared.logMemory("after initSession")
+
+        let docCount = initResult.docCount
         sessionDocCount = docCount
-        sessionStatusMessage = docCount > 0
-            ? "Resumed \(docCount) docs from Moss session"
-            : "Opened \(IndexingPolicy.sessionName) session"
+        sessionStatusMessage = initResult.loadedFromDisk
+            ? "Restored \(docCount) docs from local cache"
+            : "Building local index..."
         mossBridge = bridge
 
-        policy = IndexingPolicy(settings: settings)
+        inaccessibleRootIDs = IndexingPolicy.probeFolderAccess(for: settings)
+        inaccessibleFolderMessages = Self.inaccessibleMessages(for: inaccessibleRootIDs)
+        policy = IndexingPolicy(settings: settings, inaccessibleRootIDs: inaccessibleRootIDs)
         fileMonitor.policy = policy
         fileMonitor.onChange = { [weak self] files in
             Task { @MainActor in
@@ -51,11 +95,8 @@ final class SearchService: ObservableObject {
         }
         refreshWatchedPaths()
 
-        guard !watchedFolderPathsList.isEmpty else {
-            statusMessage = missingScopeMessage
-            isReady = true
-            return
-        }
+        indexedFileCount = indexManager.indexedFileCount
+        lastIndexedDate = indexManager.lastIndexedDate
 
         if indexManager.scopeChanged(from: policy) {
             AppLogger.shared.log("Scope changed — clearing index for rescan")
@@ -64,40 +105,72 @@ final class SearchService: ObservableObject {
             indexedFileCount = 0
             indexedChunkCount = 0
             sessionDocCount = 0
-            hasUnpushedSessionChanges = true
+            hasUnsavedLocalCache = true
         }
         indexManager.updateScopeFingerprint(policy.scopeFingerprint)
 
-        let isFirstLaunch = requiresBootstrapIndex
-        if isFirstLaunch && docCount > 0 {
-            AppLogger.shared.log("Fresh local manifest with existing Moss session — clearing remote session for current scope")
-            try? await mossBridge?.clearIndex()
-            sessionDocCount = 0
-            sessionStatusMessage = "Reset Moss session for current scope"
-            hasUnpushedSessionChanges = true
+        _ = fileMonitor.start()
+        isReady = true
+        statusMessage = docCount > 0
+            ? "Ready — \(docCount) searchable docs"
+            : "Indexing in background..."
+
+        let isFirstRun = requiresBootstrapIndex || (docCount == 0 && indexManager.indexedFileCount == 0)
+        let needsRehydrate = docCount == 0 && indexManager.indexedFileCount > 0
+        let forceAll = isFirstRun || needsRehydrate
+
+        backgroundScanTask?.cancel()
+        backgroundScanTask = Task(priority: .utility) { [weak self] in
+            await self?.performStreamingScan(forceAll: forceAll)
         }
 
-        _ = fileMonitor.start()
-
-        let needsRehydrate = docCount == 0 && indexManager.indexedFileCount > 0
-        await performInitialScan(forceAll: isFirstLaunch || needsRehydrate)
-        isReady = true
+        isInitializing = false
     }
 
     func shutdown() {
         fileMonitor.stop()
-        if hasUnpushedSessionChanges || indexedFileCount > 0 {
+        backgroundScanTask?.cancel()
+        localCacheSaveTask?.cancel()
+        guard let mossBridge else { return }
+        if hasUnsavedLocalCache {
             Task {
-                try? await mossBridge?.pushIndex()
+                _ = try? await mossBridge.saveLocalSession(cachePath: IndexingPolicy.localSessionCachePath())
+                mossBridge.stop()
             }
+        } else {
+            mossBridge.stop()
         }
+    }
+
+    func retryInitialize() async {
         mossBridge?.stop()
+        mossBridge = nil
+        backgroundScanTask?.cancel()
+        fileMonitor.stop()
+        do {
+            try await initialize()
+            NotificationManager.shared.showSuccess("Moss Pikachu is ready")
+        } catch {
+            let message = error.localizedDescription
+            markInitializationFailed(message)
+            NotificationManager.shared.showError(message)
+        }
+    }
+
+    func markInitializationFailed(_ message: String) {
+        isInitializing = false
+        isReady = false
+        initializationError = message
+        statusMessage = "Failed to open Moss session"
+        sessionStatusMessage = message
     }
 
     func updateSettings(_ newSettings: UserSettings) {
         let oldFingerprint = policy.scopeFingerprint
         settings = newSettings
-        policy = IndexingPolicy(settings: settings)
+        inaccessibleRootIDs = IndexingPolicy.probeFolderAccess(for: settings)
+        inaccessibleFolderMessages = Self.inaccessibleMessages(for: inaccessibleRootIDs)
+        policy = IndexingPolicy(settings: settings, inaccessibleRootIDs: inaccessibleRootIDs)
         fileMonitor.policy = policy
         refreshWatchedPaths()
 
@@ -108,19 +181,82 @@ final class SearchService: ObservableObject {
         }
     }
 
+    private func handleScopeChange() async {
+        try? await mossBridge?.clearIndex()
+        indexManager.clear()
+        indexedFileCount = 0
+        indexedChunkCount = 0
+        sessionDocCount = 0
+        hasUnsavedLocalCache = true
+        indexManager.updateScopeFingerprint(policy.scopeFingerprint)
+        await performStreamingScan(forceAll: true)
+    }
+
     func search(_ query: String) async throws -> [SearchResult] {
         guard let mossBridge else {
             throw MossBridgeError.workerCrashed
         }
         await pruneStaleEntries()
-        let results = try await mossBridge.query(indexName: IndexingPolicy.sessionName, query: query, topK: 8)
-        return results.filter { result in
-            FileManager.default.fileExists(atPath: result.path) && policy.shouldIndex(path: result.path)
+        AppLogger.shared.logMemory("before query")
+        let rawResults = try await mossBridge.query(
+            indexName: IndexingPolicy.sessionName,
+            query: query,
+            topK: 12,
+            alpha: settings.searchAlpha
+        )
+        AppLogger.shared.logMemory("after query")
+
+        let deduped = dedupeResultsByPath(rawResults)
+        let annotated = deduped.map { annotateMissingOnDisk($0) }
+
+        AppLogger.shared.log(
+            "Query \"\(query)\" raw=\(rawResults.count) deduped=\(deduped.count) alpha=\(settings.searchAlpha)"
+        )
+        for result in deduped.prefix(3) {
+            AppLogger.shared.log(String(format: "  [%.3f] %@", result.score, result.path))
+        }
+
+        return annotated.filter { result in
+            !result.isMissingOnDisk && policy.shouldIndex(path: result.path)
         }
     }
 
+    private func dedupeResultsByPath(_ results: [SearchResult]) -> [SearchResult] {
+        var bestByPath: [String: SearchResult] = [:]
+        for result in results {
+            if let existing = bestByPath[result.path] {
+                if result.score > existing.score {
+                    bestByPath[result.path] = result
+                }
+            } else {
+                bestByPath[result.path] = result
+            }
+        }
+        return bestByPath.values.sorted { $0.score > $1.score }
+    }
+
+    private func annotateMissingOnDisk(_ result: SearchResult) -> SearchResult {
+        let missing = !FileManager.default.fileExists(atPath: result.path)
+        guard missing != result.isMissingOnDisk else { return result }
+        return SearchResult(
+            id: result.id,
+            text: result.text,
+            score: result.score,
+            filename: result.filename,
+            path: result.path,
+            timingMs: result.timingMs,
+            isMissingOnDisk: missing
+        )
+    }
+
     func reindexNow() async throws {
-        await performInitialScan(forceAll: true)
+        guard !watchedFolderPathsList.isEmpty else {
+            statusMessage = missingScopeMessage
+            return
+        }
+        AppLogger.shared.logMemory("before manual reindex")
+        await performStreamingScan(forceAll: true)
+        AppLogger.shared.logMemory("after manual reindex")
     }
 
     func clearIndexAndRescan() async throws {
@@ -130,15 +266,38 @@ final class SearchService: ObservableObject {
         indexedChunkCount = 0
         skippedFileCount = 0
         sessionDocCount = 0
-        hasUnpushedSessionChanges = true
+        hasUnsavedLocalCache = true
         indexManager.updateScopeFingerprint(policy.scopeFingerprint)
-        await performInitialScan(forceAll: true)
+        AppLogger.shared.logMemory("before clear and rescan")
+        await performStreamingScan(forceAll: true)
+        AppLogger.shared.logMemory("after clear and rescan")
     }
 
     // MARK: - Private
 
     private var missingScopeMessage: String {
-        "No enabled folders found for indexing."
+        if !inaccessibleFolderMessages.isEmpty {
+            return inaccessibleFolderMessages.joined(separator: " ")
+        }
+        return "No indexed folders enabled. Turn on folders in Settings."
+    }
+
+    private static func inaccessibleMessages(for ids: Set<String>) -> [String] {
+        ids.map { id in
+            let name: String
+            switch id {
+            case "documents": name = "Documents"
+            case "desktop": name = "Desktop"
+            case "downloads": name = "Downloads"
+            case "movies": name = "Movies"
+            case "music": name = "Music"
+            case "pictures": name = "Pictures"
+            case "public": name = "Public"
+            case "icloud": name = "ICloud Drive"
+            default: name = id
+            }
+            return "Cannot access \(name) — grant access in System Settings → Privacy & Security → Files and Folders."
+        }
     }
 
     private func refreshWatchedPaths() {
@@ -147,18 +306,7 @@ final class SearchService: ObservableObject {
         fileMonitor.updateWatchedPaths(paths)
     }
 
-    private func handleScopeChange() async {
-        try? await mossBridge?.clearIndex()
-        indexManager.clear()
-        indexedFileCount = 0
-        indexedChunkCount = 0
-        sessionDocCount = 0
-        hasUnpushedSessionChanges = true
-        indexManager.updateScopeFingerprint(policy.scopeFingerprint)
-        await performInitialScan(forceAll: true)
-    }
-
-    private func performInitialScan(forceAll: Bool = false) async {
+    private func performStreamingScan(forceAll: Bool) async {
         let folders = policy.watchedFolderPaths()
         guard !folders.isEmpty else {
             statusMessage = missingScopeMessage
@@ -167,25 +315,67 @@ final class SearchService: ObservableObject {
         }
 
         isIndexing = true
-        statusMessage = "Scanning folders..."
+        statusMessage = forceAll ? "Scanning folders..." : "Checking for changed files..."
+        discoveredFileCount = 0
+        queuedFileCount = 0
+
         await pruneStaleEntries()
 
-        let allFiles = await discoverFiles(in: folders)
-        discoveredFileCount = allFiles.count
-        let needingIndex = forceAll ? allFiles : indexManager.filesNeedingIndex(in: allFiles)
-        queuedFileCount = needingIndex.count
+        let policySnapshot = policy
+        var pendingBatch: [String] = []
+        pendingBatch.reserveCapacity(IndexingPolicy.indexBatchSize)
 
-        if needingIndex.isEmpty {
-            indexedFileCount = indexManager.indexedFileCount
-            lastIndexedDate = indexManager.lastIndexedDate
-            statusMessage = "Up to date (\(indexedFileCount) files)"
-            isIndexing = false
-            return
+        let stream = AsyncStream<[String]> { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                IndexingPolicy.enumerateFileBatches(in: folders, policy: policySnapshot) { batch in
+                    continuation.yield(batch)
+                }
+                continuation.finish()
+            }
         }
 
-        statusMessage = "Found \(allFiles.count) files, indexing \(needingIndex.count)..."
-        await indexFiles(needingIndex)
+        for await pathBatch in stream {
+            discoveredFileCount += pathBatch.count
+            let needingIndex = forceAll ? pathBatch : indexManager.filesNeedingIndex(in: pathBatch)
+            for path in needingIndex {
+                pendingBatch.append(path)
+                if pendingBatch.count >= IndexingPolicy.indexBatchSize {
+                    await flushIndexBatch(&pendingBatch)
+                }
+            }
+        }
+
+        if !pendingBatch.isEmpty {
+            await flushIndexBatch(&pendingBatch)
+        }
+
+        indexedFileCount = indexManager.indexedFileCount
+        lastIndexedDate = indexManager.lastIndexedDate
+        queuedFileCount = 0
         isIndexing = false
+        if sessionDocCount > 0 {
+            statusMessage = "Up to date (\(indexedFileCount) files, \(sessionDocCount) docs)"
+        } else if indexedFileCount > 0 {
+            statusMessage = "Indexed \(indexedFileCount) files"
+        } else {
+            statusMessage = "No files indexed yet"
+        }
+    }
+
+    private func flushIndexBatch(_ batch: inout [String]) async {
+        guard !batch.isEmpty else { return }
+        let toIndex = batch
+        batch.removeAll(keepingCapacity: true)
+        queuedFileCount += toIndex.count
+        await indexFiles(toIndex)
+        queuedFileCount = max(0, queuedFileCount - toIndex.count)
+        await throttleIfMemoryHigh()
+    }
+
+    private func throttleIfMemoryHigh() async {
+        guard let mb = AppLogger.shared.residentMemoryMB(), mb > Self.memoryThrottleMB else { return }
+        AppLogger.shared.log(String(format: "Memory high (%.0f MB) — pausing briefly", mb))
+        try? await Task.sleep(nanoseconds: Self.memoryThrottlePauseNs)
     }
 
     private func handleFilesystemChanges(_ paths: [String]) async {
@@ -213,8 +403,8 @@ final class SearchService: ObservableObject {
         await removeChunksForPaths(tracked)
         indexManager.removePaths(tracked)
         indexedFileCount = indexManager.indexedFileCount
-        hasUnpushedSessionChanges = true
-        scheduleSessionPush()
+        hasUnsavedLocalCache = true
+        scheduleLocalCacheSave()
         AppLogger.shared.log("Removed \(tracked.count) deleted files from index")
     }
 
@@ -224,7 +414,7 @@ final class SearchService: ObservableObject {
         do {
             let docCount = try await mossBridge.deleteDocs(ids: idsToDelete)
             sessionDocCount = docCount
-            hasUnpushedSessionChanges = true
+            hasUnsavedLocalCache = true
             sessionStatusMessage = "Local session updated"
         } catch {
             AppLogger.shared.log("Delete docs error: \(error.localizedDescription)")
@@ -240,7 +430,7 @@ final class SearchService: ObservableObject {
             do {
                 let docCount = try await mossBridge.deleteDocs(ids: idsToDelete)
                 sessionDocCount = docCount
-                hasUnpushedSessionChanges = true
+                hasUnsavedLocalCache = true
                 sessionStatusMessage = "Local session updated"
             } catch {
                 AppLogger.shared.log("Prune delete error: \(error.localizedDescription)")
@@ -249,7 +439,7 @@ final class SearchService: ObservableObject {
         indexManager.removePaths(stale)
         indexedFileCount = indexManager.indexedFileCount
         AppLogger.shared.log("Pruned \(stale.count) stale manifest entries")
-        scheduleSessionPush()
+        scheduleLocalCacheSave()
     }
 
     private func indexFiles(_ paths: [String]) async {
@@ -265,53 +455,81 @@ final class SearchService: ObservableObject {
 
         isIndexing = true
         statusMessage = "Indexing \(inScope.count) files..."
-        queuedFileCount = inScope.count
 
-        let batchSize = 15
+        let batchSize = IndexingPolicy.indexBatchSize
         var offset = 0
+        let chunksBeforeRun = indexedChunkCount
+        let skippedBeforeRun = skippedFileCount
 
         while offset < inScope.count {
             let end = min(offset + batchSize, inScope.count)
             let batch = Array(inScope[offset..<end])
             let succeeded = await indexBatch(batch, using: mossBridge)
             if !succeeded {
-                // Batch hung or failed — retry files one at a time and skip poison files.
                 for path in batch {
                     let ok = await indexBatch([path], using: mossBridge)
                     if !ok {
                         AppLogger.shared.log("Skipping file after timeout/error: \(path)")
-                        indexManager.markIndexed(paths: [path], chunkCounts: [path: 0], policy: policy)
                         skippedFileCount += 1
                         indexedFileCount = indexManager.indexedFileCount
                         lastIndexedDate = indexManager.lastIndexedDate
+                        if isQuotaOrAuthError() {
+                            statusMessage = sessionStatusMessage
+                            isIndexing = false
+                            return
+                        }
                     }
                 }
             }
-            queuedFileCount = max(0, inScope.count - end)
             statusMessage = "Indexed \(indexedFileCount) files (\(indexedChunkCount) chunks)"
+            AppLogger.shared.logMemory("after index batch")
             offset = end
+
+            filesIndexedSinceLastSave += batch.count
+            if filesIndexedSinceLastSave >= IndexingPolicy.saveLocalCacheEveryFiles {
+                await saveLocalCacheNow()
+                filesIndexedSinceLastSave = 0
+            }
+            await throttleIfMemoryHigh()
         }
 
+        let chunksAddedThisRun = indexedChunkCount - chunksBeforeRun
+        let skippedThisRun = skippedFileCount - skippedBeforeRun
+        if skippedThisRun > 0 && chunksAddedThisRun == 0 {
+            statusMessage = "Index failed: \(skippedThisRun) files skipped, no searchable chunks"
+        }
         isIndexing = false
-        queuedFileCount = 0
-        scheduleSessionPush()
+        if chunksAddedThisRun > 0 {
+            scheduleLocalCacheSave()
+        }
     }
 
-    /// Returns false when the worker times out or errors so the caller can skip poison files.
+    private func isQuotaOrAuthError() -> Bool {
+        guard let error = initializationError ?? Optional(sessionStatusMessage) else { return false }
+        let lower = error.lowercased()
+        return lower.contains("usage_limit") || lower.contains("429")
+            || lower.contains("unauthorized") || lower.contains("credentials")
+    }
+
     private func indexBatch(_ batch: [String], using mossBridge: MossBridge) async -> Bool {
-        var batchChunkCounts: [String: Int] = [:]
+        guard !batch.isEmpty else { return true }
+
         do {
             let result = try await mossBridge.addDocs(files: batch)
-            let perFileChunks = batch.isEmpty ? 0 : max(1, result.chunks / batch.count)
-            for path in batch {
-                batchChunkCounts[path] = perFileChunks
+            guard !result.fileChunkCounts.isEmpty || result.chunks > 0 else {
+                return result.skipped == batch.count
             }
-            indexManager.markIndexed(paths: batch, chunkCounts: batchChunkCounts, policy: policy)
+
+            indexManager.markIndexed(
+                paths: Array(result.fileChunkCounts.keys),
+                chunkCounts: result.fileChunkCounts,
+                policy: policy
+            )
             indexedFileCount = indexManager.indexedFileCount
             indexedChunkCount += result.chunks
             skippedFileCount += result.skipped
             sessionDocCount = result.docCount
-            hasUnpushedSessionChanges = true
+            hasUnsavedLocalCache = true
             sessionStatusMessage = "Local session updated"
             lastIndexedDate = indexManager.lastIndexedDate
             AppLogger.shared.log(
@@ -319,49 +537,42 @@ final class SearchService: ObservableObject {
             )
             return true
         } catch {
-            AppLogger.shared.log("Index error: \(error.localizedDescription)")
+            let message = error.localizedDescription
+            AppLogger.shared.log("Index error: \(message)")
+            if message.lowercased().contains("usage_limit") || message.contains("429") {
+                sessionStatusMessage = "Moss quota exceeded — search still works on cached index"
+                statusMessage = sessionStatusMessage
+            } else if message.lowercased().contains("credential") || message.lowercased().contains("unauthorized") {
+                sessionStatusMessage = "Moss credentials invalid"
+                initializationError = message
+            }
             return false
         }
     }
 
-    private func scheduleSessionPush() {
-        sessionPushTask?.cancel()
-        sessionPushTask = Task {
+    private func scheduleLocalCacheSave() {
+        localCacheSaveTask?.cancel()
+        localCacheSaveTask = Task {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             guard !Task.isCancelled else { return }
-            await pushSessionIfNeeded()
+            await saveLocalCacheNow()
         }
     }
 
-    private func pushSessionIfNeeded() async {
-        guard hasUnpushedSessionChanges, let mossBridge else { return }
-        sessionStatusMessage = "Storing Moss session..."
+    private func saveLocalCacheNow() async {
+        guard hasUnsavedLocalCache, let mossBridge else { return }
+        sessionStatusMessage = "Saving local index..."
+        AppLogger.shared.logMemory("before saveLocalSession")
         do {
-            let result = try await mossBridge.pushIndex()
-            hasUnpushedSessionChanges = false
-            sessionDocCount = result.docCount
-            lastSessionPushDate = Date()
-            sessionStatusMessage = "Stored \(result.docCount) docs in Moss session"
-            if let jobID = result.jobID {
-                AppLogger.shared.log("Pushed Moss session job: \(jobID)")
-            }
+            let localDocCount = try await mossBridge.saveLocalSession(cachePath: IndexingPolicy.localSessionCachePath())
+            hasUnsavedLocalCache = false
+            sessionDocCount = localDocCount
+            lastLocalCacheSaveDate = Date()
+            sessionStatusMessage = "Saved \(localDocCount) docs to local cache"
+            AppLogger.shared.logMemory("after saveLocalSession")
         } catch {
-            sessionStatusMessage = "Session storage failed: \(error.localizedDescription)"
+            sessionStatusMessage = "Local save failed: \(error.localizedDescription)"
             AppLogger.shared.log(sessionStatusMessage)
         }
-    }
-
-    private func discoverFiles(in folders: [String]) async -> [String] {
-        let settingsSnapshot = settings
-        let inaccessible = folders.filter { folder in
-            !FileManager.default.fileExists(atPath: folder)
-        }
-        for folder in inaccessible {
-            NotificationManager.shared.showError("Cannot access folder: \(folder)")
-        }
-
-        return await Task.detached(priority: .utility) {
-            IndexingPolicy.discoverFiles(in: folders, settings: settingsSnapshot)
-        }.value
     }
 }

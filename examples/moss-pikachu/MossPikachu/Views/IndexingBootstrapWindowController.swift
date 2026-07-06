@@ -48,7 +48,7 @@ private struct IndexingBootstrapView: View {
                 .font(.title3)
                 .fontWeight(.semibold)
 
-            Text("Building your local search index for Downloads, Documents, and Desktop. Moss Pikachu will launch when this finishes.")
+            Text("First launch — indexing your files in the background. Grant folder access if macOS asks. Search opens as soon as Moss is ready; results improve as more files are indexed.")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

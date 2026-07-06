@@ -4,7 +4,7 @@ Native macOS menu bar app for semantic file search powered by [Moss](https://git
 
 - **Hotkey:** ⌘⇧M to open search
 - **Pet:** Pikachu animates on search results
-- **Privacy:** Queries run locally via Moss Python SDK session
+- **Privacy:** Files are indexed and stored on this Mac. Moss API keys authenticate semantic search locally; nothing is uploaded to Moss cloud.
 
 ## Prerequisites
 

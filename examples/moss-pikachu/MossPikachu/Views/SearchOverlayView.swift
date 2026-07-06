@@ -150,7 +150,7 @@ struct SearchOverlayView: View {
     }
 
     private var noResultsRow: some View {
-        Text("No matches in Downloads, Documents, or Desktop")
+        Text("No matches in your indexed folders")
             .font(.caption)
             .foregroundColor(.secondary)
             .padding(.horizontal, 14)
@@ -237,6 +237,10 @@ struct SearchOverlayView: View {
     }
 
     private func openResult(_ result: SearchResult) {
+        if result.isMissingOnDisk {
+            NotificationManager.shared.showError("File not found on disk: \(result.filename)")
+            return
+        }
         if FileManager.default.fileExists(atPath: result.path) {
             NSWorkspace.shared.open(URL(fileURLWithPath: result.path))
             onClose()

@@ -9,6 +9,22 @@ description: >-
 
 # Moss Pikachu Agent Skill
 
+## Project docs (start here)
+
+| Doc | Purpose |
+|-----|---------|
+| [project-summary.md](../../project-summary.md) | Full technical reference |
+| [how-to.md](../../how-to.md) | End-user guide |
+| [contribution.md](../../contribution.md) | Contributor guide |
+
+## Specialized skills
+
+| Skill | Use when |
+|-------|----------|
+| [moss-pikachu-semantic-search](../moss-pikachu-semantic-search/SKILL.md) | Search quality, query tuning |
+| [moss-pikachu-indexing](../moss-pikachu-indexing/SKILL.md) | Indexing, manual/automatic modes |
+| [moss-pikachu-contributing](../moss-pikachu-contributing/SKILL.md) | PRs and contribution workflow |
+
 ## Read order
 
 1. [architecture.md](architecture.md)
