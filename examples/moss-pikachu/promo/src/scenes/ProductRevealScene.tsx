@@ -27,7 +27,7 @@ export const ProductRevealScene: React.FC = () => {
   });
 
   const typedLength = getTypedLength(frame, 55, SEMANTIC_QUERY);
-  const query = frame < 55 ? "" : SEMANTIC_QUERY.slice(0, typedLength);
+  const query = SEMANTIC_QUERY.slice(0, typedLength);
   const showBubble = frame >= 28;
   const showThinking = frame >= 85 && frame < 100;
   const showResult = frame >= 100;
@@ -76,7 +76,7 @@ export const ProductRevealScene: React.FC = () => {
         <MacScreen showPet petAttentive={frame >= 25 && frame < 140}>
           <IndexingToast startFrame={0} />
 
-          {frame < 30 && (
+          {frame <= 30 && (
             <AbsoluteFill
               style={{
                 justifyContent: "flex-start",
@@ -89,7 +89,7 @@ export const ProductRevealScene: React.FC = () => {
             </AbsoluteFill>
           )}
 
-          {showBubble && !showPdf && (
+          {showBubble && (!showPdf || frame < 152) && (
             <AbsoluteFill
               style={{
                 justifyContent: "flex-end",

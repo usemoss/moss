@@ -15,7 +15,6 @@ type SpotlightSearchProps = {
   failed?: boolean;
   shake?: boolean;
   selectedIndex?: number | null;
-  exitBlur?: number;
 };
 
 export const SpotlightSearch: React.FC<SpotlightSearchProps> = ({
@@ -24,15 +23,11 @@ export const SpotlightSearch: React.FC<SpotlightSearchProps> = ({
   failed = false,
   shake = false,
   selectedIndex = null,
-  exitBlur = 0,
 }) => {
   const frame = useCurrentFrame();
   const shakeX = shake
     ? interpolate(frame % 6, [0, 2, 4, 6], [0, -5, 5, 0])
     : 0;
-  const dimOpacity = failed
-    ? interpolate(frame, [0, 18], [1, 0.55], { extrapolateRight: "clamp" })
-    : 1;
 
   const barDrop = interpolate(frame, [0, 18], [-40, 0], {
     extrapolateRight: "clamp",
@@ -43,9 +38,7 @@ export const SpotlightSearch: React.FC<SpotlightSearchProps> = ({
     <div
       style={{
         width: 680,
-        opacity: dimOpacity,
         translate: `${shakeX}px ${barDrop}px`,
-        filter: exitBlur > 0.1 ? `blur(${exitBlur}px)` : undefined,
       }}
     >
       <div

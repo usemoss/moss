@@ -12,7 +12,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.484",
-    "tailwindcss": "4.0.0"
+    "tailwindcss": "4.2.0"
   },
   "devDependencies": {
     "@remotion/eslint-config-flat": "4.0.484",
@@ -27,6 +27,7 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
+    "generate-audio": "node scripts/generate-audio.mjs",
     "render": "remotion render PicklightPromo out/picklight-promo.mp4"
   },
   "sideEffects": [

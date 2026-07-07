@@ -14,10 +14,15 @@
 ## Commands
 
 ```bash
-cd promo
 npm install
 npm run dev
 npm run render   # → out/picklight-promo.mp4
+```
+
+Optional — regenerate SFX/music via ElevenLabs (requires `ELEVENLABS_API_KEY` in `promo/.env` or `examples/moss-pikachu/.env`):
+
+```bash
+npm run generate-audio
 ```
 
 ## Specs

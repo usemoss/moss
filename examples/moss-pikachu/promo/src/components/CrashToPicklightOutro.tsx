@@ -111,6 +111,7 @@ export const CrashToPicklightOutro: React.FC = () => {
             <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
               <Img
                 src={staticFile("pet/capvolt-sticker.png")}
+                alt=""
                 style={{
                   width: 72,
                   height: 72,

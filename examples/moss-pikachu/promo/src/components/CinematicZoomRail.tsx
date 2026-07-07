@@ -116,7 +116,7 @@ export const CinematicZoomRail: React.FC<CinematicZoomRailProps> = ({
 
   const dotOpacity =
     dotProgress > 0
-      ? phaseFrame >= dotEnd && phaseFrame < stepZoomOutStart
+      ? phaseFrame >= dotEnd
         ? interpolate(phaseFrame, [dotEnd, stepZoomOutStart], [1, 0], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
