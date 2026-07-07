@@ -26,6 +26,15 @@ impl JsIndexManager {
         Ok(Self { inner, _runtime: runtime })
     }
 
+    // TODO(MOS-14): add the device-id setter to reach parity with the TS SDK
+    // (which already sources the id and calls `setDeviceId`, degrading to a
+    // no-op until this exists). Add a `#[napi(js_name = "setDeviceId")] pub fn
+    // set_device_id(&self, device_id: Option<String>)` that delegates to core
+    // `IndexManager::set_device_id` (ref moss-sdks-internal
+    // bindings/javascript/src/indexmanager.rs:57). Blocked on CI: this repo does
+    // not vendor the `moss` core crate, so the binding can't be built here and
+    // the prebuilt core must be a version that exposes the setter.
+
     #[napi(
         js_name = "loadIndex",
         ts_args_type = "indexName: string, options?: LoadIndexOptions | null",

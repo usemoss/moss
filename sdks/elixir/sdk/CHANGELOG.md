@@ -1,5 +1,35 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **MOS-14 device-id contract (SDK layer)** — `Moss.DeviceId` sources a stable,
+  persisted, per-device id (UUIDv4, no OS vendor id on this platform) and
+  memoizes it once per client so every telemetry surface (IndexManager,
+  ManageClient, Session) reports the same id — "one device, one id". Persisted
+  to `.moss-device-id` under `$XDG_CACHE_HOME/moss` (when set) else
+  `<home>/.moss` — the same scheme as the JS/Python/Go SDKs so one physical
+  device resolves to a single id across languages; non-synced/non-migrating;
+  falls back to an ephemeral id on any persistence error so a real operation
+  never fails over device-id work. Honors `MOSS_DISABLE_TELEMETRY` (truthy set,
+  trimmed/lowercased), checked at runtime before the memo fast-path. Threaded
+  through `Moss.Client.new/3` into all three surfaces (IndexManager, Session,
+  ManageClient). Contains zero telemetry HTTP/buffer/flush/event code — the
+  closed core owns transport.
+
+### Blocked (native binding / CI)
+
+- Handing the id to the core (setter mechanism, spec R5.2) is **not yet wired**:
+  the mono-repo Elixir NIF exposes no `set_device_id` entry point. The apply
+  path degrades gracefully (terminal success) until a `manager_set_device_id` /
+  `session_set_device_id` / `manage_set_device_id` NIF is added in
+  `bindings/native/moss_core/src/*` delegating to the core
+  `set_device_id(Option<String>)`. See the `MOS-14` TODOs in
+  `Moss.IndexManager`, `Moss.Session`, and `Moss.ManageClient`.
+
+---
+
 ## [1.0.1] - 2026-04-05
 
 ### Changed

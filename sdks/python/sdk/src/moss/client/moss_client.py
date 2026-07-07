@@ -22,6 +22,8 @@ from moss_core import (
     SearchResult,
 )
 
+from .device_id import DeviceIdState, apply_device_id_once
+
 logger = logging.getLogger(__name__)
 
 
@@ -73,6 +75,21 @@ class MossClient:
         self._manager = IndexManager(
             project_id, project_key, manage_url, self._client_id
         )
+
+        # MOS-14: source a stable, persisted, per-device id and hand it to the
+        # core through the binding's device-id entry point. This is the SDK's
+        # only telemetry job — the closed core owns the /telemetry POST + buffer
+        # + 3s flush. Best-effort and never raises: a persistence or apply error
+        # must never break construction (or any later operation). Python has no
+        # cache dir here, so the id persists under the per-user ~/.moss fallback,
+        # keeping one device -> one id across processes.
+        #
+        # NOTE: the current pyo3 binding does not yet expose set_device_id, so
+        # apply_device_id_once resolves+persists the id but the apply is a
+        # graceful no-op (terminal success) until the native change lands. See
+        # device_id.py's module TODO for the exact Rust change required.
+        self._device_id_state = DeviceIdState()
+        apply_device_id_once(self._manager, self._device_id_state)
 
     # -- Mutations (via Rust ManageClient) --------------------------
 

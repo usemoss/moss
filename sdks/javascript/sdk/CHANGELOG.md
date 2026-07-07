@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Device-id contract (MOS-14 "better tracking" parity). `loadIndex()` now sources a stable, persisted, per-device id and best-effort hands it to the core so per-device usage attribution is stable across restarts.
+  - UUIDv4 persisted to `.moss-device-id` under `cachePath` (when provided) else `<home>/.moss` — non-synced/non-migrating, the same scheme as the Python/Go/Elixir SDKs so one physical device resolves to a single id across languages.
+  - Honors `MOSS_DISABLE_TELEMETRY` (truthy set `{1,true,yes,on}`, trimmed/lowercased), checked at runtime before the memo fast-path; memoized and applied once per client.
+  - Degrades to a no-op when the native binding does not yet expose `setDeviceId` (see the `TODO(MOS-14)` in `bindings/src/indexmanager.rs`); persistence failures fall back to an ephemeral id and never break `loadIndex()`.
+  - Contains no telemetry HTTP/buffer/flush code — the closed core owns transport.
+
 ## [1.0.0] - 2026-04-01
 
 ### Architecture
