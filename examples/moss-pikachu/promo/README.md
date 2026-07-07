@@ -29,3 +29,16 @@ npm run generate-audio
 
 - 1920×1080, 30fps, ~43 seconds
 - No voiceover
+
+## Instagram vertical export
+
+Pre-rendered 9:16 cut: [`picklight-instagram-vertical.mp4`](picklight-instagram-vertical.mp4) (demo on top, screen-recording voiceover on bottom).
+
+Rebuild after re-rendering the promo:
+
+```bash
+# Place voiceover MOV in examples/moss-pikachu/ (or set VOICEOVER_MOV)
+../scripts/combine-instagram-vertical.sh
+```
+
+Requires [Homebrew ffmpeg](https://formulae.brew.sh/formula/ffmpeg) (`brew install ffmpeg`). Demo music is mixed at 15% under the voiceover (`MUSIC_VOLUME=0.15`).

@@ -83,10 +83,15 @@ Picklight promo (Remotion): [`promo/`](promo/)
 
 Pre-rendered: [`promo/picklight-promo.mp4`](promo/picklight-promo.mp4)
 
+Instagram vertical (9:16, demo + voiceover): [`promo/picklight-instagram-vertical.mp4`](promo/picklight-instagram-vertical.mp4)
+
 ```bash
 cd promo
 npm install
 npm run render   # → out/picklight-promo.mp4
+
+# Optional — rebuild 9:16 vertical (requires Homebrew ffmpeg + voiceover MOV in this folder)
+../scripts/combine-instagram-vertical.sh
 ```
 
 Branding still: [`docs/project-branding.png`](docs/project-branding.png)
