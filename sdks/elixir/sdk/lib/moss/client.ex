@@ -30,13 +30,14 @@ defmodule Moss.Client do
 
   @default_model_id "moss-minilm"
 
-  defstruct [:project_id, :project_key, :base_url, :client_id, :manage_ref, :manager_pid]
+  defstruct [:project_id, :project_key, :base_url, :client_id, :device_id, :manage_ref, :manager_pid]
 
   @type t :: %__MODULE__{
           project_id: String.t(),
           project_key: String.t(),
           base_url: String.t() | nil,
           client_id: String.t(),
+          device_id: String.t() | nil,
           manage_ref: reference(),
           manager_pid: pid()
         }
@@ -52,13 +53,27 @@ defmodule Moss.Client do
     base_url = Keyword.get(opts, :base_url, nil)
     client_id = Uniq.UUID.uuid4()
 
+    # MOS-14: source a stable, persisted, per-device id ONCE at client
+    # construction and thread it through every telemetry surface (the
+    # IndexManager, ManageClient, and any sessions) so a device counts once —
+    # "one device, one id" (spec R2.3, R3, R5.5). Sourcing/persistence/opt-out
+    # all happen here; nil means telemetry is disabled via
+    # MOSS_DISABLE_TELEMETRY, in which case no id is sourced and nothing is
+    # handed to the core (R4).
+    #
+    # The Elixir SDK has no client cache dir at this layer, so the per-user
+    # fallback dir (Moss.DeviceId.default_dir/0) is the persistence location.
+    {device_id, _state} = Moss.DeviceId.resolve_client(Moss.DeviceId.new_state(), nil)
+
     with {:ok, ref} <- Moss.ManageClient.new(project_id, project_key,
-                         base_url: base_url, client_id: client_id),
+                         base_url: base_url, client_id: client_id,
+                         device_id: device_id),
          {:ok, pid} <- Moss.IndexManager.start_link(
                          project_id: project_id,
                          project_key: project_key,
                          base_url: base_url,
-                         client_id: client_id
+                         client_id: client_id,
+                         device_id: device_id
                        ) do
       {:ok,
        %__MODULE__{
@@ -66,6 +81,7 @@ defmodule Moss.Client do
          project_key: project_key,
          base_url: base_url,
          client_id: client_id,
+         device_id: device_id,
          manage_ref: ref,
          manager_pid: pid
        }}
@@ -235,7 +251,10 @@ defmodule Moss.Client do
                model_id: model_id,
                project_id: client.project_id,
                project_key: client.project_key,
-               client_id: client.client_id
+               client_id: client.client_id,
+               # MOS-14: sessions share the client's already-resolved device id
+               # so every surface of one client reports the same id (R5.5).
+               device_id: client.device_id
              )
            ) do
       # Silently attempt to load from cloud — ignore errors (index may not exist yet).

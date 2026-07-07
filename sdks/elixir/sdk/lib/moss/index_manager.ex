@@ -114,11 +114,48 @@ defmodule Moss.IndexManager do
     project_key = Keyword.fetch!(opts, :project_key)
     base_url = Keyword.get(opts, :base_url, nil)
     client_id = Keyword.get(opts, :client_id, nil)
+    device_id = Keyword.get(opts, :device_id, nil)
 
     case Nif.manager_new(project_id, project_key, base_url, client_id) do
-      {:ok, ref} -> {:ok, %{ref: ref}}
-      {:error, reason} -> {:stop, reason}
+      {:ok, ref} ->
+        {:ok, apply_device_id(%{ref: ref}, device_id)}
+
+      {:error, reason} ->
+        {:stop, reason}
     end
+  end
+
+  # MOS-14: hand the stable per-device id to the core (setter mechanism, R5.2).
+  #
+  # BLOCKED ON NATIVE BINDING: the mono-repo Elixir NIF does not yet expose a
+  # `set_device_id` entry point. The device-id-capable core setter exists
+  # (`moss::manager::IndexManager::set_device_id(Option<String>)`), but no NIF
+  # surfaces it. Until the NIF lands, this degrades gracefully (R5.4): the id is
+  # still sourced/persisted/memoized at the SDK layer, just not pushed to the
+  # core. `apply_fun: nil` -> Moss.DeviceId.apply/2 returns terminal success.
+  #
+  # WHEN THE NIF LANDS, add to MossCore.Nif:
+  #     def manager_set_device_id(_ref, _device_id), do: :erlang.nif_error(:not_loaded)
+  # and to bindings/native/moss_core/src/manager.rs:
+  #     #[rustler::nif]
+  #     pub fn manager_set_device_id(resource: ResourceArc<ManagerResource>,
+  #                                  device_id: Option<String>) -> rustler::Atom {
+  #         resource.inner.lock().unwrap().set_device_id(device_id);
+  #         ok()
+  #     }
+  # then swap the `nil` below for:
+  #     fn -> id -> Nif.manager_set_device_id(state.ref, id) end
+  # returning :ok so Moss.DeviceId.apply/2 reports success.
+  defp apply_device_id(%{ref: _ref} = state, nil) do
+    # Telemetry disabled (no id sourced): nothing to apply.
+    Map.put(state, :device_id_state, Moss.DeviceId.new_state())
+  end
+
+  defp apply_device_id(%{ref: _ref} = state, device_id) when is_binary(device_id) do
+    dev_state = %{id: device_id, applied: false}
+    # apply_fun is nil until the set_device_id NIF exists (see note above).
+    dev_state = Moss.DeviceId.apply_once(dev_state, nil, nil)
+    Map.put(state, :device_id_state, dev_state)
   end
 
   @impl true

@@ -14,7 +14,31 @@ defmodule Moss.ManageClient do
   def new(project_id, project_key, opts \\ []) do
     base_url = Keyword.get(opts, :base_url, nil)
     client_id = Keyword.get(opts, :client_id, nil)
-    Nif.manage_new(project_id, project_key, base_url, client_id)
+    device_id = Keyword.get(opts, :device_id, nil)
+
+    case Nif.manage_new(project_id, project_key, base_url, client_id) do
+      {:ok, ref} = ok ->
+        apply_device_id(ref, device_id)
+        ok
+
+      other ->
+        other
+    end
+  end
+
+  # MOS-14: hand the stable per-device id to the core (setter mechanism, R5.2).
+  #
+  # BLOCKED ON NATIVE BINDING: no `set_device_id` NIF exists for the manage
+  # resource yet. Until it lands this degrades gracefully (R5.4): id is still
+  # sourced/persisted/shared at the SDK layer, just not pushed to the core
+  # (`apply_fun: nil` -> terminal success). See Moss.IndexManager for the exact
+  # NIF + Rust change to add; the manage analogue is `manage_set_device_id`
+  # delegating to `ManageClient::set_device_id`.
+  defp apply_device_id(_ref, nil), do: :ok
+
+  defp apply_device_id(_ref, device_id) when is_binary(device_id) do
+    _ = Moss.DeviceId.apply_once(%{id: device_id, applied: false}, nil, nil)
+    :ok
   end
 
   @doc "Create a cloud index with initial documents."

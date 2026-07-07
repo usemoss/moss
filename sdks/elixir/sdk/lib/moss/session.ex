@@ -153,11 +153,40 @@ defmodule Moss.Session do
     project_id  = Keyword.fetch!(opts, :project_id)
     project_key = Keyword.fetch!(opts, :project_key)
     client_id   = Keyword.get(opts, :client_id, nil)
+    device_id   = Keyword.get(opts, :device_id, nil)
 
     case Nif.session_new(name, model_id, project_id, project_key, client_id) do
-      {:ok, ref}       -> {:ok, %{ref: ref, model_id: model_id}}
+      {:ok, ref}       -> {:ok, apply_device_id(%{ref: ref, model_id: model_id}, device_id)}
       {:error, reason} -> {:stop, reason}
     end
+  end
+
+  # MOS-14: hand the client's shared per-device id to this session surface
+  # (setter mechanism, R5.2, R5.5). Every session opened from a client reports
+  # the SAME id the IndexManager/ManageClient use.
+  #
+  # BLOCKED ON NATIVE BINDING: no `set_device_id` NIF exists for the session
+  # resource yet. The internal core surfaces it
+  # (`moss::session::SessionIndex::set_device_id`), but the mono Elixir NIF does
+  # not. Until then this degrades gracefully (R5.4): id is still sourced/shared,
+  # just not pushed to the core (`apply_fun: nil` -> terminal success).
+  #
+  # WHEN THE NIF LANDS, add to MossCore.Nif:
+  #     def session_set_device_id(_ref, _device_id), do: :erlang.nif_error(:not_loaded)
+  # and to bindings/native/moss_core/src/session.rs:
+  #     #[rustler::nif]
+  #     pub fn session_set_device_id(resource: ResourceArc<SessionResource>,
+  #                                  device_id: Option<String>) -> rustler::Atom {
+  #         resource.inner.lock().unwrap().set_device_id(device_id);
+  #         ok()
+  #     }
+  # then swap the `nil` below for:
+  #     fn -> id -> Nif.session_set_device_id(state.ref, id) end
+  defp apply_device_id(%{ref: _ref} = state, nil), do: state
+
+  defp apply_device_id(%{ref: _ref} = state, device_id) when is_binary(device_id) do
+    _ = Moss.DeviceId.apply_once(%{id: device_id, applied: false}, nil, nil)
+    state
   end
 
   @impl true
