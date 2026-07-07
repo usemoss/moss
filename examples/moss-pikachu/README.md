@@ -1,6 +1,12 @@
 # Picklight
 
-Native macOS menu bar app for semantic file search powered by [Moss](https://github.com/usemoss/moss).
+<div align="center">
+
+<img src="docs/project-branding.png" alt="Picklight — semantic file search powered by Moss" width="720" />
+
+</div>
+
+Native macOS menu bar app for semantic file search powered by [Moss](https://moss.dev).
 
 - **Hotkey:** ⌘⇧M to open search
 - **Pet:** Capvolt animates on your desktop
@@ -66,8 +72,6 @@ chmod +x scripts/*.sh
 | Doc | For |
 |-----|-----|
 | [how-to.md](how-to.md) | Daily use guide |
-| [project-summary.md](project-summary.md) | Full technical reference |
-| [contribution.md](contribution.md) | Contributing |
 
 ## Agent skills
 
@@ -75,7 +79,17 @@ Cursor agent skills live in [`.cursor/skills/`](.cursor/skills/).
 
 ## Product demo video
 
-Remotion promo project: [`video-2/`](video-2/)
+Picklight promo (Remotion): [`promo/`](promo/)
+
+Pre-rendered: [`promo/picklight-promo.mp4`](promo/picklight-promo.mp4)
+
+```bash
+cd promo
+npm install
+npm run render   # → out/picklight-promo.mp4
+```
+
+Branding still: [`docs/project-branding.png`](docs/project-branding.png)
 
 ## Vendor
 
