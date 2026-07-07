@@ -1,22 +1,22 @@
 /**
- * Generate SFX + ambient music for Moss Pikachu Video 2 via ElevenLabs.
- * Reads ELEVENLABS_API_KEY from repo root .env
+ * Generate SFX + ambient music for the Picklight promo via ElevenLabs.
+ * Reads ELEVENLABS_API_KEY from promo/.env, then examples/moss-pikachu/.env.
  *
  * Usage: npm run generate-audio
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..", "..");
-const OUT_DIR = join(__dirname, "..", "public", "audio");
+const PROMO_ROOT = join(__dirname, "..");
+const MOSS_PIKACHU_ROOT = join(__dirname, "..", "..");
+const OUT_DIR = join(PROMO_ROOT, "public", "audio");
 
-function loadEnv() {
-  const envPath = join(ROOT, ".env");
+function loadEnvFile(path) {
   const vars = {};
-  if (!existsSync(envPath)) return vars;
-  const content = readFileSync(envPath, "utf-8");
+  if (!existsSync(path)) return vars;
+  const content = readFileSync(path, "utf-8");
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
@@ -33,6 +33,13 @@ function loadEnv() {
     vars[key] = val;
   }
   return vars;
+}
+
+function loadEnv() {
+  return {
+    ...loadEnvFile(join(MOSS_PIKACHU_ROOT, ".env")),
+    ...loadEnvFile(join(PROMO_ROOT, ".env")),
+  };
 }
 
 const SFX = [
@@ -120,12 +127,6 @@ async function main() {
   }
   for (const item of items) {
     await generate(apiKey, item);
-  }
-  const clickMp3 = join(OUT_DIR, "mouse-click.mp3");
-  const clickWav = join(OUT_DIR, "mouse-click.wav");
-  if (existsSync(clickMp3) && !only.length) {
-    copyFileSync(clickMp3, clickWav);
-    console.log(`  copied ${clickWav}`);
   }
   console.log("Done.");
 }

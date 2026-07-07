@@ -120,7 +120,7 @@ const DropSfx: React.FC<{ from: number; variant: DropVariant }> = ({
 const ClickSfx: React.FC<{ from: number }> = ({ from }) => (
   <Sequence from={from} durationInFrames={CLICK_SFX_DURATION} layout="none">
     <Audio
-      src={staticFile("audio/mouse-click.wav")}
+      src={staticFile("audio/mouse-click.mp3")}
       trimAfter={CLICK_SFX_DURATION}
       volume={(f) =>
         interpolate(

@@ -18,11 +18,6 @@ export const SpotlightFailureScene: React.FC = () => {
   const showPythonEditor = frame >= 76 && frame < 158;
   const failed = showPythonEditor;
 
-  const exitBlur = interpolate(frame, [145, 162], [0, 10], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
   const spotlightScale = showPythonEditor
     ? interpolate(frame, [76, 88], [1, 0.92], {
         extrapolateLeft: "clamp",
@@ -56,7 +51,6 @@ export const SpotlightFailureScene: React.FC = () => {
               failed={failed}
               shake={shake}
               selectedIndex={selectedIndex}
-              exitBlur={exitBlur}
             />
           </AbsoluteFill>
           {showPythonEditor && (

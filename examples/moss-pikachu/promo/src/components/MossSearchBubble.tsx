@@ -90,7 +90,8 @@ export const MossSearchBubble: React.FC<MossSearchBubbleProps> = ({
               background: selected
                 ? "rgba(0, 122, 255, 0.28)"
                 : "rgba(26,61,46,0.4)",
-              borderLeft: selected ? "none" : `4px solid ${colors.accentGreen}`,
+              borderLeft: `4px solid ${colors.accentGreen}`,
+              borderLeftWidth: selected ? 0 : 4,
               display: "flex",
               alignItems: "center",
               gap: 12,
