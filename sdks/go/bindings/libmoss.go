@@ -9,6 +9,22 @@ package mosscore
 #include <stdlib.h>
 #include <libmoss.h>
 */
+// MOS-14 native-binding dependency: newCClient (below) calls
+// moss_client_new_with_device_id, whose C prototype is:
+//
+//   MossResult moss_client_new_with_device_id(const char *project_id,
+//                                             const char *project_key,
+//                                             const char *device_id,
+//                                             struct MossClient **out);
+//
+// (verified in moss-sdks-internal/bindings/c/libmoss.h:307-310). The mono repo
+// does NOT vendor a libmoss.h — the header + libmoss.{so,dylib,dll} are
+// supplied at build time via CGO_CFLAGS/CGO_LDFLAGS include paths. This wrapper
+// therefore only compiles/links against a libmoss whose header declares
+// moss_client_new_with_device_id, i.e. a header regenerated from a CI build of
+// bindings/c that post-dates the device-id ABI. Against an older header this
+// file fails at cgo compile time (undeclared function). BLOCKED on CI shipping
+// that newer header/artifact; there is no in-repo header to gate on here.
 import "C"
 
 import (
@@ -439,8 +455,20 @@ func newCClient(projectID, projectKey string) (*C.MossClient, error) {
 	cProjectKey := C.CString(projectKey)
 	defer C.free(unsafe.Pointer(cProjectKey))
 
+	// MOS-14 "better tracking": source a stable, persisted per-device id and
+	// hand it to the core through the device-id constructor (R5.1). When
+	// telemetry is disabled (MOSS_DISABLE_TELEMETRY), no id is sourced and we
+	// call the plain constructor instead, which emits no deviceId field
+	// (R4.1/R4.3). See deviceid.go.
+	deviceID, ok := stableDeviceID()
+
 	var out *C.MossClient
 	if err := withErrorThread(func() C.MossResult {
+		if ok {
+			cDeviceID := C.CString(deviceID)
+			defer C.free(unsafe.Pointer(cDeviceID))
+			return C.moss_client_new_with_device_id(cProjectID, cProjectKey, cDeviceID, &out)
+		}
 		return C.moss_client_new(cProjectID, cProjectKey, &out)
 	}); err != nil {
 		return nil, err
