@@ -17,6 +17,7 @@ import type {
 import * as MossCore from "@moss-dev/moss-core";
 import { CLOUD_API_MANAGE_URL, CLOUD_QUERY_URL } from "../constants";
 import { CloudApiClient } from "../utils/cloudApiClient";
+import { applyDeviceIdOnce, type DeviceIdState } from "../utils/deviceId";
 
 /**
  * Internal client — mutations go through Rust ManageClient,
@@ -57,7 +58,21 @@ export class InternalMossClient {
     loadQueryModel(indexName: string): Promise<void>;
     refreshIndex(indexName: string): Promise<{ indexName: string; previousUpdatedAt: string; newUpdatedAt: string; wasUpdated: boolean }>;
     getIndexInfo(indexName: string): Promise<IndexInfo>;
+    /**
+     * Present only on newer moss-core builds (napi `setDeviceId`). When absent
+     * (older `.node`), device-id plumbing degrades to a no-op — see
+     * `applyDeviceId`. MECHANISM for this SDK is the setter (R5.2).
+     */
+    setDeviceId?(deviceId: string): void;
   };
+
+  /**
+   * Shared per-device telemetry id state (MOS-14). Resolved once and memoized
+   * so the id is stable across resolves and applied to the core at most once.
+   * The SDK's only job is to source a stable id and hand it to the core; the
+   * closed core owns the /telemetry POST/buffer/flush.
+   */
+  private readonly deviceIdState: DeviceIdState = { applied: false };
 
   constructor(projectId: string, projectKey: string) {
     this.cloudClient = new CloudApiClient(projectId, projectKey, CLOUD_API_MANAGE_URL, CLOUD_QUERY_URL);
@@ -199,6 +214,12 @@ export class InternalMossClient {
     indexName: string,
     options?: LoadIndexOptions,
   ): Promise<string> {
+    // MOS-14: establish the stable per-device telemetry id (for Monthly Active
+    // Devices) once and hand it to the core via its setter (R5.2). Persist
+    // under this call's cachePath when given, else the per-user fallback dir.
+    // Best-effort — never blocks or fails the load (R2.4/R5.3). If the linked
+    // moss-core predates `setDeviceId`, this degrades to a no-op (R5.4).
+    applyDeviceIdOnce(this.indexManager, this.deviceIdState, options?.cachePath);
     const info = await this.indexManager.loadIndex(indexName, options ?? null);
     const modelId = info.model.id as MossModel;
     if (modelId !== "custom") {
