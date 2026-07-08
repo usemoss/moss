@@ -1,0 +1,428 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		MPB0000000000000000001 /* MossPikachuApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000001 /* MossPikachuApp.swift */; };
+		MPB0000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000002 /* AppDelegate.swift */; };
+		MPB0000000000000000003 /* SearchOverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000003 /* SearchOverlayController.swift */; };
+		MPB0000000000000000004 /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000004 /* SearchOverlayView.swift */; };
+		MPB0000000000000000005 /* ResultsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000005 /* ResultsListView.swift */; };
+		MPB0000000000000000006 /* PikachuPetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000006 /* PikachuPetView.swift */; };
+		MPB0000000000000000007 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000007 /* SettingsView.swift */; };
+		MPB0000000000000000008 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000008 /* SettingsWindowController.swift */; };
+		MPB0000000000000000009 /* KeyEventHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000009 /* KeyEventHandler.swift */; };
+		MPB0000000000000000010 /* SearchResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000010 /* SearchResult.swift */; };
+		MPB0000000000000000011 /* PetState.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000011 /* PetState.swift */; };
+		MPB0000000000000000012 /* FileSystemEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000012 /* FileSystemEvent.swift */; };
+		MPB0000000000000000013 /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000013 /* UserSettings.swift */; };
+		MPB0000000000000000014 /* FileMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000014 /* FileMonitor.swift */; };
+		MPB0000000000000000015 /* MossBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000015 /* MossBridge.swift */; };
+		MPB0000000000000000016 /* IndexManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000016 /* IndexManager.swift */; };
+		MPB0000000000000000017 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000017 /* SearchService.swift */; };
+		MPB0000000000000000018 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000018 /* NotificationManager.swift */; };
+		MPB0000000000000000019 /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000019 /* HotKeyManager.swift */; };
+		MPB0000000000000000020 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000020 /* AppLogger.swift */; };
+		MPB0000000000000000021 /* moss_worker.py in Resources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000021 /* moss_worker.py */; };
+		MPB0000000000000000022 /* config.json in Resources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000022 /* config.json */; };
+		MPB0000000000000000023 /* capvolt-sticker.png in Resources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000023 /* capvolt-sticker.png */; };
+		MPB0000000000000000024 /* capvolt-sticker.webp in Resources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000024 /* capvolt-sticker.webp */; };
+		MPB0000000000000000025 /* CapvoltSticker.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000025 /* CapvoltSticker.swift */; };
+		MPB0000000000000000026 /* DotEnvLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000026 /* DotEnvLoader.swift */; };
+		MPB0000000000000000027 /* FloatingPetWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000027 /* FloatingPetWindowController.swift */; };
+		MPB0000000000000000028 /* SearchOverlayPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000028 /* SearchOverlayPresentation.swift */; };
+		MPB0000000000000000030 /* IndexScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = MPF0000000000000000030 /* IndexScope.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		MP00000000000000000120 /* MossPikachu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MossPikachu.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		MPF0000000000000000001 /* MossPikachuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MossPikachuApp.swift; sourceTree = "<group>"; };
+		MPF0000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		MPF0000000000000000003 /* SearchOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOverlayController.swift; sourceTree = "<group>"; };
+		MPF0000000000000000004 /* SearchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOverlayView.swift; sourceTree = "<group>"; };
+		MPF0000000000000000005 /* ResultsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsListView.swift; sourceTree = "<group>"; };
+		MPF0000000000000000006 /* PikachuPetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PikachuPetView.swift; sourceTree = "<group>"; };
+		MPF0000000000000000007 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		MPF0000000000000000008 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		MPF0000000000000000009 /* KeyEventHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyEventHandler.swift; sourceTree = "<group>"; };
+		MPF0000000000000000010 /* SearchResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResult.swift; sourceTree = "<group>"; };
+		MPF0000000000000000011 /* PetState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetState.swift; sourceTree = "<group>"; };
+		MPF0000000000000000012 /* FileSystemEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemEvent.swift; sourceTree = "<group>"; };
+		MPF0000000000000000013 /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
+		MPF0000000000000000014 /* FileMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileMonitor.swift; sourceTree = "<group>"; };
+		MPF0000000000000000015 /* MossBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MossBridge.swift; sourceTree = "<group>"; };
+		MPF0000000000000000016 /* IndexManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexManager.swift; sourceTree = "<group>"; };
+		MPF0000000000000000017 /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
+		MPF0000000000000000018 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		MPF0000000000000000019 /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
+		MPF0000000000000000020 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
+		MPF0000000000000000021 /* moss_worker.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = moss_worker.py; sourceTree = "<group>"; };
+		MPF0000000000000000022 /* config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = config.json; sourceTree = "<group>"; };
+		MPF0000000000000000023 /* capvolt-sticker.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = capvolt-sticker.png; sourceTree = "<group>"; };
+		MPF0000000000000000024 /* capvolt-sticker.webp */ = {isa = PBXFileReference; lastKnownFileType = file; path = capvolt-sticker.webp; sourceTree = "<group>"; };
+		MPF0000000000000000025 /* CapvoltSticker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapvoltSticker.swift; sourceTree = "<group>"; };
+		MPF0000000000000000026 /* DotEnvLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotEnvLoader.swift; sourceTree = "<group>"; };
+		MPF0000000000000000027 /* FloatingPetWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingPetWindowController.swift; sourceTree = "<group>"; };
+		MPF0000000000000000028 /* SearchOverlayPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOverlayPresentation.swift; sourceTree = "<group>"; };
+		MPF0000000000000000030 /* IndexScope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexScope.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		MP0000000000000001300000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		MP00000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				MP00000000000000000010 /* MossPikachu */,
+				MP00000000000000000020 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		MP00000000000000000010 /* MossPikachu */ = {
+			isa = PBXGroup;
+			children = (
+				MPF0000000000000000001 /* MossPikachuApp.swift */,
+				MPF0000000000000000002 /* AppDelegate.swift */,
+				MPG0000000000000000001 /* Views */,
+				MPG0000000000000000002 /* Models */,
+				MPG0000000000000000003 /* Services */,
+				MPG0000000000000000004 /* Resources */,
+			);
+			path = MossPikachu;
+			sourceTree = "<group>";
+		};
+		MP00000000000000000020 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				MP00000000000000000120 /* MossPikachu.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		MPG0000000000000000001 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				MPF0000000000000000003 /* SearchOverlayController.swift */,
+				MPF0000000000000000004 /* SearchOverlayView.swift */,
+				MPF0000000000000000005 /* ResultsListView.swift */,
+				MPF0000000000000000006 /* PikachuPetView.swift */,
+				MPF0000000000000000027 /* FloatingPetWindowController.swift */,
+				MPF0000000000000000028 /* SearchOverlayPresentation.swift */,
+				MPF0000000000000000007 /* SettingsView.swift */,
+				MPF0000000000000000008 /* SettingsWindowController.swift */,
+				MPF0000000000000000009 /* KeyEventHandler.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		MPG0000000000000000002 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				MPF0000000000000000010 /* SearchResult.swift */,
+				MPF0000000000000000011 /* PetState.swift */,
+				MPF0000000000000000012 /* FileSystemEvent.swift */,
+				MPF0000000000000000013 /* UserSettings.swift */,
+				MPF0000000000000000030 /* IndexScope.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		MPG0000000000000000003 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				MPF0000000000000000014 /* FileMonitor.swift */,
+				MPF0000000000000000015 /* MossBridge.swift */,
+				MPF0000000000000000016 /* IndexManager.swift */,
+				MPF0000000000000000017 /* SearchService.swift */,
+				MPF0000000000000000018 /* NotificationManager.swift */,
+				MPF0000000000000000019 /* HotKeyManager.swift */,
+				MPF0000000000000000020 /* AppLogger.swift */,
+				MPF0000000000000000025 /* CapvoltSticker.swift */,
+				MPF0000000000000000026 /* DotEnvLoader.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		MPG0000000000000000004 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				MPF0000000000000000021 /* moss_worker.py */,
+				MPF0000000000000000022 /* config.json */,
+				MPF0000000000000000023 /* capvolt-sticker.png */,
+				MPF0000000000000000024 /* capvolt-sticker.webp */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		MP00000000000000010000 /* MossPikachu */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = MP0000000000000001100000 /* Build configuration list for PBXNativeTarget "MossPikachu" */;
+			buildPhases = (
+				MP0000000000000001200000 /* Sources */,
+				MP0000000000000001300000 /* Frameworks */,
+				MP0000000000000001400000 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MossPikachu;
+			productName = MossPikachu;
+			productReference = MP00000000000000000120 /* MossPikachu.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		MP00000000000000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					MP00000000000000010000 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+				};
+			};
+			buildConfigurationList = MP0000000000000000100000 /* Build configuration list for PBXProject "MossPikachu" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = MP00000000000000000001;
+			productRefGroup = MP00000000000000000020 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				MP00000000000000010000 /* MossPikachu */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		MP0000000000000001400000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				MPB0000000000000000021 /* moss_worker.py in Resources */,
+				MPB0000000000000000022 /* config.json in Resources */,
+				MPB0000000000000000023 /* capvolt-sticker.png in Resources */,
+				MPB0000000000000000024 /* capvolt-sticker.webp in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		MP0000000000000001200000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				MPB0000000000000000001 /* MossPikachuApp.swift in Sources */,
+				MPB0000000000000000002 /* AppDelegate.swift in Sources */,
+				MPB0000000000000000003 /* SearchOverlayController.swift in Sources */,
+				MPB0000000000000000004 /* SearchOverlayView.swift in Sources */,
+				MPB0000000000000000005 /* ResultsListView.swift in Sources */,
+				MPB0000000000000000006 /* PikachuPetView.swift in Sources */,
+				MPB0000000000000000007 /* SettingsView.swift in Sources */,
+				MPB0000000000000000008 /* SettingsWindowController.swift in Sources */,
+				MPB0000000000000000009 /* KeyEventHandler.swift in Sources */,
+				MPB0000000000000000010 /* SearchResult.swift in Sources */,
+				MPB0000000000000000011 /* PetState.swift in Sources */,
+				MPB0000000000000000012 /* FileSystemEvent.swift in Sources */,
+				MPB0000000000000000013 /* UserSettings.swift in Sources */,
+				MPB0000000000000000014 /* FileMonitor.swift in Sources */,
+				MPB0000000000000000015 /* MossBridge.swift in Sources */,
+				MPB0000000000000000016 /* IndexManager.swift in Sources */,
+				MPB0000000000000000017 /* SearchService.swift in Sources */,
+				MPB0000000000000000018 /* NotificationManager.swift in Sources */,
+				MPB0000000000000000019 /* HotKeyManager.swift in Sources */,
+				MPB0000000000000000020 /* AppLogger.swift in Sources */,
+				MPB0000000000000000025 /* CapvoltSticker.swift in Sources */,
+				MPB0000000000000000026 /* DotEnvLoader.swift in Sources */,
+				MPB0000000000000000027 /* FloatingPetWindowController.swift in Sources */,
+				MPB0000000000000000028 /* SearchOverlayPresentation.swift in Sources */,
+				MPB0000000000000000030 /* IndexScope.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		MP0000000000000000110000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		MP0000000000000000120000 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		MP0000000000000001110000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Moss Pikachu.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.moss.pikachu;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		MP0000000000000001120000 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Moss Pikachu.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.moss.pikachu;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		MP0000000000000000100000 /* Build configuration list for PBXProject "MossPikachu" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				MP0000000000000000110000 /* Debug */,
+				MP0000000000000000120000 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		MP0000000000000001100000 /* Build configuration list for PBXNativeTarget "MossPikachu" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				MP0000000000000001110000 /* Debug */,
+				MP0000000000000001120000 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = MP00000000000000000000 /* Project object */;
+}
