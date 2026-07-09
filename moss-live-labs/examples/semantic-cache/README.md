@@ -52,7 +52,7 @@ you answer questions people didn't quite ask; too high and you miss obvious matc
 ```bash
 uv sync                       # or: pip install moss openai python-dotenv
 cp .env.example .env          # fill in your keys
-python semantic_cache.py
+uv run python semantic_cache.py   # runs inside the project venv (plain `python` if you used pip)
 ```
 
 Expected: the first question is a `MISS` (calls the model), the paraphrased
