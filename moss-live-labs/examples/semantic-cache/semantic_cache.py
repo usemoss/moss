@@ -83,28 +83,29 @@ async def main():
     _require("OPENAI_API_KEY")  # read by AsyncOpenAI from the environment
 
     moss = MossClient(project_id=project_id, project_key=project_key)
-    llm = AsyncOpenAI()
 
-    # A Moss session is the cache store. We use a unique name per run so the demo
-    # always starts empty and shows a clean MISS -> HIT (a session auto-loads an
-    # existing cloud index of the same name, which would otherwise make the first
-    # question a HIT). In production, use a stable name and call
-    # `await store.push_index()` to persist the cache across runs and processes.
-    store = await moss.session(index_name=f"qa-cache-demo-{uuid.uuid4().hex[:8]}")
-    cache = SemanticCache(store, llm)
+    # AsyncOpenAI owns an HTTP client; the context manager closes it on exit.
+    async with AsyncOpenAI() as llm:
+        # A Moss session is the cache store. We use a unique name per run so the demo
+        # always starts empty and shows a clean MISS -> HIT (a session auto-loads an
+        # existing cloud index of the same name, which would otherwise make the first
+        # question a HIT). In production, use a stable name and call
+        # `await store.push_index()` to persist the cache across runs and processes.
+        store = await moss.session(index_name=f"qa-cache-demo-{uuid.uuid4().hex[:8]}")
+        cache = SemanticCache(store, llm)
 
-    # the 2nd question means the same as the 1st, phrased differently -> cache hit
-    questions = [
-        "What are your opening hours?",
-        "when do you open?",
-        "How do I reset my password?",
-    ]
-    for q in questions:
-        t = time.perf_counter()
-        answer, hit = await cache.ask(q)
-        ms = (time.perf_counter() - t) * 1000
-        tag = "HIT " if hit else "MISS"
-        print(f"[{tag} {ms:7.1f} ms]  {q}\n   -> {answer.strip()[:90]}\n")
+        # the 2nd question means the same as the 1st, phrased differently -> cache hit
+        questions = [
+            "What are your opening hours?",
+            "when do you open?",
+            "How do I reset my password?",
+        ]
+        for q in questions:
+            t = time.perf_counter()
+            answer, hit = await cache.ask(q)
+            ms = (time.perf_counter() - t) * 1000
+            tag = "HIT " if hit else "MISS"
+            print(f"[{tag} {ms:7.1f} ms]  {q}\n   -> {answer.strip()[:90]}\n")
 
 
 if __name__ == "__main__":

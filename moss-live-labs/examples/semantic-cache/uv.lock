@@ -262,7 +262,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "moss", specifier = ">=1.1.1" },
+    { name = "moss", specifier = ">=1.7.1" },
     { name = "openai", specifier = ">=1.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
 ]
