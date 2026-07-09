@@ -14,6 +14,7 @@ import asyncio
 import os
 import sys
 import time
+import uuid
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
@@ -35,7 +36,7 @@ MOSS_PROJECT_ID = _require("MOSS_PROJECT_ID")
 MOSS_PROJECT_KEY = _require("MOSS_PROJECT_KEY")
 _require("OPENAI_API_KEY")  # read by AsyncOpenAI from the environment
 
-# cosine similarity above which a cached answer is "close enough" to reuse.
+# semantic similarity above which a cached answer is "close enough" to reuse.
 # too low -> you answer questions people didn't quite ask; too high -> you miss.
 THRESHOLD = 0.92
 
@@ -50,10 +51,12 @@ class SemanticCache:
         self.store = store
 
     async def ask(self, question: str) -> tuple[str, bool]:
-        # 1. look for the closest question we've already answered
-        hit = await self.store.query(question, QueryOptions(top_k=1))
+        # 1. look for the closest question we've already answered.
+        #    alpha=1.0 -> pure semantic (embedding) match, so the score reflects
+        #    meaning rather than keyword overlap.
+        hit = await self.store.query(question, QueryOptions(top_k=1, alpha=1.0))
         if hit.docs and hit.docs[0].score >= THRESHOLD:
-            answer = hit.docs[0].metadata.get("answer")
+            answer = (hit.docs[0].metadata or {}).get("answer")
             if answer is not None:
                 return answer, True  # cache hit — no LLM call
 
@@ -62,7 +65,7 @@ class SemanticCache:
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": question}],
         )
-        answer = resp.choices[0].message.content
+        answer = resp.choices[0].message.content or ""
 
         # 3. remember it so any wording of it is instant next time
         await self.store.add_docs(
@@ -72,12 +75,12 @@ class SemanticCache:
 
 
 async def main():
-    # A Moss session is the cache store. It holds the entries in memory for this
-    # run, so the demo is deterministic: the first question is a MISS and its
-    # paraphrase is a HIT. To make the cache persist across runs and processes,
-    # call `await store.push_index()` to upload it as a cloud index (it will then
-    # auto-load by name on the next run).
-    store = await moss.session(index_name="qa-cache")
+    # A Moss session is the cache store. We use a unique name per run so the demo
+    # always starts empty and shows a clean MISS -> HIT (a session auto-loads an
+    # existing cloud index of the same name, which would otherwise make the first
+    # question a HIT). In production, use a stable name and call
+    # `await store.push_index()` to persist the cache across runs and processes.
+    store = await moss.session(index_name=f"qa-cache-demo-{uuid.uuid4().hex[:8]}")
     cache = SemanticCache(store)
 
     # the 2nd question means the same as the 1st, phrased differently -> cache hit
