@@ -27,7 +27,7 @@ prints timing):
 
 ```python
 async def ask(self, question):
-    hit = await self.store.query(question, QueryOptions(top_k=1))
+    hit = await self.store.query(question, QueryOptions(top_k=1, alpha=1.0))  # pure semantic
     if hit.docs and hit.docs[0].score >= THRESHOLD:   # close enough in meaning?
         return hit.docs[0].metadata["answer"]           # cache hit — no LLM call
     answer = await call_the_model(question)             # miss — ask once
@@ -38,8 +38,8 @@ async def ask(self, question):
 
 Moss keys the cache on the question's embedding and serves the nearest match
 in <10 ms locally, so the lookup is far cheaper than the model call it avoids.
-The one knob that matters is `THRESHOLD` (cosine similarity): too low and you
-answer questions people didn't quite ask; too high and you miss obvious matches.
+The one knob that matters is `THRESHOLD` (the similarity score, 0-1): too low and
+you answer questions people didn't quite ask; too high and you miss obvious matches.
 
 ## What you need
 
