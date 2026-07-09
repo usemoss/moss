@@ -28,8 +28,8 @@ prints timing):
 ```python
 async def ask(self, question):
     hit = await self.store.query(question, QueryOptions(top_k=1, alpha=1.0))  # pure semantic
-    if hit.docs and hit.docs[0].score >= THRESHOLD:   # close enough in meaning?
-        return hit.docs[0].metadata["answer"]           # cache hit — no LLM call
+    if hit.docs and hit.docs[0].score >= THRESHOLD:      # close enough in meaning?
+        return (hit.docs[0].metadata or {}).get("answer")  # cache hit — no LLM call
     answer = await call_the_model(question)             # miss — ask once
     await self.store.add_docs(
         [DocumentInfo(id=question, text=question, metadata={"answer": answer})])

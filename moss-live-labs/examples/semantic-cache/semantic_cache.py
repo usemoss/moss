@@ -21,34 +21,28 @@ from openai import AsyncOpenAI
 
 from moss import MossClient, DocumentInfo, QueryOptions
 
-load_dotenv()
-
-
-def _require(name: str) -> str:
-    value = os.getenv(name)
-    if not value:
-        sys.exit(f"Missing {name}. Copy .env.example to .env and fill in your keys.")
-    return value
-
-
-# fail fast with a clear message if credentials are missing
-MOSS_PROJECT_ID = _require("MOSS_PROJECT_ID")
-MOSS_PROJECT_KEY = _require("MOSS_PROJECT_KEY")
-_require("OPENAI_API_KEY")  # read by AsyncOpenAI from the environment
-
 # semantic similarity above which a cached answer is "close enough" to reuse.
 # too low -> you answer questions people didn't quite ask; too high -> you miss.
 THRESHOLD = 0.92
 
-moss = MossClient(project_id=MOSS_PROJECT_ID, project_key=MOSS_PROJECT_KEY)
-llm = AsyncOpenAI()
-
 
 class SemanticCache:
-    """A small store of past questions -> answers, looked up by meaning."""
+    """A small store of past questions -> answers, looked up by meaning.
 
-    def __init__(self, store):
+    `store` is any Moss index/session with query/add_docs; `llm` is an AsyncOpenAI
+    client. Both are injected so this class stays reusable and free of import-time
+    side effects.
+
+    Note: entries here are keyed by question meaning only. A production cache
+    should also scope by tenant / user / model / prompt version (e.g. a separate
+    index per scope, or a metadata filter) so answers aren't replayed across
+    contexts that merely phrase things similarly.
+    """
+
+    def __init__(self, store, llm, model: str = "gpt-4o-mini"):
         self.store = store
+        self.llm = llm
+        self.model = model
 
     async def ask(self, question: str) -> tuple[str, bool]:
         # 1. look for the closest question we've already answered.
@@ -61,8 +55,8 @@ class SemanticCache:
                 return answer, True  # cache hit — no LLM call
 
         # 2. miss: ask the model once
-        resp = await llm.chat.completions.create(
-            model="gpt-4o-mini",
+        resp = await self.llm.chat.completions.create(
+            model=self.model,
             messages=[{"role": "user", "content": question}],
         )
         answer = resp.choices[0].message.content or ""
@@ -74,14 +68,30 @@ class SemanticCache:
         return answer, False
 
 
+def _require(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        sys.exit(f"Missing {name}. Copy .env.example to .env and fill in your keys.")
+    return value
+
+
 async def main():
+    load_dotenv()
+    # fail fast with a clear message if credentials are missing
+    project_id = _require("MOSS_PROJECT_ID")
+    project_key = _require("MOSS_PROJECT_KEY")
+    _require("OPENAI_API_KEY")  # read by AsyncOpenAI from the environment
+
+    moss = MossClient(project_id=project_id, project_key=project_key)
+    llm = AsyncOpenAI()
+
     # A Moss session is the cache store. We use a unique name per run so the demo
     # always starts empty and shows a clean MISS -> HIT (a session auto-loads an
     # existing cloud index of the same name, which would otherwise make the first
     # question a HIT). In production, use a stable name and call
     # `await store.push_index()` to persist the cache across runs and processes.
     store = await moss.session(index_name=f"qa-cache-demo-{uuid.uuid4().hex[:8]}")
-    cache = SemanticCache(store)
+    cache = SemanticCache(store, llm)
 
     # the 2nd question means the same as the 1st, phrased differently -> cache hit
     questions = [
