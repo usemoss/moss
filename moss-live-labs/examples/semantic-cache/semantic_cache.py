@@ -33,14 +33,14 @@ llm = AsyncOpenAI()
 
 
 class SemanticCache:
-    """A tiny vector index of past questions -> answers, queried by meaning."""
+    """A tiny store of past questions -> answers, looked up by meaning."""
 
-    def __init__(self, index):
-        self.index = index
+    def __init__(self, store):
+        self.store = store
 
     async def ask(self, question: str) -> tuple[str, bool]:
         # 1. look for the closest question we've already answered
-        hit = await self.index.query(question, QueryOptions(top_k=1))
+        hit = await self.store.query(question, QueryOptions(top_k=1))
         if hit.docs and hit.docs[0].score >= THRESHOLD:
             return hit.docs[0].metadata["answer"], True  # cache hit — no LLM call
 
@@ -52,16 +52,16 @@ class SemanticCache:
         answer = resp.choices[0].message.content
 
         # 3. remember it so any wording of it is instant next time
-        await self.index.add_docs(
+        await self.store.add_docs(
             [DocumentInfo(id=question, text=question, metadata={"answer": answer})]
         )
         return answer, False
 
 
 async def main():
-    # a fresh in-memory session index acts as the cache for this run
-    index = await moss.session("qa-cache")
-    cache = SemanticCache(index)
+    # a fresh in-memory session acts as the cache store for this run
+    store = await moss.session("qa-cache")
+    cache = SemanticCache(store)
 
     # the 2nd question means the same as the 1st, phrased differently -> cache hit
     questions = [
