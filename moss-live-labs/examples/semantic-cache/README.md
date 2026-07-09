@@ -21,7 +21,9 @@ Repeat questions come back in single-digit-millisecond retrieval, on-device.
 
 ## How it works
 
-The whole thing is `SemanticCache` in [`semantic_cache.py`](./semantic_cache.py):
+Here's the idea, simplified (the runnable `ask()` in
+[`semantic_cache.py`](./semantic_cache.py) also returns whether it was a hit and
+prints timing):
 
 ```python
 async def ask(self, question):

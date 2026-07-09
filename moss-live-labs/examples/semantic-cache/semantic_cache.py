@@ -6,12 +6,13 @@ model twice. A *semantic* cache keys on meaning: embed the question, look up the
 nearest one you've already answered, and if it's close enough, return the stored
 answer without calling the model.
 
-The whole thing is the SemanticCache class below. The one knob that matters is
-the similarity threshold.
+The core is the SemanticCache class below (the `ask` method is the whole idea).
+The one knob that matters is the similarity threshold.
 """
 
 import asyncio
 import os
+import sys
 import time
 
 from dotenv import load_dotenv
@@ -21,19 +22,29 @@ from moss import MossClient, DocumentInfo, QueryOptions
 
 load_dotenv()
 
+
+def _require(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        sys.exit(f"Missing {name}. Copy .env.example to .env and fill in your keys.")
+    return value
+
+
+# fail fast with a clear message if credentials are missing
+MOSS_PROJECT_ID = _require("MOSS_PROJECT_ID")
+MOSS_PROJECT_KEY = _require("MOSS_PROJECT_KEY")
+_require("OPENAI_API_KEY")  # read by AsyncOpenAI from the environment
+
 # cosine similarity above which a cached answer is "close enough" to reuse.
 # too low -> you answer questions people didn't quite ask; too high -> you miss.
 THRESHOLD = 0.92
 
-moss = MossClient(
-    project_id=os.getenv("MOSS_PROJECT_ID"),
-    project_key=os.getenv("MOSS_PROJECT_KEY"),
-)
+moss = MossClient(project_id=MOSS_PROJECT_ID, project_key=MOSS_PROJECT_KEY)
 llm = AsyncOpenAI()
 
 
 class SemanticCache:
-    """A tiny store of past questions -> answers, looked up by meaning."""
+    """A small store of past questions -> answers, looked up by meaning."""
 
     def __init__(self, store):
         self.store = store
@@ -42,7 +53,9 @@ class SemanticCache:
         # 1. look for the closest question we've already answered
         hit = await self.store.query(question, QueryOptions(top_k=1))
         if hit.docs and hit.docs[0].score >= THRESHOLD:
-            return hit.docs[0].metadata["answer"], True  # cache hit — no LLM call
+            answer = hit.docs[0].metadata.get("answer")
+            if answer is not None:
+                return answer, True  # cache hit — no LLM call
 
         # 2. miss: ask the model once
         resp = await llm.chat.completions.create(
@@ -59,8 +72,12 @@ class SemanticCache:
 
 
 async def main():
-    # a fresh in-memory session acts as the cache store for this run
-    store = await moss.session("qa-cache")
+    # A Moss session is the cache store. It holds the entries in memory for this
+    # run, so the demo is deterministic: the first question is a MISS and its
+    # paraphrase is a HIT. To make the cache persist across runs and processes,
+    # call `await store.push_index()` to upload it as a cloud index (it will then
+    # auto-load by name on the next run).
+    store = await moss.session(index_name="qa-cache")
     cache = SemanticCache(store)
 
     # the 2nd question means the same as the 1st, phrased differently -> cache hit
