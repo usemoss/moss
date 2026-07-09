@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720">
+  <defs>
+    <linearGradient id="aluminum" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2c2c2e"/>
+      <stop offset="6%" stop-color="#252527"/>
+      <stop offset="50%" stop-color="#1d1d1f"/>
+      <stop offset="94%" stop-color="#18181a"/>
+      <stop offset="100%" stop-color="#141416"/>
+    </linearGradient>
+    <linearGradient id="aluminumDark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a1c"/>
+      <stop offset="40%" stop-color="#121214"/>
+      <stop offset="100%" stop-color="#0d0d0f"/>
+    </linearGradient>
+    <linearGradient id="keyboard" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2a2a2c"/>
+      <stop offset="100%" stop-color="#141416"/>
+    </linearGradient>
+    <linearGradient id="trackpad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a3a3c"/>
+      <stop offset="100%" stop-color="#2c2c2e"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <mask id="screenHole">
+      <rect width="960" height="720" fill="white"/>
+      <rect x="30" y="26" width="900" height="562" rx="8" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Full frame with screen cutout -->
+  <g mask="url(#screenHole)" filter="url(#shadow)">
+    <!-- Lid / bezel assembly -->
+    <rect x="8" y="4" width="944" height="592" rx="18" fill="url(#aluminum)"/>
+    <rect x="18" y="14" width="924" height="572" rx="12" fill="#3a3a3c" opacity="0.08"/>
+
+    <!-- Inner bezel ring -->
+    <rect x="22" y="20" width="916" height="570" rx="10" fill="none" stroke="#3a3a3c" stroke-width="2" opacity="0.25"/>
+
+    <!-- Notch -->
+    <path d="M 405 4 Q 405 4 405 18 L 420 18 Q 480 18 480 26 L 480 26 Q 480 18 540 18 L 555 4 Q 555 4 480 4 Z" fill="#0a0a0a"/>
+    <rect x="405" y="4" width="150" height="22" rx="0 0 10 10" fill="#0a0a0a"/>
+    <circle cx="480" cy="14" r="3.5" fill="#1a2a2a"/>
+
+    <!-- Hinge shadow -->
+    <rect x="20" y="588" width="920" height="6" fill="#0a0a0a" opacity="0.6"/>
+
+    <!-- Keyboard deck -->
+    <rect x="0" y="594" width="960" height="100" rx="0 0 14 14" fill="url(#aluminumDark)"/>
+    <rect x="48" y="606" width="864" height="8" rx="3" fill="#1a1a1c" opacity="0.15"/>
+
+    <!-- Keyboard well -->
+    <rect x="120" y="618" width="720" height="36" rx="6" fill="url(#keyboard)"/>
+    <!-- Key row hints -->
+    <g opacity="0.25" fill="#3a3a3d">
+      <rect x="140" y="626" width="28" height="8" rx="2"/>
+      <rect x="174" y="626" width="28" height="8" rx="2"/>
+      <rect x="208" y="626" width="28" height="8" rx="2"/>
+      <rect x="242" y="626" width="28" height="8" rx="2"/>
+      <rect x="276" y="626" width="28" height="8" rx="2"/>
+      <rect x="310" y="626" width="28" height="8" rx="2"/>
+      <rect x="344" y="626" width="28" height="8" rx="2"/>
+      <rect x="378" y="626" width="28" height="8" rx="2"/>
+      <rect x="412" y="626" width="28" height="8" rx="2"/>
+      <rect x="446" y="626" width="28" height="8" rx="2"/>
+      <rect x="480" y="626" width="28" height="8" rx="2"/>
+      <rect x="514" y="626" width="28" height="8" rx="2"/>
+      <rect x="548" y="626" width="28" height="8" rx="2"/>
+      <rect x="582" y="626" width="28" height="8" rx="2"/>
+      <rect x="616" y="626" width="28" height="8" rx="2"/>
+      <rect x="650" y="626" width="28" height="8" rx="2"/>
+      <rect x="684" y="626" width="28" height="8" rx="2"/>
+      <rect x="718" y="626" width="28" height="8" rx="2"/>
+      <rect x="752" y="626" width="28" height="8" rx="2"/>
+      <rect x="786" y="626" width="28" height="8" rx="2"/>
+    </g>
+
+    <!-- Trackpad -->
+    <rect x="360" y="660" width="240" height="44" rx="8" fill="url(#trackpad)"/>
+    <rect x="362" y="662" width="236" height="40" rx="7" fill="none" stroke="#000" stroke-width="0.5" opacity="0.08"/>
+
+    <!-- Front lip -->
+    <rect x="80" y="694" width="800" height="18" rx="0 0 16 16" fill="#0a0a0a"/>
+    <rect x="400" y="694" width="160" height="6" rx="0 0 6 6" fill="#000" opacity="0.2"/>
+
+    <!-- Speaker grilles -->
+    <g opacity="0.35" fill="#1a1a1c">
+      <rect x="60" y="622" width="48" height="28" rx="4"/>
+      <rect x="852" y="622" width="48" height="28" rx="4"/>
+    </g>
+  </g>
+
+  <!-- Glass reflection on bezel (does not cover screen hole) -->
+  <g mask="url(#screenHole)" opacity="0.15">
+    <path d="M 30 30 L 400 30 L 200 300 L 30 200 Z" fill="#3a3a3c"/>
+  </g>
+</svg>
