@@ -80,7 +80,7 @@ class MossSemanticRetrievalAgent(Agent):
         }
         try:
             await self.room.local_participant.publish_data(
-                json.dumps(payload).encode("utf-8"),
+                payload=json.dumps(payload).encode("utf-8"),
                 reliable=True,
                 topic="moss.retrieval",
             )
@@ -92,6 +92,10 @@ class MossSemanticRetrievalAgent(Agent):
         Intercept user message -> Search Moss -> Inject Context -> Continue
         """
         user_query = new_message.text_content
+        if not user_query or not user_query.strip():
+            # ignore empty/interim transcription artifacts
+            await super().on_user_turn_completed(turn_ctx, new_message)
+            return
         logger.info(f"User asked: {user_query}")
 
         try:
@@ -127,18 +131,26 @@ class MossSemanticRetrievalAgent(Agent):
 
 
 async def entrypoint(ctx: JobContext):
+    if not MOSS_PROJECT_ID or not MOSS_PROJECT_KEY:
+        raise SystemExit(
+            "Missing MOSS_PROJECT_ID / MOSS_PROJECT_KEY. Copy .env.example to .env and fill them in."
+        )
     await ctx.connect()
 
     # Initialize Moss
     moss_client = MossClient(project_id=MOSS_PROJECT_ID, project_key=MOSS_PROJECT_KEY)
-    
-    # Pre-load index
+
+    # Pre-load the index locally. This is required: region metadata filtering is
+    # only applied to locally loaded indexes (a cloud-fallback query silently
+    # ignores the filter), so a failed load must be fatal rather than a warning.
     try:
         await moss_client.load_index(INDEX_NAME)
         logger.info(f"Successfully loaded index: {INDEX_NAME}")
     except Exception as e:
-        logger.warning(f"Index not found or failed to load: {e}")
-        logger.warning("Moss queries will fail until the index is created. Run seed_index.py first.")
+        raise SystemExit(
+            f"Failed to load index '{INDEX_NAME}': {e}. Run seed_index.py first "
+            "(region metadata filtering needs the index loaded locally)."
+        )
 
     # Create Session
     session = AgentSession(

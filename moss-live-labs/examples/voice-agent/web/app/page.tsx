@@ -5,7 +5,7 @@ import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { AgentSide } from "@/components/AgentSide";
 import { RetrievalPanel } from "@/components/RetrievalPanel";
 
-type Conn = { serverUrl: string; participantToken: string };
+type Conn = { serverUrl: string; roomName: string; participantToken: string };
 
 export default function Page() {
   const [conn, setConn] = useState<Conn | null>(null);
