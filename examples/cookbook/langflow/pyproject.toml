@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langflow-moss"
+version = "0.1.0"
+description = "Langflow custom component for Moss semantic search"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "BSD-2-Clause" }
+authors = [
+    { name = "InferEdge Inc.", email = "contact@moss.dev" }
+]
+dependencies = [
+    "langflow>=1.10.0",
+    "moss>=1.1.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["moss_langflow.py"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "README.md",
+    "moss_langflow.py",
+]
