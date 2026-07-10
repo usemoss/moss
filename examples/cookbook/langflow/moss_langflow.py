@@ -182,12 +182,21 @@ class MossRetrieverComponent(Component):
     def retrieve(self) -> list[Data]:
         """Execute a Moss semantic search and return Data objects."""
         pid, pkey = self._resolve_credentials()
-        client = MossClient(pid, pkey)
+
+        # Cache the client + loaded index for repeated calls on the same component instance.
+        if getattr(self, "_moss_creds", None) != (pid, pkey):
+            self._moss_client = MossClient(pid, pkey)
+            self._moss_loaded_index = None
+            self._moss_creds = (pid, pkey)
+
+        client = self._moss_client
 
         filter_dict = _parse_filter(self.metadata_filter or "")
 
         async def _search() -> list[Data]:
-            await client.load_index(self.index_name)
+            if getattr(self, "_moss_loaded_index", None) != self.index_name:
+                await client.load_index(self.index_name)
+                self._moss_loaded_index = self.index_name
             opts = QueryOptions(
                 top_k=self.top_k,
                 alpha=self.alpha,
