@@ -11,7 +11,7 @@ export interface MossRetrievalOptions {
    */
   description?: string;
   /**
-   * Number of documents to retrieve. Defaults to 5.
+   * Number of documents to retrieve. Defaults to 3.
    */
   topK?: number;
   /**
