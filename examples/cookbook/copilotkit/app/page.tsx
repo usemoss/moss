@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
 import { useMossRetrieval } from "./use-moss-retrieval";
-import { Shield, Database, Activity, Search, Sparkles, AlertTriangle, Send } from "lucide-react";
+import { Shield, Activity, Search, Sparkles, AlertTriangle, Send } from "lucide-react";
 
 // Inner component to access the CopilotKit hook and handle dashboard logic
 function DashboardContent() {
