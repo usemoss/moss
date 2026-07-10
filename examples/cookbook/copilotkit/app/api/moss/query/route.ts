@@ -51,9 +51,13 @@ if (!isMockMode) {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get("query");
+    const query = (searchParams.get("query") ?? "").trim();
     const indexName = searchParams.get("indexName") || process.env.MOSS_INDEX_NAME;
-    const topK = parseInt(searchParams.get("topK") || "3", 10);
+    const topKRaw = searchParams.get("topK");
+    const parsedTopK = Number.parseInt(topKRaw ?? "3", 10);
+    const topK = Number.isFinite(parsedTopK)
+      ? Math.min(Math.max(parsedTopK, 1), 20)
+      : 3;
 
     if (!query) {
       return NextResponse.json({ error: "Missing query parameter" }, { status: 400 });
@@ -61,7 +65,7 @@ export async function GET(request: Request) {
 
     // MOCK MODE FALLBACK
     if (isMockMode || !mossClient) {
-      console.log(`[MOCK MODE] Searching for query: "${query}"`);
+      console.log(`[MOCK MODE] Searching (topK=${topK})`);
       
       // Perform a simple case-insensitive keyword match score simulation
       const queryWords = query.toLowerCase().split(/\s+/);
@@ -92,7 +96,9 @@ export async function GET(request: Request) {
       return NextResponse.json({
         docs: results,
         mode: "mock",
-        warning: "Running in mock mode. Add MOSS_PROJECT_ID and MOSS_PROJECT_KEY to your environment variables to query real indexes."
+        warning: isMockMode
+          ? "Running in mock mode. Add MOSS_PROJECT_ID and MOSS_PROJECT_KEY to your environment variables to query real indexes."
+          : "Moss credentials were provided, but MossClient failed to initialize. Check server logs and native bindings."
       });
     }
 
@@ -103,7 +109,7 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-    console.log(`[REAL MODE] Querying Moss index "${indexName}" for: "${query}"`);
+    console.log(`[REAL MODE] Querying Moss index "${indexName}" (topK=${topK})`);
     const results = await mossClient.query(indexName, query, { topK });
 
     return NextResponse.json({

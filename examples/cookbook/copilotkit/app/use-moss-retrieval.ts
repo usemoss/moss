@@ -60,7 +60,7 @@ export function useMossRetrieval(options: MossRetrievalOptions = {}) {
       // 2. If it needs internal knowledge to answer, it triggers this "searchKnowledgeBase" action.
       // 3. The handler executes in the browser (client-side), ensuring the user interface stays responsive.
       // 4. To keep our sensitive Moss API keys secure, the client calls our Next.js API route (`/api/moss/query`).
-      // 5. The API route queries Moss Cloud or local runtime, returning matching documents with confidence scores.
+      // 5. The API route queries Moss Cloud and returns matching documents with confidence scores.
       // 6. The handler receives the results and returns them to CopilotKit.
       // 7. CopilotKit feeds these retrieved documents into the LLM context, allowing it to generate a grounded, accurate response.
 

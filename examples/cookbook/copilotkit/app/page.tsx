@@ -93,12 +93,16 @@ function DashboardContent() {
         <div className="badge-container">
           <span className="badge badge-active">Integration Cookbook</span>
           <span className={`badge ${checkStatus.mode === 'real' ? 'badge-active' : ''}`}>
-            {checkStatus.mode === "real" ? "Connected to Moss Cloud" : "Running in Mock Mode"}
+            {checkStatus.mode === "unknown"
+              ? "Checking backend status..."
+              : checkStatus.mode === "real"
+              ? "Connected to Moss Cloud"
+              : "Running in Mock Mode"}
           </span>
         </div>
         <h1 className="title">Moss + CopilotKit</h1>
         <p className="subtitle">
-          Ground CopilotKit in-app AI agents with Moss's sub-10ms semantic search runtime to answer user questions using internal knowledge.
+          Ground CopilotKit in-app AI agents with Moss&apos;s sub-10ms semantic search runtime to answer user questions using internal knowledge.
         </p>
       </header>
 
@@ -129,7 +133,7 @@ function DashboardContent() {
               }}>
                 <AlertTriangle size={18} style={{ flexShrink: 0 }} />
                 <div>
-                  <strong>Running in Mock Mode.</strong> Mock documents (Refund Policy, Office Hours, Support Contact, Moss Info) will be searched client-side. Add your credentials to <code>.env</code> to test real indexes.
+                  <strong>Running in Mock Mode.</strong> Mock documents (Refund Policy, Office Hours, Support Contact, Moss Info) will be searched server-side via <code>/api/moss/query</code>. Add your credentials to <code>.env</code> to test real indexes.
                 </div>
               </div>
             )}
