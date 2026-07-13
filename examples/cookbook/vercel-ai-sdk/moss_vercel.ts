@@ -3,14 +3,7 @@ import { MossClient } from '@moss-dev/moss';
 import { mossSearchTool } from '@moss-tools/vercel-sdk';
 import { generateText, streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
+import { requireEnv } from './utils.js';
 
 async function main() {
   const client = new MossClient(
@@ -30,40 +23,41 @@ async function main() {
   const tools = {
     search: mossSearchTool({ client, indexName }),
   };
-  const systemPrompt =
-    'You are a helpful assistant. Always use the search tool to find relevant ' +
-    'context before answering, and cite what you find in your response.';
 
-  const question = process.argv[2] ?? 'What does this knowledge base cover?';
+const systemPrompt =
+  'You are a helpful assistant. Always use the search tool to find relevant ' +
+  'context before answering, and cite what you find in your response.';
+
+const question = process.argv[2] ?? 'What does this knowledge base cover?';
   console.log(`Q: ${question}\n`);
 
-  if (useGenerate) {
-    const { text } = await generateText({
-      model: openai(model),
-      tools,
-      system: systemPrompt,
-      prompt: question,
-      maxSteps: 3,
-    });
+if (useGenerate) {
+  const { text } = await generateText({
+    model: openai(model),
+    tools,
+    system: systemPrompt,
+    prompt: question,
+    maxSteps: 3,
+  });
 
-    console.log(`A: ${text}`);
-  } else {
-    // Default: stream the answer token-by-token as it's generated, retrieving
-    // grounded context from Moss along the way.
-    const result = streamText({
-      model: openai(model),
-      tools,
-      system: systemPrompt,
-      prompt: question,
-      maxSteps: 3,
-    });
+  console.log(`A: ${text}`);
+} else {
+  // Default: stream the answer token-by-token as it's generated, retrieving
+  // grounded context from Moss along the way.
+  const result = streamText({
+    model: openai(model),
+    tools,
+    system: systemPrompt,
+    prompt: question,
+    maxSteps: 3,
+  });
 
-    process.stdout.write('A: ');
-    for await (const chunk of result.textStream) {
-      process.stdout.write(chunk);
-    }
-    console.log();
+  process.stdout.write('A: ');
+  for await (const chunk of result.textStream) {
+    process.stdout.write(chunk);
   }
+  console.log();
+}
 }
 
 main().catch((err) => {
