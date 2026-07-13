@@ -7,76 +7,60 @@ tool wrappers.
 ## What this shows
 
 - Creating a `MossClient` and wrapping one of your indexes with `mossSearchTool`
-- - Handing that tool to `streamText` (token-by-token streaming, the default)
-  - or `generateText` (single-shot answer) so the model can retrieve context
-  - before replying
-  - - A script to seed a small sample index so the example runs end-to-end with
-    - no existing Moss data required
-    - - A small CLI script you can run with your own question as an argument
-     
-      - ## Prerequisites
-     
-      - - Node.js 18+
-        - - A Moss project (project id + project key). You do not need an existing
-          - index, the seed script below creates one for you.
-          - - An OpenAI API key
-           
-            - ## Install
-           
-            - ```bash
-              cd examples/cookbook/vercel-ai-sdk
-              npm install
-              ```
+- Handing that tool to `streamText` (token-by-token streaming, the default) or `generateText` (single-shot answer), so the model can retrieve context before replying
+- A script to seed a small sample index so the example runs end-to-end with no existing Moss data required
+- A small CLI script you can run with your own question as an argument
 
-              ## Configure
+## Prerequisites
 
-              Copy the example env file and fill in your own values:
+- Node.js 18+
+- A Moss project (project id + project key). You do not need an existing index; the seed script below creates one for you.
+- An OpenAI API key
 
-              ```bash
-              cp .env.example .env
-              ```
+## Install
 
-              | Variable | Description |
-              | --- | --- |
-              | `MOSS_PROJECT_ID` | Your Moss project id |
-              | `MOSS_PROJECT_KEY` | Your Moss project key |
-              | `MOSS_INDEX_NAME` | The index the search tool should query |
-              | `OPENAI_API_KEY` | Your OpenAI API key |
-              | `OPENAI_MODEL` | Optional, defaults to `gpt-4o-mini` |
-              | `GENERATE` | Optional, set to `true` to use `generateText` instead of the default `streamText` |
+    cd examples/cookbook/vercel-ai-sdk
+    npm install
+## Configure
 
-              ## Seed a sample index
+Copy the example env file and fill in your own values:
 
-              If you don't already have a Moss index to query, create one from the sample
-              support-doc snippets in `seed_data.ts`:
+    cp .env.example .env
 
-              ```bash
-              npm run seed
-              ```
+| Variable | Description |
+| --- | --- |
+| `MOSS_PROJECT_ID` | Your Moss project id |
+| `MOSS_PROJECT_KEY` | Your Moss project key |
+| `MOSS_INDEX_NAME` | The index the search tool should query |
+| `OPENAI_API_KEY` | Your OpenAI API key |
+| `OPENAI_MODEL` | Optional, defaults to `gpt-4o-mini` |
+| `GENERATE` | Optional, set to `true` to use `generateText` instead of the default `streamText` |
+## Seed a sample index
 
-              This creates (or replaces) the index named by `MOSS_INDEX_NAME` in your `.env`.
+If you don't already have a Moss index to query, create one from the sample
+support-doc snippets in `seed_data.ts`:
 
-              ## Run
+    npm run seed
 
-              ```bash
-              npm start -- "What is the refund policy?"
-              ```
+This deletes any existing index named by `MOSS_INDEX_NAME` in your `.env` and recreates it.
+## Run
 
-              By default this uses `streamText` and prints the answer incrementally as it's
-              generated. Set `GENERATE=true` in your `.env` to switch to a single-shot
-              `generateText` call instead.
+    npm start -- "What is the refund policy?"
 
-              ## How it works
+By default this uses `streamText` and prints the answer incrementally as it's
+generated. Set `GENERATE=true` in your `.env` to switch to a single-shot
+`generateText` call instead.
 
-              `moss_vercel.ts` prebinds the search tool to a single index name with
-              `mossSearchTool({ client, indexName })`, so the model only ever has to supply
-              a `query` (and optional `topK`) rather than choosing an index itself. The
-              system prompt instructs the model to always search before answering and to
-              cite what it finds, which keeps responses grounded in your own data instead
-              of the model's general knowledge.
+## How it works
 
-              ## Learn more
+`moss_vercel.ts` prebinds the search tool to a single index name with
+`mossSearchTool({ client, indexName })`, so the model only ever has to supply
+a `query` (and optional `topK`) rather than choosing an index itself. The
+system prompt instructs the model to always search before answering and to
+cite what it finds, which keeps responses grounded in your own data instead
+of the model's general knowledge.
 
-              - [`@moss-tools/vercel-sdk` package](../../../packages/vercel-sdk)
-              - - [Vercel AI SDK docs](https://sdk.vercel.ai/docs)
-                - 
+## Learn more
+
+- [`@moss-tools/vercel-sdk` package](../../../packages/vercel-sdk)
+- [Vercel AI SDK docs](https://sdk.vercel.ai/docs)

@@ -21,4 +21,4 @@ export const sampleDocs = [
     id: 'contact-support',
     text: 'Support is available 24/7 via live chat, or by emailing support@example.com.',
   },
-  ];
+];

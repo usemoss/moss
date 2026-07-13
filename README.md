@@ -150,7 +150,7 @@ examples/
     ├── mastra/              # Mastra retriever
     ├── pydantic-ai/         # Pydantic AI integration
     ├── daytona/             # Daytona sandbox example
-└── vercel-ai-sdk/       # Vercel AI SDK RAG agent example
+     └── vercel-ai-sdk/       # Vercel AI SDK RAG agent example
 
 apps/
 ├── next-js/                 # Next.js semantic search UI
