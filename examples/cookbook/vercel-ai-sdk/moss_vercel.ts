@@ -1,0 +1,67 @@
+import 'dotenv/config';
+import { MossClient } from '@moss-dev/moss';
+import { mossSearchTool } from '@moss-tools/vercel-sdk';
+import { generateText, streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+async function main() {
+  const client = new MossClient(
+    requireEnv('MOSS_PROJECT_ID'),
+    requireEnv('MOSS_PROJECT_KEY'),
+    );
+
+const indexName = requireEnv('MOSS_INDEX_NAME');
+  const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+  const useStreaming = process.env.STREAM === 'true';
+
+// Prebind the search tool to a single index, so the LLM only needs to
+// supply a query, not an index name.
+const tools = {
+  search: mossSearchTool({ client, indexName }),
+};
+
+const systemPrompt =
+  'You are a helpful assistant. Always use the search tool to find relevant ' +
+  'context before answering, and cite what you find in your response.';
+
+const question = process.argv[2] ?? 'What does this knowledge base cover?';
+  console.log(`Q: ${question}\n`);
+
+if (useStreaming) {
+  const result = streamText({
+    model: openai(model),
+    tools,
+    system: systemPrompt,
+    prompt: question,
+    maxSteps: 3,
+  });
+
+  for await (const chunk of result.textStream) {
+    process.stdout.write(chunk);
+  }
+  console.log();
+} else {
+  const { text } = await generateText({
+    model: openai(model),
+    tools,
+    system: systemPrompt,
+    prompt: question,
+    maxSteps: 3,
+  });
+
+  console.log(`A: ${text}`);
+}
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
