@@ -149,7 +149,8 @@ examples/
     ├── autogen/             # AutoGen integration
     ├── mastra/              # Mastra retriever
     ├── pydantic-ai/         # Pydantic AI integration
-    └── daytona/             # Daytona sandbox example
+    ├── daytona/             # Daytona sandbox example
+└── vercel-ai-sdk/       # Vercel AI SDK RAG agent example
 
 apps/
 ├── next-js/                 # Next.js semantic search UI
@@ -240,7 +241,7 @@ Full API reference: [docs.moss.dev](https://docs.moss.dev).
 | [Strands Agents](https://github.com/strands-agents/sdk-python) | Available | [`packages/strands-agents-moss/`](packages/strands-agents-moss/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
-| [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`packages/vercel-sdk/`](packages/vercel-sdk/) |
+| [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`examples/cookbook/vercel-ai-sdk/`](examples/cookbook/vercel-ai-sdk/) |
 
 ## Architecture
 
