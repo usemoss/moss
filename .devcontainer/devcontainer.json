@@ -1,0 +1,44 @@
+{
+  "name": "Moss development",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.23"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "golang.go"
+      ]
+    }
+  },
+  "postCreateCommand": "python -m pip install --upgrade pip && pip install -r examples/python/requirements.txt && npm ci && npm ci --prefix examples/javascript && go -C examples/go mod download",
+  "remoteEnv": {
+    "MOSS_PROJECT_ID": "${localEnv:MOSS_PROJECT_ID}",
+    "MOSS_PROJECT_KEY": "${localEnv:MOSS_PROJECT_KEY}"
+  },
+  "forwardPorts": [3000, 5173, 8000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Web app"
+    },
+    "5173": {
+      "label": "Vite dev server"
+    },
+    "8000": {
+      "label": "Python app"
+    }
+  },
+  "remoteUser": "vscode"
+}
+
