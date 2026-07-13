@@ -20,7 +20,10 @@ async function main() {
 
 const indexName = requireEnv('MOSS_INDEX_NAME');
   const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-  const useStreaming = process.env.STREAM === 'true';
+
+// Run "npm run seed" first to create this index with sample documents,
+// or point MOSS_INDEX_NAME at an index you already have.
+const useGenerate = process.env.GENERATE === 'true';
 
 // Prebind the search tool to a single index, so the LLM only needs to
 // supply a query, not an index name.
@@ -35,20 +38,7 @@ const systemPrompt =
 const question = process.argv[2] ?? 'What does this knowledge base cover?';
   console.log(`Q: ${question}\n`);
 
-if (useStreaming) {
-  const result = streamText({
-    model: openai(model),
-    tools,
-    system: systemPrompt,
-    prompt: question,
-    maxSteps: 3,
-  });
-
-  for await (const chunk of result.textStream) {
-    process.stdout.write(chunk);
-  }
-  console.log();
-} else {
+if (useGenerate) {
   const { text } = await generateText({
     model: openai(model),
     tools,
@@ -58,6 +48,22 @@ if (useStreaming) {
   });
 
   console.log(`A: ${text}`);
+} else {
+  // Default: stream the answer token-by-token as it's generated, retrieving
+  // grounded context from Moss along the way.
+  const result = streamText({
+    model: openai(model),
+    tools,
+    system: systemPrompt,
+    prompt: question,
+    maxSteps: 3,
+  });
+
+  process.stdout.write('A: ');
+  for await (const chunk of result.textStream) {
+    process.stdout.write(chunk);
+  }
+  console.log();
 }
 }
 
