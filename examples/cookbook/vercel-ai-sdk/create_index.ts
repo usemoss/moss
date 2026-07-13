@@ -1,14 +1,7 @@
 import 'dotenv/config';
 import { MossClient } from '@moss-dev/moss';
 import { sampleDocs } from './seed_data.js';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
+import { requireEnv } from './utils.js';
 
 async function seed() {
   const client = new MossClient(
