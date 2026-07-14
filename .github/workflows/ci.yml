@@ -146,7 +146,7 @@ jobs:
       run: npm ci
     - name: Override ai version
       working-directory: packages/vercel-sdk
-      run: npm install --no-save ai@${{ matrix.ai-version }}
+      run: npm install --no-save --no-package-lock ai@${{ matrix.ai-version }} && npm ls ai
     - name: Build
       working-directory: packages/vercel-sdk
       run: npm run build
