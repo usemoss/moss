@@ -5,7 +5,7 @@ description = "Community demo: ecommerce voice support agent with Moss retrieval
 requires-python = ">=3.11"
 dependencies = [
     "python-dotenv>=1.0.0",
-    "pipecat-ai[webrtc,deepgram,openai,cartesia,runner]",
+    "pipecat-ai[webrtc,deepgram,openai,cartesia,runner]>=1.5.0",
     "pipecat-ai-cli",
     "pipecat-moss>=0.0.3",
     "moss>=1.1.1",

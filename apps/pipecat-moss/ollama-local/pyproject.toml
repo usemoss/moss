@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Voice AI bot with local LLM (Ollama) + Moss semantic retrieval"
 requires-python = ">=3.11"
 dependencies = [
-    "pipecat-ai[webrtc,daily,silero,deepgram,openai,cartesia,runner]",
+    "pipecat-ai[webrtc,daily,silero,deepgram,openai,cartesia,runner]>=1.5.0",
     "pipecat-ai-cli",
     "pipecat-moss>=0.0.1",
 ]
