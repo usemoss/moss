@@ -1,0 +1,175 @@
+{
+  "name": "moss-vscode",
+  "displayName": "Moss Code Search",
+  "description": "Sub-10ms semantic search over your codebase powered by Moss",
+  "version": "0.1.0",
+  "publisher": "moss-dev",
+  "license": "BSD-2-Clause",
+  "icon": "media/moss_avatar_core.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/samanyugoyal2010/moss-vs-code.git",
+    "directory": "apps/moss-vscode"
+  },
+  "homepage": "https://github.com/samanyugoyal2010/moss-vs-code/tree/main/apps/moss-vscode",
+  "bugs": {
+    "url": "https://github.com/samanyugoyal2010/moss-vs-code/issues"
+  },
+  "qna": "https://github.com/samanyugoyal2010/moss-vs-code/issues",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=20"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "moss-search",
+          "title": "Moss Search",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "moss-search": [
+        {
+          "type": "webview",
+          "id": "moss.searchView",
+          "name": "Semantic Search"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "moss.search.focus",
+        "title": "Moss: Focus Search"
+      },
+      {
+        "command": "moss.index.create",
+        "title": "Moss: Create Index"
+      },
+      {
+        "command": "moss.index.rebuild",
+        "title": "Moss: Rebuild Index"
+      },
+      {
+        "command": "moss.index.syncCloud",
+        "title": "Moss: Sync Index to Cloud"
+      },
+      {
+        "command": "moss.credentials.configure",
+        "title": "Moss: Configure Credentials"
+      },
+      {
+        "command": "moss.logs.show",
+        "title": "Moss: Show Logs"
+      }
+    ],
+    "configuration": {
+      "title": "Moss",
+      "properties": {
+        "moss.projectId": {
+          "type": "string",
+          "default": "",
+          "description": "Moss project ID (optional override; prefers Secret Storage / .env)"
+        },
+        "moss.projectKey": {
+          "type": "string",
+          "default": "",
+          "description": "Moss project key (optional override; prefers Secret Storage / .env)"
+        },
+        "moss.includeGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,md,json,yaml,yml,java,kt,swift,rb,php,cs,cpp,c,h,hpp}"
+          ],
+          "description": "Glob patterns for files to index"
+        },
+        "moss.excludeGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/out/**",
+            "**/.next/**",
+            "**/coverage/**",
+            "**/.venv/**",
+            "**/venv/**",
+            "**/target/**",
+            "**/__pycache__/**",
+            "**/vendor/**",
+            "**/bower_components/**",
+            "**/.pnpm/**",
+            "**/.turbo/**",
+            "**/.cache/**",
+            "**/.parcel-cache/**",
+            "**/Pods/**",
+            "**/.gradle/**",
+            "**/site-packages/**",
+            "**/.pytest_cache/**",
+            "**/.mypy_cache/**"
+          ],
+          "description": "Glob patterns to exclude from indexing"
+        },
+        "moss.topK": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Number of search results to return"
+        },
+        "moss.alpha": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Hybrid search blend (1.0 = semantic, 0.0 = keyword)"
+        },
+        "moss.cloudSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Push indexes to Moss Cloud after indexing and restore from cloud when no local cache exists"
+        },
+        "moss.nodePath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to a Node.js 20+ binary for the Moss worker (defaults to system Node, then VS Code embedded Node)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "prepackage": "node scripts/prepackage.mjs",
+    "package": "npm run prepackage && vsce package",
+    "verify-package": "node scripts/verify-package.mjs"
+  },
+  "dependencies": {
+    "@moss-dev/moss": "^1.3.2",
+    "dotenv": "^17.2.3",
+    "ignore": "^7.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.3",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.8.3"
+  }
+}
