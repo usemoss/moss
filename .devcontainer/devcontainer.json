@@ -22,7 +22,7 @@
       ]
     }
   },
-  "postCreateCommand": "python -m pip install --upgrade pip && pip install -r examples/python/requirements.txt && npm ci && npm ci --prefix examples/javascript && go -C examples/go mod download",
+  "postCreateCommand": "python -m pip install --upgrade pip && python -m pip install -r examples/python/requirements.txt && npm ci && npm ci --prefix examples/javascript && go -C examples/go mod download",
   "remoteEnv": {
     "MOSS_PROJECT_ID": "${localEnv:MOSS_PROJECT_ID}",
     "MOSS_PROJECT_KEY": "${localEnv:MOSS_PROJECT_KEY}"
