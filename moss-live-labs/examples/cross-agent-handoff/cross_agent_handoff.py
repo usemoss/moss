@@ -21,10 +21,17 @@ from dotenv import load_dotenv
 from moss import MossClient, DocumentInfo, QueryOptions
 
 
+def _require(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        sys.exit(f"Missing {name}. Copy .env.example to .env and fill in your keys.")
+    return value
+
+
 def _client() -> MossClient:
     return MossClient(
-        project_id=os.environ["MOSS_PROJECT_ID"],
-        project_key=os.environ["MOSS_PROJECT_KEY"],
+        project_id=_require("MOSS_PROJECT_ID"),
+        project_key=_require("MOSS_PROJECT_KEY"),
     )
 
 
@@ -64,11 +71,6 @@ async def agent_b_picks_up(session_name: str) -> None:
         print(f"                   A: {answer}\n")
 
 
-def _require(name: str) -> None:
-    if not os.getenv(name):
-        sys.exit(f"Missing {name}. Copy .env.example to .env and fill in your keys.")
-
-
 async def main() -> None:
     load_dotenv()
     _require("MOSS_PROJECT_ID")
@@ -79,9 +81,15 @@ async def main() -> None:
     session_name = f"call-handoff-demo-{uuid.uuid4().hex[:8]}"
     print(f"shared session: {session_name}\n")
 
-    await agent_a_handles_chat(session_name)
-    print("--- customer is transferred from chat to voice ---\n")
-    await agent_b_picks_up(session_name)
+    try:
+        await agent_a_handles_chat(session_name)
+        print("--- customer is transferred from chat to voice ---\n")
+        await agent_b_picks_up(session_name)
+    finally:
+        # demo cleanup: this run pushed a cloud index, so remove it. In production
+        # you would keep the session (a stable, resumable id) instead of deleting it.
+        await _client().delete_index(session_name)
+        print(f"\ncleaned up demo session: {session_name}")
 
 
 if __name__ == "__main__":

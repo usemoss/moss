@@ -54,5 +54,5 @@ the refund, and the order number, none of which it was told directly.
 
 ## Resources
 
-- [Docs](https://docs.moss.dev/docs/build/cross-agent-handoff)
+- [Docs](https://docs.moss.dev/?utm_source=github&utm_medium=readme&utm_campaign=cross-agent-handoff)
 - [GitHub](https://github.com/usemoss/moss)
