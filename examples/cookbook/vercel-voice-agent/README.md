@@ -15,7 +15,7 @@ Browser (useRealtime) ──WebSocket── Vercel AI Gateway ── gpt-realtim
 - `POST /api/token` (empty body) — mints a short-lived WebSocket token via the gateway
 - `POST /api/token` (`{ query }`) — executes MOSS search; uses local in-memory index loaded at startup
 
-> **Security note:** `/api/token` is unauthenticated for demo purposes. Before deploying publicly, add a session/cookie check so arbitrary callers cannot mint Gateway tokens or query your index.
+> **Security note:** `/api/token` is unauthenticated only when `ALLOW_UNAUTHENTICATED_DEMO=true` is set (demo). Before deploying publicly, add a session/cookie check so arbitrary callers cannot mint Gateway tokens or query your index.
 
 ## Setup
 

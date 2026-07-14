@@ -18,10 +18,11 @@ const searchTool = mossSearchTool({
 
 // Load the index into local memory at startup.
 // Cloud query returns 503 — local queries work fine after loadIndex.
-// Storing the promise means search requests block until ready, or fail fast if it rejects.
+// The promise stays fulfilled (true/false) so a startup failure never becomes
+// an unhandled rejection — search requests branch on the result instead.
 const indexReady = client.loadIndex(process.env.MOSS_INDEX_NAME!)
-  .then(() => console.log('[MOSS] index loaded locally'))
-  .catch((err: unknown) => { console.error('[MOSS] loadIndex failed:', err); throw err; });
+  .then(() => { console.log('[MOSS] index loaded locally'); return true; })
+  .catch((err: unknown) => { console.error('[MOSS] loadIndex failed:', err); return false; });
 
 const MOSS_TOOL = {
   type: 'function' as const,
@@ -50,15 +51,13 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
 
   if (typeof body.query === 'string') {
-    try {
-      await indexReady;
-    } catch {
+    if (!(await indexReady)) {
       return new Response('Search index unavailable', { status: 503 });
     }
     const topK = Number.isInteger(body.topK) ? Math.min(100, Math.max(1, body.topK as number)) : 5;
     const result = await searchTool.execute!(
       { query: body.query, topK },
-      { toolCallId: 'realtime', messages: [], abortSignal: req.signal },
+      { toolCallId: 'realtime', messages: [], abortSignal: req.signal, context: {} },
     );
     const docs = (result as { docs: Array<{ text: string }> }).docs ?? [];
     return new Response(docs.map((d) => d.text).join('\n\n---\n\n'), {

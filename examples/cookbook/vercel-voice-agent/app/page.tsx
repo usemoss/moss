@@ -62,6 +62,10 @@ export default function Page() {
           body: JSON.stringify({ query, topK: topK ?? 5 }),
         });
         const text = await res.text();
+        if (!res.ok) {
+          setError(text || `Knowledge base search failed (${res.status})`);
+          throw new Error(text || `Knowledge base search failed (${res.status})`);
+        }
         const hits = text.trim() ? text.split('\n\n---\n\n').length : 0;
         setSearches((s) => [{ query, hits }, ...s.slice(0, 4)]);
         return text;
