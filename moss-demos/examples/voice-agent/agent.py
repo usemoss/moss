@@ -26,6 +26,9 @@ load_dotenv()
 MOSS_PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
 MOSS_PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
 INDEX_NAME = os.getenv("MOSS_INDEX_NAME", "demo-customer_faqs")
+# This support line serves one region. Metadata filtering scopes retrieval to
+# region-specific policies + global ("all") docs. Set MOSS_REGION=EU to compare.
+REGION = os.getenv("MOSS_REGION", "US")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("moss-agent")
@@ -35,14 +38,26 @@ class MossSemanticRetrievalAgent(Agent):
     def __init__(self, moss_client: MossClient, room: rtc.Room):
         super().__init__(
             instructions="""
-                You are a helpful customer support voice assistant.
-                You have access to a knowledge base which will be provided to you as context.
-                Always answer the user's question based on the provided context.
-                If the context doesn't contain the answer, politely say you don't know.
+                You are Northwind's customer support voice assistant, speaking directly to
+                one customer on a call. Answer using ONLY the knowledge-base context provided
+                for the current question.
+
+                - Reply in AT MOST TWO SHORT SENTENCES. Answer only the exact thing asked,
+                  with the single most relevant fact. Do not list other policies, caveats, or
+                  extra detail the customer didn't ask for, and don't tack on a follow-up
+                  question every time.
+                - Present policies as simply "our policy" — the customer's own. Never mention
+                  regions, "other regions", that policies vary by location, the knowledge
+                  base, filters, or how you look answers up.
+                - The context can change between questions; do not reuse facts or numbers from
+                  earlier in the conversation if they are not in the current context.
+                - If the current context doesn't answer the question, say you don't know and
+                  offer to help with something else.
             """
         )
         self.moss = moss_client
         self.room = room
+        self.region = REGION  # live-updated from the UI region picker
 
     async def _publish_retrieval(self, query: str, results, fallback_ms: float) -> None:
         """Send the retrieved chunks to the web UI over a LiveKit data channel."""
@@ -60,6 +75,7 @@ class MossSemanticRetrievalAgent(Agent):
                 for d in (results.docs if results and results.docs else [])
             ],
             "took_ms": round(took_ms, 2),
+            "region": self.region,
         }
         try:
             await self.room.local_participant.publish_data(
@@ -78,27 +94,44 @@ class MossSemanticRetrievalAgent(Agent):
         logger.info(f"User asked: {user_query}")
 
         try:
-            # 1. Automatic Search (timed, so the UI can show how fast Moss is)
+            # 1. Automatic Search — metadata-filtered to this region + global docs
+            region_filter = {"field": "region", "condition": {"$in": [self.region, "all"]}}
             t0 = time.perf_counter()
             results = await self.moss.query(
                 INDEX_NAME,
                 user_query,
-                QueryOptions(top_k=5, alpha=0.8)
+                QueryOptions(top_k=3, alpha=0.8, filter=region_filter),
             )
             took_ms = (time.perf_counter() - t0) * 1000.0
 
             # 2. Stream the retrieval to the web UI (the Moss knowledge-base panel)
             await self._publish_retrieval(user_query, results, took_ms)
 
-            # 3. Context Injection
+            # 3. Context Injection.
+            #    Drop the previous turn's injected context first, otherwise a region
+            #    switch leaves stale policy (e.g. the US answer) in the conversation
+            #    and the model parrots its earlier reply.
+            CONTEXT_ID = "moss-retrieval-context"
+            turn_ctx.items = [it for it in turn_ctx.items if getattr(it, "id", None) != CONTEXT_ID]
             if results.docs:
                 context_str = "\n".join([f"- {d.text}" for d in results.docs])
-                injection = f"Relevant context from knowledge base:\n{context_str}\n\nUse this to answer the user."
-
-                # Insert into chat history as a system message
-                turn_ctx.add_message(role="system", content=injection)
+                injection = (
+                    "Current policy for this caller (authoritative — this REPLACES anything "
+                    "you said earlier in the call):\n"
+                    f"{context_str}\n\n"
+                    "Reply in at most two short sentences, using only the single most relevant "
+                    "fact for this exact question. If an earlier answer of yours conflicts with "
+                    "this, correct yourself. Do not mention regions, these notes, or how you looked it up."
+                )
+                turn_ctx.add_message(role="system", content=injection, id=CONTEXT_ID)
                 logger.info(f"Injected context ({took_ms:.1f}ms): {context_str[:100]}...")
             else:
+                turn_ctx.add_message(
+                    role="system",
+                    content="No policy information was found for this question. Say you don't have "
+                    "that detail and offer to help with something else. Do not guess.",
+                    id=CONTEXT_ID,
+                )
                 logger.info("No relevant context found in Moss index")
 
         except Exception as e:
@@ -140,11 +173,22 @@ async def entrypoint(ctx: JobContext):
         },
     )
 
+    agent = MossSemanticRetrievalAgent(moss_client, ctx.room)
+
+    # The UI region picker publishes { "region": "US" | "EU" } on this topic.
+    @ctx.room.on("data_received")
+    def _on_data(pkt: rtc.DataPacket):
+        if pkt.topic == "moss.region":
+            try:
+                r = json.loads(bytes(pkt.data).decode("utf-8")).get("region")
+                if r:
+                    agent.region = r
+                    logger.info(f"Region filter set to {r}")
+            except Exception as e:
+                logger.warning(f"Bad region packet: {e}")
+
     # Start the session with our custom MossSemanticRetrievalAgent
-    await session.start(
-        agent=MossSemanticRetrievalAgent(moss_client, ctx.room),
-        room=ctx.room,
-    )
+    await session.start(agent=agent, room=ctx.room)
 
     # Speak first, instantly — a fixed opener via say() skips the LLM round-trip.
     await session.say(

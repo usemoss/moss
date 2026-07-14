@@ -30,7 +30,11 @@ FAQS_PATH = Path(__file__).parent / "data" / "faqs.json"
 async def main() -> None:
     faqs = json.loads(FAQS_PATH.read_text())
     docs = [
-        DocumentInfo(id=f["id"], text=f["text"], metadata={"category": f.get("category", "")})
+        DocumentInfo(
+            id=f["id"],
+            text=f["text"],
+            metadata={"category": f.get("category", ""), "region": f.get("region", "all")},
+        )
         for f in faqs
     ]
 

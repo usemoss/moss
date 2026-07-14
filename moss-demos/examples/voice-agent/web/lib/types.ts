@@ -8,4 +8,5 @@ export type RetrievalPayload = {
   query: string;
   docs: RetrievalDoc[];
   took_ms: number;
+  region?: string;
 };
