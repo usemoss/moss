@@ -7,9 +7,9 @@ requires-python = ">=3.11,<3.15"
 dependencies = [
     "moss>=1.1.1",
     "loguru>=0.7.0",
-    "pipecat-ai>=1.1.0",
+    "pipecat-ai>=1.5.0",
     "pydantic>=2.0.0",
-    "pipecat-ai[runner]>=1.1.0",
+    "pipecat-ai[runner]>=1.5.0",
 ]
 
 [dependency-groups]

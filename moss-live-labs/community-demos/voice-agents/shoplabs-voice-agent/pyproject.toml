@@ -2,7 +2,7 @@
 name = "shoplabs-voice-agent"
 version = "0.1.0"
 description = "Community demo: ecommerce voice support agent with Moss retrieval"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "python-dotenv>=1.0.0",
     "pipecat-ai[webrtc,deepgram,openai,cartesia,runner]",
