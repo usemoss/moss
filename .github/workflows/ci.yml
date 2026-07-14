@@ -129,7 +129,7 @@ jobs:
       matrix:
         include:
           - node-version: '20'
-            ai-version: '^6.0.0'
+            ai-version: '6.0.97'
           - node-version: '22'
             ai-version: '7.0.8'
     name: vercel-sdk-test (ai@${{ matrix.ai-version }}, node@${{ matrix.node-version }})
