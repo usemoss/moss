@@ -52,8 +52,9 @@ function renderMath() {
 
 function setMarkdown(markdown) {
   const source = markdown || "";
+  const escaped = source.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   if (window.marked) {
-    responseEl.innerHTML = window.marked.parse(source);
+    responseEl.innerHTML = window.marked.parse(escaped, { mangle: false, headerIds: false });
   } else {
     responseEl.textContent = source;
   }
