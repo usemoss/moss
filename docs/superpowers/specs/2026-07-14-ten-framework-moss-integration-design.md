@@ -1,8 +1,17 @@
 # Deep Moss ↔ TEN Framework Integration — Design
 
 **Date:** 2026-07-14
-**Status:** Approved (pending spec review)
+**Status:** Approved; in implementation
 **Author:** Harsha Nalluru (with Claude)
+
+> **Revision 2026-07-15:** During PR 1 review the reusable component was reframed
+> from a "retrieval store" to a **Moss session manager**, built on the Moss
+> [Sessions API](https://docs.moss.dev/docs/reference/python/sessions). The class
+> is `MossSessionManager` (config `MossSessionConfig`); its public surface is
+> `start()`, `context_for(text)`, `remember(...)`, `persist()`, `doc_count` — the
+> Moss query is not exposed as a public method. Names below that say
+> `MossRetrievalStore` / `load()` / `retrieve()` map to
+> `MossSessionManager` / `start()` / `context_for()` respectively.
 
 ## Summary
 
