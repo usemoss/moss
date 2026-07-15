@@ -47,8 +47,11 @@ async def agent_a_handles_chat(session_name: str) -> None:
         DocumentInfo(id="t3", text="Customer's order number is AC-77120."),
     ])
 
-    # hand off: persist the session so any other agent can resume it
-    await session.push_index()
+    # hand off: push to the cloud. push_index() queues a server-side indexing job,
+    # so wait for it to finish before another agent tries to resume the session.
+    result = await session.push_index()
+    if result.job_id:
+        await moss.wait_for_job(result.job_id)
     print("[agent A - chat]   wrote 3 turns and pushed the session to the cloud\n")
 
 

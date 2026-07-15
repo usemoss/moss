@@ -23,13 +23,19 @@ await session.add_docs([
     DocumentInfo(id="t1", text="Customer reported a duplicate $49.99 charge"),
     DocumentInfo(id="t2", text="Agent confirmed a refund in 3-5 business days"),
 ])
-await session.push_index()               # hand off to the cloud
+result = await session.push_index()      # queues a cloud indexing job
+await moss.wait_for_job(result.job_id)    # wait until it's ready to resume
 
 # --- agent B (voice, different device) ---
 session = await moss.session(index_name="call-8821")   # same name -> resumes
 ctx = await session.query("was a refund promised?", QueryOptions(top_k=1))
 # ctx.docs[0].text already has the refund promise
 ```
+
+`push_index()` doesn't finish instantly: it queues server-side processing and
+returns a `job_id`. Wait for that job (`wait_for_job`, or poll `get_job_status`)
+before another agent resumes the session, otherwise the index may not be ready
+to auto-load yet.
 
 The same idea covers chat handing off to voice, a bot escalating to a human, or
 a customer moving from phone to laptop. The conversation, the retrieved context,
