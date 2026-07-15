@@ -1,17 +1,17 @@
-"""Moss ambient semantic retrieval for the TEN Framework."""
+"""Moss session manager for the TEN Framework."""
 
 from __future__ import annotations
 
 from moss import DocumentInfo, MossClient, QueryOptions, SearchResult
 
-from .config import MossRetrievalConfig
-from .moss_retrieval_store import MossRetrievalStore
+from .config import MossSessionConfig
+from .moss_session_manager import MossSessionManager
 
 __all__ = [
     "DocumentInfo",
     "MossClient",
-    "MossRetrievalConfig",
-    "MossRetrievalStore",
+    "MossSessionConfig",
+    "MossSessionManager",
     "QueryOptions",
     "SearchResult",
 ]

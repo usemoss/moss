@@ -1,7 +1,7 @@
 [project]
 name = "ten-moss"
 version = "0.0.1"
-description = "Moss ambient semantic retrieval for the TEN Framework"
+description = "Moss session manager for the TEN Framework"
 readme = "README.md"
 requires-python = ">=3.10,<3.15"
 license = { text = "BSD-2-Clause" }

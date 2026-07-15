@@ -62,7 +62,7 @@ packages/
   moss-md-indexer/       — Markdown docs → Moss index builder
   pipecat-moss/          — Pipecat Python integration package
   strands-agents-moss/   — AWS Strands Agents integration package
-  ten-moss/              — TEN Framework ambient Moss retrieval helper (MossRetrievalStore)
+  ten-moss/              — TEN Framework Moss session manager (MossSessionManager)
   vapi-moss/             — VAPI Custom Knowledge Base webhook adapter
   vercel-sdk/            — Vercel AI SDK tool wrappers (@moss-tools/vercel-sdk)
   vitepress-plugin-moss/ — VitePress search plugin (on-device fallback after cloud)
@@ -138,7 +138,7 @@ asks for an experimental landing spot.
 | `pipecat-moss/` | `pipecat-moss` | `MossPipecatTool` — retrieval tool for Pipecat pipeline services |
 | `sim-moss/` | `sim-moss` | `MossSimSearch` — knowledge base adapter for sim.ai workflow HTTP tool nodes |
 | `strands-agents-moss/` | `strands-agents-moss` | Moss tool for AWS Strands Agents |
-| `ten-moss/` | `ten-moss` | `MossRetrievalStore` — ambient Moss retrieval for TEN Framework control extensions |
+| `ten-moss/` | `ten-moss` | `MossSessionManager` — session-scoped Moss grounding for TEN Framework control extensions |
 | `vapi-moss/` | `vapi-moss` | `MossVapiSearch` adapter + HMAC webhook verification for VAPI |
 | `vercel-sdk/` | `@moss-tools/vercel-sdk` | Vercel AI SDK 6 `tool()` wrappers: search, create index, manage documents |
 | `vitepress-plugin-moss/` | `vitepress-plugin-moss` | VitePress plugin: cloud search on first keystroke, on-device after index download |
