@@ -62,7 +62,7 @@ class MainControlExtension(AsyncExtension):
         if self.config.enable_moss and self.config.moss_index_name:
             try:
                 self.moss = MossSessionManager.from_config(self.config)
-                await self.moss.start()
+                await self.moss.open()
                 ten_env.log_info("[MainControlExtension] Moss session opened")
             except Exception as exc:
                 self.moss = None
@@ -109,7 +109,15 @@ class MainControlExtension(AsyncExtension):
             self.turn_id += 1
             llm_input = event.text
             if self.moss is not None:
-                context = await self.moss.context_for(event.text)
+                # query_context is designed not to raise, but guard anyway so a
+                # grounding failure can never drop the user's turn.
+                try:
+                    context = await self.moss.query_context(event.text)
+                except Exception as exc:  # noqa: BLE001
+                    context = ""
+                    self.ten_env.log_error(
+                        f"[MainControlExtension] Moss grounding failed: {exc}"
+                    )
                 if context:
                     llm_input = f"{context}\n\n[Current User Question]\n{event.text}"
             await self.agent.queue_llm_input(llm_input)

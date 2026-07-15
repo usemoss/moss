@@ -11,7 +11,7 @@ mic ─▶ agora_rtc ─▶ streamid_adapter ─▶ stt (deepgram) ─┐
                                                          │ data: asr_result (final)
                                                          ▼
                                                main_control (main_python)
-                                                  │  MossSessionManager.context_for(text)
+                                                  │  MossSessionManager.query_context(text)
                                                   ▼  ── Moss session query <10ms ──▶ index
                                                   │  ◀── grounding ──
                        queue_llm_input("{context}\n\n[Current User Question]\n{text}")
@@ -22,8 +22,8 @@ mic ─▶ agora_rtc ─▶ streamid_adapter ─▶ stt (deepgram) ─┐
 The Moss delta over the stock TEN voice assistant is small and lives in three places in `main_python`:
 
 - `config.py` — `MainControlConfig` inherits `MossSessionConfig` (the `moss_*` properties).
-- `extension.py` `on_init` — opens the Moss session (`MossSessionManager.from_config(...).start()`), best-effort.
-- `extension.py` `_on_asr_result` — `context_for(text)` and prepends the grounding to the user's turn.
+- `extension.py` `on_init` — opens the Moss session (`MossSessionManager.from_config(...).open()`), best-effort.
+- `extension.py` `_on_asr_result` — `query_context(text)` and prepends the grounding to the user's turn.
 
 ## Provenance
 
@@ -33,35 +33,31 @@ licensed under **Apache-2.0** (headers preserved). Only the Moss delta described
 
 ## Prerequisites
 
-- The **TEN Framework toolchain** (`tman` + the TEN dev image / Docker). This example references shared TEN extensions via relative paths (`../../../ten_packages/extension/...`), so it is designed to run **inside a TEN Framework checkout** — copy `tenapp/` into `ten-framework/ai_agents/agents/examples/voice-assistant-with-moss/`, or clone TEN and drop it in.
+- A **TEN Framework checkout**. This example references shared TEN extensions via relative paths (`../../../ten_packages/extension/...`) and runs with TEN's own tooling, so it lives **inside** a TEN Framework repo. It ships the TEN app (`tenapp/`) — not the repo-level run harness (playground / server / Taskfile / Dockerfile), which the TEN Framework provides.
 - A **Moss** project (`MOSS_PROJECT_ID` / `MOSS_PROJECT_KEY`) — [moss.dev](https://moss.dev).
 - Provider keys: **Agora** (transport), **Deepgram** (STT), **OpenAI** (LLM), **ElevenLabs** (TTS).
 
-## Quick start
+## Run
 
-1. **Configure environment**
+1. **Build the demo knowledge index** (from this directory — needs only the Moss SDK):
    ```bash
-   cp .env.example .env    # fill in Moss + provider keys
+   cp .env.example .env      # fill in MOSS_PROJECT_ID / MOSS_PROJECT_KEY / MOSS_INDEX_NAME
+   python create_index.py    # reads data/knowledge.jsonl, creates MOSS_INDEX_NAME
    ```
 
-2. **Build the demo knowledge index**
+2. **Drop the app into a TEN checkout.** Copy `tenapp/` to
+   `ten-framework/ai_agents/agents/examples/voice-assistant-with-moss/tenapp/`, alongside
+   the sibling `voice-assistant` example whose `Taskfile`/`playground`/`server` harness you
+   reuse. Make `main_python` able to import `ten-moss` — until it's published to PyPI,
+   install it editable:
    ```bash
-   python create_index.py  # reads data/knowledge.jsonl, creates MOSS_INDEX_NAME
+   uv pip install --system -e /path/to/moss/packages/ten-moss
    ```
 
-3. **Install & run** (inside the TEN environment)
-   ```bash
-   task install   # runs scripts/install_python_deps.sh (installs ten-moss + extensions)
-   task run       # starts the agent
-   ```
-   - Frontend: http://localhost:3000 · API: http://localhost:8080 · TMAN Designer: http://localhost:49483
-
-   > **Note:** until `ten-moss` is published to PyPI, install it editable so `main_python` can import it:
-   > ```bash
-   > uv pip install --system -e ../../packages/ten-moss
-   > ```
-
-4. **Talk to it.** Ask something covered by `data/knowledge.jsonl` (e.g. *"how long do refunds take?"*) and the answer will reflect the indexed knowledge.
+3. **Run with TEN's tooling** from that example dir (`task install && task run`, per the TEN
+   docs), providing the same env vars as step 1. Then open the TEN playground
+   (http://localhost:3000) and ask something covered by `data/knowledge.jsonl` — e.g.
+   *"how long do refunds take?"* — to hear grounded answers.
 
 ## Configuration
 
