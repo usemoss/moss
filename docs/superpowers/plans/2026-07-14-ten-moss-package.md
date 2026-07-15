@@ -2,6 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Revision 2026-07-15:** This plan describes the original `MossRetrievalStore` /
+> `MossRetrievalConfig` design. During review it was reframed to a **Moss session
+> manager** built on the Moss Sessions API: `MossSessionManager` /
+> `MossSessionConfig` with `open()`, `query_context(text)`, `add_docs()`,
+> `get_docs()`, `delete_docs()`, `push_index()`, `doc_count`. The delivery also
+> collapsed from 3 PRs to 2 (package + full Moss-wired app). See the design spec's
+> revision note for the authoritative surface.
+
 **Goal:** Build `packages/ten-moss/`, a reusable Python helper exposing `MossRetrievalStore` (ambient RAG for TEN extensions) and `MossRetrievalConfig`, with offline tests and a create-index helper.
 
 **Architecture:** A thin, TEN-agnostic wrapper over the Moss Python SDK. `MossRetrievalStore` loads an index once, runs a hybrid query per turn, and formats retrieved passages into a context block; failures degrade to `""` so a voice loop never stalls. `MossRetrievalConfig` is a pydantic model that standardizes `moss_*` property names for the TEN app (PR 3) to extend.

@@ -2,9 +2,9 @@
 
 A **Moss session manager** for the [TEN Framework](https://github.com/ten-framework/ten-framework), powered by [Moss](https://moss.dev).
 
-`MossSessionManager` wraps a [Moss session](https://docs.moss.dev/docs/reference/python/sessions) — a local, in-process index (~1–10ms, no cloud round-trip) — and manages a voice agent's session-scoped grounding. It **abstracts the query**: a TEN control extension asks for grounding with `context_for(text)` and never issues raw retrieval. The session also accepts runtime writes (`remember`) and can be persisted for durability or cross-agent handoff (`persist`). Lookups degrade to an empty string on error, so the voice loop never stalls.
+`MossSessionManager` wraps a [Moss session](https://docs.moss.dev/docs/reference/python/sessions) — a local, in-process index (~1–10ms, no cloud round-trip) — and mirrors the Moss Sessions SDK (`open`, `add_docs`, `get_docs`, `delete_docs`, `push_index`, `doc_count`). It adds one convenience for grounding: `query_context(text)` returns an injection-ready context block (not a raw `SearchResult`), and degrades to an empty string on no-hit/error so the voice loop never stalls.
 
-See `apps/ten-moss/` for a full runnable TEN voice-assistant example.
+A full runnable TEN voice-assistant example ships in the companion `apps/ten-moss/` app (see the app PR / the `apps/ten-moss/` directory once both land on `main`).
 
 ## Install
 
@@ -15,17 +15,17 @@ pip install ten-moss   # or: uv add ten-moss
 ## Usage
 
 ```python
-from ten_moss import MossSessionManager
+from ten_moss import DocumentInfo, MossSessionManager
 
 session = MossSessionManager(
     project_id="...", project_key="...", index_name="support-docs",
     top_k=5, alpha=0.8,
 )
-await session.start()                          # open the session (create-or-resume)
-context = await session.context_for(user_text) # per turn; "" on no hits/error
+await session.open()                             # open the session (create-or-resume)
+context = await session.query_context(user_text) # per turn; "" on no hits/error
 # optional: write runtime context, then persist for handoff
-await session.remember(user_text)
-await session.persist()
+await session.add_docs([DocumentInfo(id="turn-1", text=user_text)])
+await session.push_index()
 ```
 
 Or build it from TEN properties:
@@ -41,11 +41,15 @@ session = MossSessionManager.from_config(config)
 
 | Method | Purpose |
 | --- | --- |
-| `await start()` | Open the Moss session (create-or-resume the index) |
-| `await context_for(text) -> str` | Grounding block for this turn; `""` on blank/no-hit/error |
-| `await remember(text, *, id=None, metadata=None)` | Write a turn/fact into the session |
-| `await persist()` | Persist the session to the cloud (durability / handoff) |
-| `doc_count` | Documents currently in the session |
+| `await open()` | Open the Moss session (create-or-resume the index) |
+| `await query_context(text) -> str` | Grounding block for this turn; `""` on blank/no-hit/error |
+| `await add_docs(docs)` | Add/update documents in the session (mirrors `SessionIndex.add_docs`) |
+| `await get_docs()` | Documents currently in the session |
+| `await delete_docs(ids)` | Delete documents from the session by id |
+| `await push_index()` | Persist the session to the cloud (durability / handoff) |
+| `doc_count` | Number of documents in the session |
+
+When built with `enable_moss=false`, no client is created and every method is a safe no-op.
 
 ## Configuration (`MossSessionConfig`)
 

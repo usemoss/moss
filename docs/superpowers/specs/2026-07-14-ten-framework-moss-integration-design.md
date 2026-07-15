@@ -4,14 +4,22 @@
 **Status:** Approved; in implementation
 **Author:** Harsha Nalluru (with Claude)
 
-> **Revision 2026-07-15:** During PR 1 review the reusable component was reframed
-> from a "retrieval store" to a **Moss session manager**, built on the Moss
-> [Sessions API](https://docs.moss.dev/docs/reference/python/sessions). The class
-> is `MossSessionManager` (config `MossSessionConfig`); its public surface is
-> `start()`, `context_for(text)`, `remember(...)`, `persist()`, `doc_count` — the
-> Moss query is not exposed as a public method. Names below that say
-> `MossRetrievalStore` / `load()` / `retrieve()` map to
-> `MossSessionManager` / `start()` / `context_for()` respectively.
+> **Revision 2026-07-15 (supersedes stale sections below):** During review the
+> reusable component was reframed from a "retrieval store" to a **Moss session
+> manager**, built on the Moss [Sessions API](https://docs.moss.dev/docs/reference/python/sessions).
+> The class is `MossSessionManager` (config `MossSessionConfig`). Its surface
+> mirrors the SDK — `open()`, `add_docs()`, `get_docs()`, `delete_docs()`,
+> `push_index()`, `doc_count` — plus one convenience, `query_context(text) -> str`,
+> for injection-ready grounding (the raw query is not exposed). Name mapping:
+> `MossRetrievalStore`→`MossSessionManager`, `load()`→`open()`, `retrieve()`→`query_context()`.
+>
+> This supersedes two body sections below:
+> - **"No write-back / memorization"** — no longer a non-goal. Sessions are
+>   read+write, so the manager exposes `add_docs()`/`push_index()` (still not
+>   used by the v1 demo flow, but available).
+> - **Testing** — the unit tests are fully **offline** and mock the Moss client
+>   (`packages/ten-moss/tests/test_session_manager.py`); they do **not** create a
+>   live index or need `MOSS_PROJECT_ID`/`MOSS_PROJECT_KEY`.
 
 ## Summary
 

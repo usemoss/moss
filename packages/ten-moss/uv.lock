@@ -394,7 +394,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "loguru", specifier = ">=0.7.0" },
-    { name = "moss", specifier = ">=1.1.1" },
+    { name = "moss", specifier = ">=1.7.1" },
     { name = "pydantic", specifier = ">=2.0.0" },
 ]
 
