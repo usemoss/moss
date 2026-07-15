@@ -1,0 +1,10 @@
+[project]
+name = "moss-semantic-cache"
+version = "0.1.0"
+description = "Semantic cache for LLM responses, built on Moss"
+requires-python = ">=3.10"
+dependencies = [
+    "moss>=1.7.1",
+    "openai>=1.0",
+    "python-dotenv>=1.0",
+]
