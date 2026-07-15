@@ -45,9 +45,18 @@ function DashboardContent() {
 
   // Verify backend integration mode (mock vs real)
   useEffect(() => {
-    fetch("/api/moss/query?query=test")
-      .then((res) => res.json())
-      .then((data) => {
+    const checkBackendStatus = async () => {
+      try {
+        const res = await fetch("/api/moss/query?query=test");
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          const errorMessage = data?.error || `Moss backend returned ${res.status}`;
+          setCheckStatus({ mode: "unknown", warning: errorMessage });
+          addLog(`System Error: Failed to check Moss backend status: ${errorMessage}`);
+          return;
+        }
+
         if (data.mode) {
           setCheckStatus({
             mode: data.mode,
@@ -58,10 +67,12 @@ function DashboardContent() {
             addLog(`Warning: ${data.warning}`);
           }
         }
-      })
-      .catch((err) => {
-        addLog(`System Error: Failed to check Moss backend status: ${err.message}`);
-      });
+      } catch (err: any) {
+        addLog(`System Error: Failed to check Moss backend status: ${err.message || String(err)}`);
+      }
+    };
+
+    void checkBackendStatus();
   }, []);
 
   // Direct Moss Search Sandbox State
