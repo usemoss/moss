@@ -170,7 +170,7 @@ moss-live-labs/              # Experimental zone: prototypes and community demos
 │   ├── advanced-voice-agent/ # Persona impersonator built on a PDF knowledge base
 │   └── image-search/        # FastAPI + React image search over COCO
 └── community-demos/         # Community-contributed projects
-    ├── coding-agents/       # moss-reflex procedural memory
+    ├── coding-agents/       # moss-reflex
     └── voice-agents/        # bharat-benefits, shoplabs-voice-agent
 ```
 
