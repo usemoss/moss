@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
 from typing import Any
 
-from moss import MossClient
+from moss import MossClient, QueryOptions
+
+from .config import MossRetrievalConfig
 
 __all__ = ["MossRetrievalStore"]
 
@@ -54,3 +57,43 @@ class MossRetrievalStore:
             text = (getattr(doc, "text", "") or "").strip()
             lines.append(f"[{idx}] {text}")
         return "\n".join(lines).strip()
+
+    async def load(self) -> None:
+        """Load the configured index once at startup. Raises on failure."""
+        await self._client.load_index(self._index_name)
+        self._loaded = True
+
+    async def retrieve(self, query: str) -> str:
+        """Return a context block for `query`, or '' on blank/no-hit/error."""
+        text = (query or "").strip()
+        if not text:
+            return ""
+        try:
+            result = await asyncio.wait_for(
+                self._client.query(
+                    self._index_name,
+                    text,
+                    options=QueryOptions(top_k=self._top_k, alpha=self._alpha),
+                ),
+                timeout=self._timeout_s,
+            )
+        except Exception as exc:  # noqa: BLE001 - never break the voice loop
+            self._log.error(f"[ten-moss] retrieval failed for query={text!r}: {exc}")
+            return ""
+        docs = getattr(result, "docs", None) or []
+        if not docs:
+            return ""
+        return self.format_context(docs)
+
+    @classmethod
+    def from_config(cls, config: MossRetrievalConfig, *, logger: Any = None) -> MossRetrievalStore:
+        """Build a store from a MossRetrievalConfig."""
+        return cls(
+            project_id=config.moss_project_id,
+            project_key=config.moss_project_key,
+            index_name=config.moss_index_name,
+            top_k=config.moss_top_k,
+            alpha=config.moss_alpha,
+            context_header=config.moss_context_header,
+            logger=logger,
+        )
