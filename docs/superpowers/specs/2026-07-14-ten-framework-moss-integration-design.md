@@ -30,7 +30,8 @@ search runtime for conversational AI) and the [TEN Framework](https://github.com
 The integration ships two deliverables:
 
 1. **`packages/ten-moss/`** — a reusable Python helper package exposing a
-   `MossRetrievalStore` that any TEN extension can use for retrieval.
+   `MossSessionManager` (built on the Moss Sessions API) that any TEN extension
+   can use for session-scoped grounding.
 2. **`apps/ten-moss/`** — a runnable TEN voice-assistant example
    (`voice-assistant-with-moss`) that wires Moss in as an ambient RAG layer.
 
@@ -116,9 +117,9 @@ packages/ten-moss/
   .env.example
   .gitignore
   src/ten_moss/
-    __init__.py                 # exports MossRetrievalStore, MossRetrievalConfig
-    moss_retrieval_store.py     # MossRetrievalStore
-    config.py                   # MossRetrievalConfig (pydantic mixin)
+    __init__.py                 # exports MossSessionManager, MossSessionConfig
+    moss_session_manager.py     # MossSessionManager
+    config.py                   # MossSessionConfig (pydantic mixin)
   examples/
     create_index.py             # build + populate a demo index (generic)
   tests/
@@ -252,7 +253,7 @@ On the `main_control` node in `property.json` (env-substituted):
   reflect indexed knowledge. **Not** CI-runnable (needs the TEN toolchain/Docker
   + Agora + Deepgram/OpenAI/ElevenLabs keys). Documented in the app README.
 
-## Delivery plan — 3 PRs
+## Delivery plan — 2 PRs (originally scoped as 3; PR 2 and PR 3 were merged)
 
 The example app is split so the bulky vendored copy and the Moss integration
 land separately, making the actual integration a small, focused review.

@@ -10,9 +10,9 @@
 > collapsed from 3 PRs to 2 (package + full Moss-wired app). See the design spec's
 > revision note for the authoritative surface.
 
-**Goal:** Build `packages/ten-moss/`, a reusable Python helper exposing `MossRetrievalStore` (ambient RAG for TEN extensions) and `MossRetrievalConfig`, with offline tests and a create-index helper.
+**Goal:** Build `packages/ten-moss/`, a reusable Python helper exposing `MossSessionManager` (session-scoped grounding for TEN extensions) and `MossSessionConfig`, with offline tests and a create-index helper. *(As-shipped names; the task steps below use the original `MossRetrievalStore`/`MossRetrievalConfig` names per the revision note.)*
 
-**Architecture:** A thin, TEN-agnostic wrapper over the Moss Python SDK. `MossRetrievalStore` loads an index once, runs a hybrid query per turn, and formats retrieved passages into a context block; failures degrade to `""` so a voice loop never stalls. `MossRetrievalConfig` is a pydantic model that standardizes `moss_*` property names for the TEN app (PR 3) to extend.
+**Architecture:** A thin, TEN-agnostic wrapper over the Moss Sessions API. `MossSessionManager` opens a session once, queries it per turn, and formats passages into a grounding block; failures degrade to `""` so a voice loop never stalls. `MossSessionConfig` is a pydantic model that standardizes `moss_*` property names for the TEN app to extend.
 
 **Tech Stack:** Python (src layout), Moss SDK (`moss`), pydantic v2, loguru, uv (env + lockfile), ruff (lint/format), `unittest.IsolatedAsyncioTestCase` (run via pytest).
 
@@ -20,7 +20,7 @@
 
 - Python floor: `requires-python = ">=3.10,<3.15"` (Moss SDK requires 3.10+).
 - Package name `ten-moss`; import name `ten_moss`; **src layout** under `src/ten_moss/`.
-- Runtime deps: `moss>=1.1.1`, `pydantic>=2.0.0`, `loguru>=0.7.0`. Dev deps: `pytest>=8.0`, `ruff>=0.1.0`, `python-dotenv>=1.0` (examples only).
+- Runtime deps: `moss>=1.7.1` (Moss Sessions API floor), `pydantic>=2.0.0`, `loguru>=0.7.0`. Dev deps: `pytest>=8.0`, `ruff>=0.1.0`, `python-dotenv>=1.0` (examples only).
 - License: **BSD-2-Clause** — copy the repo root `LICENSE` verbatim.
 - Follow `packages/pipecat-moss/` conventions: ruff config, google-convention docstrings, `[dependency-groups] dev`.
 - Tests are **offline**: mock `ten_moss.moss_retrieval_store.MossClient` with `unittest.mock` (no network, no creds), matching `examples/cookbook/langchain/test_integration.py`. Run with `uv run pytest tests/ -v` from `packages/ten-moss/`.
