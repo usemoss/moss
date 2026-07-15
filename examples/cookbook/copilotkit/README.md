@@ -1,6 +1,6 @@
 # In-App Copilots Grounding — MOSS + CopilotKit
 
-Ground [CopilotKit](https://github.com/CopilotKit/CopilotKit) in-app copilots with MOSS's sub-10ms semantic search runtime to answer user queries using your own knowledge base.
+Ground [CopilotKit](https://github.com/CopilotKit/CopilotKit) in-app copilots with MOSS's semantic search runtime (sub-10ms when querying a locally loaded index) to answer user queries using your own knowledge base.
 
 **How it works:**
 
