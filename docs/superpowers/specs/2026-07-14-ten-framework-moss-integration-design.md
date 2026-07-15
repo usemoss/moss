@@ -50,9 +50,9 @@ The pattern is modeled 1:1 on TEN Agent's own RAG/memory integrations
 
 ## Non-Goals (YAGNI)
 
-- **No write-back / memorization.** v1 queries a pre-built knowledge index only.
-  (A create-index helper is provided; upserting conversation turns is a later
-  feature.)
+- **Write-back available, unused in the v1 demo.** (Updated per the revision note:
+  the session manager mirrors the Sessions API, so `add_docs()`/`push_index()`
+  exist, but the v1 voice-assistant demo flow only reads via `query_context()`.)
 - **No standalone graph-node extension.** Retrieval is baked into the control
   extension, matching TEN's proven RAG pattern; a separate `moss_retrieval_python`
   graph node fights the main-control-centric flagship graph.
@@ -243,11 +243,11 @@ On the `main_control` node in `property.json` (env-substituted):
 
 ## Testing
 
-- **CI-able** — `packages/ten-moss/tests/test_retrieval_store.py`: create an
-  ephemeral index, add docs, `load()`, `retrieve()`; assert top-k count, score
-  ordering, context-block format, and graceful empty/error → `""`. Uses
-  `MOSS_PROJECT_ID`/`MOSS_PROJECT_KEY` like other Moss integration tests; skips
-  if creds absent.
+- **CI-able (offline)** — `packages/ten-moss/tests/test_session_manager.py`: mock
+  the Moss client + session (no network, no creds); assert config defaults,
+  `open`/`query_context`/`add_docs`/`get_docs`/`push_index`/`doc_count`,
+  context-block format, the disabled-config no-op path, and graceful
+  empty/timeout/error → `""`.
 - **Manual E2E** — full app via `task run`; talk to it and confirm answers
   reflect indexed knowledge. **Not** CI-runnable (needs the TEN toolchain/Docker
   + Agora + Deepgram/OpenAI/ElevenLabs keys). Documented in the app README.

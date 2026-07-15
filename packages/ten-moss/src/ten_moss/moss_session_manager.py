@@ -82,6 +82,8 @@ class MossSessionManager:
                 self._session.query(text, QueryOptions(top_k=self._top_k, alpha=self._alpha)),
                 timeout=self._timeout_s,
             )
+        except asyncio.CancelledError:
+            raise  # never swallow cooperative cancellation (shutdown, etc.)
         except Exception as exc:  # noqa: BLE001 - never break the voice loop
             # Do not log the raw utterance: transcripts can contain PII.
             self._log.error(

@@ -8,9 +8,16 @@ Usage:
 import asyncio
 import os
 
-from dotenv import load_dotenv
 from loguru import logger
 from moss import DocumentInfo, MossClient
+
+try:  # python-dotenv is optional; the script also works with real env vars.
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - fallback when python-dotenv isn't installed
+
+    def load_dotenv(*args, **kwargs):
+        """No-op fallback when python-dotenv is not installed."""
+        return False
 
 
 def build_documents() -> list[DocumentInfo]:
