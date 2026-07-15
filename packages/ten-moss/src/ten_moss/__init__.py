@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
-from .config import MossRetrievalConfig
+from moss import DocumentInfo, MossClient, QueryOptions, SearchResult
 
-__all__ = ["MossRetrievalConfig"]
+from .config import MossRetrievalConfig
+from .moss_retrieval_store import MossRetrievalStore
+
+__all__ = [
+    "DocumentInfo",
+    "MossClient",
+    "MossRetrievalConfig",
+    "MossRetrievalStore",
+    "QueryOptions",
+    "SearchResult",
+]
