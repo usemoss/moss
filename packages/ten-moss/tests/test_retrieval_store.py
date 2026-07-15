@@ -1,6 +1,8 @@
 """Offline tests for the ten-moss helper package."""
 
 import asyncio
+import importlib.util
+import pathlib
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -127,6 +129,24 @@ class TestRetrieve(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(store._top_k, 7)
         self.assertEqual(store._alpha, 0.5)
         self.assertEqual(store._context_header, "H")
+
+
+class TestCreateIndexExample(unittest.TestCase):
+    """The example script exposes a testable build_documents()."""
+
+    def _load_example(self):
+        path = pathlib.Path(__file__).parent.parent / "examples" / "create_index.py"
+        spec = importlib.util.spec_from_file_location("_ten_moss_create_index", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_build_documents_returns_ten_docs(self):
+        module = self._load_example()
+        docs = module.build_documents()
+        self.assertEqual(len(docs), 10)
+        self.assertTrue(all(d.text for d in docs))
+        self.assertEqual(len({d.id for d in docs}), 10)  # unique ids
 
 
 if __name__ == "__main__":
