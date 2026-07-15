@@ -33,6 +33,7 @@ examples/
     dspy/          — DSPy notebook
     haystack/      — Haystack RAG pipeline integration
     langchain/     — LangChain retriever + tool integration
+    langflow/      — Langflow drag-and-drop retriever + search components
     langgraph/     - LangGraph stateful retrieval node
     mastra/        — Mastra agent createTool() integration
     pydantic-ai/   - Pydantic AI integration
@@ -98,6 +99,7 @@ asks for an experimental landing spot.
 | `dspy/` | DSPy | Notebook-based DSPy + Moss integration |
 | `haystack/` | Haystack | `MossDocumentStore` and `MossRetriever` drop-in components for Haystack RAG pipelines |
 | `langchain/` | LangChain | `MossRetriever` (BaseRetriever) + `get_moss_tool()` factory; the canonical pattern for new Python cookbook integrations |
+| `langflow/` | Langflow | Drag-and-drop `MossRetrieverComponent` and `MossSearchComponent` for Langflow's visual flow builder |
 | `mastra/` | Mastra | Moss wrapped as a `createTool()` primitive for Mastra conversational agents (TypeScript) |
 | `sim/` | sim.ai | FastAPI webhook server exposing Moss as an external HTTP tool for sim.ai workflows |
 | `moss-cognee-daytona/` | Claude Code + Cognee + Daytona | Three Claude Code agents share a persistent Cognee memory graph backed by Moss, each running in an isolated Daytona sandbox |
