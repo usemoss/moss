@@ -24,6 +24,7 @@ npm install n8n-nodes-moss
 cd packages/n8n-nodes-moss
 npm install --ignore-scripts
 npm run build
+npm test
 ```
 
 Then point n8n at the package:
@@ -58,6 +59,11 @@ Credential test calls `listIndexes` against `https://service.usemoss.dev/v1/mana
 | **Delete Index** | Delete an index |
 | **Get Job Status** | Poll async create / add / delete jobs |
 
+Mutating operations (**Create Index**, **Add Documents**, **Delete Documents**) support:
+
+- **Wait for Completion** (default: on) — poll until the job finishes
+- **Max Wait (Seconds)** (default: 300) — then fail with the `jobId` so you can continue via **Get Job Status**
+
 ## Example: Query
 
 1. Add a **Moss** node
@@ -72,18 +78,18 @@ Credential test calls `listIndexes` against `https://service.usemoss.dev/v1/mana
 ```json
 [
   { "id": "faq-1", "text": "We offer a 30-day return policy." },
-  { "id": "faq-2", "text": "Track your order from your account dashboard." }
+  { "id": "faq-2", "text": "Track your order from your account dashboard.", "metadata": { "source": "faq" } }
 ]
 ```
 
 ## Architecture
 
-This node talks to the public Moss HTTP APIs directly:
+This node talks to the public Moss HTTP APIs directly (no native SDK bindings):
 
 - Manage: `POST https://service.usemoss.dev/v1/manage`
 - Query: `POST https://service.usemoss.dev/query`
 
-Create Index uses the documented upload flow (`initUpload` → binary PUT → `startBuild` → poll), with `dimension: 0` so Moss generates embeddings server-side.
+Create Index uses the documented upload flow (`initUpload` → binary PUT → `startBuild` → optional poll), with `dimension: 0` so Moss generates embeddings server-side.
 
 ## License
 

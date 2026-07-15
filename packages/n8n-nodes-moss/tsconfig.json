@@ -20,5 +20,5 @@
 		"skipLibCheck": true,
 		"outDir": "./dist/"
 	},
-	"include": ["credentials/**/*", "nodes/**/*", "nodes/**/*.json", "gulpfile.js"]
+	"include": ["credentials/**/*", "nodes/**/*", "nodes/**/*.json"]
 }

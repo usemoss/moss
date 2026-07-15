@@ -16,53 +16,11 @@ import {
 	getIndex,
 	getJobStatus,
 	listIndexes,
+	parseDocuments,
+	parseStringList,
 	queryIndex,
 	type MossCredentials,
-	type MossDocument,
 } from './GenericFunctions';
-
-function parseDocuments(raw: unknown): MossDocument[] {
-	if (typeof raw === 'string') {
-		return parseDocuments(JSON.parse(raw) as unknown);
-	}
-
-	if (!Array.isArray(raw)) {
-		throw new Error('Documents must be a JSON array of { id, text, metadata? } objects');
-	}
-
-	return raw.map((doc, index) => {
-		if (!doc || typeof doc !== 'object') {
-			throw new Error(`Document at index ${index} must be an object`);
-		}
-		const record = doc as Record<string, unknown>;
-		if (typeof record.id !== 'string' || typeof record.text !== 'string') {
-			throw new Error(`Document at index ${index} requires string "id" and "text" fields`);
-		}
-		const metadata =
-			record.metadata && typeof record.metadata === 'object'
-				? (record.metadata as Record<string, string>)
-				: undefined;
-		return { id: record.id, text: record.text, ...(metadata ? { metadata } : {}) };
-	});
-}
-
-function parseStringList(raw: unknown): string[] {
-	if (Array.isArray(raw)) {
-		return raw.map(String).filter(Boolean);
-	}
-	if (typeof raw === 'string') {
-		const trimmed = raw.trim();
-		if (!trimmed) return [];
-		if (trimmed.startsWith('[')) {
-			return parseStringList(JSON.parse(trimmed) as unknown);
-		}
-		return trimmed
-			.split(/[\n,]/)
-			.map((part) => part.trim())
-			.filter(Boolean);
-	}
-	return [];
-}
 
 async function getMossCredentials(this: IExecuteFunctions): Promise<MossCredentials> {
 	const credentials = await this.getCredentials('mossApi');
@@ -75,6 +33,39 @@ async function getMossCredentials(this: IExecuteFunctions): Promise<MossCredenti
 
 	return { projectId, projectKey };
 }
+
+const waitProperties = [
+	{
+		displayName: 'Wait for Completion',
+		name: 'waitForCompletion',
+		type: 'boolean' as const,
+		default: true,
+		description:
+			'Whether to poll until the async Moss job finishes. Disable to return the jobId immediately and poll with Get Job Status.',
+		displayOptions: {
+			show: {
+				operation: ['createIndex', 'addDocs', 'deleteDocs'],
+			},
+		},
+	},
+	{
+		displayName: 'Max Wait (Seconds)',
+		name: 'maxWaitSeconds',
+		type: 'number' as const,
+		typeOptions: {
+			minValue: 5,
+			maxValue: 1800,
+		},
+		default: 300,
+		description: 'Maximum seconds to wait when Wait for Completion is enabled',
+		displayOptions: {
+			show: {
+				operation: ['createIndex', 'addDocs', 'deleteDocs'],
+				waitForCompletion: [true],
+			},
+		},
+	},
+];
 
 export class Moss implements INodeType {
 	description: INodeTypeDescription = {
@@ -193,7 +184,7 @@ export class Moss implements INodeType {
 						operation: ['createIndex', 'addDocs'],
 					},
 				},
-				description: 'JSON array of documents with id, text, and optional metadata',
+				description: 'JSON array of documents with id, text, and optional string metadata',
 			},
 			{
 				displayName: 'Model ID',
@@ -223,6 +214,7 @@ export class Moss implements INodeType {
 				},
 				description: 'Whether to update documents that already exist (matched by id)',
 			},
+			...waitProperties,
 			{
 				displayName: 'Query',
 				name: 'query',
@@ -307,19 +299,40 @@ export class Moss implements INodeType {
 				const operation = this.getNodeParameter('operation', itemIndex) as string;
 				let responseData: IDataObject | IDataObject[] | unknown;
 
+				const waitOptions = {
+					waitForCompletion: this.getNodeParameter(
+						'waitForCompletion',
+						itemIndex,
+						true,
+					) as boolean,
+					maxWaitSeconds: this.getNodeParameter('maxWaitSeconds', itemIndex, 300) as number,
+				};
+
 				switch (operation) {
 					case 'createIndex': {
 						const indexName = this.getNodeParameter('indexName', itemIndex) as string;
 						const documents = parseDocuments(this.getNodeParameter('documents', itemIndex));
 						const modelId = this.getNodeParameter('modelId', itemIndex) as string;
-						responseData = await createIndex(credentials, indexName, documents, modelId);
+						responseData = await createIndex(
+							credentials,
+							indexName,
+							documents,
+							modelId,
+							waitOptions,
+						);
 						break;
 					}
 					case 'addDocs': {
 						const indexName = this.getNodeParameter('indexName', itemIndex) as string;
 						const documents = parseDocuments(this.getNodeParameter('documents', itemIndex));
 						const upsert = this.getNodeParameter('upsert', itemIndex) as boolean;
-						responseData = await addDocs(credentials, indexName, documents, upsert);
+						responseData = await addDocs(
+							credentials,
+							indexName,
+							documents,
+							upsert,
+							waitOptions,
+						);
 						break;
 					}
 					case 'query': {
@@ -356,7 +369,7 @@ export class Moss implements INodeType {
 					case 'deleteDocs': {
 						const indexName = this.getNodeParameter('indexName', itemIndex) as string;
 						const docIds = parseStringList(this.getNodeParameter('docIds', itemIndex));
-						responseData = await deleteDocs(credentials, indexName, docIds);
+						responseData = await deleteDocs(credentials, indexName, docIds, waitOptions);
 						break;
 					}
 					case 'getJobStatus': {

@@ -13,7 +13,7 @@ export class MossApi implements ICredentialType {
 
 	documentationUrl = 'https://docs.moss.dev/docs/integrate/authentication';
 
-	icon: Icon = { light: 'file:../nodes/Moss/moss.svg', dark: 'file:../nodes/Moss/moss.svg' };
+	icon: Icon = { light: 'file:../icons/moss.svg', dark: 'file:../icons/moss.svg' };
 
 	properties: INodeProperties[] = [
 		{

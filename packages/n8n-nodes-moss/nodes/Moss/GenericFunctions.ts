@@ -12,9 +12,20 @@ export interface MossCredentials {
 	projectKey: string;
 }
 
-interface ManageResponse {
-	[key: string]: unknown;
+export interface WaitOptions {
+	waitForCompletion?: boolean;
+	maxWaitSeconds?: number;
 }
+
+const MANAGE_TIMEOUT_MS = 120_000;
+const QUERY_TIMEOUT_MS = 60_000;
+const UPLOAD_TIMEOUT_MS = 1_800_000;
+const MAX_UPLOAD_RETRIES = 3;
+const POLL_INTERVAL_MS = 2_000;
+const MAX_CONSECUTIVE_ERRORS = 3;
+const DEFAULT_MAX_WAIT_SECONDS = 300;
+
+type ManageResponse = Record<string, unknown>;
 
 async function manageRequest(
 	credentials: MossCredentials,
@@ -31,6 +42,7 @@ async function manageRequest(
 			projectId: credentials.projectId,
 			...body,
 		}),
+		signal: AbortSignal.timeout(MANAGE_TIMEOUT_MS),
 	});
 
 	const text = await response.text();
@@ -45,9 +57,7 @@ async function manageRequest(
 
 	if (!response.ok) {
 		const message =
-			typeof data.error === 'string'
-				? data.error
-				: `Moss API error ${response.status}`;
+			typeof data.error === 'string' ? data.error : `Moss API error ${response.status}`;
 		throw new Error(message);
 	}
 
@@ -58,6 +68,8 @@ async function manageRequest(
  * Serializes docs into the Moss bulk upload binary format:
  *   [MOSS (4B)] [version=1 (4B)] [docCount (4B)] [dim (4B)]
  *   [metaLen (4B)] [metadata JSON] [float32 embeddings]
+ *
+ * Uses dimension=0 so the control plane generates embeddings server-side.
  */
 export function serializeBulkPayload(docs: MossDocument[]): ArrayBuffer {
 	const metadata = docs.map(({ id, text, metadata: meta }) => ({
@@ -83,8 +95,63 @@ export function serializeBulkPayload(docs: MossDocument[]): ArrayBuffer {
 	return buffer;
 }
 
+export function parseDocuments(raw: unknown): MossDocument[] {
+	if (typeof raw === 'string') {
+		return parseDocuments(JSON.parse(raw) as unknown);
+	}
+
+	if (!Array.isArray(raw)) {
+		throw new Error('Documents must be a JSON array of { id, text, metadata? } objects');
+	}
+
+	return raw.map((doc, index) => {
+		if (!doc || typeof doc !== 'object') {
+			throw new Error(`Document at index ${index} must be an object`);
+		}
+		const record = doc as Record<string, unknown>;
+		if (typeof record.id !== 'string' || typeof record.text !== 'string') {
+			throw new Error(`Document at index ${index} requires string "id" and "text" fields`);
+		}
+
+		let metadata: Record<string, string> | undefined;
+		if (record.metadata !== undefined) {
+			if (!record.metadata || typeof record.metadata !== 'object' || Array.isArray(record.metadata)) {
+				throw new Error(`Document at index ${index} metadata must be an object of string values`);
+			}
+			metadata = {};
+			for (const [key, value] of Object.entries(record.metadata as Record<string, unknown>)) {
+				if (typeof value !== 'string') {
+					throw new Error(
+						`Document at index ${index} metadata.${key} must be a string (got ${typeof value})`,
+					);
+				}
+				metadata[key] = value;
+			}
+		}
+
+		return { id: record.id, text: record.text, ...(metadata ? { metadata } : {}) };
+	});
+}
+
+export function parseStringList(raw: unknown): string[] {
+	if (Array.isArray(raw)) {
+		return raw.map(String).filter(Boolean);
+	}
+	if (typeof raw === 'string') {
+		const trimmed = raw.trim();
+		if (!trimmed) return [];
+		if (trimmed.startsWith('[')) {
+			return parseStringList(JSON.parse(trimmed) as unknown);
+		}
+		return trimmed
+			.split(/[\n,]/)
+			.map((part) => part.trim())
+			.filter(Boolean);
+	}
+	return [];
+}
+
 async function uploadWithRetries(uploadUrl: string, payload: ArrayBuffer): Promise<void> {
-	const MAX_UPLOAD_RETRIES = 3;
 	let lastStatus = 0;
 
 	for (let attempt = 0; attempt < MAX_UPLOAD_RETRIES; attempt++) {
@@ -92,6 +159,7 @@ async function uploadWithRetries(uploadUrl: string, payload: ArrayBuffer): Promi
 			method: 'PUT',
 			body: payload,
 			headers: { 'Content-Type': 'application/octet-stream' },
+			signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
 		});
 		lastStatus = response.status;
 		if (response.ok) return;
@@ -104,23 +172,42 @@ async function uploadWithRetries(uploadUrl: string, payload: ArrayBuffer): Promi
 	throw new Error(`Failed to upload Moss index payload (HTTP ${lastStatus})`);
 }
 
-async function pollJobUntilComplete(
+export async function pollJobUntilComplete(
 	credentials: MossCredentials,
 	jobId: string,
 	indexName: string,
 	docCount: number,
+	maxWaitSeconds: number = DEFAULT_MAX_WAIT_SECONDS,
 ): Promise<Record<string, unknown>> {
-	const POLL_INTERVAL_MS = 2000;
-	const MAX_POLL_TIME_MS = 30 * 60 * 1000;
+	const maxWaitMs = Math.max(1, maxWaitSeconds) * 1000;
 	const start = Date.now();
+	let consecutiveErrors = 0;
 
-	while (Date.now() - start < MAX_POLL_TIME_MS) {
-		const status = await manageRequest(credentials, {
-			action: 'getJobStatus',
-			jobId,
-		});
+	while (Date.now() - start < maxWaitMs) {
+		let status: ManageResponse;
+		try {
+			status = await manageRequest(credentials, {
+				action: 'getJobStatus',
+				jobId,
+			});
+			consecutiveErrors = 0;
+		} catch (error) {
+			consecutiveErrors += 1;
+			if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+				throw new Error(
+					`Job status polling failed after ${MAX_CONSECUTIVE_ERRORS} consecutive errors: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				);
+			}
+			await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+			continue;
+		}
 
-		const jobStatus = String(status.status ?? '').toLowerCase();
+		const jobStatus = String(status.status ?? '')
+			.toLowerCase()
+			.replace(/\s+/g, '_');
+
 		if (jobStatus === 'completed') {
 			return { jobId, indexName, docCount, status: 'completed' };
 		}
@@ -131,7 +218,30 @@ async function pollJobUntilComplete(
 		await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
 	}
 
-	throw new Error(`Moss job timed out after ${MAX_POLL_TIME_MS / 1000}s (job ${jobId})`);
+	throw new Error(
+		`Moss job timed out after ${maxWaitSeconds}s (job ${jobId}). Use Get Job Status to keep polling.`,
+	);
+}
+
+async function maybeWaitForJob(
+	credentials: MossCredentials,
+	response: ManageResponse,
+	indexName: string,
+	docCount: number,
+	wait?: WaitOptions,
+): Promise<Record<string, unknown>> {
+	const jobId = typeof response.jobId === 'string' ? response.jobId : '';
+	if (!wait?.waitForCompletion || !jobId) {
+		return response;
+	}
+
+	return pollJobUntilComplete(
+		credentials,
+		jobId,
+		indexName,
+		docCount,
+		wait.maxWaitSeconds ?? DEFAULT_MAX_WAIT_SECONDS,
+	);
 }
 
 export async function createIndex(
@@ -139,6 +249,7 @@ export async function createIndex(
 	indexName: string,
 	docs: MossDocument[],
 	modelId: string,
+	wait?: WaitOptions,
 ): Promise<Record<string, unknown>> {
 	if (!docs.length) {
 		throw new Error('Create Index requires at least one document');
@@ -160,12 +271,18 @@ export async function createIndex(
 
 	await uploadWithRetries(uploadUrl, serializeBulkPayload(docs));
 
-	await manageRequest(credentials, {
+	const started = await manageRequest(credentials, {
 		action: 'startBuild',
 		jobId,
 	});
 
-	return pollJobUntilComplete(credentials, jobId, indexName, docs.length);
+	return maybeWaitForJob(
+		credentials,
+		{ ...started, jobId, indexName, docCount: docs.length },
+		indexName,
+		docs.length,
+		wait,
+	);
 }
 
 export async function addDocs(
@@ -173,33 +290,39 @@ export async function addDocs(
 	indexName: string,
 	docs: MossDocument[],
 	upsert: boolean,
+	wait?: WaitOptions,
 ): Promise<Record<string, unknown>> {
 	if (!docs.length) {
 		throw new Error('Add Documents requires at least one document');
 	}
 
-	return manageRequest(credentials, {
+	const response = await manageRequest(credentials, {
 		action: 'addDocs',
 		indexName,
 		docs,
 		options: { upsert },
 	});
+
+	return maybeWaitForJob(credentials, response, indexName, docs.length, wait);
 }
 
 export async function deleteDocs(
 	credentials: MossCredentials,
 	indexName: string,
 	docIds: string[],
+	wait?: WaitOptions,
 ): Promise<Record<string, unknown>> {
 	if (!docIds.length) {
 		throw new Error('Delete Documents requires at least one document ID');
 	}
 
-	return manageRequest(credentials, {
+	const response = await manageRequest(credentials, {
 		action: 'deleteDocs',
 		indexName,
 		docIds,
 	});
+
+	return maybeWaitForJob(credentials, response, indexName, docIds.length, wait);
 }
 
 export async function getDocs(
@@ -257,6 +380,7 @@ export async function queryIndex(
 			projectKey: credentials.projectKey,
 			topK,
 		}),
+		signal: AbortSignal.timeout(QUERY_TIMEOUT_MS),
 	});
 
 	const text = await response.text();

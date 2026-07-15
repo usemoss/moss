@@ -63,6 +63,7 @@ packages/
   pipecat-moss/          — Pipecat Python integration package
   strands-agents-moss/   — AWS Strands Agents integration package
   vapi-moss/             — VAPI Custom Knowledge Base webhook adapter
+  n8n-nodes-moss/        — n8n community node for Moss index + query (n8n-nodes-moss)
   vercel-sdk/            — Vercel AI SDK tool wrappers (@moss-tools/vercel-sdk)
   vitepress-plugin-moss/ — VitePress search plugin (on-device fallback after cloud)
   zo-computer/           — Zo computer skill for Moss search
@@ -138,6 +139,7 @@ asks for an experimental landing spot.
 | `sim-moss/` | `sim-moss` | `MossSimSearch` — knowledge base adapter for sim.ai workflow HTTP tool nodes |
 | `strands-agents-moss/` | `strands-agents-moss` | Moss tool for AWS Strands Agents |
 | `vapi-moss/` | `vapi-moss` | `MossVapiSearch` adapter + HMAC webhook verification for VAPI |
+| `n8n-nodes-moss/` | `n8n-nodes-moss` | n8n community node: create index, add/delete docs, list/get/delete indexes, query |
 | `vercel-sdk/` | `@moss-tools/vercel-sdk` | Vercel AI SDK 6 `tool()` wrappers: search, create index, manage documents |
 | `vitepress-plugin-moss/` | `vitepress-plugin-moss` | VitePress plugin: cloud search on first keystroke, on-device after index download |
 | `zo-computer/` | (internal) | Zo computer skill backed by Moss search |
