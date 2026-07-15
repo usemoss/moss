@@ -1,0 +1,4 @@
+# Installed by tenapp/scripts/install_python_deps.sh during `task install`.
+# Until ten-moss is published to PyPI, install it editable from this repo:
+#   uv pip install --system -e ../../packages/ten-moss   (run from apps/ten-moss/)
+ten-moss>=0.0.1

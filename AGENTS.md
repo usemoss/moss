@@ -49,6 +49,7 @@ apps/
     pipecat-quickstart/  — Cloud-deployable quickstart bot
     ollama-local/        — Local LLM + Moss + Pipecat via docker compose
     hume-ollama-local/   — Local LLM + Hume AI TTS + Moss + Pipecat
+  ten-moss/        — TEN Framework voice agent with Moss session-scoped grounding
   vapi-moss/       — VAPI Custom Tool webhook server
 packages/
   agora-moss/            — Agora Conversational AI MCP server package
@@ -111,6 +112,7 @@ asks for an experimental landing spot.
 | `pipecat-moss/pipecat-quickstart/` | Pipecat Cloud | Minimal Pipecat bot — local dev → Pipecat Cloud deployment |
 | `pipecat-moss/ollama-local/` | Pipecat + Ollama | Full-stack local voice AI: Ollama LLM + Moss RAG + Pipecat audio, one `docker compose up` |
 | `pipecat-moss/hume-ollama-local/` | Pipecat + Ollama + Hume | Same as above with Hume AI (Octave) expressive TTS |
+| `ten-moss/` | TEN Framework | Voice agent that grounds each turn in a Moss session (`MossSessionManager`); TEN `voice-assistant` example + the Moss delta |
 | `vapi-moss/` | VAPI | Webhook server connecting VAPI Custom Tool calls to Moss search; LLM-directed retrieval |
 
 ### Other Apps
