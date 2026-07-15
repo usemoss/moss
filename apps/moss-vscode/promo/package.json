@@ -1,0 +1,35 @@
+{
+  "name": "moss-vscode-promo",
+  "version": "1.0.0",
+  "description": "Launch promo video for Moss Code Search VS Code extension",
+  "repository": {},
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@remotion/cli": "4.0.484",
+    "@remotion/media": "^4.0.484",
+    "@remotion/tailwind-v4": "4.0.484",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.484",
+    "tailwindcss": "4.2.0"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.484",
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "eslint": "9.19.0",
+    "prettier": "3.8.1",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "upgrade": "remotion upgrade",
+    "lint": "eslint src && tsc",
+    "render": "remotion render MossVscodePromo out/moss-vscode-promo.mp4"
+  },
+  "sideEffects": [
+    "*.css"
+  ]
+}
