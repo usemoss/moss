@@ -8,7 +8,7 @@
   "icon": "media/moss_avatar_core.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/samanyugoyal2010/moss-vs-code.git",
+    "url": "https://github.com/usemoss/moss.git",
     "directory": "apps/moss-vscode"
   },
   "homepage": "https://github.com/samanyugoyal2010/moss-vs-code/tree/main/apps/moss-vscode",
