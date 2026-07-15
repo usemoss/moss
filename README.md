@@ -148,6 +148,7 @@ examples/
     ├── haystack/            # Haystack retriever
     ├── autogen/             # AutoGen integration
     ├── mastra/              # Mastra retriever
+    ├── langflow/            # Langflow drag-and-drop retriever
     ├── pydantic-ai/         # Pydantic AI integration
     └── daytona/             # Daytona sandbox example
 
@@ -238,6 +239,7 @@ Full API reference: [docs.moss.dev](https://docs.moss.dev).
 | [ElevenLabs](https://elevenlabs.io) | Available | [`apps/elevenlabs-moss/`](apps/elevenlabs-moss/) |
 | [Agora](https://www.agora.io/) | Available | [`apps/agora-moss/`](apps/agora-moss/) |
 | [Strands Agents](https://github.com/strands-agents/sdk-python) | Available | [`packages/strands-agents-moss/`](packages/strands-agents-moss/) |
+| [Langflow](https://github.com/langflow-ai/langflow) | Available | [`examples/cookbook/langflow/`](examples/cookbook/langflow/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
 | [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`packages/vercel-sdk/`](packages/vercel-sdk/) |
