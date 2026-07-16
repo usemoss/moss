@@ -50,11 +50,6 @@ def completions_command(
                 json_mode,
             )
             raise typer.Exit(1)
-        output.print_error(
-            "Shell completion is unavailable in this Typer installation.",
-            json_mode,
-        )
-        raise typer.Exit(1)
 
     complete_var = "_{}_COMPLETE".format(PROG_NAME.replace("-", "_").upper())
     script = get_completion_script(

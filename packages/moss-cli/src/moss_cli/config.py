@@ -123,6 +123,17 @@ def list_profiles() -> list[str]:
     return sorted(name for name in profiles.keys() if isinstance(name, str) and name)
 
 
+def set_active_profile(profile: str) -> bool:
+    normalized = _normalize_config(load_config())
+    profiles = normalized.get("profiles", {})
+    if not isinstance(profiles, dict) or profile not in profiles:
+        return False
+
+    normalized["active_profile"] = profile
+    save_config(normalized)
+    return True
+
+
 def delete_profile(profile: str) -> Tuple[bool, Optional[str]]:
     normalized = _normalize_config(load_config())
     profiles = normalized.get("profiles", {})
