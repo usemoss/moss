@@ -1,7 +1,7 @@
 from .events import AgentEvent
 
 
-def agent_event_handler(event_type: AgentEvent):
+def agent_event_handler(event_type: type[AgentEvent]):
     """
     Decorator to mark a method as an Agent event handler.
     Usage:

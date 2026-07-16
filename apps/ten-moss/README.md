@@ -31,6 +31,11 @@ The `tenapp/` baseline (graph, `main_python` control extension, agent runtime, s
 [`c385d27`](https://github.com/ten-framework/ten-framework/tree/c385d2724a1f3e6ac4ee0b81fcc7dada8346c0e0/ai_agents/agents/examples/voice-assistant),
 licensed under **Apache-2.0** (headers preserved). Only the Moss delta described above is Moss-authored.
 
+Two small correctness patches were applied on top of the vendored baseline:
+`agent/decorators.py` fixes the `agent_event_handler` annotation to `type[AgentEvent]`,
+and `extension.py` parses `session_id` defensively so a non-numeric value can't crash the
+ASR handler.
+
 ## Prerequisites
 
 - A **TEN Framework checkout**. This example references shared TEN extensions via relative paths (`../../../ten_packages/extension/...`) and runs with TEN's own tooling, so it lives **inside** a TEN Framework repo. It ships the TEN app (`tenapp/`) — not the repo-level run harness (playground / server / Taskfile / Dockerfile), which the TEN Framework provides.

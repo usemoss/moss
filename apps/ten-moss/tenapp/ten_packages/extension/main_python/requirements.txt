@@ -1,4 +1,7 @@
-# Installed by tenapp/scripts/install_python_deps.sh during `task install`.
-# Until ten-moss is published to PyPI, install it editable from this repo:
-#   uv pip install --system -e ../../packages/ten-moss   (run from apps/ten-moss/)
-ten-moss>=0.0.1
+# This extension imports `ten_moss` (MossSessionManager), which is intentionally
+# NOT pinned here: ten-moss is not yet published to PyPI, so a hard pin would make
+# `install_python_deps.sh` fail. Install it explicitly instead (see the app README):
+#
+#   uv pip install --system -e /path/to/moss/packages/ten-moss
+#
+# Once ten-moss is published, add:  ten-moss>=0.0.1

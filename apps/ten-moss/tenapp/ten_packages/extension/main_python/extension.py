@@ -100,7 +100,12 @@ class MainControlExtension(AsyncExtension):
     @agent_event_handler(ASRResultEvent)
     async def _on_asr_result(self, event: ASRResultEvent):
         self.session_id = event.metadata.get("session_id", "100")
-        stream_id = int(self.session_id)
+        # session_id is a string in the event schema; parse defensively so a
+        # non-numeric value can't crash the ASR handler and break the voice loop.
+        try:
+            stream_id = int(self.session_id)
+        except (TypeError, ValueError):
+            stream_id = 0
         if not event.text:
             return
         if event.final or len(event.text) > 2:
