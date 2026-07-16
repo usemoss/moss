@@ -8,8 +8,8 @@ from .qa_engine import AnswerEngine
 
 
 def extract_slack_question(text: str) -> str:
-    """Remove Slack user mentions from an app mention event."""
-    return re.sub(r"<@[^>]+>", "", text).strip()
+    """Remove the leading bot mention from an app mention event."""
+    return re.sub(r"^\s*<@[^>]+>\s*", "", text).strip()
 
 
 def extract_discord_question(
