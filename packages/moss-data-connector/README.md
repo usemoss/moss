@@ -11,7 +11,8 @@ moss-data-connector/
 ├── moss-connector-mongodb/     # MongoDB source (requires pymongo)
 ├── moss-connector-mysql/       # MySQL / MariaDB source (requires pymysql)
 ├── moss-connector-supabase/    # Supabase source (requires supabase)
-└── moss-connector-dynamodb/    # Amazon DynamoDB source (requires boto3)
+├── moss-connector-dynamodb/    # Amazon DynamoDB source (requires boto3)
+└── moss-connector-s3/          # Amazon S3 source + watch/re-index (requires boto3)
 ```
 
 
@@ -42,6 +43,7 @@ Use `auto_id=True` when your mapper does not have a stable primary key and you w
 | [`moss-connector-mysql`](moss-connector-mysql)             | MySQL         | `pymysql`    |
 | [`moss-connector-supabase`](moss-connector-supabase)       | Supabase      | `supabase`   |
 | [`moss-connector-dynamodb`](moss-connector-dynamodb)       | Amazon DynamoDB | `boto3`    |
+| [`moss-connector-s3`](moss-connector-s3)                   | Amazon S3     | `boto3`      |
 
 ## Adding a new connector
 
