@@ -5,7 +5,7 @@ import { chunkFile } from "./chunker";
 import { isExcludedFromIndex } from "./excludes";
 import { readFileForIndex, scanWorkspaceFiles, toWorkspaceRelative } from "./scanner";
 
-const BATCH_SIZE = 4;
+const BATCH_SIZE = 64;
 const YIELD_EVERY_FILES = 25;
 
 export type IndexStatus =
