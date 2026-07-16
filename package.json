@@ -10,7 +10,7 @@
     "vitepress": "^1.6.4"
   },
   "overrides": {
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "postcss": "^8.5.16",
     "vite": "^6.4.2"
   }
