@@ -128,7 +128,7 @@ def _is_index_conflict_error(exc: BaseException) -> bool:
     msg = str(exc).lower()
     if "already exists" in msg and "index" in msg:
         return True
-    return msg.strip() == "index already exists"
+    return False
 
 
 async def _delete_index_if_exists(client: MossClient, index_name: str) -> None:
