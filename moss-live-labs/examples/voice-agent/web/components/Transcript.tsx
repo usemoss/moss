@@ -6,6 +6,8 @@ import { RoomEvent, type TranscriptionSegment, type Participant } from "livekit-
 
 type Turn = { id: string; text: string; isUser: boolean };
 
+const MAX_TURNS = 100;
+
 // Renders live STT (user) + TTS (agent) transcriptions. Keyed by segment id so
 // interim results update in place; object insertion order preserves turn order.
 export function Transcript() {
@@ -19,13 +21,17 @@ export function Transcript() {
       setTurns((prev) => {
         const next = { ...prev };
         for (const seg of segments) {
-          next[seg.id] = { id: seg.id, text: seg.text, isUser: Boolean(participant?.isLocal) };
+          const text = seg.text;
+          if (!text.trim()) {
+            // Drop blank interim artifacts so they never consume the history cap.
+            delete next[seg.id];
+            continue;
+          }
+          next[seg.id] = { id: seg.id, text, isUser: Boolean(participant?.isLocal) };
         }
-        // cap history so a long call doesn't grow memory without bound
         const ids = Object.keys(next);
-        const MAX = 100;
-        if (ids.length > MAX) {
-          for (const id of ids.slice(0, ids.length - MAX)) delete next[id];
+        if (ids.length > MAX_TURNS) {
+          for (const id of ids.slice(0, ids.length - MAX_TURNS)) delete next[id];
         }
         return next;
       });
@@ -36,7 +42,7 @@ export function Transcript() {
     };
   }, [room]);
 
-  const ordered = Object.values(turns).filter((t) => t.text.trim().length > 0);
+  const ordered = Object.values(turns);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -53,7 +59,7 @@ export function Transcript() {
     const el = containerRef.current;
     if (!el || !stickToBottomRef.current) return;
     el.scrollTop = el.scrollHeight;
-  }, [ordered]);
+  }, [turns]);
 
   return (
     <div
@@ -61,7 +67,7 @@ export function Transcript() {
       ref={containerRef}
       role="log"
       aria-live="polite"
-      aria-relevant="additions"
+      aria-relevant="additions text"
     >
       {ordered.length === 0 ? (
         "Say hello to start the conversation."

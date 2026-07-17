@@ -27,16 +27,19 @@ load_dotenv()
 MOSS_PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
 MOSS_PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
 INDEX_NAME = os.getenv("MOSS_INDEX_NAME", "demo-customer_faqs")
-# This support line serves one region. Metadata filtering scopes retrieval to
-# region-specific policies + global ("all") docs. Set MOSS_REGION=EU to compare.
+# Default region for console / no-UI runs. The web picker is authoritative when
+# the browser is connected and overrides this on moss.region.
 ALLOWED_REGIONS = {"US", "EU"}
-REGION = os.getenv("MOSS_REGION", "US")
-if REGION not in ALLOWED_REGIONS:
-    REGION = "US"
+_region_env = os.getenv("MOSS_REGION", "US")
+if _region_env not in ALLOWED_REGIONS:
+    raise SystemExit(
+        f"Invalid MOSS_REGION={_region_env!r}. Allowed values: {sorted(ALLOWED_REGIONS)}."
+    )
+REGION = _region_env
 
 NO_MATCH_CONTEXT = (
     "No relevant information was found. Say you don't have that detail "
-    "and offer to connect them with a person. Do not make up specifics."
+    "and offer to help with something else. Do not make up specifics."
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -156,10 +159,9 @@ async def entrypoint(ctx: JobContext):
         raise SystemExit(
             "Missing MOSS_PROJECT_ID / MOSS_PROJECT_KEY. Copy .env.example to .env and fill them in."
         )
-    await ctx.connect()
 
-    # Apply region packets as soon as the room is up — before the agent exists —
-    # so a UI picker change that arrives during startup is not dropped.
+    # Register before connect so a UI region packet cannot arrive while we are offline
+    # to the topic (browser often publishes as soon as the agent participant appears).
     pending_region = {"value": REGION}
     agent_holder: dict[str, MossSemanticRetrievalAgent | None] = {"agent": None}
 
@@ -178,6 +180,8 @@ async def entrypoint(ctx: JobContext):
                     logger.warning(f"Ignoring unknown region {r!r} (allowed: {sorted(ALLOWED_REGIONS)})")
             except Exception as e:
                 logger.warning(f"Bad region packet: {e}")
+
+    await ctx.connect()
 
     # Initialize Moss
     moss_client = MossClient(project_id=MOSS_PROJECT_ID, project_key=MOSS_PROJECT_KEY)

@@ -5,13 +5,31 @@ import { AccessToken, TrackSource, type VideoGrant } from "livekit-server-sdk";
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
 const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;
+const ALLOW_REMOTE_TOKEN = process.env.ALLOW_REMOTE_TOKEN === "1";
 
 export const revalidate = 0;
 
-// Local-dev demo: this endpoint is intentionally unauthenticated. Before deploying
-// beyond localhost, gate it behind your own auth so it can't mint room tokens for
-// anonymous callers.
-export async function GET() {
+function isLocalDevHost(request: Request): boolean {
+  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "")
+    .split(",")[0]
+    ?.trim()
+    .toLowerCase();
+  if (!host) return false;
+  const hostname = host.replace(/:\d+$/, "");
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    hostname === "::1"
+  );
+}
+
+// Local-dev demo: refuse token minting for non-localhost hosts unless explicitly opted in.
+export async function GET(request: Request) {
+  if (!ALLOW_REMOTE_TOKEN && !isLocalDevHost(request)) {
+    return new NextResponse("Token endpoint is local-dev only", { status: 403 });
+  }
+
   try {
     if (!LIVEKIT_URL) throw new Error("LIVEKIT_URL is not defined");
     if (!API_KEY) throw new Error("LIVEKIT_API_KEY is not defined");

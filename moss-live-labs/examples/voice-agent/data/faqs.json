@@ -3,7 +3,7 @@
     "id": "returns-policy",
     "category": "returns",
     "region": "all",
-    "text": "Northwind accepts returns for a refund as long as items are unworn, unwashed, and in their original packaging with tags attached. Start a return from the Orders page in your account and print the prepaid label."
+    "text": "For eligible items, Northwind accepts returns for a refund as long as they are unworn, unwashed, and in their original packaging with tags attached. Eligibility and return windows follow your region's returns policy (for example final-sale rules in the US, or statutory withdrawal rules in the EU). Start a return from the Orders page in your account and print the prepaid label."
   },
   {
     "id": "return-window-us",
@@ -33,7 +33,7 @@
     "id": "shipping-times",
     "category": "shipping",
     "region": "all",
-    "text": "Standard shipping takes 3 to 5 business days. Express shipping arrives in 2 business days, and overnight orders placed before 12pm arrive the next business day. Orders are processed within 24 hours on business days."
+    "text": "Standard shipping takes 3 to 5 business days. Express shipping arrives in 2 business days, and overnight orders placed before 12pm local warehouse time (US Central / EU Central European Time for the fulfillment center serving your order) arrive the next business day. Orders are processed within 24 hours on business days."
   },
   {
     "id": "shipping-cost-us",
@@ -123,6 +123,6 @@
     "id": "support-hours",
     "category": "support",
     "region": "all",
-    "text": "Northwind support is available by chat and email 7 days a week, from 8am to 8pm. Phone support runs Monday through Friday, 9am to 6pm. Most email replies go out within a few hours."
+    "text": "Northwind support is available by chat and email 7 days a week, from 8am to 8pm in your local time. Phone support runs Monday through Friday, 9am to 6pm local time. Most email replies go out within a few hours."
   }
 ]

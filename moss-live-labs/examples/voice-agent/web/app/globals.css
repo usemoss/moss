@@ -36,7 +36,12 @@ body {
 }
 
 .app {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   max-width: 1280px;
@@ -99,10 +104,17 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   min-height: 0;
+  overflow: hidden;
 }
 @media (max-width: 900px) {
+  .app {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
   .main {
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 }
 
@@ -136,6 +148,9 @@ body {
   color: var(--mint);
 }
 .agent-state.idle {
+  color: var(--faint);
+}
+.agent-state.failed {
   color: var(--faint);
 }
 
@@ -183,6 +198,8 @@ body {
 .retrieval-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   font-family: var(--font-mono);
   font-size: 13px;

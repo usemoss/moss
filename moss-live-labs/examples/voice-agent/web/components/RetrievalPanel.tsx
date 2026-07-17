@@ -42,8 +42,9 @@ export function RetrievalPanel() {
   const connState = useConnectionState();
   const [data, setData] = useState<RetrievalPayload | null>(null);
   const [region, setRegion] = useState<Region>("US");
-  const regionRef = useRef<Region>(region);
-  regionRef.current = region;
+  const [regionError, setRegionError] = useState<string | null>(null);
+  // Committed region used for retrieval filtering — only advances after a successful publish.
+  const committedRegionRef = useRef<Region>("US");
 
   useDataChannel(
     "moss.retrieval",
@@ -57,7 +58,7 @@ export function RetrievalPanel() {
           return;
         }
         // Ignore stale results from a previous region after the picker changed.
-        if (parsed.region && parsed.region !== regionRef.current) return;
+        if (parsed.region && parsed.region !== committedRegionRef.current) return;
         setData(parsed);
       } catch (err) {
         console.error("failed to parse moss.retrieval payload", err);
@@ -66,38 +67,56 @@ export function RetrievalPanel() {
   );
 
   const publishRegion = useCallback(
-    (r: Region) => {
-      const publish = room.localParticipant?.publishData(
-        new TextEncoder().encode(JSON.stringify({ region: r })),
-        { reliable: true, topic: "moss.region" },
-      );
-      void publish?.catch((err: unknown) => {
+    async (r: Region): Promise<boolean> => {
+      try {
+        await room.localParticipant?.publishData(
+          new TextEncoder().encode(JSON.stringify({ region: r })),
+          { reliable: true, topic: "moss.region" },
+        );
+        return true;
+      } catch (err) {
         console.error("failed to publish region", err);
-      });
+        return false;
+      }
     },
     [room],
   );
 
-  // Sync the agent to the picker whenever we connect, the region changes, or
-  // the agent participant joins (covers packets sent before the agent listened).
+  // Sync the agent to the committed picker region whenever we connect or the agent joins.
   useEffect(() => {
     if (connState !== ConnectionState.Connected) return;
-    publishRegion(region);
-    const onParticipant = () => publishRegion(regionRef.current);
+    const sync = () => {
+      void publishRegion(committedRegionRef.current).then((ok) => {
+        if (!ok) setRegionError("Couldn't sync region with the agent — try again.");
+      });
+    };
+    sync();
+    const onParticipant = () => sync();
     room.on(RoomEvent.ParticipantConnected, onParticipant);
     return () => {
       room.off(RoomEvent.ParticipantConnected, onParticipant);
     };
-  }, [connState, region, publishRegion, room]);
+  }, [connState, publishRegion, room]);
 
   const selectRegion = (r: Region) => {
+    if (r === region) return;
+    const previous = committedRegionRef.current;
     setRegion(r);
-    setData(null);
+    setRegionError(null);
+    void publishRegion(r).then((ok) => {
+      if (!ok) {
+        setRegion(previous);
+        setRegionError("Couldn't update region — try again.");
+        return;
+      }
+      committedRegionRef.current = r;
+      setData(null);
+    });
   };
 
   return (
     <div className="card">
-      <div className="retrieval-head" style={{ justifyContent: "space-between" }}>
+      <div className="retrieval-head">
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span className="diamond" />
           Moss · knowledge base
@@ -130,6 +149,11 @@ export function RetrievalPanel() {
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--sage)", marginTop: 8, letterSpacing: 0.3 }}>
         region: {region} + global
       </div>
+      {regionError ? (
+        <div role="alert" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#e8a0a0", marginTop: 6 }}>
+          {regionError}
+        </div>
+      ) : null}
 
       {data ? (
         <>

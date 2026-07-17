@@ -12,7 +12,7 @@ Browser (web/)  ⟷  LiveKit room  ⟷  agent.py (STT → LLM → TTS)  ⟷  Mos
 ## What you need
 
 - A [Moss](https://moss.dev) account (project ID + key)
-- [LiveKit](https://livekit.io) running locally (`livekit-server --dev`)
+- [LiveKit](https://livekit.io) — local (`livekit-server --dev`) or [LiveKit Cloud](https://cloud.livekit.io)
 - [OpenAI](https://platform.openai.com) (LLM), [Deepgram](https://deepgram.com)
   (speech-to-text), and [Cartesia](https://cartesia.ai) (text-to-speech) API keys
 - Python 3.14+ (`uv`) and Node 18.18+ (`npm`) for the web UI
@@ -22,7 +22,7 @@ Browser (web/)  ⟷  LiveKit room  ⟷  agent.py (STT → LLM → TTS)  ⟷  Mos
 ```bash
 uv sync
 cp .env.example .env          # fill in your Moss + provider keys
-python agent.py download-files
+uv run python agent.py download-files
 ```
 
 `.env` keys: `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY`.
@@ -35,37 +35,50 @@ defaults to `demo-customer_faqs` (override with `MOSS_INDEX_NAME`).
 Loads the sample support FAQs in `data/faqs.json` into a Moss index:
 
 ```bash
-python seed_index.py
+uv run python seed_index.py
 ```
 
 ## 2. Run it
 
-Open three terminals:
+Open three terminals (skip terminal **a** if you are on LiveKit Cloud):
 
 ```bash
-# a) LiveKit server (local dev — uses devkey/secret)
+# a) LiveKit server — local-dev only (skip when using LiveKit Cloud)
 livekit-server --dev
 
 # b) the agent (joins rooms automatically)
-python agent.py dev
+uv run python agent.py dev
 
 # c) the web UI
 cd web
 npm install
-cp .env.local.example .env.local
+# create once; do not overwrite an existing Cloud-configured .env.local
+[ -f .env.local ] || cp .env.local.example .env.local
 npm run dev            # → http://localhost:3000
 ```
 
 Open http://localhost:3000, click **Start the demo**, and talk. The right-hand panel
 shows what Moss retrieves on each turn.
 
-> Prefer no UI? `python agent.py console` still works for a mic-only, terminal session.
+> Prefer no UI? `uv run python agent.py console` still works for a mic-only, terminal session.
+> For console-only demos you can set `MOSS_REGION=US` or `EU` in `.env`; the web UI picker
+> is authoritative when using the browser and overrides that default on connect.
 
 ## How the retrieval panel works
 
 On each user turn, `agent.py` queries Moss and publishes the results to the LiveKit room
-on the `moss.retrieval` data channel (`{query, docs:[{text, score}], took_ms}`). The web
-UI listens on that channel and renders them. The voice pipeline is otherwise untouched.
+on the `moss.retrieval` data channel:
+
+```json
+{
+  "query": "string",
+  "docs": [{ "id": "string | null (optional)", "text": "string", "score": 0.0 }],
+  "took_ms": 0.0,
+  "region": "US | EU (optional)"
+}
+```
+
+The web UI listens on that channel and renders them. The voice pipeline is otherwise untouched.
 
 See [`DEMO_SCRIPT_METADATA.md`](./DEMO_SCRIPT_METADATA.md) for a ready-to-record walkthrough.
 

@@ -4,9 +4,10 @@
 because Moss filters retrieval on `metadata.region` — one shared index, scoped per query.
 
 ## Before you record
-- [ ] **Re-seed** (metadata changed): delete the old `demo-customer_faqs` index in the Moss
-      portal, then `python seed_index.py`.
-- [ ] `python agent.py dev` · `livekit-server --dev` · web UI at localhost:3000
+- [ ] **Re-seed** (metadata changed): delete the configured index in the Moss portal
+      (`MOSS_INDEX_NAME`, default `demo-customer_faqs`), then `uv run python seed_index.py`.
+- [ ] `uv run python agent.py dev` · `livekit-server --dev` · `cd web && npm run dev`
+      (UI at localhost:3000)
 - [ ] Region is chosen with the **US / EU picker** in the panel (starts on US) — no restart.
 
 ## 1 · Frame it (0:00–0:12)
