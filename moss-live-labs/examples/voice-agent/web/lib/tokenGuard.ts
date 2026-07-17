@@ -29,7 +29,16 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): TokenGuardC
 }
 
 function normalizeIp(ip: string): string {
-  return ip.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  const normalized = ip.trim().toLowerCase();
+  const unwrapped =
+    normalized.startsWith("[") && normalized.endsWith("]")
+      ? normalized.slice(1, -1)
+      : normalized;
+  if (unwrapped.startsWith("::ffff:")) {
+    const v4 = unwrapped.slice("::ffff:".length);
+    if (isValidIpv4(v4)) return v4;
+  }
+  return unwrapped;
 }
 
 /** Valid dotted IPv4 with each octet in 0–255 (no leading junk). */
