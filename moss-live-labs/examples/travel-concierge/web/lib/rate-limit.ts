@@ -16,19 +16,21 @@ function evictExpired(now: number) {
   }
 }
 
-/** Drop soonest-expiring entries until size <= maxSize. */
-function evictOverflow(maxSize: number) {
-  if (buckets.size <= maxSize) return;
-  const ordered = [...buckets.entries()].sort((a, b) => a[1].resetAt - b[1].resetAt);
-  const overflow = ordered.length - maxSize;
-  for (let i = 0; i < overflow; i++) {
-    buckets.delete(ordered[i][0]);
+function soonestRetryAfterSec(now: number): number {
+  let soonest = Infinity;
+  for (const entry of buckets.values()) {
+    soonest = Math.min(soonest, entry.resetAt);
   }
+  if (!Number.isFinite(soonest)) return 1;
+  return Math.max(1, Math.ceil((soonest - now) / 1000));
 }
 
 /**
  * In-process rate limiter with TTL eviction.
  * Resets on process restart / across workers — pair with edge limits for public deploys.
+ *
+ * At capacity, unknown keys fail closed instead of evicting live counters (which would
+ * let an evicted client restart its allowance before the window ended).
  */
 export function rateLimit(
   key: string,
@@ -40,8 +42,10 @@ export function rateLimit(
   let entry = buckets.get(key);
   if (!entry || now >= entry.resetAt) {
     if (entry) buckets.delete(key);
-    // Reserve a slot before inserting so size never exceeds MAX_BUCKETS.
-    evictOverflow(MAX_BUCKETS - 1);
+    // New key (or expired key we just removed): never drop another client's active bucket.
+    if (!buckets.has(key) && buckets.size >= MAX_BUCKETS) {
+      return { ok: false, retryAfterSec: soonestRetryAfterSec(now) };
+    }
     entry = { count: 0, resetAt: now + windowMs };
     buckets.set(key, entry);
   }
