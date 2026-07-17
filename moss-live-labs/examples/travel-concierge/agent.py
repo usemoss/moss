@@ -259,7 +259,7 @@ class TravelConciergeAgent(Agent):
             return []
 
     async def _store_fact(self, doc_id: str, fact_text: str, fact_id: str, seq: int) -> bool:
-        """Write one preference doc; retry once on failure so a claimed seq is not left empty."""
+        """Write one preference document, retrying once after an initial failure."""
         doc = DocumentInfo(
             id=doc_id,
             text=fact_text,
