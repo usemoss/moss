@@ -124,6 +124,7 @@ class TravelConciergeAgent(Agent):
         # Monotonic schedule order so a slow older extract cannot overwrite a newer correction.
         self._remember_seq = 0
         self._category_seq: dict[str, int] = {}
+        self._latest_refresh_seq = 0
         self._remember_write_lock = asyncio.Lock()
         # In-flight remember tasks — waited on briefly next turn, never cancelled on timeout.
         self._remember_tasks: set[asyncio.Task] = set()
@@ -257,7 +258,8 @@ class TravelConciergeAgent(Agent):
     async def _remember_facts(self, text: str, seq: int) -> None:
         facts = await self._extract_facts(text)
         stored = 0
-        # Serialize writes and skip stale category updates from slower older extracts.
+        # Serialize writes + panel refresh so a slow older extract cannot overwrite a
+        # newer correction in storage or in the UI.
         async with self._remember_write_lock:
             for fact_id, fact_text in facts:
                 self.turn += 1
@@ -271,7 +273,6 @@ class TravelConciergeAgent(Agent):
                             last,
                         )
                         continue
-                    self._category_seq[fact_id] = seq
                     doc_id = f"pref-{fact_id}"
                 else:
                     doc_id = f"pref-other-{self.turn}"
@@ -289,16 +290,19 @@ class TravelConciergeAgent(Agent):
                             )
                         ]
                     )
+                    # Advance the category gate only after a successful write.
+                    if fact_id in FACT_IDS:
+                        self._category_seq[fact_id] = seq
                     stored += 1
                     logger.debug("Remembered [%s]: %s", doc_id, fact_text)
                 except Exception as e:
                     logger.warning(f"Failed to store fact: {e}")
 
-        logger.info("Stored %d preference(s) from turn", stored)
+            logger.info("Stored %d preference(s) from turn", stored)
 
-        # Refresh the live panel so facts from this utterance appear without waiting
-        # for the next traveler turn.
-        if stored:
+            if not stored or seq < self._latest_refresh_seq:
+                return
+
             try:
                 t = time.perf_counter()
                 session_results = await self.session_index.query(
@@ -312,6 +316,7 @@ class TravelConciergeAgent(Agent):
                     self._last_catalog_ms,
                     session_ms,
                 )
+                self._latest_refresh_seq = seq
             except Exception as e:
                 logger.warning(f"Failed to republish session after remember: {e}")
 

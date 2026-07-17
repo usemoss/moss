@@ -42,7 +42,10 @@ to recall them, and ask for a recommendation.
 For a public deploy, set server-only `APP_SECRET` in `web/.env.local`. Visitors enter
 that code once; the app stores an httpOnly gate cookie and then mints tokens. Leave it
 unset for open local demos. Do not use a `NEXT_PUBLIC_*` secret — anything shipped to
-the browser cannot protect `/api/token`.
+the browser cannot protect `/api/token`. Behind a reverse proxy that overwrites client
+IP headers, also set `TRUST_PROXY=1` so unlock/token rate limits are per-IP; otherwise
+limits use a shared global bucket (safer than trusting spoofable `X-Forwarded-For`).
+Prefer an edge rate limit in front of any public deployment as well.
 
 ## How it works
 Per turn, `agent.py`:

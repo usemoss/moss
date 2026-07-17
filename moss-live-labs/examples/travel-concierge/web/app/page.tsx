@@ -53,10 +53,11 @@ export default function Page() {
           alert("Could not unlock the demo. Please try again.");
           return;
         }
+        // Cookie is set — clear the code now so a later token failure retries with the cookie only.
+        setGateSecret("");
+        setNeedsGate(false);
       }
       const next = await fetchToken();
-      setGateSecret("");
-      setNeedsGate(false);
       setConn(next);
       setRoomLive(false);
     } catch (err) {
