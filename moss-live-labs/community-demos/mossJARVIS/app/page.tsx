@@ -207,6 +207,21 @@ export default function JarvisHud() {
     setStatus("ELEVENLABS VOICE SYNTHESIS");
     try {
       await voiceRef.current?.pause();
+      const response = await fetch("/api/jarvis/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+      if (!response.ok) throw new Error("ElevenLabs unavailable");
+      const url = URL.createObjectURL(await response.blob());
+      try {
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        await new Promise<void>((resolve, reject) => {
+          audio.onended = () => resolve();
+          audio.onerror = () => reject(new Error("Audio playback failed"));
+          void audio.play().catch(reject);
+        });
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+
       const response = await fetch("/api/jarvis/tts", {
         method: "POST",
         headers: { "content-type": "application/json" },
