@@ -22,7 +22,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: codex-review-post-${{ github.event.workflow_run.head_sha }}
+  # Serialize per PR source (repo + branch), not per SHA, so a newer push cancels
+  # an in-flight older review instead of racing it to post stale findings.
+  group: codex-review-post-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
 
 jobs:
@@ -87,15 +89,24 @@ jobs:
           # codex-action runs `codex exec --cd <working-directory>`; give it a valid
           # (empty) git repo containing ONLY the diff — never any PR code.
           cd codex-payload
-          test -s pr.diff || { echo "pr.diff missing or empty"; exit 1; }
+          # Allow an empty diff (e.g. a push reverted all changes) so the post step
+          # still clears stale prior findings; only a missing file is an error.
+          test -f pr.diff || { echo "pr.diff missing"; exit 1; }
           git init -q
 
       - name: Run Codex on the diff
         id: run_codex
         if: steps.pr.outputs.skip != 'true'
-        uses: openai/codex-action@v1
+        # Pinned to the v1 commit SHA: this privileged job holds OPENAI_API_KEY, so a
+        # moved/compromised tag must not silently change what runs here.
+        uses: openai/codex-action@52fe01ec70a42f454c9d2ebd47598f9fd6893d56 # v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          # This job reviews ALL PRs incl. forks; the action's default write-access
+          # gate would otherwise reject fork/non-collaborator authors. Safe to open
+          # here because security comes from this job never checking out PR code
+          # (only the diff artifact), not from the actor allowlist.
+          allow-users: "*"
           model: gpt-5.5
           effort: xhigh
           sandbox: read-only
@@ -164,6 +175,7 @@ jobs:
         env:
           CODEX_RESULT: ${{ steps.run_codex.outputs.final-message }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REVIEWED_SHA: ${{ github.event.workflow_run.head_sha }}
         with:
           github-token: ${{ github.token }}
           script: |
@@ -172,6 +184,7 @@ jobs:
             const SUMMARY_MARKER = '<!-- codex-review-summary -->';
             const INLINE_MARKER = '<!-- codex-review-inline -->';
             const MAX_COMMENTS = 5;
+            const BOT = 'github-actions[bot]'; // only ever touch comments we authored
 
             // Parse Codex JSON. With --output-schema the result is already pure JSON,
             // and its findings may contain fenced code blocks, so never grab an inner
@@ -199,6 +212,12 @@ jobs:
             // Build the set of (path -> commentable new-file line numbers) from the diff.
             const pr = await github.rest.pulls.get({ owner, repo, pull_number });
             const headSha = pr.data.head.sha;
+            // If the PR advanced past the commit we reviewed, a newer run is already
+            // handling the new head — don't post findings generated from a stale diff.
+            if (headSha !== process.env.REVIEWED_SHA) {
+              core.notice(`PR head moved ${process.env.REVIEWED_SHA} -> ${headSha}; skipping stale review.`);
+              return;
+            }
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner, repo, pull_number, per_page: 100,
             });
@@ -240,7 +259,7 @@ jobs:
                 owner, repo, pull_number, per_page: 100,
               });
               for (const c of prior) {
-                if (c.body && c.body.includes(INLINE_MARKER)) {
+                if (c.user?.login === BOT && c.body && c.body.includes(INLINE_MARKER)) {
                   try { await github.rest.pulls.deleteReviewComment({ owner, repo, comment_id: c.id }); }
                   catch {}
                 }
@@ -276,7 +295,7 @@ jobs:
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner, repo, issue_number: pull_number, per_page: 100,
             });
-            const existing = comments.find(c => c.body && c.body.includes(SUMMARY_MARKER));
+            const existing = comments.find(c => c.user?.login === BOT && c.body && c.body.includes(SUMMARY_MARKER));
             if (existing) {
               await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
             } else {
