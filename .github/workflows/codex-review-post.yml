@@ -34,8 +34,7 @@ jobs:
     permissions:
       contents: read
       actions: read          # download-artifact needs this to read another run's artifact
-      pull-requests: write
-      issues: write
+      pull-requests: write   # covers PR review comments AND the PR conversation comment
     steps:
       - name: Download Stage 1 diff artifact
         uses: actions/download-artifact@v4
@@ -72,8 +71,8 @@ jobs:
               return;
             }
             // Re-apply Stage 1's gate against the PR's *current* state: it may have
-            // been closed, converted to draft, or reassigned since the diff was
-            // collected. Keeps posting behavior consistent with what gets reviewed.
+            // been closed or converted to draft since the diff was collected. Keeps
+            // posting behavior consistent with what gets reviewed.
             if (pr.state !== 'open' || pr.draft || pr.user?.type === 'Bot') {
               core.notice(`PR #${pull_number} is not an open, ready, human PR; skipping review.`);
               core.setOutput('skip', 'true');
