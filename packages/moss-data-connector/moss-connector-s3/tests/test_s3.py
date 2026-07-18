@@ -39,11 +39,15 @@ class FakeMutationResult:
 @dataclass
 class FakeMossClient:
     calls: list[dict[str, Any]] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
 
     async def create_index(self, name, docs, model_id=None):
         docs = list(docs)
         self.calls.append({"name": name, "docs": docs, "model_id": model_id})
         return FakeMutationResult(doc_count=len(docs), index_name=name)
+
+    async def delete_index(self, name):
+        self.deleted.append(name)
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +271,59 @@ async def test_watch_reindexes_on_change(s3_bucket):
     second_keys = {d.id for d in fake_moss.calls[1]["docs"]}
     assert "docs/new.md" in second_keys
     assert changes and "docs/new.md" in changes[0]
+
+
+async def test_watch_deletes_index_when_bucket_emptied(s3_bucket):
+    """Emptying the bucket must delete the index, not leave stale docs searchable."""
+    fake_moss = FakeMossClient()
+    source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
+
+    async def sleep_then_empty(_seconds):
+        for key in list(SAMPLE_OBJECTS):
+            s3_bucket.delete_object(Bucket=BUCKET, Key=key)
+
+    with (
+        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_empty),
+    ):
+        reindexed = await watch(
+            source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1
+        )
+
+    assert reindexed == 1
+    assert len(fake_moss.calls) == 1  # only the initial ingest created an index
+    assert fake_moss.deleted == ["docs"]
+
+
+async def test_watch_async_on_change_awaited(s3_bucket):
+    """An async on_change callback is awaited, not dropped."""
+    fake_moss = FakeMossClient()
+    source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
+    awaited: list[dict[str, str]] = []
+
+    async def async_on_change(snapshot):
+        awaited.append(snapshot)
+
+    async def sleep_then_mutate(_seconds):
+        s3_bucket.put_object(Bucket=BUCKET, Key="docs/new.md", Body=b"Newly added document.")
+
+    with (
+        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_mutate),
+    ):
+        reindexed = await watch(
+            source,
+            "fake_id",
+            "fake_key",
+            "docs",
+            poll_interval=0,
+            max_polls=1,
+            on_change=async_on_change,
+        )
+
+    assert reindexed == 1
+    assert awaited and "docs/new.md" in awaited[0]
 
 
 async def test_watch_no_change_no_reindex(s3_bucket):

@@ -31,6 +31,7 @@ from collections.abc import Callable, Iterator
 from typing import Any
 
 import boto3
+from botocore.exceptions import ClientError
 from moss import DocumentInfo
 
 
@@ -108,14 +109,26 @@ class S3Connector:
                 key = obj["Key"]
                 if not self._matches(key):
                     continue
-                response = s3.get_object(Bucket=self.bucket, Key=key)
+                try:
+                    response = s3.get_object(Bucket=self.bucket, Key=key)
+                except ClientError as exc:
+                    # The object can vanish between listing and fetching in an
+                    # actively modified bucket; skip it rather than abort the
+                    # whole iteration. watch() picks the change up next poll.
+                    code = exc.response.get("Error", {}).get("Code", "")
+                    if code in ("NoSuchKey", "404"):
+                        continue
+                    raise
                 body: bytes = response["Body"].read()
+                # etag / last_modified / size come from the get_object
+                # response, not the (possibly stale) list entry, so each row
+                # describes a single consistent object version.
                 row: dict[str, Any] = {
                     "key": key,
                     "text": body.decode(self.encoding, errors=self.encoding_errors),
-                    "etag": str(obj.get("ETag", "")).strip('"'),
-                    "last_modified": obj.get("LastModified"),
-                    "size": obj.get("Size"),
+                    "etag": str(response.get("ETag", "")).strip('"'),
+                    "last_modified": response.get("LastModified"),
+                    "size": response.get("ContentLength"),
                     "content_type": response.get("ContentType"),
                     "metadata": response.get("Metadata", {}),
                 }

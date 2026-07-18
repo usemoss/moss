@@ -5,13 +5,20 @@ whenever the bucket contents change. Change detection compares
 ``{key: etag}`` snapshots from ``S3Connector.snapshot()``, so added,
 removed, and modified objects all trigger a re-index. Snapshots only list
 keys — object bodies are downloaded only when a re-index actually runs.
+
+S3 network I/O is synchronous under the hood (``boto3``), so snapshots and
+object downloads run in a worker thread via ``asyncio.to_thread`` to avoid
+blocking the event loop between polls.
 """
 
 from __future__ import annotations
 
 import asyncio
+import inspect
 from collections.abc import Callable
 from typing import Any
+
+from moss import MossClient
 
 from .connector import S3Connector
 from .ingest import ingest
@@ -34,6 +41,10 @@ async def watch(
     The snapshot is taken *before* each ingest, so objects that change while
     an ingest is running are picked up on the next poll rather than lost.
 
+    If every matching object is deleted, the Moss index is deleted too, so
+    stale documents never remain searchable; the index is re-created on the
+    next change that adds objects back.
+
     Args:
         source: The ``S3Connector`` to read from.
         project_id: Moss project id.
@@ -43,31 +54,57 @@ async def watch(
         model_id: Optional Moss model id, forwarded to ``ingest``.
         auto_id: Forwarded to ``ingest``; replaces mapper ids with UUIDs.
         on_change: Optional callback invoked after each re-index with the
-            new ``{key: etag}`` snapshot.
+            new ``{key: etag}`` snapshot. May be sync or async.
         max_polls: Stop after this many polls (useful for tests and one-shot
             sync jobs). ``None`` (the default) polls until cancelled.
 
     Returns:
         The number of re-indexes performed (not counting the initial ingest).
     """
-    previous = source.snapshot()
-    await ingest(source, project_id, project_key, index_name, model_id=model_id, auto_id=auto_id)
+    previous = await asyncio.to_thread(source.snapshot)
+    await _sync(source, project_id, project_key, index_name, model_id, auto_id, empty=False)
 
     reindexed = 0
     polls = 0
     while max_polls is None or polls < max_polls:
         await asyncio.sleep(poll_interval)
         polls += 1
-        current = source.snapshot()
+        current = await asyncio.to_thread(source.snapshot)
         if current == previous:
             continue
-        await ingest(
-            source, project_id, project_key, index_name, model_id=model_id, auto_id=auto_id
+        await _sync(
+            source, project_id, project_key, index_name, model_id, auto_id, empty=not current
         )
         reindexed += 1
         previous = current
         if on_change is not None:
-            maybe_coro = on_change(current.copy())
-            if asyncio.iscoroutine(maybe_coro):
-                await maybe_coro
+            maybe_awaitable = on_change(current.copy())
+            if inspect.isawaitable(maybe_awaitable):
+                await maybe_awaitable
     return reindexed
+
+
+async def _sync(
+    source: S3Connector,
+    project_id: str,
+    project_key: str,
+    index_name: str,
+    model_id: str | None,
+    auto_id: bool,
+    *,
+    empty: bool,
+) -> None:
+    """Rebuild the index from the bucket, or delete it when the bucket emptied.
+
+    ``ingest()`` is a no-op for an empty source, so a transition to an empty
+    bucket must delete the index explicitly — otherwise the old documents
+    would stay searchable forever.
+    """
+    if empty:
+        client = MossClient(project_id, project_key)
+        await client.delete_index(index_name)
+        return
+    # Materialize in a worker thread: iterating the connector performs
+    # synchronous S3 downloads that would otherwise block the event loop.
+    docs = await asyncio.to_thread(list, source)
+    await ingest(docs, project_id, project_key, index_name, model_id=model_id, auto_id=auto_id)

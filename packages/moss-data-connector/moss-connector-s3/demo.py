@@ -39,11 +39,12 @@ try:
     from dotenv import load_dotenv
 
     _here = Path(__file__).resolve()
-    for _candidate in (
-        _here.parent / ".env",  # package dir
-        _here.parents[3] / ".env",  # moss-data-connector/
-        _here.parents[5] / ".env",  # repo root
-    ):
+    # parents[1] → moss-data-connector/, parents[3] → repo root; guard the
+    # depth so a shallow checkout of just this package can't IndexError.
+    for _depth in (0, 1, 3):
+        if _depth >= len(_here.parents):
+            break
+        _candidate = _here.parents[_depth] / ".env"
         if _candidate.exists():
             load_dotenv(_candidate, override=False)
             break

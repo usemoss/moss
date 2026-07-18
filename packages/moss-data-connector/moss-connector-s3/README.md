@@ -39,13 +39,17 @@ async def main():
         project_key="your_project_key",
         index_name="knowledge-base",
     )
-    print(f"copied {result.doc_count} objects")
+    if result is None:
+        print("no matching objects found")
+    else:
+        print(f"copied {result.doc_count} objects")
 
 asyncio.run(main())
 ```
 
-Use `auto_id=True` when your object keys are not stable ids and you want Moss
-to generate UUID document IDs.
+`ingest()` returns `None` when the bucket is empty or no objects match your
+filters. Pass `auto_id=True` to `ingest()` when your object keys are not
+stable ids and you want Moss to generate UUID document IDs.
 
 ## Usage — watch a bucket (re-index on change)
 
@@ -79,8 +83,12 @@ asyncio.run(main())
 ```
 
 Pass `max_polls=N` to stop after N polls (useful for one-shot sync jobs in a
-scheduler), and `on_change=callback` to be notified with the new
-`{key: etag}` snapshot after each re-index.
+scheduler), and `on_change=callback` (sync or async) to be notified with the
+new `{key: etag}` snapshot after each re-index.
+
+If every matching object is deleted from the bucket, `watch()` deletes the
+Moss index rather than leaving stale documents searchable; the index is
+re-created on the next change that adds objects back.
 
 ## What the mapper receives
 
