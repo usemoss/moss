@@ -67,7 +67,7 @@ async def watch(
         reindexed += 1
         previous = current
         if on_change is not None:
-            maybe_coro = on_change(current)
+            maybe_coro = on_change(current.copy())
             if asyncio.iscoroutine(maybe_coro):
                 await maybe_coro
     return reindexed
