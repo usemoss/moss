@@ -37,17 +37,31 @@ class TestMossSessionConfig(unittest.TestCase):
         cfg = MossSessionConfig()
         self.assertEqual(cfg.moss_project_id, "")
         self.assertEqual(cfg.moss_index_name, "")
-        self.assertEqual(cfg.moss_model_id, "moss-minilm")
+        self.assertEqual(cfg.moss_model_id, "")  # unspecified: adopt stored/SDK default
         self.assertEqual(cfg.moss_top_k, 5)
         self.assertEqual(cfg.moss_alpha, 0.8)
+        self.assertEqual(cfg.moss_max_context_chars, 2000)
         self.assertEqual(cfg.moss_context_header, "Relevant knowledge from Moss:")
         self.assertTrue(cfg.enable_moss)
+
+    def test_project_key_is_masked_in_repr(self):
+        cfg = MossSessionConfig(moss_project_key="super-secret")
+        self.assertNotIn("super-secret", repr(cfg))
+        self.assertEqual(cfg.moss_project_key.get_secret_value(), "super-secret")
 
     def test_overrides(self):
         cfg = MossSessionConfig(moss_index_name="idx", moss_top_k=3, enable_moss=False)
         self.assertEqual(cfg.moss_index_name, "idx")
         self.assertEqual(cfg.moss_top_k, 3)
         self.assertFalse(cfg.enable_moss)
+
+    def test_rejects_invalid_top_k_and_alpha(self):
+        from pydantic import ValidationError
+
+        with self.assertRaises(ValidationError):
+            MossSessionConfig(moss_top_k=0)
+        with self.assertRaises(ValidationError):
+            MossSessionConfig(moss_alpha=2.0)
 
 
 class TestSessionManager(unittest.IsolatedAsyncioTestCase):
@@ -61,10 +75,23 @@ class TestSessionManager(unittest.IsolatedAsyncioTestCase):
         return mgr, client, session
 
     @patch("ten_moss.moss_session_manager.MossClient")
-    async def test_open_opens_session(self, cls):
-        mgr, client, session = self._manager(cls)
+    async def test_open_omits_unspecified_model_id(self, cls):
+        mgr, client, session = self._manager(cls)  # no model_id -> unspecified
         await mgr.open()
-        client.session.assert_awaited_once_with(index_name="idx", model_id="moss-minilm")
+        client.session.assert_awaited_once_with(index_name="idx")
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_open_passes_model_id_when_set(self, cls):
+        mgr, client, session = self._manager(cls, model_id="moss-mediumlm")
+        await mgr.open()
+        client.session.assert_awaited_once_with(index_name="idx", model_id="moss-mediumlm")
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_open_rejects_custom_model(self, cls):
+        mgr, client, session = self._manager(cls, model_id="custom")
+        with self.assertRaises(ValueError):
+            await mgr.open()
+        client.session.assert_not_awaited()
 
     @patch("ten_moss.moss_session_manager.MossClient")
     async def test_query_context_before_open_is_blank(self, cls):
@@ -137,11 +164,13 @@ class TestSessionManager(unittest.IsolatedAsyncioTestCase):
         session.get_docs.assert_awaited_once()
 
     @patch("ten_moss.moss_session_manager.MossClient")
-    async def test_push_index(self, cls):
+    async def test_push_index_returns_result(self, cls):
         mgr, client, session = self._manager(cls)
+        session.push_index = AsyncMock(return_value={"job_id": "j1"})
         await mgr.open()
-        await mgr.push_index()
+        result = await mgr.push_index()
         session.push_index.assert_awaited_once()
+        self.assertEqual(result, {"job_id": "j1"})
 
     @patch("ten_moss.moss_session_manager.MossClient")
     async def test_doc_count_reflects_session(self, cls):
@@ -169,6 +198,22 @@ class TestSessionManager(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mgr._alpha, 0.5)
         self.assertEqual(mgr._context_header, "H")
         self.assertTrue(mgr._enabled)
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_from_config_unwraps_secret_key(self, cls):
+        cfg = MossSessionConfig(moss_project_id="p", moss_project_key="k", moss_index_name="idx")
+        MossSessionManager.from_config(cfg)
+        # The plain (unwrapped) key must reach the client, not a SecretStr repr.
+        cls.assert_called_once_with("p", "k")
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_query_context_respects_char_budget(self, cls):
+        session = _mock_session(docs=[_Doc("x" * 5000)])
+        mgr, client, session = self._manager(cls, session=session, max_context_chars=100)
+        await mgr.open()
+        out = await mgr.query_context("q")
+        self.assertIn("Relevant knowledge from Moss:", out)
+        self.assertLess(len(out), 300)  # 5000-char doc was truncated to the budget
 
     @patch("ten_moss.moss_session_manager.MossClient")
     async def test_disabled_config_no_client_and_noop(self, cls):

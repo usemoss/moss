@@ -9,5 +9,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `MossSessionManager` — session-scoped Moss grounding for TEN extensions, built on the Moss Sessions API: `open`, `query_context`, `add_docs`, `get_docs`, `delete_docs`, `push_index`, `from_config`, `doc_count`.
-- `MossSessionConfig` — standardized `moss_*` properties for TEN extensions.
+- `MossSessionConfig` — standardized `moss_*` properties for TEN extensions. The project key is a masked `SecretStr`; `moss_top_k`/`moss_alpha`/`moss_max_context_chars` are range-validated; unset `moss_model_id` adopts the stored index's model; `moss_max_context_chars` caps the injected grounding block.
 - `examples/create_index.py` — create and populate a demo index.

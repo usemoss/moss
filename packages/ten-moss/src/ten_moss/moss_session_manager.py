@@ -39,10 +39,11 @@ class MossSessionManager:
         project_id: str,
         project_key: str,
         index_name: str,
-        model_id: str = "moss-minilm",
+        model_id: str | None = None,
         top_k: int = 5,
         alpha: float = 0.8,
         context_header: str = "Relevant knowledge from Moss:",
+        max_context_chars: int = 2000,
         timeout_s: float = 2.0,
         enabled: bool = True,
         logger: Any = None,
@@ -51,10 +52,13 @@ class MossSessionManager:
         self._enabled = enabled
         self._client = MossClient(project_id, project_key) if enabled else None
         self._index_name = index_name
-        self._model_id = model_id
+        # None/"" means unspecified: omit model_id so Moss adopts the stored
+        # index's model on resume (and uses its own default for a fresh index).
+        self._model_id = model_id or None
         self._top_k = top_k
         self._alpha = alpha
         self._context_header = context_header
+        self._max_context_chars = max_context_chars
         self._timeout_s = timeout_s
         self._log = logger or _default_logger()
         self._session: Any = None
@@ -68,9 +72,18 @@ class MossSessionManager:
         """Open the Moss session (create-or-resume the index). No-op if disabled."""
         if not self._enabled or self._client is None:
             return
-        self._session = await self._client.session(
-            index_name=self._index_name, model_id=self._model_id
-        )
+        if self._model_id == "custom":
+            # Custom-model sessions require a query embedding on every call,
+            # which this text-only manager cannot supply — fail loudly.
+            raise ValueError(
+                "ten-moss does not support model_id='custom': custom-embedding "
+                "queries need a precomputed QueryOptions.embedding this manager "
+                "cannot provide."
+            )
+        kwargs: dict[str, Any] = {"index_name": self._index_name}
+        if self._model_id:
+            kwargs["model_id"] = self._model_id
+        self._session = await self._client.session(**kwargs)
 
     async def query_context(self, user_text: str) -> str:
         """Return grounding for this turn, or '' on blank input / no hits / error."""
@@ -114,31 +127,46 @@ class MossSessionManager:
             return None
         return await self._session.delete_docs(list(ids))
 
-    async def push_index(self) -> None:
-        """Persist the session to the cloud (durability / cross-agent handoff)."""
+    async def push_index(self) -> Any:
+        """Persist the session to the cloud; returns the SDK job/result (or None)."""
         if self._session is None:
-            return
-        await self._session.push_index()
+            return None
+        return await self._session.push_index()
 
     @classmethod
     def from_config(cls, config: MossSessionConfig, *, logger: Any = None) -> MossSessionManager:
         """Build a session manager from a MossSessionConfig (respects `enable_moss`)."""
         return cls(
             project_id=config.moss_project_id,
-            project_key=config.moss_project_key,
+            project_key=config.moss_project_key.get_secret_value(),
             index_name=config.moss_index_name,
-            model_id=config.moss_model_id,
+            model_id=config.moss_model_id or None,
             top_k=config.moss_top_k,
             alpha=config.moss_alpha,
             context_header=config.moss_context_header,
+            max_context_chars=config.moss_max_context_chars,
             enabled=config.enable_moss,
             logger=logger,
         )
 
     def _format_context(self, docs: Sequence[Any]) -> str:
-        """Format retrieved passages into a single context block."""
-        lines = [self._context_header.rstrip(), ""]
+        """Format retrieved passages into a grounding block within the char budget."""
+        header = self._context_header.rstrip()
+        budget = self._max_context_chars  # 0 = unlimited
+        entries: list[str] = []
+        used = 0
         for idx, doc in enumerate(docs, start=1):
             text = (getattr(doc, "text", "") or "").strip()
-            lines.append(f"[{idx}] {text}")
-        return "\n".join(lines).strip()
+            entry = f"[{idx}] {text}"
+            if budget:
+                remaining = budget - used
+                if remaining <= 0:
+                    break
+                if len(entry) > remaining:
+                    entries.append(entry[:remaining])
+                    break
+            entries.append(entry)
+            used += len(entry) + 1  # + newline
+        if not entries:
+            return header
+        return "\n".join([header, "", *entries]).strip()

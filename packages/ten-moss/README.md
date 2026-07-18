@@ -56,18 +56,28 @@ When built with `enable_moss=false`, no client is created and every method is a 
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `moss_project_id` | `""` | Moss project id |
-| `moss_project_key` | `""` | Moss project key |
+| `moss_project_key` | `""` | Moss project key (stored as a masked `SecretStr`) |
 | `moss_index_name` | `""` | session index to open (create-or-resume) |
-| `moss_model_id` | `"moss-minilm"` | embedding model for the session |
-| `moss_top_k` | `5` | results per query |
-| `moss_alpha` | `0.8` | semantic/keyword blend (1.0 semantic, 0.0 keyword) |
+| `moss_model_id` | `""` | embedding model; empty = adopt the stored index's model (or the SDK default for a new index). `"custom"` is rejected — it needs a query embedding this manager can't supply. |
+| `moss_top_k` | `5` | results per query (must be > 0) |
+| `moss_alpha` | `0.8` | semantic/keyword blend, 0.0–1.0 (1.0 semantic, 0.0 keyword) |
 | `moss_context_header` | `"Relevant knowledge from Moss:"` | header of the injected block |
+| `moss_max_context_chars` | `2000` | cap on the injected grounding block (0 = unlimited) |
 | `enable_moss` | `true` | master toggle |
+
+`moss_top_k`, `moss_alpha`, and `moss_max_context_chars` are validated at construction — an out-of-range value raises a clear error instead of failing later.
 
 ## Create a demo index
 
+The example loads `.env` via `python-dotenv` if it's installed; otherwise export the
+variables directly.
+
 ```bash
-cp .env.example .env   # fill in your Moss credentials
+pip install ten-moss python-dotenv     # python-dotenv is only needed for .env loading
+cp .env.example .env                   # fill in your Moss credentials
+python examples/create_index.py
+# — or, without python-dotenv —
+export MOSS_PROJECT_ID=... MOSS_PROJECT_KEY=... MOSS_INDEX_NAME=...
 python examples/create_index.py
 ```
 
