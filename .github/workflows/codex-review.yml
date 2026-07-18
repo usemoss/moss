@@ -1,259 +1,60 @@
-name: Codex PR Review
+name: Codex Review (collect diff)
+
+# Stage 1 of the two-stage Codex PR review.
+#
+# Runs on EVERY pull request — including forks — but with NO secrets and a
+# read-only token, so it is safe against untrusted code. It performs no build or
+# install: it checks out the PR merge ref, computes the diff, and hands it to the
+# privileged Stage 2 (codex-review-post.yml) via an artifact consumed through
+# `workflow_run`. Because fork code never executes here and no secret is present,
+# a malicious PR has nothing to steal or abuse.
+#
+# NOTE: `workflow_run` only fires for the copy of these workflows on the default
+# branch, so Codex review activates once this pair is merged to main (the PR that
+# introduces it will not review itself).
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  issue_comment:
-    types: [created]
+
+permissions:
+  contents: read
 
 concurrency:
-  group: codex-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  group: codex-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  authorize:
-    # Trigger gate: PR events always, comment events only for "@codex review" from a
-    # trusted commenter. The step then restricts to same-repo (non-fork) PRs so a
-    # public fork can never reach the privileged checkout below.
-    if: >
-      github.event_name == 'pull_request' ||
-      (github.event.issue.pull_request != null &&
-       contains(github.event.comment.body, '@codex review') &&
-       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: read
-    outputs:
-      ok: ${{ steps.gate.outputs.ok }}
-      pr: ${{ steps.gate.outputs.pr }}
-    steps:
-      - id: gate
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const prNum = context.payload.pull_request?.number ?? context.payload.issue?.number;
-            if (!prNum) { core.setOutput('ok', 'false'); return; }
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner, repo: context.repo.repo, pull_number: prNum,
-            });
-            const sameRepo = !!pr.head.repo && pr.head.repo.full_name === pr.base.repo.full_name;
-            core.setOutput('pr', String(prNum));
-            core.setOutput('ok', sameRepo ? 'true' : 'false');
-            if (!sameRepo) {
-              core.notice(`Skipping Codex review: PR #${prNum} is from a fork; only same-repo branches are reviewed.`);
-            }
-
-  review:
-    needs: authorize
-    if: needs.authorize.outputs.ok == 'true'
+  collect-diff:
+    # Skip drafts and bot-authored PRs; every other PR (incl. forks) is reviewed.
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    outputs:
-      result: ${{ steps.run_codex.outputs.final-message }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out PR merge ref
+        uses: actions/checkout@v4
         with:
-          ref: refs/pull/${{ needs.authorize.outputs.pr }}/merge
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Run Codex
-        id: run_codex
-        uses: openai/codex-action@v1
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          model: gpt-5.5
-          effort: xhigh
-          sandbox: read-only
-          output-schema: |
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "summary": { "type": "string" },
-                "findings": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "path": { "type": "string" },
-                      "line": { "type": "integer" },
-                      "severity": { "type": "string", "enum": ["blocking", "consider"] },
-                      "comment": { "type": "string" }
-                    },
-                    "required": ["path", "line", "severity", "comment"]
-                  }
-                }
-              },
-              "required": ["summary", "findings"]
-            }
-          prompt: |
-            You are reviewing pull request #${{ needs.authorize.outputs.pr }} in ${{ github.repository }}.
-
-            The PR's changes are exactly the diff between the merge commit's two parents.
-            Run `git diff HEAD^1 HEAD^2` to see everything that changed, and
-            `git diff HEAD^1 HEAD^2 -- <path>` to focus on a single file.
-
-            Review ONLY those changes. Report high-signal findings only.
-
-            Correctness & safety:
-            - logic errors, unhandled edge cases, broken assumptions
-            - security vulnerabilities
-            - data loss, concurrency hazards, resource leaks
-
-            Design & code quality:
-            - the soundness of the overall approach, not just line-level bugs
-            - elegance: is there a simpler, cleaner way to achieve the same result?
-            - abstraction: prefer the most general clean abstraction that fits the problem,
-              without over-engineering for cases that don't exist
-            - redundancy: flag duplicated logic, dead code, and anything that violates DRY
-
-            Skip pure formatting and style nits.
-
-            Report at most the 5 most important findings. Consolidate an issue that
-            recurs in several places into one finding at the most representative location.
-
-            Output JSON matching the provided schema:
-            - `summary`: one or two sentences on the PR overall. If there are no real
-              issues, set summary to "No issues found." and findings to [].
-            - `findings[].path`: repository-relative file path, exactly as git reports it.
-            - `findings[].line`: the line number in the NEW (post-change) version of the
-              file. It MUST be a line the PR adds or modifies.
-            - `findings[].severity`: "blocking" or "consider".
-            - `findings[].comment`: markdown review comment with a short code snippet and a
-              concrete fix.
-
-  post_review:
-    needs: [authorize, review]
-    if: needs.review.outputs.result != ''
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: write
-    steps:
-      - name: Post inline review
-        uses: actions/github-script@v7
+      - name: Compute PR diff and metadata
         env:
-          CODEX_RESULT: ${{ needs.review.outputs.result }}
-          PR_NUMBER: ${{ needs.authorize.outputs.pr }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          mkdir -p codex-payload
+          # On the PR merge ref, HEAD^1 is the base tip and HEAD^2 is the PR head;
+          # the diff between them is exactly the PR's changes.
+          git diff HEAD^1 HEAD^2 > codex-payload/pr.diff
+          printf '%s' "$PR_NUMBER" > codex-payload/pr-number.txt
+          echo "Collected $(wc -l < codex-payload/pr.diff) diff lines for PR #${PR_NUMBER}"
+
+      - name: Upload review payload
+        uses: actions/upload-artifact@v4
         with:
-          github-token: ${{ github.token }}
-          script: |
-            const { owner, repo } = context.repo;
-            const pull_number = Number(process.env.PR_NUMBER);
-            const SUMMARY_MARKER = '<!-- codex-review-summary -->';
-            const INLINE_MARKER = '<!-- codex-review-inline -->';
-            const MAX_COMMENTS = 5;
-
-            // Parse Codex JSON. With --output-schema the result is already pure JSON,
-            // and its findings may contain fenced code blocks, so never grab an inner
-            // fence: parse the whole string first, then a fence wrapping the whole
-            // string, then fall back to the outermost braces.
-            function parseResult(raw) {
-              if (!raw) return null;
-              const tryParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
-              const trimmed = raw.trim();
-              let out = tryParse(trimmed);
-              if (out) return out;
-              const fence = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
-              if (fence) { out = tryParse(fence[1].trim()); if (out) return out; }
-              const a = trimmed.indexOf('{'), b = trimmed.lastIndexOf('}');
-              if (a !== -1 && b > a) return tryParse(trimmed.slice(a, b + 1));
-              return null;
-            }
-            const result = parseResult(process.env.CODEX_RESULT);
-            if (!result) { core.setFailed('Could not parse Codex output as JSON.'); return; }
-
-            const summary = (result.summary || '').trim();
-            const findings = (Array.isArray(result.findings) ? result.findings : [])
-              .slice(0, MAX_COMMENTS);
-
-            // Build the set of (path -> commentable new-file line numbers) from the diff.
-            const pr = await github.rest.pulls.get({ owner, repo, pull_number });
-            const headSha = pr.data.head.sha;
-            const files = await github.paginate(github.rest.pulls.listFiles, {
-              owner, repo, pull_number, per_page: 100,
-            });
-            const commentable = new Map();
-            for (const f of files) {
-              if (!f.patch) continue;
-              const lines = new Set();
-              let newLine = 0;
-              for (const ln of f.patch.split('\n')) {
-                const h = ln.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-                if (h) { newLine = parseInt(h[1], 10); continue; }
-                if (ln.startsWith('\\')) continue;          // "\ No newline at end of file"
-                if (ln.startsWith('+')) { lines.add(newLine); newLine++; }
-                else if (ln.startsWith('-')) { /* removed line, no new-side number */ }
-                else { newLine++; }                          // context line
-              }
-              commentable.set(f.filename, lines);
-            }
-
-            // Split findings into inline-able vs. orphans (lines not in the diff).
-            const inline = [], orphans = [];
-            for (const fnd of findings) {
-              const sev = (fnd.severity || 'consider').toUpperCase();
-              const set = commentable.get(fnd.path);
-              if (set && set.has(fnd.line)) {
-                inline.push({
-                  path: fnd.path, line: fnd.line, side: 'RIGHT',
-                  body: `${INLINE_MARKER}\n**${sev}** ${fnd.comment}`,
-                });
-              } else {
-                orphans.push({ ...fnd, sev });
-              }
-            }
-
-            // Always clear our prior inline comments first, so findings resolved in a
-            // later push disappear even when this run produces no inline comments.
-            try {
-              const prior = await github.paginate(github.rest.pulls.listReviewComments, {
-                owner, repo, pull_number, per_page: 100,
-              });
-              for (const c of prior) {
-                if (c.body && c.body.includes(INLINE_MARKER)) {
-                  try { await github.rest.pulls.deleteReviewComment({ owner, repo, comment_id: c.id }); }
-                  catch {}
-                }
-              }
-            } catch (e) { core.warning(`Could not clean prior inline comments: ${e.message}`); }
-
-            // Post this run's inline comments. If it fails, fold them into the summary.
-            let inlinePosted = false;
-            if (inline.length) {
-              try {
-                await github.rest.pulls.createReview({
-                  owner, repo, pull_number, commit_id: headSha,
-                  event: 'COMMENT', comments: inline,
-                });
-                inlinePosted = true;
-              } catch (err) {
-                core.warning(`Inline review failed (${err.status || ''}); folding into the summary.`);
-              }
-            }
-
-            // Build the rolling summary comment.
-            const leftover = inlinePosted
-              ? orphans
-              : findings.map(f => ({ ...f, sev: (f.severity || 'consider').toUpperCase() }));
-            let body = `${SUMMARY_MARKER}\n### Codex review\n\n` +
-              (summary || (findings.length ? 'See inline comments.' : 'No issues found.'));
-            if (leftover.length) {
-              body += `\n\n**${inlinePosted ? 'Findings not on changed lines' : 'Findings'}:**\n`;
-              for (const o of leftover) body += `\n- \`${o.path}:${o.line}\` **${o.sev}** ${o.comment}`;
-            }
-
-            // Upsert one rolling summary comment instead of stacking on each push.
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner, repo, issue_number: pull_number, per_page: 100,
-            });
-            const existing = comments.find(c => c.body && c.body.includes(SUMMARY_MARKER));
-            if (existing) {
-              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-            } else {
-              await github.rest.issues.createComment({ owner, repo, issue_number: pull_number, body });
-            }
+          name: codex-review-payload
+          path: codex-payload/
+          retention-days: 1
+          if-no-files-found: error
