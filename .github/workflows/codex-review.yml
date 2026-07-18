@@ -15,7 +15,9 @@ name: Codex Review (collect diff)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    # ready_for_review is included so a PR opened as a draft is reviewed the
+    # moment it becomes non-draft (the collect-diff job gates on draft == false).
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -32,22 +34,27 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Check out PR merge ref
+      - name: Check out PR head
         uses: actions/checkout@v4
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          # The head ref always exists; the merge ref does NOT when the PR has
+          # conflicts, which would silently skip the review. Diffing the head
+          # against the base's merge-base reproduces GitHub's PR diff regardless.
+          ref: refs/pull/${{ github.event.pull_request.number }}/head
           fetch-depth: 0
           persist-credentials: false
 
       - name: Compute PR diff and metadata
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           mkdir -p codex-payload
-          # On the PR merge ref, HEAD^1 is the base tip and HEAD^2 is the PR head;
-          # the diff between them is exactly the PR's changes.
-          git diff HEAD^1 HEAD^2 > codex-payload/pr.diff
+          # Fetch the base branch, then take the merge-base ("...") diff — the exact
+          # change set GitHub shows, and robust to an un-mergeable PR.
+          git fetch --no-tags origin "$BASE_REF"
+          git diff FETCH_HEAD...HEAD > codex-payload/pr.diff
           printf '%s' "$PR_NUMBER" > codex-payload/pr-number.txt
           echo "Collected $(wc -l < codex-payload/pr.diff) diff lines for PR #${PR_NUMBER}"
 
