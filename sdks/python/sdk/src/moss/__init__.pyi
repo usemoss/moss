@@ -2,64 +2,51 @@ from __future__ import annotations
 
 from typing import ClassVar, Dict, List, Optional, Sequence
 
-
 class MossClient:
     """Semantic search client for vector similarity operations."""
 
     DEFAULT_MODEL_ID: ClassVar[str]
 
     def __init__(self, project_id: str, project_key: str) -> None: ...
-
     async def create_index(
         self,
         name: str,
         docs: List[DocumentInfo],
         model_id: Optional[str] = ...,
     ) -> MutationResult: ...
-
     async def add_docs(
         self,
         name: str,
         docs: List[DocumentInfo],
         options: Optional[MutationOptions] = None,
     ) -> MutationResult: ...
-
     async def delete_docs(
         self,
         name: str,
         doc_ids: List[str],
     ) -> MutationResult: ...
-
     async def get_job_status(self, job_id: str) -> JobStatusResponse: ...
-
     async def get_index(self, name: str) -> IndexInfo: ...
-
     async def list_indexes(self) -> List[IndexInfo]: ...
-
     async def delete_index(self, name: str) -> bool: ...
-
     async def get_docs(
         self,
         name: str,
         options: Optional[GetDocumentsOptions] = None,
     ) -> List[DocumentInfo]: ...
-
     async def load_index(
         self,
         name: str,
         auto_refresh: bool = False,
         polling_interval_in_seconds: int = 600,
     ) -> str: ...
-
     async def unload_index(self, name: str) -> None: ...
-
     async def query(
         self,
         name: str,
         query: str,
         options: Optional[QueryOptions] = None,
     ) -> SearchResult: ...
-
 
 class MutationResult:
     """Return value from create_index/add_docs/delete_docs."""
@@ -68,7 +55,6 @@ class MutationResult:
     index_name: str
     doc_count: int
 
-
 class MutationOptions:
     """Options for add_docs (e.g. upsert behavior)."""
 
@@ -76,14 +62,12 @@ class MutationOptions:
 
     def __init__(self, upsert: Optional[bool] = None) -> None: ...
 
-
 class GetDocumentsOptions:
     """Options for get_docs (e.g. filter by document IDs)."""
 
     doc_ids: Optional[List[str]]
 
     def __init__(self, doc_ids: Optional[List[str]] = None) -> None: ...
-
 
 class JobStatus:
     """Enum-like class for job status values."""
@@ -95,7 +79,6 @@ class JobStatus:
     FAILED: ClassVar[str]
 
     value: str
-
 
 class JobPhase:
     """Enum-like class for job phase values."""
@@ -109,7 +92,6 @@ class JobPhase:
 
     value: str
 
-
 class JobProgress:
     """Progress update for a job."""
 
@@ -117,7 +99,6 @@ class JobProgress:
     status: JobStatus
     progress: float
     current_phase: Optional[JobPhase]
-
 
 class JobStatusResponse:
     """Full status response from get_job_status."""
@@ -131,12 +112,10 @@ class JobStatusResponse:
     updated_at: str
     completed_at: Optional[str]
 
-
 class ModelRef:
     id: str
     version: str
     def __init__(self, id: str, version: str) -> None: ...
-
 
 class QueryResultDocumentInfo:
     id: str
@@ -151,7 +130,6 @@ class QueryResultDocumentInfo:
         score: float = ...,
     ) -> None: ...
 
-
 class DocumentInfo:
     id: str
     text: str
@@ -164,7 +142,6 @@ class DocumentInfo:
         metadata: Optional[Dict[str, str]] = ...,
         embedding: Optional[Sequence[float]] = ...,
     ) -> None: ...
-
 
 class QueryOptions:
     embedding: Optional[Sequence[float]]
@@ -184,7 +161,6 @@ class QueryOptions:
         rerank_top_k: Optional[int] = ...,
         rerank_model: Optional[str] = ...,
     ) -> None: ...
-
 
 class IndexInfo:
     id: str
@@ -207,7 +183,6 @@ class IndexInfo:
         model: ModelRef,
     ) -> None: ...
 
-
 class SearchResult:
     docs: List[QueryResultDocumentInfo]
     query: str
@@ -221,14 +196,12 @@ class SearchResult:
         time_taken_ms: Optional[int] = None,
     ) -> None: ...
 
-
 class IndexStatus:
     NotStarted: ClassVar[str]
     Building: ClassVar[str]
     Ready: ClassVar[str]
     Failed: ClassVar[str]
     def __init__(self, value: str) -> None: ...
-
 
 IndexStatusValues: Dict[str, str]
 
