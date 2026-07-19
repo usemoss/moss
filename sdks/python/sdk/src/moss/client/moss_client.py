@@ -17,12 +17,34 @@ from moss_core import (
     MutationOptions,
     MutationResult,
     JobStatusResponse,
-    QueryOptions,
     QueryResultDocumentInfo,
     SearchResult,
 )
 
 logger = logging.getLogger(__name__)
+
+from typing import Sequence
+
+class QueryOptions:
+    """Options for search queries."""
+    def __init__(
+        self,
+        embedding: Optional[Sequence[float]] = None,
+        top_k: Optional[int] = None,
+        alpha: Optional[float] = None,
+        filter: Optional[dict] = None,
+        rerank: bool = False,
+        rerank_top_k: Optional[int] = None,
+        rerank_model: Optional[str] = None,
+    ):
+        self.embedding = embedding
+        self.top_k = top_k
+        self.alpha = alpha
+        self.filter = filter
+        self.rerank = rerank
+        self.rerank_top_k = rerank_top_k
+        self.rerank_model = rerank_model
+
 
 
 def _get_manage_url() -> str:
@@ -189,24 +211,28 @@ class MossClient:
         Otherwise, falls back to the cloud query API.
 
         Args:
-            options: Query options (top_k, alpha, embedding, filter). Example filter:
-                QueryOptions(filter={"$and": [
-                    {"field": "city", "condition": {"$eq": "NYC"}},
-                    {"field": "price", "condition": {"$lt": "50"}},
-                ]})
+            options: Query options (top_k, alpha, embedding, filter, rerank, etc).
         """
         is_loaded = await asyncio.to_thread(self._manager.has_index, name)
 
-        if is_loaded:
-            return await self._query_local(name, query, options)
+        rerank = getattr(options, "rerank", False)
+        override_top_k = getattr(options, "rerank_top_k", 50) if rerank else None
 
-        if getattr(options, "filter", None) is not None:
-            logger.warning(
-                "Metadata filter ignored: filtering is only supported for locally loaded indexes. "
-                "Call load_index('%s') first.",
-                name,
-            )
-        return await self._query_cloud(name, query, options)
+        if is_loaded:
+            result = await self._query_local(name, query, options, override_top_k)
+        else:
+            if getattr(options, "filter", None) is not None:
+                logger.warning(
+                    "Metadata filter ignored: filtering is only supported for locally loaded indexes. "
+                    "Call load_index('%s') first.",
+                    name,
+                )
+            result = await self._query_cloud(name, query, options, override_top_k)
+            
+        if rerank:
+            result = await self._rerank_results(query, result, options)
+            
+        return result
 
     # -- Internal ---------------------------------------------------
 
@@ -215,10 +241,9 @@ class MossClient:
         name: str,
         query: str,
         options: Optional[QueryOptions],
+        override_top_k: Optional[int] = None,
     ) -> SearchResult:
-        top_k = getattr(options, "top_k", None)
-        if top_k is None:
-            top_k = 5
+        top_k = override_top_k if override_top_k is not None else (getattr(options, "top_k", None) or 5)
         alpha = getattr(options, "alpha", None)
         if alpha is None:
             alpha = 0.8
@@ -258,9 +283,10 @@ class MossClient:
         name: str,
         query: str,
         options: Optional[QueryOptions],
+        override_top_k: Optional[int] = None,
     ) -> SearchResult:
         """Fallback: query via the cloud API when the index is not loaded locally."""
-        top_k = getattr(options, "top_k", None) or 10
+        top_k = override_top_k if override_top_k is not None else (getattr(options, "top_k", None) or 10)
         query_embedding = getattr(options, "embedding", None)
 
         request_body: Dict[str, Any] = {
@@ -305,6 +331,46 @@ class MossClient:
             index_name=data.get("indexName"),
             time_taken_ms=data.get("timeTakenMs"),
         )
+
+    async def _rerank_results(
+        self, query: str, search_result: SearchResult, options: Optional[QueryOptions]
+    ) -> SearchResult:
+        if not search_result.docs:
+            return search_result
+
+        try:
+            from sentence_transformers import CrossEncoder
+        except ImportError:
+            raise ImportError(
+                "The 'sentence-transformers' package is required for reranking. "
+                "Install it with: pip install 'moss[rerank]'"
+            )
+
+        model_name = getattr(options, "rerank_model", None) or "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+        def do_rerank():
+            if not hasattr(self.__class__, "_cross_encoder_cache"):
+                self.__class__._cross_encoder_cache = {}
+
+            if model_name not in self.__class__._cross_encoder_cache:
+                self.__class__._cross_encoder_cache[model_name] = CrossEncoder(model_name)
+
+            model = self.__class__._cross_encoder_cache[model_name]
+
+            pairs = [[query, doc.text] for doc in search_result.docs]
+            scores = model.predict(pairs)
+
+            for doc, score in zip(search_result.docs, scores):
+                doc.score = float(score)
+
+            search_result.docs.sort(key=lambda d: d.score, reverse=True)
+
+            original_top_k = getattr(options, "top_k", None) or 5
+            search_result.docs = search_result.docs[:original_top_k]
+            return search_result
+
+        return await asyncio.to_thread(do_rerank)
+
 
     def _resolve_model_id(
         self,

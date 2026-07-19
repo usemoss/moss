@@ -171,12 +171,18 @@ class QueryOptions:
     top_k: Optional[int]
     alpha: Optional[float]
     filter: Optional[dict]
+    rerank: bool
+    rerank_top_k: Optional[int]
+    rerank_model: Optional[str]
     def __init__(
         self,
         embedding: Optional[Sequence[float]] = ...,
         top_k: Optional[int] = ...,
         alpha: Optional[float] = ...,
         filter: Optional[dict] = ...,
+        rerank: bool = ...,
+        rerank_top_k: Optional[int] = ...,
+        rerank_model: Optional[str] = ...,
     ) -> None: ...
 
 

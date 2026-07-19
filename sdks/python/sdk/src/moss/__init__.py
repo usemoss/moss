@@ -31,12 +31,11 @@ from moss_core import (
     JobPhase,
     JobProgress,
     JobStatusResponse,
-    QueryOptions,
     QueryResultDocumentInfo,
     SearchResult,
 )
 
-from .client.moss_client import MossClient
+from .client.moss_client import MossClient, QueryOptions
 
 __version__ = "1.0.0b19"
 
