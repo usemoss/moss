@@ -1,3 +1,5 @@
 .env
 __pycache__/
 embedding_server/__pycache__/
+ci/__pycache__/
+benchmark_results.json

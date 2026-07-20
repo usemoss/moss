@@ -10,7 +10,7 @@ node_modules/
 dist/
 .next/
 coverage/
-.venv/
+.venv*/
 env/
 venv/
 *.log
@@ -27,3 +27,4 @@ skills-lock.json
 
 # Swift / SwiftPM build artifacts
 .build/
+benchmark_results.json

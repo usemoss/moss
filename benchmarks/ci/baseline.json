@@ -1,0 +1,24 @@
+{
+  "commit": "initial",
+  "timestamp": "2025-07-19T00:00:00+00:00",
+  "_note": "Placeholder baseline — update via 'workflow_dispatch' or copy a CI artifact.",
+  "latency_ms": {
+    "p50": 0,
+    "p95": 0,
+    "p99": 0,
+    "mean": 0,
+    "stdev": 0,
+    "count": 0
+  },
+  "recall": {
+    "recall_at_5": 0,
+    "recall_at_10": 0,
+    "queries_evaluated": 0
+  },
+  "config": {
+    "doc_count": 1000,
+    "query_rounds": 20,
+    "warmup_rounds": 3,
+    "top_k_latency": 5
+  }
+}

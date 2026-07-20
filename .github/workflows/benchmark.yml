@@ -1,0 +1,63 @@
+name: Benchmark
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      update_baseline:
+        description: 'Update baseline.json with current results'
+        type: boolean
+        default: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r benchmarks/ci/requirements.txt
+
+      - name: Run benchmark suite
+        env:
+          MOSS_PROJECT_ID: ${{ secrets.MOSS_PROJECT_ID }}
+          MOSS_PROJECT_KEY: ${{ secrets.MOSS_PROJECT_KEY }}
+        run: |
+          pytest benchmarks/ci/ -v \
+            --benchmark-output=benchmark_results.json \
+            --baseline-file=benchmarks/ci/baseline.json \
+            --latency-threshold=0.20 \
+            --recall-threshold=0.05
+
+      - name: Upload results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: benchmark_results.json
+          retention-days: 90
+        if: always()
+
+      - name: Update baseline (manual trigger only)
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.update_baseline == 'true'
+        run: |
+          echo "Copying benchmark_results.json → benchmarks/ci/baseline.json"
+          cp benchmark_results.json benchmarks/ci/baseline.json
+          echo "Updated baseline:"
+          cat benchmarks/ci/baseline.json
+          echo ""
+          echo "NOTE: To persist this change, commit and push benchmarks/ci/baseline.json"

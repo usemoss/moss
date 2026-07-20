@@ -78,3 +78,12 @@ EMBEDDING_DIMENSION=768
 - **Warmup**: 3 rounds (excluded from measurements)
 - **Measured**: 50 rounds x 15 queries = 750 measurements per system
 - **top_k**: 5
+
+## CI Benchmark Suite
+
+For automated regression testing in CI, see [`benchmarks/ci/`](ci/).
+This suite runs on every push to `main` and on PRs, tracking p50/p95/p99
+latency and recall@k per commit. It compares against a checked-in baseline
+and fails the build if regressions exceed configurable thresholds.
+
+See [`benchmarks/ci/README.md`](ci/README.md) for full documentation.

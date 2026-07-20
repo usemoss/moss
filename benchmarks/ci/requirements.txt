@@ -1,0 +1,6 @@
+# CI benchmark harness — minimal dependencies
+# NOTE: install from the repo root (pip resolves this path against the CWD):
+#   pip install -r benchmarks/ci/requirements.txt
+./sdks/python/sdk
+pytest>=7.0
+python-dotenv>=1.0.0
