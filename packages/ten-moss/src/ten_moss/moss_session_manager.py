@@ -150,23 +150,18 @@ class MossSessionManager:
         )
 
     def _format_context(self, docs: Sequence[Any]) -> str:
-        """Format retrieved passages into a grounding block within the char budget."""
-        header = self._context_header.rstrip()
-        budget = self._max_context_chars  # 0 = unlimited
-        entries: list[str] = []
-        used = 0
+        """Format retrieved passages into a grounding block, capped as a whole.
+
+        `max_context_chars` bounds the entire returned string — header and
+        separators included — so the injected block never exceeds it (a long
+        custom header is truncated too, rather than bypassing the cap).
+        """
+        lines = [self._context_header.rstrip(), ""]
         for idx, doc in enumerate(docs, start=1):
             text = (getattr(doc, "text", "") or "").strip()
-            entry = f"[{idx}] {text}"
-            if budget:
-                remaining = budget - used
-                if remaining <= 0:
-                    break
-                if len(entry) > remaining:
-                    entries.append(entry[:remaining])
-                    break
-            entries.append(entry)
-            used += len(entry) + 1  # + newline
-        if not entries:
-            return header
-        return "\n".join([header, "", *entries]).strip()
+            lines.append(f"[{idx}] {text}")
+        block = "\n".join(lines).strip()
+        budget = self._max_context_chars  # 0 = unlimited
+        if budget and len(block) > budget:
+            block = block[:budget].rstrip()
+        return block

@@ -213,7 +213,18 @@ class TestSessionManager(unittest.IsolatedAsyncioTestCase):
         await mgr.open()
         out = await mgr.query_context("q")
         self.assertIn("Relevant knowledge from Moss:", out)
-        self.assertLess(len(out), 300)  # 5000-char doc was truncated to the budget
+        # The cap bounds the WHOLE block (header + separators + entries).
+        self.assertLessEqual(len(out), 100)
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_query_context_budget_includes_long_header(self, cls):
+        session = _mock_session(docs=[_Doc("hello")])
+        mgr, client, session = self._manager(
+            cls, session=session, context_header="H" * 500, max_context_chars=50
+        )
+        await mgr.open()
+        out = await mgr.query_context("q")
+        self.assertLessEqual(len(out), 50)  # a long header can't bypass the cap
 
     @patch("ten_moss.moss_session_manager.MossClient")
     async def test_disabled_config_no_client_and_noop(self, cls):
