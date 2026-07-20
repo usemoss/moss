@@ -27,7 +27,7 @@ def test_query_options_validation():
 
     # Test invalid embedding
     with pytest.raises(ValueError, match="embedding must be a sequence of numbers"):
-        QueryOptions(embedding=["invalid"])
+        QueryOptions(embedding=["invalid"])  # type: ignore
 
     # Test invalid rerank_top_k
     with pytest.raises(ValueError, match="rerank_top_k must be an integer >= 1"):
