@@ -19,7 +19,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import { startAuthStub } from "./support/authStub.mjs";
-import { buildBaselineCache, makeCorruptCache, makeTempRoot, CORRUPTIONS, SEED_DOCS } from "./support/fixtures.mjs";
+import { buildBaselineCache, makeCorruptCache, makeTempRoot, safeRm, CORRUPTIONS, SEED_DOCS } from "./support/fixtures.mjs";
 import { WorkerHarness } from "./support/workerHarness.mjs";
 import { SESSION_NAME, STUB_PROJECT_ID, STUB_PROJECT_KEY } from "./support/env.mjs";
 
@@ -77,7 +77,7 @@ for (const corruptionName of Object.keys(CORRUPTIONS)) {
     const docs = await worker.call("getDocs", { options: undefined });
     assert.equal(docs.docCount, 0, "no partial documents installed after failed load");
 
-    fs.rmSync(root, { recursive: true, force: true });
+    safeRm(root);
   });
 }
 
@@ -88,12 +88,12 @@ test("worker answers a subsequent safe request after the fault battery", async (
 
   // A clean round-trip load of a valid baseline cache still works.
   const cleanRoot = makeTempRoot("survival-clean");
-  fs.rmSync(cleanRoot, { recursive: true, force: true });
   fs.cpSync(baselineDir, `${cleanRoot}/${SESSION_NAME}`, { recursive: true });
   const loaded = await worker.call("loadFromDisk", { cachePath: cleanRoot });
   assert.equal(loaded.loaded, SEED_DOCS.length, "valid cache loads cleanly");
   assert.ok(worker.connected, "worker still connected at end");
-  fs.rmSync(cleanRoot, { recursive: true, force: true });
+  // Best-effort: the worker holds an mmap on the loaded cache (Windows EPERM).
+  safeRm(cleanRoot);
 });
 
 test("no embedding model was downloaded (hermetic, offline)", () => {

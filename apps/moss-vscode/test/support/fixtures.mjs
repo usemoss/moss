@@ -157,3 +157,17 @@ export function makeCorruptCache(baselineDir, destRoot, corruptionName) {
 export function makeTempRoot(label) {
   return fs.mkdtempSync(path.join(os.tmpdir(), `moss-vscode-${label}-`));
 }
+
+/**
+ * Best-effort recursive remove. A live worker memory-maps `index.mossvec`, and
+ * Windows refuses to unlink a mapped file (EPERM) until the worker exits — the
+ * lingering temp dir is harmless and the OS reclaims it, so cleanup failures are
+ * ignored. Never used for assertions.
+ */
+export function safeRm(target) {
+  try {
+    fs.rmSync(target, { recursive: true, force: true });
+  } catch {
+    // ignore — see doc comment (Windows mmap/EPERM); temp dir is ephemeral.
+  }
+}

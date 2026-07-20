@@ -97,14 +97,9 @@ test("aborting the worker mid-call: records signal, rejects pending, clears stat
   // catchable-throw path (worker-survival.test.mjs) where it stays alive.
   const exitLog = logs.find((l) => l.includes("Moss worker exited"));
   assert.ok(exitLog, "supervisor logged the worker exit");
-  if (process.platform === "win32") {
-    // Windows has no real signals: an aborted process is reported via exit code.
-    assert.match(exitLog, /code=\d+/, "recorded a non-clean exit code on Windows abort");
-  } else {
-    assert.match(exitLog, /signal=SIGKILL/, "recorded the abort signal (distinguishes signal/abort)");
-    assert.match(exitLog, /code=null/, "no ordinary exit code on a signal death");
-  }
-  assert.doesNotMatch(exitLog, /code=0, signal=null/, "abort must not look like a clean exit");
+  // Node reports a kill("SIGKILL") as signal=SIGKILL / code=null on Windows too.
+  assert.match(exitLog, /signal=SIGKILL/, "recorded the abort signal (distinguishes signal/abort)");
+  assert.match(exitLog, /code=null/, "no ordinary exit code on a signal death");
 
   // 4) State cleared.
   assert.equal(manager.isReady, false, "not ready after crash");
