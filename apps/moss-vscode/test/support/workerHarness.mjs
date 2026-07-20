@@ -11,10 +11,14 @@ import { workerEnv } from "./env.mjs";
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const WORKER_PATH = path.join(APP_ROOT, "dist", "mossWorker.js");
 
+/** Default per-request timeout (ms). A native deadlock must not hang the run. */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+
 export class WorkerHarness {
-  constructor(envExtra = {}, workerPath = WORKER_PATH) {
+  constructor(envExtra = {}, workerPath = WORKER_PATH, requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
     this._nextId = 1;
     this._pending = new Map();
+    this.requestTimeoutMs = requestTimeoutMs;
     this.exit = null; // { code, signal } once the worker exits
     this._worker = fork(workerPath, [], {
       stdio: ["ignore", "pipe", "pipe", "ipc"],
@@ -28,12 +32,13 @@ export class WorkerHarness {
       const pending = this._pending.get(msg.id);
       if (!pending) return;
       this._pending.delete(msg.id);
-      if (msg.ok) pending.resolve(msg);
-      else pending.resolve(msg); // {ok:false} is a value, not a throw, for assertions
+      clearTimeout(pending.timer);
+      pending.resolve(msg); // {ok:false} is a value, not a throw, for assertions
     });
     this._worker.on("exit", (code, signal) => {
       this.exit = { code, signal };
-      for (const { reject } of this._pending.values()) {
+      for (const { reject, timer } of this._pending.values()) {
+        clearTimeout(timer);
         reject(new Error(`worker exited (code=${code}, signal=${signal})`));
       }
       this._pending.clear();
@@ -52,9 +57,23 @@ export class WorkerHarness {
   send(method, args) {
     const id = this._nextId++;
     return new Promise((resolve, reject) => {
-      this._pending.set(id, { resolve, reject });
+      const timer = setTimeout(() => {
+        if (!this._pending.has(id)) return;
+        this._pending.delete(id);
+        // Terminate the stuck worker so a native deadlock can't wedge the run.
+        try {
+          this._worker.kill("SIGKILL");
+        } catch {
+          // already gone
+        }
+        reject(new Error(`worker request '${method}' timed out after ${this.requestTimeoutMs}ms`));
+      }, this.requestTimeoutMs);
+      if (typeof timer.unref === "function") timer.unref();
+      this._pending.set(id, { resolve, reject, timer });
       this._worker.send({ id, method, args }, (err) => {
         if (err) {
+          const pending = this._pending.get(id);
+          if (pending) clearTimeout(pending.timer);
           this._pending.delete(id);
           reject(err);
         }

@@ -10,10 +10,12 @@
 //   * the worker still answers a subsequent safe request.
 //
 // This runs against the real installed addon for the runner's platform. The CI
-// matrix (macOS / Linux / Windows) exercises all three shipped native targets.
-// The native `loadFromDisk` deserialize path is model-independent, so the
-// hermetic `custom` model faithfully drives the same boundary the shipped
-// `moss-minilm` sessions hit — see support/env.mjs.
+// matrix executes three of the five shipped native targets — macOS arm64, Linux
+// x64, Windows x64 (the hosted runners GitHub offers); Darwin x64 and Linux
+// arm64 are bundled and statically version/hook-checked by verify-package but
+// not executed (no hosted runners). The native `loadFromDisk` deserialize path
+// is model-independent, so the hermetic `custom` model faithfully drives the
+// same boundary the shipped `moss-minilm` sessions hit — see support/env.mjs.
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -21,7 +23,7 @@ import * as fs from "node:fs";
 import { startAuthStub } from "./support/authStub.mjs";
 import { buildBaselineCache, makeCorruptCache, makeTempRoot, safeRm, CORRUPTIONS, SEED_DOCS } from "./support/fixtures.mjs";
 import { WorkerHarness } from "./support/workerHarness.mjs";
-import { SESSION_NAME, STUB_PROJECT_ID, STUB_PROJECT_KEY } from "./support/env.mjs";
+import { SESSION_NAME, STUB_PROJECT_ID, STUB_PROJECT_KEY, applyHermeticEnv } from "./support/env.mjs";
 
 let stub;
 let worker;
@@ -30,6 +32,9 @@ let baselineDir;
 let fixturesRoot;
 
 before(async () => {
+  // Disable parent-process telemetry and isolate its model cache BEFORE the
+  // real-addon baseline is built in this process.
+  applyHermeticEnv();
   stub = await startAuthStub();
   fixturesRoot = makeTempRoot("survival-baseline");
   baselineDir = await buildBaselineCache(fixturesRoot);

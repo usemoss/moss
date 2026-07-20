@@ -83,6 +83,9 @@ const leakRules = [
   { re: /\.test\.mjs$/, what: "test file" },
   { re: /^extension\/src\//, what: "TypeScript source" },
   { re: /\.tsx?$/, what: "TypeScript source" },
+  // Source maps embed the original TypeScript via `sourcesContent`, so shipping
+  // them would leak the very source the rules above reject.
+  { re: /\.map$/, what: "source map (embeds TypeScript source)" },
   { re: /^extension\/promo\//, what: "promo project" },
   { re: /\.log$/, what: "log file" },
   { re: /^extension\/scripts\//, what: "build/verify scripts" },
@@ -92,7 +95,7 @@ if (leaks.length) {
   for (const l of leaks.slice(0, 20)) console.error(`   leaked: ${l}`);
   fail(`${leaks.length} disallowed file(s) leaked into the VSIX`);
 }
-console.log("✓ no test source, fixtures, promo, logs, or TS source in the VSIX");
+console.log("✓ no test source, fixtures, promo, logs, source maps, or TS source in the VSIX");
 
 // Required contents still present.
 const requiredEntries = [
@@ -133,9 +136,10 @@ try {
   }
   console.log(`✓ VSIX bundles fixed set: moss ${bundledWrapper} -> core ${bundledCore} (5 platforms)`);
 
-  // Hidden test-hook / debug export scan: the shipped SDK JS and worker bundle
-  // must not expose panic/test/debug hooks, and the runner-platform .node must
-  // carry no such symbols.
+  // Hidden test-hook / debug export scan. The shipped SDK JS and worker bundle
+  // must not expose panic/test/debug hooks, and EVERY packaged platform .node
+  // (not just the runner-native one) must carry no such symbols — a hook baked
+  // into any of the five bundled binaries ships to that platform's users.
   const HOOK_RE = /__test_panic_hook|__debugWaiter|__debug[A-Z]|__test[A-Z]/;
   const scanJsFiles = [
     path.join(modBase, "@moss-dev", "moss", "dist", "index.esm.js"),
@@ -144,21 +148,25 @@ try {
     path.join(extractDir, "extension", "dist", "extension.js"),
   ];
   for (const f of scanJsFiles) {
-    if (existsSync(f) && HOOK_RE.test(readFileSync(f, "utf8"))) {
+    // A missing expected target must fail, not silently skip — otherwise a
+    // layout change turns the hook assertion into a no-op.
+    if (!existsSync(f)) fail(`expected JS scan target missing from VSIX: ${path.relative(extractDir, f)}`);
+    if (HOOK_RE.test(readFileSync(f, "utf8"))) {
       fail(`hidden test-hook/debug export found in ${path.relative(extractDir, f)}`);
     }
   }
-  const platformDir = platformNodeDir(modBase);
-  if (platformDir) {
-    const nodeFile = readdirSync(platformDir).find((f) => f.endsWith(".node"));
-    if (nodeFile) {
-      const buf = readFileSync(path.join(platformDir, nodeFile));
-      if (HOOK_RE.test(buf.toString("latin1"))) {
-        fail(`hidden test-hook/debug symbol found in bundled native addon ${nodeFile}`);
-      }
-      console.log(`✓ no hidden test-hook/debug symbols (JS + native addon ${nodeFile})`);
+  const scannedNodes = [];
+  for (const pkg of PLATFORM_PACKAGES) {
+    const dir = path.join(modBase, ...pkg.split("/"));
+    const nodeFile = existsSync(dir) ? readdirSync(dir).find((f) => f.endsWith(".node")) : undefined;
+    if (!nodeFile) fail(`VSIX platform package ${pkg} is missing its .node binary`);
+    const buf = readFileSync(path.join(dir, nodeFile));
+    if (HOOK_RE.test(buf.toString("latin1"))) {
+      fail(`hidden test-hook/debug symbol found in bundled native addon ${pkg}/${nodeFile}`);
     }
+    scannedNodes.push(nodeFile);
   }
+  console.log(`✓ no hidden test-hook/debug symbols (JS + all ${scannedNodes.length} platform .node binaries)`);
 
   // -------------------------------------------------------------------------
   // 4. Execute the EXTRACTED worker against the VSIX's own bundled .node.
@@ -174,28 +182,19 @@ console.log(`Package verification passed (${path.basename(vsix)}).`);
 // ---------------------------------------------------------------------------
 // Helpers.
 // ---------------------------------------------------------------------------
-function platformNodeDir(modBase) {
-  const map = {
-    "darwin-arm64": "@moss-dev/moss-core-darwin-arm64",
-    "darwin-x64": "@moss-dev/moss-core-darwin-x64",
-    "linux-arm64": "@moss-dev/moss-core-linux-arm64-gnu",
-    "linux-x64": "@moss-dev/moss-core-linux-x64-gnu",
-    "win32-x64": "@moss-dev/moss-core-win32-x64-msvc",
-  };
-  const key = `${process.platform}-${process.arch}`;
-  const pkg = map[key];
-  if (!pkg) return null;
-  const dir = path.join(modBase, ...pkg.split("/"));
-  return existsSync(dir) ? dir : null;
-}
-
 async function executePackagedWorker(extractDir) {
   const { startAuthStub } = await import("../test/support/authStub.mjs");
-  const { buildBaselineCacheWith, makeCorruptCache, makeTempRoot } = await import(
+  const { buildBaselineCacheWith, makeCorruptCache, makeTempRoot, safeRm } = await import(
     "../test/support/fixtures.mjs"
   );
   const { WorkerHarness } = await import("../test/support/workerHarness.mjs");
-  const { SESSION_NAME, STUB_PROJECT_ID, STUB_PROJECT_KEY } = await import("../test/support/env.mjs");
+  const { SESSION_NAME, STUB_PROJECT_ID, STUB_PROJECT_KEY, applyHermeticEnv } = await import(
+    "../test/support/env.mjs"
+  );
+
+  // Disable parent-process telemetry and isolate its model cache BEFORE the
+  // bundled SDK is imported/constructed for baseline generation.
+  applyHermeticEnv();
 
   const workerPath = path.join(extractDir, "extension", "dist", "mossWorker.js");
   const stub = await startAuthStub();
@@ -231,5 +230,8 @@ async function executePackagedWorker(extractDir) {
   } finally {
     await worker.dispose();
     await stub.close();
+    // Worker is gone; releasing any mmap so best-effort cleanup is safe.
+    safeRm(fixturesRoot);
+    safeRm(modelCache);
   }
 }

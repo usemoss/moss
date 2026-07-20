@@ -45,10 +45,12 @@ jobs:
         run: npm run build
 
       # Worker-survival E2E + supervisor negative control. Runs on every OS in
-      # the matrix against the real installed native addon for that platform
-      # (macOS arm64/x64, Linux x64, Windows x64), so a crash-boundary regression
-      # fails CI on all shipped targets. Hermetic: loopback auth stub, no model
-      # download, no customer data (MOS-166).
+      # the matrix and EXECUTES the real installed native addon for that runner:
+      # macOS arm64 (macos-latest), Linux x64 (ubuntu-latest), Windows x64
+      # (windows-latest). GitHub offers no hosted Darwin x64 or Linux arm64
+      # runners, so those two shipped binaries are not executed here; they are
+      # bundled and statically version/hook-checked by verify-package. Hermetic:
+      # loopback auth stub, no model download, no customer data (MOS-166).
       - name: Regression tests (worker survival + supervisor abort/restart)
         run: npm test
 

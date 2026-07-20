@@ -2,7 +2,6 @@
 .vscode-test/**
 src/**
 **/*.ts
-!dist/**
 tsconfig.json
 esbuild.mjs
 scripts/**
