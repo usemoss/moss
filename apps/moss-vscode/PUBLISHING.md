@@ -62,4 +62,4 @@ The extension runs Moss in a child Node process. Resolution order:
 3. System Node (`node` on PATH)
 4. VS Code embedded Node (`process.execPath` + `ELECTRON_RUN_AS_NODE`)
 
-If indexing fails with a native crash, install Node 20+ and set `moss.nodePath`, or set `NODE_BINARY`.
+If indexing fails with a native crash, install Node 20.4+ and set `moss.nodePath`, or set `NODE_BINARY`.

@@ -20,6 +20,10 @@ test("worker Node floor is 20.4 and enforced correctly", async () => {
   assert.deepEqual(parseNodeVersion("20.10.1"), { major: 20, minor: 10, patch: 1 });
   assert.equal(parseNodeVersion(undefined), undefined);
   assert.equal(parseNodeVersion("not-a-version"), undefined);
+  // Prereleases / trailing tags are not clean stable versions.
+  assert.equal(parseNodeVersion("20.4.0-rc.1"), undefined);
+  assert.equal(parseNodeVersion("20.5.0-nightly20240101abcdef"), undefined);
+  assert.equal(parseNodeVersion("20.4.0+build.5"), undefined);
 
   // At or above the floor.
   for (const ok of ["20.4.0", "v20.4.0", "20.4.9", "20.10.0", "21.0.0", "22.11.0"]) {
@@ -28,5 +32,10 @@ test("worker Node floor is 20.4 and enforced correctly", async () => {
   // Below the floor or unparseable.
   for (const bad of ["20.3.9", "20.0.0", "18.19.0", "16.20.2", undefined, "", "garbage"]) {
     assert.equal(nodeMeetsWorkerFloor(bad), false, `${bad} should not meet the floor`);
+  }
+  // Prerelease of 20.4.0 precedes the stable release, so it must NOT satisfy the
+  // stable >=20.4 floor — even a prerelease of a higher line is rejected.
+  for (const pre of ["20.4.0-rc.1", "20.4.0-nightly", "20.5.0-rc.0", "21.0.0-pre"]) {
+    assert.equal(nodeMeetsWorkerFloor(pre), false, `${pre} (prerelease) must not meet the floor`);
   }
 });

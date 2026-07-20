@@ -206,7 +206,11 @@ export function parseNodeVersion(
   if (!raw) {
     return undefined;
   }
-  const match = /(\d+)\.(\d+)\.(\d+)/.exec(raw.trim());
+  // Anchored to a clean stable `X.Y.Z` (optional leading `v`). A prerelease such
+  // as `20.4.0-rc.1` or any trailing tag is rejected, so a pre-release of 20.4.0
+  // — which semantically precedes the stable 20.4.0 — does not satisfy the
+  // stable `>=20.4` floor.
+  const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(raw.trim());
   if (!match) {
     return undefined;
   }
