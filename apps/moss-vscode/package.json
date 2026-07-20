@@ -18,7 +18,7 @@
   "qna": "https://github.com/samanyugoyal2010/moss-vs-code/issues",
   "engines": {
     "vscode": "^1.85.0",
-    "node": ">=20"
+    "node": ">=20.4"
   },
   "categories": [
     "Other",
@@ -146,7 +146,7 @@
         "moss.nodePath": {
           "type": "string",
           "default": "",
-          "description": "Optional path to a Node.js 20+ binary for the Moss worker (defaults to system Node, then VS Code embedded Node)"
+          "description": "Optional path to a Node.js 20.4+ binary for the Moss worker (defaults to system Node, then VS Code embedded Node)"
         }
       }
     }
@@ -156,7 +156,7 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test test/worker-survival.test.mjs test/supervisor-negative-control.test.mjs",
+    "test": "npm run build && node --test test/worker-survival.test.mjs test/supervisor-negative-control.test.mjs test/node-floor.test.mjs",
     "test:worker": "npm run build && node --test test/worker-survival.test.mjs",
     "test:supervisor": "npm run build && node --test test/supervisor-negative-control.test.mjs",
     "prepackage": "node scripts/prepackage.mjs",

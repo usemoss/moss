@@ -192,6 +192,64 @@ function isExecutable(filePath: string): boolean {
   }
 }
 
+/**
+ * Minimum Node.js the packaged `@moss-dev/moss` (1.4.1) supports at runtime.
+ * The wrapper declares `engines.node: ">=20.4"`; the worker must run on a Node
+ * that meets that floor, so binary selection verifies the version rather than
+ * only that a binary exists.
+ */
+export const MIN_WORKER_NODE_VERSION = "20.4.0";
+
+export function parseNodeVersion(
+  raw: string | undefined,
+): { major: number; minor: number; patch: number } | undefined {
+  if (!raw) {
+    return undefined;
+  }
+  const match = /(\d+)\.(\d+)\.(\d+)/.exec(raw.trim());
+  if (!match) {
+    return undefined;
+  }
+  return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
+}
+
+export function nodeMeetsWorkerFloor(raw: string | undefined): boolean {
+  const version = parseNodeVersion(raw);
+  if (!version) {
+    return false;
+  }
+  const [minMajor, minMinor, minPatch] = MIN_WORKER_NODE_VERSION.split(".").map(Number);
+  if (version.major !== minMajor) {
+    return version.major > minMajor;
+  }
+  if (version.minor !== minMinor) {
+    return version.minor > minMinor;
+  }
+  return version.patch >= minPatch;
+}
+
+/**
+ * Resolve a candidate's runtime Node version. Runs the binary with
+ * `ELECTRON_RUN_AS_NODE=1` so that VS Code's embedded Electron reports the
+ * Node version it bundles (not the Electron version), matching how the worker
+ * is forked.
+ */
+function nodeBinaryVersion(candidate: string): string | undefined {
+  try {
+    const result = spawnSync(candidate, ["-e", "process.stdout.write(process.versions.node)"], {
+      encoding: "utf8",
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+      timeout: 5000,
+    });
+    if (result.status !== 0) {
+      return undefined;
+    }
+    return result.stdout?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function findNodeBinary(log: (message: string) => void = () => undefined): string {
   const fromSetting = vscode.workspace.getConfiguration("moss").get<string>("nodePath")?.trim();
 
@@ -210,17 +268,31 @@ function findNodeBinary(log: (message: string) => void = () => undefined): strin
     process.execPath,
   ].filter(Boolean) as string[];
 
+  let tooOld: { candidate: string; version: string } | undefined;
   for (const candidate of candidates) {
-    if (isExecutable(candidate)) {
-      if (candidate === process.execPath) {
-        log("Moss worker using VS Code embedded Node (set moss.nodePath for a standalone Node 20+ binary if needed)");
-      }
-      return candidate;
+    if (!isExecutable(candidate)) {
+      continue;
     }
+    const version = nodeBinaryVersion(candidate);
+    if (!nodeMeetsWorkerFloor(version)) {
+      if (version) {
+        tooOld = { candidate, version };
+      }
+      continue;
+    }
+    if (candidate === process.execPath) {
+      log(
+        `Moss worker using VS Code embedded Node ${version} (set moss.nodePath for a standalone Node ${MIN_WORKER_NODE_VERSION}+ binary if needed)`,
+      );
+    }
+    return candidate;
   }
 
+  const detail = tooOld
+    ? ` The closest match, ${tooOld.candidate}, is Node ${tooOld.version}, below the required ${MIN_WORKER_NODE_VERSION} (@moss-dev/moss 1.4.1).`
+    : "";
   throw new Error(
-    "Could not find a Node.js binary for the Moss worker. Install Node 20+ or set moss.nodePath.",
+    `Could not find a Node.js ${MIN_WORKER_NODE_VERSION}+ binary for the Moss worker.${detail} Install Node ${MIN_WORKER_NODE_VERSION}+ or set moss.nodePath.`,
   );
 }
 
