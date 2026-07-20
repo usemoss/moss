@@ -2,19 +2,30 @@
 """Generate ground truth for CI benchmark recall computation.
 
 Queries the Moss index with a large top_k and records the returned document
-IDs as the "expected" relevant set for each benchmark query.  Run this once
-(or whenever the index/model changes) and commit the output.
+IDs as the "expected" set for each benchmark query.  Run this once (or
+whenever the index/model changes) and commit the output.
+
+.. note::
+   This is a **ranking-stability reference**, not an independent relevance
+   judgment: the expected IDs come from Moss itself at a known-good commit.
+   The recall gate therefore detects *changes in retrieval behavior* (the
+   goal of a regression guard), and will also flag intentional relevance
+   improvements — regenerate and commit a new ground truth in that case.
 
 Usage::
 
     # Ensure MOSS_PROJECT_ID and MOSS_PROJECT_KEY are set
     python benchmarks/ci/generate_ground_truth.py
 
+    # After a corpus or model change, rebuild the index first:
+    python benchmarks/ci/generate_ground_truth.py --recreate
+
 Output is written to ``benchmarks/ci/ground_truth.json``.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import os
@@ -23,38 +34,38 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+from bench_queries import DOC_COUNT, INDEX_NAME_DEFAULT, MODEL_ID, QUERIES
 
-# Re-use the same query set as the CI benchmark.
-QUERIES = [
-    "neural network training data",
-    "anomaly detection patterns",
-    "computer vision image processing",
-    "natural language processing",
-    "reinforcement learning rewards",
-    "transfer learning pretrained models",
-    "distributed computing systems",
-    "cryptographic data encryption",
-    "database indexing performance",
-    "knowledge graph entities",
-    "generative adversarial networks",
-    "attention mechanism transformers",
-    "dimensionality reduction compression",
-    "federated learning privacy",
-    "stream processing pipelines",
-]
+load_dotenv()
 
 # Fetch a generous top_k so recall@5 and recall@10 can be evaluated
 # against a superset of relevant results.
 GROUND_TRUTH_TOP_K = 50
 
 
-async def main() -> None:
-    from moss import MossClient, DocumentInfo, QueryOptions
+async def _create_index(client, index_name: str) -> None:
+    from moss import DocumentInfo
+
+    corpus_path = Path(__file__).resolve().parent.parent / "bench_100k_docs.json"
+    if not corpus_path.exists():
+        print(f"Error: Corpus file not found: {corpus_path}")
+        sys.exit(1)
+    with open(corpus_path) as f:
+        all_docs = json.load(f)
+    docs = [
+        DocumentInfo(id=d["id"], text=d["text"], metadata=d.get("metadata"))
+        for d in all_docs[:DOC_COUNT]
+    ]
+    result = await client.create_index(index_name, docs, MODEL_ID)
+    print(f"Created index '{index_name}' with {result.doc_count} docs")
+
+
+async def main(recreate: bool) -> None:
+    from moss import MossClient, QueryOptions
 
     project_id = os.getenv("MOSS_PROJECT_ID")
     project_key = os.getenv("MOSS_PROJECT_KEY")
-    index_name = os.getenv("MOSS_INDEX_NAME", "benchmark-ci")
+    index_name = os.getenv("MOSS_INDEX_NAME", INDEX_NAME_DEFAULT)
 
     if not project_id or not project_key:
         print("Error: MOSS_PROJECT_ID and MOSS_PROJECT_KEY must be set.")
@@ -62,23 +73,20 @@ async def main() -> None:
 
     client = MossClient(project_id, project_key)
 
-    # Ensure the index exists (create with a 1K subset if needed).
-    try:
-        await client.get_index(index_name)
+    # Determine existence explicitly (rather than treating any get_index
+    # failure as "missing") so auth/network errors surface instead of
+    # silently triggering index creation.
+    existing = {idx.name for idx in await client.list_indexes()}
+
+    if index_name in existing and recreate:
+        print(f"--recreate: deleting existing index '{index_name}'")
+        await client.delete_index(index_name)
+        existing.discard(index_name)
+
+    if index_name in existing:
         print(f"Using existing index '{index_name}'")
-    except Exception:
-        corpus_path = Path(__file__).resolve().parent.parent / "bench_100k_docs.json"
-        if not corpus_path.exists():
-            print(f"Error: Corpus file not found: {corpus_path}")
-            sys.exit(1)
-        with open(corpus_path) as f:
-            all_docs = json.load(f)
-        docs = [
-            DocumentInfo(id=d["id"], text=d["text"], metadata=d.get("metadata"))
-            for d in all_docs[:1000]
-        ]
-        result = await client.create_index(index_name, docs, "moss-minilm")
-        print(f"Created index '{index_name}' with {result.doc_count} docs")
+    else:
+        await _create_index(client, index_name)
 
     await client.load_index(index_name)
 
@@ -95,10 +103,10 @@ async def main() -> None:
         print(f"  '{q}' → {len(doc_ids)} results")
 
     output = {
-        "model": "moss-minilm",
+        "model": MODEL_ID,
         "top_k": GROUND_TRUTH_TOP_K,
         "index_name": index_name,
-        "doc_count": 1000,
+        "doc_count": DOC_COUNT,
         "queries": ground_truth,
     }
 
@@ -111,4 +119,13 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help="Delete and rebuild the benchmark index from the corpus before "
+        "querying. Required after a corpus or embedding-model change so the "
+        "ground truth reflects the current data.",
+    )
+    args = parser.parse_args()
+    asyncio.run(main(recreate=args.recreate))

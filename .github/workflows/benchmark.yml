@@ -36,11 +36,20 @@ jobs:
           MOSS_PROJECT_ID: ${{ secrets.MOSS_PROJECT_ID }}
           MOSS_PROJECT_KEY: ${{ secrets.MOSS_PROJECT_KEY }}
         run: |
-          pytest benchmarks/ci/ -v \
-            --benchmark-output=benchmark_results.json \
-            --baseline-file=benchmarks/ci/baseline.json \
-            --latency-threshold=0.20 \
-            --recall-threshold=0.05
+          # Baseline-update runs skip the regression comparison: comparing
+          # against the baseline being replaced would fail the run (and skip
+          # the copy step) exactly when an intentional change moved the numbers.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
+             [ "${{ github.event.inputs.update_baseline }}" = "true" ]; then
+            pytest benchmarks/ci/ -v \
+              --benchmark-output=benchmark_results.json
+          else
+            pytest benchmarks/ci/ -v \
+              --benchmark-output=benchmark_results.json \
+              --baseline-file=benchmarks/ci/baseline.json \
+              --latency-threshold=0.20 \
+              --recall-threshold=0.05
+          fi
 
       - name: Upload results artifact
         uses: actions/upload-artifact@v4
@@ -57,7 +66,8 @@ jobs:
         run: |
           echo "Copying benchmark_results.json → benchmarks/ci/baseline.json"
           cp benchmark_results.json benchmarks/ci/baseline.json
-          echo "Updated baseline:"
+          echo "New baseline (runner copy only — NOT committed):"
           cat benchmarks/ci/baseline.json
           echo ""
-          echo "NOTE: To persist this change, commit and push benchmarks/ci/baseline.json"
+          echo "To persist: download the benchmark-results-${{ github.sha }} artifact,"
+          echo "copy it to benchmarks/ci/baseline.json, and commit."

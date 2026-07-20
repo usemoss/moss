@@ -30,6 +30,8 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
+from bench_queries import DOC_COUNT, INDEX_NAME_DEFAULT, MODEL_ID, QUERIES
+
 load_dotenv()
 
 # ---------------------------------------------------------------------------
@@ -38,31 +40,13 @@ load_dotenv()
 
 CI_DIR = Path(__file__).resolve().parent
 
-# Subset of the full 100K corpus for CI speed.
-DOC_COUNT = 1_000
+# DOC_COUNT (1K subset of the full 100K corpus, for CI speed), the query set,
+# and the model id are shared with generate_ground_truth.py via bench_queries.
 TOP_K_LATENCY = 5
 TOP_K_RECALL_5 = 5
 TOP_K_RECALL_10 = 10
 WARMUP_ROUNDS = 3
 QUERY_ROUNDS = 20
-
-QUERIES = [
-    "neural network training data",
-    "anomaly detection patterns",
-    "computer vision image processing",
-    "natural language processing",
-    "reinforcement learning rewards",
-    "transfer learning pretrained models",
-    "distributed computing systems",
-    "cryptographic data encryption",
-    "database indexing performance",
-    "knowledge graph entities",
-    "generative adversarial networks",
-    "attention mechanism transformers",
-    "dimensionality reduction compression",
-    "federated learning privacy",
-    "stream processing pipelines",
-]
 
 
 # ---------------------------------------------------------------------------
@@ -127,13 +111,14 @@ def moss_client():
         pytest.skip("MOSS_PROJECT_ID / MOSS_PROJECT_KEY not set — skipping benchmarks")
 
     client = MossClient(project_id, project_key)
-    index_name = os.getenv("MOSS_INDEX_NAME", "benchmark-ci")
+    index_name = os.getenv("MOSS_INDEX_NAME", INDEX_NAME_DEFAULT)
 
     async def _setup():
-        # Create index with a small subset if it doesn't exist.
-        try:
-            await client.get_index(index_name)
-        except Exception:
+        # Determine existence explicitly (rather than treating any get_index
+        # failure as "missing") so auth/network errors surface instead of
+        # silently triggering index creation.
+        existing = {idx.name for idx in await client.list_indexes()}
+        if index_name not in existing:
             # Load documents from the shared corpus file.
             corpus_path = CI_DIR.parent / "bench_100k_docs.json"
             if not corpus_path.exists():
@@ -148,7 +133,7 @@ def moss_client():
                 )
                 for d in all_docs[:DOC_COUNT]
             ]
-            await client.create_index(index_name, docs, "moss-minilm")
+            await client.create_index(index_name, docs, MODEL_ID)
 
         await client.load_index(index_name)
         return client, index_name
@@ -189,7 +174,10 @@ def benchmark_results() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tests — run in declaration order via pytest-ordering or alphabetically
+# Tests — pytest collects these in declaration order (measure → guard →
+# write). The ordering is a soft dependency only: the guard and writer
+# degrade gracefully (skip / write partial results) if measurement data is
+# missing, so a random-ordering plugin breaks nothing, it just skips checks.
 # ---------------------------------------------------------------------------
 
 
