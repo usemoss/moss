@@ -123,6 +123,7 @@ asks for an experimental landing spot.
 | `apps/moss-bun/` | Production Bun + Moss application |
 | `apps/moss-llamaindex/` | Full-stack PDF → LlamaIndex + Liteparse + Moss semantic search demo |
 | `apps/next-js/` | Next.js 16 browser-based semantic search UI using `@moss-dev/moss-web`; reference UI for semantic search |
+| `apps/moss-vscode/` | VS Code extension. Runs `@moss-dev/moss` in a forked Node worker (`src/worker/mossWorker.ts`) supervised by `src/moss/client.ts`; bundles all five native `moss-core` platform packages into the VSIX. Exact-pinned to the fixed crash-boundary versions — see Testing Notes |
 
 ### Reusable Packages (`packages/`)
 
@@ -260,6 +261,7 @@ When adding examples or cookbook integrations, follow the existing patterns:
 - CI runs Python SDK tests across versions 3.10–3.14 in a GitHub Actions matrix using `pytest` directly
 - CI lints Python with `ruff` and type-checks with `mypy`; format locally with `black` + `isort`
 - JS tests use Vitest; CI runs on Node 20
+- `apps/moss-vscode` has its own hermetic regression suite (`apps/moss-vscode/test/`, `npm test`, gated by `.github/workflows/moss-vscode-ci.yml`): it forks the built worker, initializes through a loopback auth stub (`MOSS_AUTH_URL`), and asserts a torn on-disk session cache yields a catchable IPC error while the worker survives — plus a supervisor abort/restart negative control and a VSIX-integrity check (`scripts/verify-package.mjs`). It uses `modelId: "custom"` to stay offline (no model download); the native `loadFromDisk` deserialize boundary is model-independent. The app must stay at or above `@moss-dev/moss@1.4.1` / `@moss-dev/moss-core@0.20.1` (below that ships a native addon that can abort the process on a corrupt cache); `prepackage.mjs` and `verify-package.mjs` enforce that floor
 
 ## CI Workflows
 
@@ -268,3 +270,11 @@ The `.github/workflows/ci.yml` pipeline runs on push to `main` and on PRs:
 - `python-sdk-test` — matrix over Python 3.10–3.14
 - `javascript-lint` — eslint
 - Separate release workflows publish to PyPI / npm on tagged releases
+- `moss-vscode-ci.yml` — builds, tests (worker-survival + supervisor negative control), packages, and verifies the `apps/moss-vscode` VSIX on macOS / Linux / Windows
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.

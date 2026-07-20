@@ -16,6 +16,25 @@ if (!mossCoreVersion) {
   throw new Error("Could not resolve @moss-dev/moss-core version for packaging");
 }
 
+// Crash-boundary floor (MOS-166): the packaged native addon must be at or above
+// the fixed @moss-dev/moss-core 0.20.1 (shipped in @moss-dev/moss 1.4.1). Fail
+// packaging early if the lockfile regresses below it.
+const FIXED_CORE = "0.20.1";
+const cmp = (a, b) => {
+  const pa = a.split("-")[0].split(".").map(Number);
+  const pb = b.split("-")[0].split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) - (pb[i] ?? 0);
+  }
+  return 0;
+};
+if (cmp(mossCoreVersion, FIXED_CORE) < 0) {
+  throw new Error(
+    `@moss-dev/moss-core ${mossCoreVersion} is below the fixed crash-boundary floor ${FIXED_CORE}; ` +
+      `refusing to package a source-affected native addon (MOS-166).`,
+  );
+}
+
 const platformPackages = [
   "@moss-dev/moss-core-darwin-arm64",
   "@moss-dev/moss-core-darwin-x64",

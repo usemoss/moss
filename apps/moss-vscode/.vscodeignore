@@ -6,6 +6,11 @@ src/**
 tsconfig.json
 esbuild.mjs
 scripts/**
+test/**
+promo/**
+**/*.test.mjs
+*.log
+**/*.log
 .env
 .env.*
 .gitignore

@@ -44,11 +44,24 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Worker-survival E2E + supervisor negative control. Runs on every OS in
+      # the matrix against the real installed native addon for that platform
+      # (macOS arm64/x64, Linux x64, Windows x64), so a crash-boundary regression
+      # fails CI on all shipped targets. Hermetic: loopback auth stub, no model
+      # download, no customer data (MOS-166).
+      - name: Regression tests (worker survival + supervisor abort/restart)
+        run: npm test
+
       - name: Package VSIX (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
         run: npm run package
 
-      - name: Verify VSIX contents (Ubuntu only)
+      # VSIX integrity gate: asserts the bundled wrapper/core/platform versions
+      # are the fixed pinned set, that the lockfile has not dropped below the
+      # fix, that no test source / fixtures / hidden test-hook exports leaked,
+      # and executes the extracted worker against the VSIX's own bundled .node.
+      # Packaging fails if the boundary regresses or the lock drops (MOS-166).
+      - name: Verify VSIX integrity (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
         run: npm run verify-package
 

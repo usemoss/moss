@@ -156,12 +156,15 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/worker-survival.test.mjs test/supervisor-negative-control.test.mjs",
+    "test:worker": "npm run build && node --test test/worker-survival.test.mjs",
+    "test:supervisor": "npm run build && node --test test/supervisor-negative-control.test.mjs",
     "prepackage": "node scripts/prepackage.mjs",
     "package": "npm run prepackage && vsce package",
     "verify-package": "node scripts/verify-package.mjs"
   },
   "dependencies": {
-    "@moss-dev/moss": "^1.3.2",
+    "@moss-dev/moss": "1.4.1",
     "dotenv": "^17.2.3",
     "ignore": "^7.0.5"
   },
