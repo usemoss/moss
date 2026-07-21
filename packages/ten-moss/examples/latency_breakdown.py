@@ -18,6 +18,7 @@ Usage:
 
 import argparse
 import asyncio
+import math
 import os
 import statistics
 import time
@@ -43,9 +44,10 @@ QUESTIONS = [
 
 
 def _pct(values: list[float], p: float) -> float:
-    """Nearest-rank percentile (values need not be pre-sorted)."""
+    """Nearest-rank percentile — ceil(p*N) (values need not be pre-sorted)."""
     s = sorted(values)
-    return s[min(len(s) - 1, int(p * len(s)))]
+    idx = max(0, math.ceil(p * len(s)) - 1)
+    return s[min(len(s) - 1, idx)]
 
 
 def _fmt(values: list[float]) -> str:
@@ -78,6 +80,7 @@ async def main(samples: int) -> None:
     # --- per-turn: measure query_context over `samples` calls ---
     engine_ms: list[float] = []  # SearchResult.time_taken_ms (engine)
     wall_ms: list[float] = []  # wall-clock around query_context (engine + embed + python)
+    missing_engine = 0  # calls that produced no engine timing (no-hit/error turns)
     i = 0
     while len(wall_ms) < samples:
         q = QUESTIONS[i % len(QUESTIONS)]
@@ -85,7 +88,9 @@ async def main(samples: int) -> None:
         t = time.perf_counter()
         await session.query_context(q)
         wall_ms.append((time.perf_counter() - t) * 1000.0)
-        if session.last_time_taken_ms is not None:
+        if session.last_time_taken_ms is None:
+            missing_engine += 1
+        else:
             engine_ms.append(float(session.last_time_taken_ms))
 
     print("\nMoss session · latency breakdown")
@@ -96,12 +101,14 @@ async def main(samples: int) -> None:
 
     print(f"Per-turn retrieval · query_context  (n={len(wall_ms)})")
     if engine_ms:
-        emean = statistics.mean(engine_ms)
-        if emean < 1:
-            # int-ms field rounds sub-millisecond search to 0 — say so plainly.
+        if max(engine_ms) < 1:
+            # Collapse to "<1 ms" only when EVERY sample is sub-ms (int field rounds
+            # to 0); otherwise show the full distribution so the tail isn't hidden.
             print("  hybrid search engine (SearchResult.time_taken_ms):  <1 ms  (sub-millisecond, in-process)")
         else:
             print(f"  hybrid search engine (SearchResult.time_taken_ms):  {_fmt(engine_ms)}")
+    if missing_engine:
+        print(f"  note: {missing_engine}/{len(wall_ms)} calls returned no engine timing (no-hit/error turns)")
     print(f"  end-to-end query_context (search + query embed):    {_fmt(wall_ms)}\n")
 
     print("  The hybrid search itself is sub-millisecond; the end-to-end cost is mostly")
