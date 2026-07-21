@@ -2,6 +2,9 @@
   "name": "moss-samples-root",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "type-check": "npm run type-check --prefix examples/javascript && npm run type-check --prefix apps/next-js",
     "lint": "npm run lint --prefix examples/javascript && npm run lint --prefix apps/next-js"

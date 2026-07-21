@@ -33,6 +33,9 @@
     "documentation:build": "pnpm build && cd demo-site && pnpm install && vitepress build documentation",
     "test": "vitest run"
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "peerDependencies": {
     "vite": ">=5.0.0",
     "vitepress": ">=1.0.0"
@@ -47,7 +50,7 @@
   },
   "devDependencies": {
     "@microsoft/api-extractor": "^7.58.7",
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/language-core": "^3.2.7",
     "typescript": "^5.0.0",
