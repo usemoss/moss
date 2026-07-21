@@ -48,6 +48,7 @@ session = MossSessionManager.from_config(config)
 | `await delete_docs(ids)` | Delete documents from the session by id |
 | `await push_index()` | Persist the session to the cloud (durability / handoff) |
 | `doc_count` | Number of documents in the session |
+| `last_time_taken_ms` | Engine-measured retrieval time (ms) from the last `query_context` (`SearchResult.time_taken_ms`); `None` before the first query / on error |
 
 When built with `enable_moss=false`, no client is created and every method is a safe no-op.
 

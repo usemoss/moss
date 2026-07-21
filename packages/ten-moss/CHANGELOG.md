@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2026-07-21
+
+### Added
+- `MossSessionManager.last_time_taken_ms` — the engine-measured retrieval time (ms) from the most recent `query_context` call (`SearchResult.time_taken_ms`); `None` before the first query or on error.
+
+### Changed
+- First public release to PyPI (`pip install ten-moss`).
+
 ## [0.0.1] - 2026-07-15
 
 ### Added

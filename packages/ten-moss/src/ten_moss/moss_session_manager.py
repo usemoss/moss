@@ -62,6 +62,9 @@ class MossSessionManager:
         self._timeout_s = timeout_s
         self._log = logger or _default_logger()
         self._session: Any = None
+        # Engine-measured retrieval time (ms) from the most recent query_context
+        # call — SearchResult.time_taken_ms. None if no query has run / it failed.
+        self.last_time_taken_ms: int | None = None
 
     @property
     def doc_count(self) -> int:
@@ -87,6 +90,7 @@ class MossSessionManager:
 
     async def query_context(self, user_text: str) -> str:
         """Return grounding for this turn, or '' on blank input / no hits / error."""
+        self.last_time_taken_ms = None
         text = (user_text or "").strip()
         if not text or self._session is None:
             return ""
@@ -104,6 +108,8 @@ class MossSessionManager:
                 f"{type(exc).__name__}: {exc}"
             )
             return ""
+        # Engine-measured retrieval time from the SearchResult object.
+        self.last_time_taken_ms = getattr(result, "time_taken_ms", None)
         docs = getattr(result, "docs", None) or []
         if not docs:
             return ""
