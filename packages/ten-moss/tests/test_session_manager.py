@@ -141,6 +141,53 @@ class TestSessionManager(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await mgr.query_context("q"), "")
 
     @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_last_time_taken_ms_none_before_query(self, cls):
+        mgr, client, session = self._manager(cls)
+        self.assertIsNone(mgr.last_time_taken_ms)
+        await mgr.open()
+        self.assertIsNone(mgr.last_time_taken_ms)
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_last_time_taken_ms_set_from_result(self, cls):
+        mgr, client, session = self._manager(cls)
+        await mgr.open()
+        session.query = AsyncMock(return_value=MagicMock(docs=[_Doc("hit")], time_taken_ms=7))
+        await mgr.query_context("q")
+        self.assertEqual(mgr.last_time_taken_ms, 7)
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_last_time_taken_ms_set_even_on_no_hit(self, cls):
+        # A no-hit result still carries a timing; record it even though grounding is "".
+        mgr, client, session = self._manager(cls)
+        await mgr.open()
+        session.query = AsyncMock(return_value=MagicMock(docs=[], time_taken_ms=4))
+        self.assertEqual(await mgr.query_context("q"), "")
+        self.assertEqual(mgr.last_time_taken_ms, 4)
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_last_time_taken_ms_reset_on_error(self, cls):
+        mgr, client, session = self._manager(cls)
+        await mgr.open()
+        mgr.last_time_taken_ms = 999  # stale value from a prior successful call
+        session.query = AsyncMock(side_effect=RuntimeError("boom"))
+        await mgr.query_context("q")
+        self.assertIsNone(mgr.last_time_taken_ms)
+
+    @patch("ten_moss.moss_session_manager.MossClient")
+    async def test_last_time_taken_ms_reset_on_timeout(self, cls):
+        mgr, client, session = self._manager(cls, timeout_s=0.01)
+        await mgr.open()
+        mgr.last_time_taken_ms = 999
+
+        async def _slow(*a, **k):
+            await asyncio.sleep(0.1)
+            return MagicMock(docs=[_Doc("late")], time_taken_ms=5)
+
+        session.query = AsyncMock(side_effect=_slow)
+        await mgr.query_context("q")
+        self.assertIsNone(mgr.last_time_taken_ms)
+
+    @patch("ten_moss.moss_session_manager.MossClient")
     async def test_add_docs_delegates_to_session(self, cls):
         mgr, client, session = self._manager(cls)
         await mgr.open()
