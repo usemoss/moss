@@ -135,13 +135,19 @@ class MainControlExtension(AsyncExtension):
                         await asyncio.sleep(self._moss_sim_ms / 1000.0)
                     context = await self.moss.query_context(event.text)
                     took_ms = (time.perf_counter() - t0) * 1000.0
-                    self._retrieval_ms = took_ms
+                    # The SDK reports the engine retrieval time on the result
+                    # object (SearchResult.time_taken_ms), surfaced by ten-moss as
+                    # `last_time_taken_ms`. Prefer it; fall back to wall-clock.
+                    sdk_ms = getattr(self.moss, "last_time_taken_ms", None)
+                    self._retrieval_ms = float(sdk_ms) if sdk_ms is not None else took_ms
                     backend = f"remote-sim(+{self._moss_sim_ms}ms)" if self._moss_sim_ms else "moss(in-process)"
                     # Shared tag so this lines up 1:1 with the instrumented memU
                     # example — grep '[retrieval-latency]' in both agents' logs.
                     self.ten_env.log_info(
-                        f"[retrieval-latency] backend={backend} took {took_ms:.0f} ms this turn"
+                        f"[retrieval-latency] backend={backend} time_taken_ms={sdk_ms} (wall_clock={took_ms:.0f}ms)"
                     )
+                    # Show the retrieved results + the SDK time in the transcript.
+                    await self._send_retrieval_note(context, sdk_ms)
                 except Exception as exc:  # noqa: BLE001
                     context = ""
                     self.ten_env.log_error(
@@ -229,10 +235,22 @@ class MainControlExtension(AsyncExtension):
             f"llm_total_ms={_ms(llm_total)} turn_total_ms={_ms(turn_total)}"
         )
         note = (
-            f"⏱ turn {self.turn_id} · Moss retrieval {_ms(retrieval)} ms · "
+            f"⏱ turn {self.turn_id} · Moss {_ms(retrieval)} ms (time_taken_ms) · "
             f"LLM first token {_ms(ttft)} ms · LLM total {_ms(llm_total)} ms"
         )
         await self._send_transcript("assistant", note, True, 100, data_type="reasoning")
+
+    async def _send_retrieval_note(self, grounding: str, time_taken_ms):
+        """Show what Moss retrieved this turn + the SDK's time_taken_ms, so users
+        see the retrieval *results* alongside the timing (the LLM answer follows
+        as its own transcript message)."""
+        ms_txt = f"{time_taken_ms}" if time_taken_ms is not None else "n/a"
+        body = (
+            f"🔎 Moss · retrieved in {ms_txt} ms (SDK time_taken_ms)\n\n{grounding}"
+            if grounding
+            else f"🔎 Moss · retrieved in {ms_txt} ms (SDK time_taken_ms) — no match"
+        )
+        await self._send_transcript("assistant", body, True, 100, data_type="reasoning")
 
     async def _send_transcript(
         self,

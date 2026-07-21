@@ -91,20 +91,31 @@ turn — flip `enable_moss` in `property.json` to A/B the same thing in the play
 
 ## Showcase the speed (live, in the agent)
 
-The control extension logs the retrieval cost of **every turn**:
+Every turn, the control extension logs the retrieval cost using the SDK's own
+`SearchResult.time_taken_ms` (surfaced by `ten-moss` as `last_time_taken_ms`), with the
+wall-clock alongside for reference:
 
 ```
-[retrieval-latency] backend=moss(in-process) took 2 ms this turn
+[retrieval-latency] backend=moss(in-process) time_taken_ms=2 (wall_clock=64ms)
+```
+
+And in the playground transcript you see, per turn, **what Moss retrieved + the SDK
+`time_taken_ms`**, followed by the **LLM's answer**:
+
+```
+🔎 Moss · retrieved in 2 ms (SDK time_taken_ms)
+   Relevant knowledge from Moss: [1] Refunds are processed within 3-5 business days…
+<the assistant's spoken answer>
 ```
 
 It also emits a **per-turn latency breakdown** — a grep-able log line *and* a note in the
-playground transcript — so you can see where each turn's time goes across the pipeline:
+transcript — so you can see where the turn's time goes across the pipeline:
 
 ```
 [latency-breakdown] turn=3 moss_retrieval_ms=2 llm_ttft_ms=480 llm_total_ms=1150 turn_total_ms=1160
 ```
 
-- **moss_retrieval_ms** — Moss `query_context` (in-process; single-digit ms).
+- **moss_retrieval_ms** — the SDK's `SearchResult.time_taken_ms` (in-process retrieval engine time).
 - **llm_ttft_ms** — time to the LLM's first token after dispatch.
 - **llm_total_ms** — full LLM generation for the turn.
 - **turn_total_ms** — ASR-final → LLM-final (the whole control-side turn).
