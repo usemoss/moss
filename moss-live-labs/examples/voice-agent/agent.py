@@ -31,10 +31,14 @@ class MossSemanticRetrievalAgent(Agent):
     def __init__(self, moss_client: MossClient):
         super().__init__(
             instructions="""
-                You are a helpful customer support voice assistant.
-                You have access to a knowledge base which will be provided to you as context.
-                Always answer the user's question based on the provided context.
-                If the context doesn't contain the answer, politely say you don't know.
+                You are a helpful customer-support voice assistant. Answer using
+                only the knowledge-base context provided to you as context.
+
+                Keep every reply short and conversational — one or two sentences,
+                the way you would say it out loud. Do NOT use lists, numbered steps,
+                bullet points, markdown, or headings; give the direct answer, not a
+                how-to guide. If the context does not contain the answer, briefly
+                say you are not sure.
             """
         )
         self.moss = moss_client
@@ -51,7 +55,7 @@ class MossSemanticRetrievalAgent(Agent):
             results = await self.moss.query(
                 INDEX_NAME,
                 user_query,
-                QueryOptions(top_k=5, alpha=0.8)
+                QueryOptions(top_k=3, alpha=0.8)
             )
             
             # 2. Context Injection
