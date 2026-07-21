@@ -120,6 +120,8 @@ def _cli() -> None:
     parser = argparse.ArgumentParser(description="Moss session latency breakdown via ten-moss.")
     parser.add_argument("-n", "--samples", type=int, default=100, help="number of query_context samples")
     args = parser.parse_args()
+    if args.samples < 1:
+        parser.error("--samples must be a positive integer")
     asyncio.run(main(args.samples))
 
 
