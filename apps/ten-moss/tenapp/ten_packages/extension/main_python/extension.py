@@ -53,6 +53,8 @@ class MainControlExtension(AsyncExtension):
         self._retrieval_ms: float | None = None
         self._llm_sent_at: float | None = None
         self._llm_first_at: float | None = None
+        self._last_grounding: str = ""
+        self._last_sdk_ms = None
 
     def _current_metadata(self) -> dict:
         return {"session_id": self.session_id, "turn_id": self.turn_id}
@@ -123,6 +125,8 @@ class MainControlExtension(AsyncExtension):
             self.turn_id += 1
             self._turn_t0 = time.perf_counter()  # turn clock starts at ASR-final
             self._retrieval_ms = None
+            self._last_grounding = ""
+            self._last_sdk_ms = None
             llm_input = event.text
             if self.moss is not None:
                 # query_context is designed not to raise, but guard anyway so a
@@ -140,14 +144,14 @@ class MainControlExtension(AsyncExtension):
                     # `last_time_taken_ms`. Prefer it; fall back to wall-clock.
                     sdk_ms = getattr(self.moss, "last_time_taken_ms", None)
                     self._retrieval_ms = float(sdk_ms) if sdk_ms is not None else took_ms
+                    self._last_grounding = context
+                    self._last_sdk_ms = sdk_ms
                     backend = f"remote-sim(+{self._moss_sim_ms}ms)" if self._moss_sim_ms else "moss(in-process)"
                     # Shared tag so this lines up 1:1 with the instrumented memU
                     # example — grep '[retrieval-latency]' in both agents' logs.
                     self.ten_env.log_info(
                         f"[retrieval-latency] backend={backend} time_taken_ms={sdk_ms} (wall_clock={took_ms:.0f}ms)"
                     )
-                    # Show the retrieved results + the SDK time in the transcript.
-                    await self._send_retrieval_note(context, sdk_ms)
                 except Exception as exc:  # noqa: BLE001
                     context = ""
                     self.ten_env.log_error(
@@ -160,6 +164,9 @@ class MainControlExtension(AsyncExtension):
             self._llm_first_at = None
             await self.agent.queue_llm_input(llm_input)
         await self._send_transcript("user", event.text, event.final, stream_id)
+        if event.final and self.moss is not None:
+            # After the user's turn is shown, surface what Moss retrieved + the SDK time.
+            await self._send_retrieval_note(self._last_grounding, self._last_sdk_ms)
 
     @agent_event_handler(LLMResponseEvent)
     async def _on_llm_response(self, event: LLMResponseEvent):
@@ -238,7 +245,10 @@ class MainControlExtension(AsyncExtension):
             f"⏱ turn {self.turn_id} · Moss {_ms(retrieval)} ms (time_taken_ms) · "
             f"LLM first token {_ms(ttft)} ms · LLM total {_ms(llm_total)} ms"
         )
-        await self._send_transcript("assistant", note, True, 100, data_type="reasoning")
+        # Own stream id (distinct from the answer's 100 and the retrieval note's).
+        await self._send_transcript(
+            "assistant", note, True, 710_000_000 + self.turn_id, data_type="reasoning"
+        )
 
     async def _send_retrieval_note(self, grounding: str, time_taken_ms):
         """Show what Moss retrieved this turn + the SDK's time_taken_ms, so users
@@ -250,7 +260,11 @@ class MainControlExtension(AsyncExtension):
             if grounding
             else f"🔎 Moss · retrieved in {ms_txt} ms (SDK time_taken_ms) — no match"
         )
-        await self._send_transcript("assistant", body, True, 100, data_type="reasoning")
+        # Own stream id so this note is a separate transcript item, not merged
+        # into (and replacing) the assistant answer bubble at stream_id 100.
+        await self._send_transcript(
+            "assistant", body, True, 700_000_000 + self.turn_id, data_type="reasoning"
+        )
 
     async def _send_transcript(
         self,
