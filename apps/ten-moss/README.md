@@ -13,6 +13,9 @@ caller speaks
 agora_rtc                  real-time audio transport (in / out)
   │
   ▼
+streamid_adapter           routes audio (PCM) frames to STT
+  │
+  ▼
 stt · deepgram             speech → text
   │  asr_result (final)
   ▼
