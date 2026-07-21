@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Fail loudly: abort on any error, unset var, or failed pipe — so a failed
+# dependency install (e.g. ten-moss) fails `task install` immediately instead of
+# surfacing later as an import error at startup. (Patch on the vendored baseline.)
+set -euo pipefail
+
 # Set default pip install command
 PIP_INSTALL_CMD=${PIP_INSTALL_CMD:-"uv pip install --system"}
 
