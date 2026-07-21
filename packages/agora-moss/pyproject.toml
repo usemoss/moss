@@ -7,7 +7,7 @@ license = { text = "BSD-2-Clause" }
 requires-python = ">=3.10,<3.15"
 dependencies = [
     "moss>=1.1.1",
-    "mcp>=1.2",
+    "mcp>=1.28.1",
 ]
 
 [dependency-groups]
