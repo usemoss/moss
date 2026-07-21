@@ -64,6 +64,33 @@ ASR handler.
    (http://localhost:3000) and ask something covered by `data/knowledge.jsonl` — e.g.
    *"how long do refunds take?"* — to hear grounded answers.
 
+## See the difference Moss makes (no voice stack needed)
+
+`compare.py` answers the same questions with the same LLM twice — once **without** Moss and
+once **with** the Moss grounding the agent injects — so you can see the improvement without
+standing up the full voice pipeline. It needs only your Moss + OpenAI keys (no Agora/STT/TTS):
+
+```bash
+cp .env.example .env                       # MOSS_* + OPENAI_API_KEY (+ optional OPENAI_MODEL)
+python create_index.py                     # build the index once
+pip install ten-moss openai python-dotenv
+python compare.py                          # or: python compare.py "your own question?"
+```
+
+Sample run (`gpt-4o-mini` over `data/knowledge.jsonl`):
+
+| Question | Without Moss | With Moss |
+| --- | --- | --- |
+| How long do refunds take? | "5–10 business days" ❌ | "3–5 business days once approved" ✅ |
+| Can I cancel my order? | "within a specific timeframe… check our policy" | "within 1 hour of placement" ✅ |
+| Which payment methods? | misses American Express | "Visa, Mastercard, Amex, PayPal, Apple Pay" ✅ |
+| Do you offer price matching? | "provide competitor details" | "authorized retailers within 14 days" ✅ |
+| How fast is express shipping? | "1–3 business days" ❌ | "1–2 business days" ✅ |
+
+Without grounding the model confidently invents plausible-but-wrong specifics; with Moss it
+answers from your knowledge base. This is the exact delta the live voice agent applies per
+turn — flip `enable_moss` in `property.json` to A/B the same thing in the playground.
+
 ## Configuration
 
 Moss is configured on the `main_control` node in `tenapp/property.json` (env-substituted):
