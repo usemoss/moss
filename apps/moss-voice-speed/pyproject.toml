@@ -1,0 +1,14 @@
+[project]
+name = "moss-voice-speed"
+version = "0.1.0"
+description = "Real-time voice agent that showcases Moss's sub-10ms retrieval keeping the agent fast"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "pipecat-ai[webrtc,silero,deepgram,openai,elevenlabs,runner]>=0.0.60",
+    "moss>=1.7.1",
+    "python-dotenv>=1.0",
+    "loguru>=0.7.0",
+]
+
+[tool.ruff]
+line-length = 100
