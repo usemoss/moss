@@ -23,6 +23,8 @@ import argparse
 import asyncio
 import json
 import os
+import statistics
+import time
 
 from openai import AsyncOpenAI
 from ten_moss import MossSessionManager
@@ -63,8 +65,34 @@ async def _answer(client: AsyncOpenAI, model: str, user_content: str) -> str:
     return (resp.choices[0].message.content or "").strip()
 
 
+async def _latency(moss: MossSessionManager, questions: list[str], open_ms: float) -> dict:
+    """Measure the retrieval latency Moss adds per turn (the headline metric)."""
+    for q in questions:  # warm-up (not measured)
+        await moss.query_context(q)
+    samples = []
+    for _ in range(20):
+        for q in questions:
+            t = time.perf_counter()
+            await moss.query_context(q)
+            samples.append((time.perf_counter() - t) * 1000)
+    samples.sort()
+    n = len(samples)
+    stats = {
+        "calls": n,
+        "p50_ms": round(samples[n // 2], 2),
+        "p95_ms": round(samples[min(n - 1, int(0.95 * n))], 2),
+        "mean_ms": round(statistics.mean(samples), 2),
+        "open_ms": round(open_ms, 1),
+    }
+    print("== Per-turn retrieval latency (what Moss adds to each turn) ==")
+    print(f"  {n} calls: p50={stats['p50_ms']} ms  p95={stats['p95_ms']} ms  mean={stats['mean_ms']} ms")
+    print(f"  session open (one-time, at startup): {stats['open_ms']} ms")
+    print("  For comparison, a remote vector-DB round trip is typically 200-500 ms per turn.\n")
+    return stats
+
+
 async def run(questions: list[str], json_path: str | None) -> None:
-    """Answer each question without Moss and with Moss; print the pair."""
+    """Show what Moss adds per turn (latency) and how grounding changes answers."""
     load_dotenv()
     client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
@@ -73,8 +101,11 @@ async def run(questions: list[str], json_path: str | None) -> None:
         project_key=os.environ["MOSS_PROJECT_KEY"],
         index_name=os.environ.get("MOSS_INDEX_NAME", "ten-moss-demo"),
     )
+    t0 = time.perf_counter()
     await moss.open()
+    latency = await _latency(moss, questions, (time.perf_counter() - t0) * 1000)
 
+    print("== Same model, same question: without Moss vs with Moss ==")
     rows = []
     for q in questions:
         without = await _answer(client, model, q)
@@ -90,7 +121,7 @@ async def run(questions: list[str], json_path: str | None) -> None:
 
     if json_path:
         with open(json_path, "w") as f:
-            json.dump({"model": model, "system_prompt": SYSTEM, "rows": rows}, f, indent=2)
+            json.dump({"model": model, "system_prompt": SYSTEM, "latency": latency, "rows": rows}, f, indent=2)
         print(f"\nsaved -> {json_path}")
 
 
