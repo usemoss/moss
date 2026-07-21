@@ -82,6 +82,18 @@ export MOSS_PROJECT_ID=... MOSS_PROJECT_KEY=... MOSS_INDEX_NAME=...
 python examples/create_index.py
 ```
 
+## Latency breakdown
+
+See exactly where time goes — the one-time session-open cost vs the per-turn
+retrieval time (engine `time_taken_ms` from the `SearchResult`, and wall-clock):
+
+```bash
+python examples/latency_breakdown.py        # run examples/create_index.py first
+```
+
+Typical shape: session open is a one-time cost at startup, then per-turn retrieval
+is single-digit-to-low-tens of milliseconds — in-process, no network round-trip.
+
 ## Development
 
 ```bash

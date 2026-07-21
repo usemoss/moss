@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `MossSessionManager.last_time_taken_ms` — the engine-measured retrieval time (ms) from the most recent `query_context` call (`SearchResult.time_taken_ms`); `None` before the first query or on error.
+- `examples/latency_breakdown.py` — prints the one-time session-open cost and per-turn retrieval latency (engine `time_taken_ms` and wall-clock; p50/p95/mean).
 
 ### Changed
 - First public release to PyPI (`pip install ten-moss`).
