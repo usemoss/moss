@@ -1,7 +1,4 @@
-# This extension imports `ten_moss` (MossSessionManager), which is intentionally
-# NOT pinned here: ten-moss is not yet published to PyPI, so a hard pin would make
-# `install_python_deps.sh` fail. Install it explicitly instead (see the app README):
-#
-#   uv pip install --system -e /path/to/moss/packages/ten-moss
-#
-# Once ten-moss is published, add:  ten-moss>=0.0.1
+# MossSessionManager for the TEN Framework — https://pypi.org/project/ten-moss/
+# (pulls in `moss`, `pydantic`, and `loguru` transitively). Installed by
+# scripts/install_python_deps.sh via `task install`.
+ten-moss>=0.1.0

@@ -53,11 +53,9 @@ ASR handler.
 2. **Drop the app into a TEN checkout.** Copy `tenapp/` to
    `ten-framework/ai_agents/agents/examples/voice-assistant-with-moss/tenapp/`, alongside
    the sibling `voice-assistant` example whose `Taskfile`/`playground`/`server` harness you
-   reuse. Make `main_python` able to import `ten-moss` — until it's published to PyPI,
-   install it editable:
-   ```bash
-   uv pip install --system -e /path/to/moss/packages/ten-moss
-   ```
+   reuse. `main_python` depends on [`ten-moss`](https://pypi.org/project/ten-moss/) (listed
+   in `main_python/requirements.txt`), so `task install` installs it from PyPI automatically —
+   no manual step needed.
 
 3. **Run with TEN's tooling** from that example dir (`task install && task run`, per the TEN
    docs), providing the same env vars as step 1. Then open the TEN playground
@@ -98,6 +96,22 @@ The control extension logs the retrieval cost of **every turn**:
 ```
 [retrieval-latency] backend=moss(in-process) took 2 ms this turn
 ```
+
+It also emits a **per-turn latency breakdown** — a grep-able log line *and* a note in the
+playground transcript — so you can see where each turn's time goes across the pipeline:
+
+```
+[latency-breakdown] turn=3 moss_retrieval_ms=2 llm_ttft_ms=480 llm_total_ms=1150 turn_total_ms=1160
+```
+
+- **moss_retrieval_ms** — Moss `query_context` (in-process; single-digit ms).
+- **llm_ttft_ms** — time to the LLM's first token after dispatch.
+- **llm_total_ms** — full LLM generation for the turn.
+- **turn_total_ms** — ASR-final → LLM-final (the whole control-side turn).
+
+ASR timing appears in the Deepgram STT extension logs and TTS audio-out in the ElevenLabs
+TTS logs (both per turn in the worker log) — so between those and the line above you get the
+full component-by-component breakdown.
 
 **TEN default retrieval vs Moss (real numbers).** TEN's shipped memory/RAG backends
 (memU, OceanBase PowerRAG, EverMemOS) are all remote services — every turn is a network

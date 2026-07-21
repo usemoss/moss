@@ -46,6 +46,14 @@ class MainControlExtension(AsyncExtension):
         self.turn_id: int = 0
         self.session_id: str = "0"
 
+        # Per-turn latency breakdown (see _log_latency_breakdown). main_control
+        # orchestrates retrieval -> LLM -> TTS, so it can time those stages; ASR
+        # timing lives in the STT extension logs and TTS audio-out in the TTS logs.
+        self._turn_t0: float | None = None
+        self._retrieval_ms: float | None = None
+        self._llm_sent_at: float | None = None
+        self._llm_first_at: float | None = None
+
     def _current_metadata(self) -> dict:
         return {"session_id": self.session_id, "turn_id": self.turn_id}
 
@@ -113,6 +121,8 @@ class MainControlExtension(AsyncExtension):
             await self._interrupt()
         if event.final:
             self.turn_id += 1
+            self._turn_t0 = time.perf_counter()  # turn clock starts at ASR-final
+            self._retrieval_ms = None
             llm_input = event.text
             if self.moss is not None:
                 # query_context is designed not to raise, but guard anyway so a
@@ -125,6 +135,7 @@ class MainControlExtension(AsyncExtension):
                         await asyncio.sleep(self._moss_sim_ms / 1000.0)
                     context = await self.moss.query_context(event.text)
                     took_ms = (time.perf_counter() - t0) * 1000.0
+                    self._retrieval_ms = took_ms
                     backend = f"remote-sim(+{self._moss_sim_ms}ms)" if self._moss_sim_ms else "moss(in-process)"
                     # Shared tag so this lines up 1:1 with the instrumented memU
                     # example — grep '[retrieval-latency]' in both agents' logs.
@@ -138,11 +149,22 @@ class MainControlExtension(AsyncExtension):
                     )
                 if context:
                     llm_input = f"{context}\n\n[Current User Question]\n{event.text}"
+            # Mark the LLM dispatch time so we can measure time-to-first-token.
+            self._llm_sent_at = time.perf_counter()
+            self._llm_first_at = None
             await self.agent.queue_llm_input(llm_input)
         await self._send_transcript("user", event.text, event.final, stream_id)
 
     @agent_event_handler(LLMResponseEvent)
     async def _on_llm_response(self, event: LLMResponseEvent):
+        # First streamed token of this turn -> time-to-first-token.
+        if (
+            event.type == "message"
+            and self._llm_first_at is None
+            and self._llm_sent_at is not None
+        ):
+            self._llm_first_at = time.perf_counter()
+
         if not event.is_final and event.type == "message":
             sentences, self.sentence_fragment = parse_sentences(
                 self.sentence_fragment, event.delta
@@ -154,6 +176,7 @@ class MainControlExtension(AsyncExtension):
             remaining_text = self.sentence_fragment or ""
             self.sentence_fragment = ""
             await self._send_to_tts(remaining_text, True)
+            await self._log_latency_breakdown()
 
         await self._send_transcript(
             "assistant",
@@ -178,6 +201,39 @@ class MainControlExtension(AsyncExtension):
         await self.agent.on_data(data)
 
     # === helpers ===
+    async def _log_latency_breakdown(self):
+        """Per-turn latency breakdown for onboarding/debugging.
+
+        Emits a grep-able log line ('[latency-breakdown]') and a reasoning note
+        in the transcript so users can see where each turn's time goes:
+        Moss retrieval, LLM time-to-first-token, and full LLM generation. (ASR
+        timing is in the STT extension logs; TTS audio-out in the TTS logs.)
+        """
+        now = time.perf_counter()
+
+        def _ms(v: float | None) -> str:
+            return f"{v:.0f}" if v is not None else "n/a"
+
+        retrieval = self._retrieval_ms
+        ttft = (
+            (self._llm_first_at - self._llm_sent_at) * 1000.0
+            if self._llm_first_at is not None and self._llm_sent_at is not None
+            else None
+        )
+        llm_total = (now - self._llm_sent_at) * 1000.0 if self._llm_sent_at is not None else None
+        turn_total = (now - self._turn_t0) * 1000.0 if self._turn_t0 is not None else None
+
+        self.ten_env.log_info(
+            f"[latency-breakdown] turn={self.turn_id} "
+            f"moss_retrieval_ms={_ms(retrieval)} llm_ttft_ms={_ms(ttft)} "
+            f"llm_total_ms={_ms(llm_total)} turn_total_ms={_ms(turn_total)}"
+        )
+        note = (
+            f"⏱ turn {self.turn_id} · Moss retrieval {_ms(retrieval)} ms · "
+            f"LLM first token {_ms(ttft)} ms · LLM total {_ms(llm_total)} ms"
+        )
+        await self._send_transcript("assistant", note, True, 100, data_type="reasoning")
+
     async def _send_transcript(
         self,
         role: str,
