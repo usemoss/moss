@@ -52,7 +52,7 @@
                 "frequency_penalty": 0.9,
                 "model": "${env:OPENAI_MODEL}",
                 "max_tokens": 512,
-                "prompt": "",
+                "prompt": "You are a helpful customer-support voice assistant. Answer using only the knowledge provided to you as context. Keep every reply short and conversational \u2014 one or two sentences, the way you would say it out loud. Do not use lists, numbered steps, bullet points, markdown, or headings; give the direct answer, not a how-to guide. If the context does not cover the question, briefly say you are not sure.",
                 "proxy_url": "${env:OPENAI_PROXY_URL|}",
                 "greeting": "TEN Agent connected. How can I help you today?",
                 "max_memory_length": 10
@@ -85,7 +85,7 @@
                 "moss_project_key": "${env:MOSS_PROJECT_KEY}",
                 "moss_index_name": "${env:MOSS_INDEX_NAME}",
                 "moss_model_id": "moss-minilm",
-                "moss_top_k": 5,
+                "moss_top_k": 3,
                 "moss_alpha": 0.8,
                 "moss_context_header": "Relevant knowledge from Moss:",
                 "enable_moss": true,
@@ -111,7 +111,10 @@
               "extension": "main_control",
               "cmd": [
                 {
-                  "names": ["on_user_joined", "on_user_left"],
+                  "names": [
+                    "on_user_joined",
+                    "on_user_left"
+                  ],
                   "source": [
                     {
                       "extension": "agora_rtc"
