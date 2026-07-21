@@ -7,16 +7,27 @@ The Moss integration lives in the `main_python` control extension and is powered
 ## How it works
 
 ```
-mic ─▶ agora_rtc ─▶ streamid_adapter ─▶ stt (deepgram) ─┐
-                                                         │ data: asr_result (final)
-                                                         ▼
-                                               main_control (main_python)
-                                                  │  MossSessionManager.query_context(text)
-                                                  ▼  ── Moss session query <10ms ──▶ index
-                                                  │  ◀── grounding ──
-                       queue_llm_input("{context}\n\n[Current User Question]\n{text}")
-                                                  ▼
-                                        llm (openai) ─▶ tts (elevenlabs) ─▶ agora_rtc ─▶ speaker
+caller speaks
+  │
+  ▼
+agora_rtc                  real-time audio transport (in / out)
+  │
+  ▼
+stt · deepgram             speech → text
+  │  asr_result (final)
+  ▼
+main_control · main_python
+  │  1. query_context(text)  ──▶  Moss session   (in-process index)
+  │  2. grounding            ◀──                  (<10 ms, no network hop)
+  │  3. queue_llm_input(grounding + user question)
+  ▼
+llm · openai               generates the reply
+  │
+  ▼
+tts · elevenlabs           text → speech
+  │
+  ▼
+agora_rtc   ──▶   caller hears the answer
 ```
 
 The Moss delta over the stock TEN voice assistant is small and lives in three places in `main_python`:
@@ -62,7 +73,7 @@ ASR handler.
    (http://localhost:3000) and ask something covered by `data/knowledge.jsonl` — e.g.
    *"how long do refunds take?"* — to hear grounded answers.
 
-## See the difference Moss makes (no voice stack needed)
+## Answer quality with vs without Moss (`compare.py`, no voice stack)
 
 `compare.py` answers the same questions with the same LLM twice — once **without** Moss and
 once **with** the Moss grounding the agent injects — so you can see the improvement without
@@ -89,7 +100,7 @@ Without grounding the model confidently invents plausible-but-wrong specifics; w
 answers from your knowledge base. This is the exact delta the live voice agent applies per
 turn — flip `enable_moss` in `property.json` to A/B the same thing in the playground.
 
-## Showcase the speed (live, in the agent)
+## Per-turn latency and retrieval logs (live, in the agent)
 
 Every turn, the control extension logs the retrieval cost using the SDK's own
 `SearchResult.time_taken_ms` (surfaced by `ten-moss` as `last_time_taken_ms`), with the
