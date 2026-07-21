@@ -1066,16 +1066,16 @@ wheels = [
 
 [[package]]
 name = "json-repair"
-version = "0.59.10"
+version = "0.60.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d3/7c/e95bb03068572146eba37e8175c760f470ea0a6097310e16bbf2bc6e6457/json_repair-0.59.10.tar.gz", hash = "sha256:2e4b85537c752d8a513ea28fdad891e5ede32c83de745366b97f648b8c34ede7", size = 49133, upload-time = "2026-05-14T06:41:51.222Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/a6/d69888cb4ffde30e80db1e6c32caaadd2f984a80067d5ea72c2cb3f61c3f/json_repair-0.60.1.tar.gz", hash = "sha256:841661cdd2df507c9a4e189097f38ca6bc372e06d4b4e36d72e590f68176c290", size = 49451, upload-time = "2026-06-03T17:28:44.451Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/87/49b20c6b81493d55c311f711ed87319d0fbad8bd0bbfbe36e52103af36bd/json_repair-0.59.10-py3-none-any.whl", hash = "sha256:5468fa3eaadcc9b4a5646776bc4176e2fe5f374b5848a15f468cce3b60e3db0e", size = 47742, upload-time = "2026-05-14T06:41:49.812Z" },
+    { url = "https://files.pythonhosted.org/packages/32/1f/2a2b5eea8ef5762a86ad3f8fddddaaba2c0d76dd44e644b9158900868bec/json_repair-0.60.1-py3-none-any.whl", hash = "sha256:ba6ff974f2a8bef2f7768144a7f03f870a816443f03da27a49cdd0ec31a78049", size = 48045, upload-time = "2026-06-03T17:28:43.038Z" },
 ]
 
 [[package]]
 name = "livekit"
-version = "1.1.9"
+version = "1.1.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1085,18 +1085,18 @@ dependencies = [
     { name = "protobuf" },
     { name = "types-protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/14/3197e09850aa65d0f0df90a8b7c24994e130e92403f935de1f2ae3ae387e/livekit-1.1.9.tar.gz", hash = "sha256:62d288c222208e76433cc6eabc00eb2927ecafaace511d90820889fd5597a52e", size = 353630, upload-time = "2026-05-28T14:34:18.935Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/92/dcd4f295913533ddd0d48153cc28f1358d550bea651460bd895256981c4d/livekit-1.1.13.tar.gz", hash = "sha256:aa2bd89cf0c2ebcaa71a240275964c23900a0422a2a3d43d274e88a211a0ecfc", size = 370211, upload-time = "2026-06-30T11:54:00.321Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/a6/7f16535b70ce4261d94ed2eb6cb6905029c580faaf5772e13286e2c1feaf/livekit-1.1.9-py3-none-macosx_10_15_x86_64.whl", hash = "sha256:e472b6fc4ad796d4ca95ccc2c926fbfdf4c8a1b1f3e1d5bcc7bce54db4c893d5", size = 10064439, upload-time = "2026-05-28T14:34:07.461Z" },
-    { url = "https://files.pythonhosted.org/packages/ef/83/6fbf21f88723765d43154b5656d6ac5efdbad0e6e76c0da01f1ae4558669/livekit-1.1.9-py3-none-macosx_11_0_arm64.whl", hash = "sha256:18dc082ab6e6c620026bbca9a942068d1ff055460afd9909249babaac5ad6f04", size = 8895549, upload-time = "2026-05-28T14:34:10.618Z" },
-    { url = "https://files.pythonhosted.org/packages/de/f3/0ada8ac4ffa418ce7145b9bf4e0ed0585f54acfeab54df7d6c1e5395cbf2/livekit-1.1.9-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:975f2f77e3d089e0a5d0fc84590e8a6b98a8c8e0eda449a86edd789b58a1f6e0", size = 9899965, upload-time = "2026-05-28T14:34:12.656Z" },
-    { url = "https://files.pythonhosted.org/packages/cd/34/bc5dbb70b86c8a1ee1016af64cfd2902a46c70bc927642bc04070f361e2f/livekit-1.1.9-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:34302a874cce94488ecc49daf4389117b16c48f7f151a7bdb48603b550219570", size = 11280510, upload-time = "2026-05-28T14:34:14.966Z" },
-    { url = "https://files.pythonhosted.org/packages/68/2e/465ae11edd75439311c021f6c9310f7c35cd347893fcc56f659658aadcaa/livekit-1.1.9-py3-none-win_amd64.whl", hash = "sha256:c31d2a3406bc75cf5edf4b457c9d54c665ebaae64e08800b03de622acd478381", size = 10637454, upload-time = "2026-05-28T14:34:17.003Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/bd/15100217109595aedbb9bcfdfc1c77513c0f44940d72644d16b611476941/livekit-1.1.13-py3-none-macosx_10_15_x86_64.whl", hash = "sha256:2a19b023de9a573fe5da629e3ee514f2962c87e1afec95a6b19bbbdb6ea8f703", size = 10147642, upload-time = "2026-06-30T11:53:48.781Z" },
+    { url = "https://files.pythonhosted.org/packages/97/dd/4f001a9c5ccde361a53437a09bc04dc9cad8003c6711c2bcc0734e18e626/livekit-1.1.13-py3-none-macosx_11_0_arm64.whl", hash = "sha256:90b6796e0c4515bc1e8a1e109a40b88d82c36b12452b7ae01fe35be7ee8357ba", size = 8968740, upload-time = "2026-06-30T11:53:51.223Z" },
+    { url = "https://files.pythonhosted.org/packages/26/1a/7e97a45a4b6e10ce3a4e9938e3d3fa0a6512a6557f5990685eab4f6e88d1/livekit-1.1.13-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:43779c0f3bb27589cd517d60c442c674c2f967a97db158829a533974a29a3997", size = 9980507, upload-time = "2026-06-30T11:53:53.349Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/9d/389bbdf39ccd2c464a4749ba7be1584dea608518c32a5ddbc511db6b0cf7/livekit-1.1.13-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:f4e83f0e272f4b2e9cc39dbefd7bb23b75bd8c105478d867c2869254ca4e149a", size = 11367692, upload-time = "2026-06-30T11:53:55.409Z" },
+    { url = "https://files.pythonhosted.org/packages/da/ce/a3d3e0566dbd2586c325240d44afec6d44421eb794bcf8dbaca15463a7b7/livekit-1.1.13-py3-none-win_amd64.whl", hash = "sha256:22dff7a39cb3d590a4757e20d3ce5d326ab882350386f5070f45cbd6d9ccf839", size = 10717013, upload-time = "2026-06-30T11:53:57.701Z" },
 ]
 
 [[package]]
 name = "livekit-agents"
-version = "1.6.3"
+version = "1.6.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1133,9 +1133,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/20/e985e888f727908150ea06b569372af3e7aed2980be93f95b3a9e0ae29fb/livekit_agents-1.6.3.tar.gz", hash = "sha256:85e146966d310c749f2e133867f517dfd40f70f0f049349de4e5e5051707b316", size = 2561594, upload-time = "2026-06-22T22:24:41.118Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/45/03/7b44243407b788429c2754dcdce6421c30c31f084577c4c858d49ee69f73/livekit_agents-1.6.6.tar.gz", hash = "sha256:6d41bc279b3e34d9c68d3f3b8a428eff919b03f1a383ad6ff808d90faad387db", size = 2616940, upload-time = "2026-07-18T04:17:04.908Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d4/ca/b5f39d06814798954c1fc7035ebe1cccb95fb49b47ef08df45f26afe7dfd/livekit_agents-1.6.3-py3-none-any.whl", hash = "sha256:0b965cf6e42a7bcbe1393e2ba1661fb2e394b676a8defb22c39b13003acefec1", size = 2669370, upload-time = "2026-06-22T22:24:38.884Z" },
+    { url = "https://files.pythonhosted.org/packages/52/2e/6f7b6ac3b7d147cafc0c361cfc701677ec19745a76b0bcf9738df9ab57bd/livekit_agents-1.6.6-py3-none-any.whl", hash = "sha256:c511553f6d4dd0e97c6b0953bdcc2471155ca0a72080d58518beabbbec1c5099", size = 2727054, upload-time = "2026-07-18T04:17:02.914Z" },
 ]
 
 [package.optional-dependencies]
@@ -1165,7 +1165,7 @@ turn-detector = [
 
 [[package]]
 name = "livekit-api"
-version = "1.1.0"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1174,9 +1174,9 @@ dependencies = [
     { name = "pyjwt" },
     { name = "types-protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/0a/ad3cce124e608c056d6390244ec4dd18c8a4b5f055693a95831da2119af7/livekit_api-1.1.0.tar.gz", hash = "sha256:f94c000534d3a9b506e6aed2f35eb88db1b23bdea33bb322f0144c4e9f73934e", size = 16649, upload-time = "2025-12-02T19:37:11.452Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/19/36ff6712ec638a4b7dad4d8f03795952e401dc31db0b04cddec7892650da/livekit_api-1.2.0.tar.gz", hash = "sha256:a89817b3bca9584873786ff07209839308217537a42f95ecb2609aafaa109ddc", size = 20778, upload-time = "2026-07-11T23:20:54.781Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/b9/8d8515e3e0e629ab07d399cf858b8fc7e0a02bbf6384a6592b285264b4b9/livekit_api-1.1.0-py3-none-any.whl", hash = "sha256:bfc1c2c65392eb3f580a2c28108269f0e79873f053578a677eee7bb1de8aa8fb", size = 19620, upload-time = "2025-12-02T19:37:10.075Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/e7/8926f16d4bc1b2e0ae46d4a507321bb899396d263a757f1adaabcd3b3867/livekit_api-1.2.0-py3-none-any.whl", hash = "sha256:307f8e5cfb0358c3ca091814ab768af55896022151bcd7f951954ccefa036a24", size = 26499, upload-time = "2026-07-11T23:20:53.736Z" },
 ]
 
 [[package]]
@@ -1218,51 +1218,51 @@ wheels = [
 
 [[package]]
 name = "livekit-local-inference"
-version = "0.2.5"
+version = "0.2.6"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/8d/ddcf12354e66966d6ce569540cca56e89f88b1e556ba640293a0db6bd781/livekit_local_inference-0.2.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d1059ce6833e0ac85d20960d483027d9a4a770934772a4d408777b8e2aeda5d6", size = 34825194, upload-time = "2026-05-21T15:58:59.624Z" },
-    { url = "https://files.pythonhosted.org/packages/21/42/f95aa57a4e46594dab94dc1ad0c60eab42b46d94a076126ee451be3a2c48/livekit_local_inference-0.2.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:73d7918255cc2434719280ad0a95bad278b8ac8cae8f56040b64b877faa492a6", size = 35091272, upload-time = "2026-05-21T15:59:02.778Z" },
-    { url = "https://files.pythonhosted.org/packages/39/56/d0ad559170259815845b1695f2db966b4a3dff33c187a431f4f9af3cc246/livekit_local_inference-0.2.5-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:6b8502a4225fdeb37e926624983da2b06b6540c41d882d2e88365bf0ba2eba10", size = 34813814, upload-time = "2026-05-21T15:59:05.793Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/4d/d7d8633df9dc594a1c8228ecb573f90776fe689fe2a1fb555cb0270f4a7c/livekit_local_inference-0.2.5-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:270cc54945796cb23c2f7222e6496371cfad41806958d9aaa0e5ab111c479b7b", size = 34858956, upload-time = "2026-05-21T15:59:08.658Z" },
-    { url = "https://files.pythonhosted.org/packages/a8/af/aaba714f259e6dd14b7a665d3e08a51d6ebd67f27e4db2ea245752b77465/livekit_local_inference-0.2.5-cp310-cp310-win_amd64.whl", hash = "sha256:f8011321a02b00180e0124ada5e5ef021dbab597dae689dcaebbf75b6c58fd9d", size = 34898749, upload-time = "2026-05-21T15:59:11.473Z" },
-    { url = "https://files.pythonhosted.org/packages/e8/a1/946ddfe9439f9382740263dcee8037bb708a5ef56bdd59faa4d73eada8d9/livekit_local_inference-0.2.5-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:2a332fd2e2b39cc6512b759f47bc89517f323d1c595083b7cde5361a0304b1a3", size = 34826506, upload-time = "2026-05-21T15:59:14.368Z" },
-    { url = "https://files.pythonhosted.org/packages/af/be/2d46465734c254670c7b320a218a89dae986388b0343aa4881ef446c363a/livekit_local_inference-0.2.5-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:86b7e2fa2a5b0d2ea446a2bbdfb50a736394e348ef8db566f05997bfe706a4f9", size = 35092397, upload-time = "2026-05-21T15:59:17.083Z" },
-    { url = "https://files.pythonhosted.org/packages/76/58/10c9ebdbdc4087d2d31804ebf10b2285ca67559bda0daa2ab6aaed910965/livekit_local_inference-0.2.5-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a0f0e9bdb52d7f951b1c3298b82f771abcd5b930733083042f501ceb1ef79800", size = 34814553, upload-time = "2026-05-21T15:59:19.882Z" },
-    { url = "https://files.pythonhosted.org/packages/40/36/cdf702f7a99dc926328fb526c4d6cf9c36c34dae19b953b0a0d6c7a61a22/livekit_local_inference-0.2.5-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:57dcbe984f11f9e7f3ff9c6b2308f126d92d3844f5b525939a9e23a2fd4f8db7", size = 34858858, upload-time = "2026-05-21T15:59:22.497Z" },
-    { url = "https://files.pythonhosted.org/packages/90/95/ae34f3848fcc7fe32bc91f29e3469bd120bb660c6873985ed7c377fce107/livekit_local_inference-0.2.5-cp311-cp311-win_amd64.whl", hash = "sha256:f0e60f650f0c89132d2671ffaa5fc84b6d2c2b427e0b77ebc07cf425d9164853", size = 34898954, upload-time = "2026-05-21T15:59:25.677Z" },
-    { url = "https://files.pythonhosted.org/packages/c7/97/4ae785357d0bede26de98cc0140c32bcc620c9d2e636c6f790253d7569c6/livekit_local_inference-0.2.5-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:5cbeebcb6397b4f2f37341d2dc0b34f3c1000e7f3c4182855634549881136b2f", size = 34828770, upload-time = "2026-05-21T15:59:29.18Z" },
-    { url = "https://files.pythonhosted.org/packages/1f/4f/25c019077e86eee8adda23690d261c86cd5aa10f608b4ec48b3047891a68/livekit_local_inference-0.2.5-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:cbb2e673a4b102197ecfc2d9a95688a41f8574182c5a124b5b9624fe40a7afd1", size = 35093586, upload-time = "2026-05-21T15:59:32.457Z" },
-    { url = "https://files.pythonhosted.org/packages/b2/d6/0369591d91cce90d668f2b49e497a221f3f9c084f49c98c3c8f38e6a9241/livekit_local_inference-0.2.5-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9a22d9bb3726a27824f8cb4cf8bbaa61e66a7d83d93dc0819515ac6089fcdec6", size = 34816477, upload-time = "2026-05-21T15:59:35.419Z" },
-    { url = "https://files.pythonhosted.org/packages/5e/b2/68f80a1740132c31b6e71f72543c53ecf018db56ef02197725c25e7c1e95/livekit_local_inference-0.2.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:53b62958b3de8691eed5522ddb609211fa55ad52259336c0ccf7dbece341c378", size = 34861220, upload-time = "2026-05-21T15:59:38.453Z" },
-    { url = "https://files.pythonhosted.org/packages/49/1d/4fd9b027fd6ecafe2e6018af8f3558da665bbfad8da5a79282eee320a232/livekit_local_inference-0.2.5-cp312-cp312-win_amd64.whl", hash = "sha256:821c10f6a0fa8e79698b0339bda6bd795545fa9ad7840addf37d2efc52aa5e31", size = 34899668, upload-time = "2026-05-21T15:59:42.056Z" },
-    { url = "https://files.pythonhosted.org/packages/39/f1/a3f1e8f4a98261c57422e2a96cd754daca648fab5e872105804b8246245e/livekit_local_inference-0.2.5-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:44b6604e10093c2541c7b2ebb34867321547f2c54ef831e8e278c1e504e83ece", size = 34828844, upload-time = "2026-05-21T15:59:45.074Z" },
-    { url = "https://files.pythonhosted.org/packages/d3/d8/9ca386903325f3827a89add8a1e8e02a3d047ae7a1f8218ac64b259d2b1a/livekit_local_inference-0.2.5-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:1c6d9e84ab6bd9cb33b2397cd9d34af1f751d9247a25325b815af153a2c19b5b", size = 35093607, upload-time = "2026-05-21T15:59:48.161Z" },
-    { url = "https://files.pythonhosted.org/packages/d5/6e/a8679ecc71575fb6f273817be75117167317e04f06f29987684ca78913f8/livekit_local_inference-0.2.5-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:82fd80104d228fd0b537db7d2757718c8450a1a31ace3beb482801f7434a47cb", size = 34816496, upload-time = "2026-05-21T15:59:51.187Z" },
-    { url = "https://files.pythonhosted.org/packages/db/3a/e16f9ef6b3c49f6de3cd3a28cf70af816ed638ea3d1dbd0478edb2e6904a/livekit_local_inference-0.2.5-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:32026d2630a14a2648f80134db2893ec5b370c5d959856e82b556cd0e5951d4d", size = 34861246, upload-time = "2026-05-21T15:59:53.778Z" },
-    { url = "https://files.pythonhosted.org/packages/54/d1/e584cecf7455b67da5014221cffe0f82756ed12c71103f412c108a90f3d8/livekit_local_inference-0.2.5-cp313-cp313-win_amd64.whl", hash = "sha256:934f40f1b4900d4a09e6cf0f2b2cfc2e2cad93439935234b7ff6916d23542293", size = 34899633, upload-time = "2026-05-21T15:59:56.464Z" },
-    { url = "https://files.pythonhosted.org/packages/7d/1e/9ce633b7138aa8d9f5f77613799a452529f6e3ef3a3621cc11ea1de1764f/livekit_local_inference-0.2.5-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:558eb9258fb29999ec1ec4d6948558d4fa8a80420d963ef0c4c34ca167e4632d", size = 34829194, upload-time = "2026-05-21T15:59:59.36Z" },
-    { url = "https://files.pythonhosted.org/packages/b3/a3/93c80bda2ff58603878709ed1a9c9d1066c55e55dc84758b50015643e84f/livekit_local_inference-0.2.5-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:c5a279bf6e8c2eedc5071fa9bc362d12b0ff0c4d21b2175cbd063eff176143b0", size = 35093967, upload-time = "2026-05-21T16:00:02.133Z" },
-    { url = "https://files.pythonhosted.org/packages/c0/5e/7e41d2cf5f27845c431782fbbc74eb1368fb80cea0888eeeb7a2a09512a4/livekit_local_inference-0.2.5-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b71d183f577a8ccac9ca3a1435a5e634378c4397d89194c54a2d83361359228e", size = 34817108, upload-time = "2026-05-21T16:00:05.579Z" },
-    { url = "https://files.pythonhosted.org/packages/65/4d/e8ab562d8b857aa63d76012f2ad39a33901e5e8a1e904221e5658b62911e/livekit_local_inference-0.2.5-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:656163efcdcccc9d8c62130c87f5502cdefcb279f7cf0f687a2e159c462528b5", size = 34861267, upload-time = "2026-05-21T16:00:08.586Z" },
-    { url = "https://files.pythonhosted.org/packages/bd/08/66cf3c65669e6f065264e1adcd8b96f01752bc531dfc23c2db5735a8526b/livekit_local_inference-0.2.5-cp314-cp314-win_amd64.whl", hash = "sha256:e715fe645e2abd5ef3847f766dcdbc91a2c297810f0261a2b11234ad6aa4a0e8", size = 34907275, upload-time = "2026-05-21T16:00:11.786Z" },
+    { url = "https://files.pythonhosted.org/packages/41/c3/5184ee7ae04228a9957d86bf834be434482e6010b8cea069ff7ba2475077/livekit_local_inference-0.2.6-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:073ea6779ad963ef119fa16e6776314cc1e3174771f95b90b1c633c5915af159", size = 34832119, upload-time = "2026-06-24T16:54:27.098Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/f9/2e6671d03e821447ff47f1d0e2f41cea357b855dff03a39740e204af0005/livekit_local_inference-0.2.6-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:012d3454b3dfc6cc1c8101caec377141d5469711851bd42bc80a2f44bf31b0a9", size = 35098198, upload-time = "2026-06-24T16:54:30.265Z" },
+    { url = "https://files.pythonhosted.org/packages/92/c7/bedd1b55e2019eed22c61253a6bf2d0a7a2bc3510cb75f01b0978bb470ad/livekit_local_inference-0.2.6-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:90da1a004fb0183b36c6bda74039de4dc792f434ebf2b1b679ee79dbbc5a25bb", size = 34820911, upload-time = "2026-06-24T16:54:33.302Z" },
+    { url = "https://files.pythonhosted.org/packages/11/ca/8ba04578a99fcac4a0038a31ae22c0018cbd4f6a4482f2cfb8d7be4940a4/livekit_local_inference-0.2.6-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3f7caf6d342cfdd768dbc4cebef1b08a22f8e5e1c3d4f3ed5c24031c19f2e060", size = 34866091, upload-time = "2026-06-24T16:54:42.722Z" },
+    { url = "https://files.pythonhosted.org/packages/89/67/d17dc6e425ac66f206d105a86ea1a131f8f9a381f579302e6698de7066ef/livekit_local_inference-0.2.6-cp310-cp310-win_amd64.whl", hash = "sha256:4a778a472cff1eb7e85d3860995bd958e9141b0ef0b0ed6c036bb66826d29d71", size = 34905571, upload-time = "2026-06-24T16:54:45.726Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/1c/8010498321cb78111194dce2a1b400fd4548a6df9b88b469c3cf2787efd9/livekit_local_inference-0.2.6-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:d31c99cfcb486b7183381289e72f6f75594c44449f5f28e04fbdd202d4200f2c", size = 34833439, upload-time = "2026-06-24T16:54:48.636Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/c5/c371b7f1e36dfeab9d240a3e607320918c2564b51db7d2edb8f5064073c8/livekit_local_inference-0.2.6-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:56f0641306bc5451502f2f6597bac9b77e56487311d49a1ed356c5ed8ce01da6", size = 35099320, upload-time = "2026-06-24T16:54:51.761Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/04/914b672e43b619f0f6023641cd4ff539354ef07b12d79c2e0a538c219069/livekit_local_inference-0.2.6-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c684ee2d2f22c0a24ff471cdd5d873ee010135a9469d791c2cd2d3f83b219b51", size = 34821645, upload-time = "2026-06-24T16:54:57.782Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/a7/2d19b23b872a8e8b80efc612c3bfcc2f4733b24ca159c9d9426eff2d4eac/livekit_local_inference-0.2.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d6379f9d5ee4753919d10a2cedd2e16e1cbf634e496ad21fb54564513b731e69", size = 34865997, upload-time = "2026-06-24T16:55:01.294Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/66/250dbc92f4dd26b7c91c3f1c17ad238117339399006476728bfbabb5fb46/livekit_local_inference-0.2.6-cp311-cp311-win_amd64.whl", hash = "sha256:e5026b2cfd5aa2c85d677cce426b39bab88ee114acbaa814941d3aca8612ba7e", size = 34905736, upload-time = "2026-06-24T16:55:04.213Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/aa/7d6cfa6a2fe6baee8a443820d61b0e7df0cc7b9246762cab8f47c17ddcd3/livekit_local_inference-0.2.6-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:cb11919621cc542148ebed92408f0567b758057881c7e40d852d9738415a8eae", size = 34835713, upload-time = "2026-06-24T16:55:07.043Z" },
+    { url = "https://files.pythonhosted.org/packages/be/57/e284fb2663bceb78f24496edf6d9468c861797fd24e655381c17fafe300f/livekit_local_inference-0.2.6-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:274ea4046e24377e0744056db051c53976d04bd159c12f8c482246d44089ae79", size = 35100531, upload-time = "2026-06-24T16:55:10.65Z" },
+    { url = "https://files.pythonhosted.org/packages/76/6f/9a580a0d3f0c4bb63e7ab627467aeaf66980d21ea52e5946eb054e6f8150/livekit_local_inference-0.2.6-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:425469dff5505b35a3fab587993b320c829826d041a85c17c53475f64b99f444", size = 34823583, upload-time = "2026-06-24T16:55:13.728Z" },
+    { url = "https://files.pythonhosted.org/packages/72/3d/c4a73813247faa704e9eef1cbf52ebc0f8070ad08b295419033ec3bcea5c/livekit_local_inference-0.2.6-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c0cc28d6e2e1431940b37a8c6d931e4dac914806e2c874a05513db6b65a01d7e", size = 34868325, upload-time = "2026-06-24T16:55:16.789Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/44/4f5a633f962142480a54eff1e4aea96848e4b54972c617da65e234d51b7d/livekit_local_inference-0.2.6-cp312-cp312-win_amd64.whl", hash = "sha256:5dc4a0574dc2e4a0745e8fcf29c26ca9f3983b885e63ada9761d26311a778d7b", size = 34906570, upload-time = "2026-06-24T16:55:19.914Z" },
+    { url = "https://files.pythonhosted.org/packages/33/ae/5080f01d9c412a0702972efbfc8e4aca48f81baca494027aefcff5e4c8cc/livekit_local_inference-0.2.6-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:63beb204b64cdcbb3bc5b1caa1dbff2a9049998b6f897cf6b68285bb6b15926e", size = 34835783, upload-time = "2026-06-24T16:55:22.927Z" },
+    { url = "https://files.pythonhosted.org/packages/25/17/53ee00d6abf7b9c7ad9036356c38f40634aa83f74b8484f40678a92264ad/livekit_local_inference-0.2.6-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:26e397fe543abac838c12101267e46974afd268b6475642fdf116391eee8bd43", size = 35100553, upload-time = "2026-06-24T16:55:26.351Z" },
+    { url = "https://files.pythonhosted.org/packages/df/68/1fbbc4d22cbe28800380cdb1c51b8fadbf81bfacb0e966326fc7ee5c1298/livekit_local_inference-0.2.6-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:188457491cd59ed201d08ec3012fbc2a35d1fa5ac7bd4f4501553b16f5fc7d5b", size = 34823608, upload-time = "2026-06-24T16:55:29.4Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/7a/f62bc8dbdd6a4f32abe056bff1c4c4ad7ef30c780a43564594c72af120c2/livekit_local_inference-0.2.6-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:10e1866f23ff6ee694a360e8a032078de3df189d100a748295c30fd1013aef34", size = 34868352, upload-time = "2026-06-24T16:55:32.611Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/86/cd258845ad0b52e3ba68f776f3bc40eebf03d1dde31b2bdcd4d0a1fcb46a/livekit_local_inference-0.2.6-cp313-cp313-win_amd64.whl", hash = "sha256:69bc8976d8feef5a9c31e2c7bbd10d84e5494e1ecf85aedc75ebecef04fc9c08", size = 34906535, upload-time = "2026-06-24T16:55:35.78Z" },
+    { url = "https://files.pythonhosted.org/packages/33/1d/d17f9ca55285689a47d69534cd31543a96e64282be7ab9513590957e00e8/livekit_local_inference-0.2.6-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:bc4b3363dd307cf0b38203ef93d1750469db3bb1f99659ed40537fe473689761", size = 34836123, upload-time = "2026-06-24T16:55:38.902Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/3c/8b8921b77daed54c012588aa3419c56ebd71d975e292f4cc4b36baeec892/livekit_local_inference-0.2.6-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:635904e6aef00fe2544bd55f1a526368fe7687f569a8d39c8f317b51e3539fe6", size = 35100892, upload-time = "2026-06-24T16:55:41.807Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/9a/7cdf1a77d5fd80e06533d4f2584c45d2c978f1249338969f814502db45ad/livekit_local_inference-0.2.6-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:80dc582413d816c86a0620410c2bfc3234e782a49d2b07b4bed0ff6285bdf4a1", size = 34824215, upload-time = "2026-06-24T16:55:45.02Z" },
+    { url = "https://files.pythonhosted.org/packages/86/f2/0207071f236f639cf9515838ce98cfc3a8c1b19db8e6f46350e7231f2200/livekit_local_inference-0.2.6-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9c148ec2735e903dc00e37dc2580e0417f67ec7ee4be119dca7844b104afbfe9", size = 34868380, upload-time = "2026-06-24T16:55:48.119Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/91/c194db20c8e9272cadf0913d42392cda5eec5e78a14820a3fa678e42e4b6/livekit_local_inference-0.2.6-cp314-cp314-win_amd64.whl", hash = "sha256:4140e4fd60dd7b7d69a55e1d454d5d893f8ffe026c30e0d7cd31fa42b10d5621", size = 34914243, upload-time = "2026-06-24T16:55:51.322Z" },
 ]
 
 [[package]]
 name = "livekit-plugins-cartesia"
-version = "1.6.3"
+version = "1.6.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "livekit-agents" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/87/5d/a7483ada58505b8f98954c33c050a416db33e220d4149590210a22be5e36/livekit_plugins_cartesia-1.6.3.tar.gz", hash = "sha256:5b7f370cf3ddc9026844ed8471cf1488353cf05e2857ed83fc5ce9fc97d8780f", size = 18192, upload-time = "2026-06-22T22:24:56.247Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/14/02ecf382dd1bb922f30fb95498d2153dfa743226563d0de8c765df31f38c/livekit_plugins_cartesia-1.6.6.tar.gz", hash = "sha256:e4a784f0d571cbd240291562c65461f6979e775c0f68682f12d653a43db72df6", size = 18312, upload-time = "2026-07-18T04:17:24.282Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/8e/76574e98f8271a5c88c47eb7ed9a08407030d184a785aa4384cc0ace0f85/livekit_plugins_cartesia-1.6.3-py3-none-any.whl", hash = "sha256:5131e08e3fb835e2e71c0ea5fadb51b611d4fa181e7bd1e39c3e2eca21f639cf", size = 25532, upload-time = "2026-06-22T22:24:54.819Z" },
+    { url = "https://files.pythonhosted.org/packages/85/ed/bfaccaabdbdbef523f935fef57ad3872e4352711c0adeb0626d3a46b3c55/livekit_plugins_cartesia-1.6.6-py3-none-any.whl", hash = "sha256:c9369adc612c91b5ec0d1b849a1db3ebc5bcf651e2cc438733ec4dc2fd9cc53e", size = 25681, upload-time = "2026-07-18T04:17:23.154Z" },
 ]
 
 [[package]]
 name = "livekit-plugins-deepgram"
-version = "1.6.3"
+version = "1.6.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "livekit-agents", extra = ["codecs"] },
@@ -1270,27 +1270,27 @@ dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "numpy", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0a/93/9f36251912a98f5f121cef3ec60c12cb23eb1a52c19b3d57cae363231a73/livekit_plugins_deepgram-1.6.3.tar.gz", hash = "sha256:19ebe23fd4ed4423bcffc48ab4a0a9e5b46f5790682b9b806fd3ff38127bef42", size = 18347, upload-time = "2026-06-22T22:24:58.99Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/3c/fd3f9b2398fa51b410f6dcedd188a72daf92d15b526c042bf47e631e516d/livekit_plugins_deepgram-1.6.6.tar.gz", hash = "sha256:384d38b9098c9262c380208053e07b48e8a4dd1526a42cef889b9d60e76ac0db", size = 22607, upload-time = "2026-07-18T04:17:27.994Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/db/60/7334d317a3838f8b38f30f7b9c4952b649c5ef14cf23c47d9a59d96ff073/livekit_plugins_deepgram-1.6.3-py3-none-any.whl", hash = "sha256:dea37c44f48123f2caf597303081734eb536b20119a16b7fda5b79beb93bce07", size = 23085, upload-time = "2026-06-22T22:24:57.955Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/e9/4eb44bfd67bc6b9d5f448639def94016a57b08af2ba532d7343c3627e10a/livekit_plugins_deepgram-1.6.6-py3-none-any.whl", hash = "sha256:c6fb33b397495519089f56f049c564cbc7e1f2a9f1a4f656cfab531f68b9e582", size = 26081, upload-time = "2026-07-18T04:17:26.923Z" },
 ]
 
 [[package]]
 name = "livekit-plugins-openai"
-version = "1.6.3"
+version = "1.6.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "livekit-agents", extra = ["codecs", "images"] },
     { name = "openai", extra = ["realtime"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/79/fb5624e25faf1d82bfe4ced707f0d8ae6a9cc5d7c1fb9219ee65c53514ff/livekit_plugins_openai-1.6.3.tar.gz", hash = "sha256:27d774dc312527228d0a539d9329ca465627a2e13ecfecca4ead527e14d5c2d2", size = 45306, upload-time = "2026-06-22T22:26:04.352Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/8b/c6616f56097a000cded518257dd70bf679175726893f3d3bacdf81a94c63/livekit_plugins_openai-1.6.6.tar.gz", hash = "sha256:e52505ec478ceab7dcca87f32bf7e59406a68c9838f5f6e717d6609d8240fa49", size = 48505, upload-time = "2026-07-18T04:18:33.773Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/da/407fc36bb55e659497eaf0568462714b59b7c0fd6b0986eb48dc452eaaa5/livekit_plugins_openai-1.6.3-py3-none-any.whl", hash = "sha256:5f28b3001bb93a40833ce73a06b2cc04e600b097cbada4dcfecbaf467c91d48f", size = 52125, upload-time = "2026-06-22T22:26:02.972Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/26/637e4ef8584675cdfbc228fac6ccfc8ffe3fde84ae472df08f02b9ee29ad/livekit_plugins_openai-1.6.6-py3-none-any.whl", hash = "sha256:37a5db03d4875c4ea3a68acdcc001b8b4900d59746b7feb955d2e8530fc43d46", size = 54994, upload-time = "2026-07-18T04:18:32.428Z" },
 ]
 
 [[package]]
 name = "livekit-plugins-silero"
-version = "1.6.3"
+version = "1.6.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "livekit-agents" },
@@ -1300,14 +1300,14 @@ dependencies = [
     { name = "onnxruntime", version = "1.23.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "onnxruntime", version = "1.27.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/64/faee8e134abc4669efac1b4648111d8001fe046a8f4bd97f306b3a337f7f/livekit_plugins_silero-1.6.3.tar.gz", hash = "sha256:0b1ef7a5971b9c86a2f93dce9a280c757da94d34e2b8a5f5246a687a06c8d402", size = 1956517, upload-time = "2026-06-22T22:26:23.408Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/8c/cd7f556d01b5009ba71eb59cf7d19000a5331f67ffdbb5f45ba7f09b400f/livekit_plugins_silero-1.6.6.tar.gz", hash = "sha256:80b415d1edbef731fedc66e9b0dff2627c2b76e084f2433b25ed94e9843ceeb5", size = 1955917, upload-time = "2026-07-18T04:18:49.34Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/2e/543efc65114df267d71a8184d8e41faf4824c81dd7f16cdf3f1f0ce7b44f/livekit_plugins_silero-1.6.3-py3-none-any.whl", hash = "sha256:8c46690b65ab5d4ab5c59fd4aaf0a00051401de63714bd87b84d60f87192cf30", size = 3904449, upload-time = "2026-06-22T22:26:21.278Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/7c/64d24bd15e1cca6edc0a48c9044e9414743264ddf6349ea308e94ee80188/livekit_plugins_silero-1.6.6-py3-none-any.whl", hash = "sha256:f2edd621d6ebf44d007d942203487f735d070c991f569bf9d975c5763108e48f", size = 3903913, upload-time = "2026-07-18T04:18:47.552Z" },
 ]
 
 [[package]]
 name = "livekit-plugins-turn-detector"
-version = "1.6.3"
+version = "1.6.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jinja2" },
@@ -1319,22 +1319,22 @@ dependencies = [
     { name = "onnxruntime", version = "1.27.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/81/d2/8b21c9886d99af78be627ff34e4a9ebfaa479088c74d662cae445f441b5e/livekit_plugins_turn_detector-1.6.3.tar.gz", hash = "sha256:07fa7f51de7cd650c449784d70193ded284448fbd97a70a3cf6a055485a19729", size = 7400, upload-time = "2026-06-22T22:26:43.196Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/54/a08fda137247baba443ed3afadd4f0d35cbb09eedb7b3db5cd447d183ba9/livekit_plugins_turn_detector-1.6.6.tar.gz", hash = "sha256:60a3ff4d828d2862e6ec90266e61357c8c75e33aca8fabcb2b80acaa63676987", size = 7408, upload-time = "2026-07-18T04:19:14.892Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/86/edaa5b8b5b9acf86d1f91b739cb82dd3d65211c52e90b4d1691ec579810a/livekit_plugins_turn_detector-1.6.3-py3-none-any.whl", hash = "sha256:f6ecee48c4c717726e8c716c5f8222d97927097d45429bdbcc8edae7a445c513", size = 10456, upload-time = "2026-06-22T22:26:42.206Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/97/49c0bcaf5578ad70f11a3f8bf40d99fd2b014fe170f6771afa8188f3bfbe/livekit_plugins_turn_detector-1.6.6-py3-none-any.whl", hash = "sha256:091395e3f3122cf7cb9db3119e19e69129c09969facb197fc15c5aa75a14edde", size = 10468, upload-time = "2026-07-18T04:19:13.564Z" },
 ]
 
 [[package]]
 name = "livekit-protocol"
-version = "1.1.17"
+version = "1.1.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "protobuf" },
     { name = "types-protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/27/b9a11f20220a4c665f9586313bd1db5772d916ab30e4a13d2a45300f5473/livekit_protocol-1.1.17.tar.gz", hash = "sha256:d3e4b3f52996bda39b2ba2458d53b838c5e8ed68f6e371bd6256610a8a39f2fb", size = 114674, upload-time = "2026-06-16T12:37:52.181Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/ae/9d60fe37d85623e68a2e36ae31d18c671949db67d2a13a6438410d930466/livekit_protocol-1.1.21.tar.gz", hash = "sha256:8bb1ac1aba5d37d0af43e9d56d129a5d16295cbd91518b00fd157e258f20a6ef", size = 122363, upload-time = "2026-07-21T18:28:26.372Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/2a/9cea3076b2f8831e31483bf3dc420e02977e776ff2eef35bef0d90743428/livekit_protocol-1.1.17-py3-none-any.whl", hash = "sha256:16e9f0f6cd6641b953effcc460fcfc83858961cf9abf3d1f24f71bd60dcdec40", size = 140653, upload-time = "2026-06-16T12:37:50.46Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/d2/ec10b1cdf912235c2b07898be6ba2535e50f23e8980bb719f29decbd8034/livekit_protocol-1.1.21-py3-none-any.whl", hash = "sha256:ce0bb763327c91349ee8831843c4f8bd72132c4d06ac572171f2ae5c0217211d", size = 149245, upload-time = "2026-07-21T18:28:24.985Z" },
 ]
 
 [[package]]
