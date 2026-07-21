@@ -125,9 +125,11 @@ class MainControlExtension(AsyncExtension):
                         await asyncio.sleep(self._moss_sim_ms / 1000.0)
                     context = await self.moss.query_context(event.text)
                     took_ms = (time.perf_counter() - t0) * 1000.0
-                    mode = f"remote-sim +{self._moss_sim_ms} ms" if self._moss_sim_ms else "Moss in-process"
+                    backend = f"remote-sim(+{self._moss_sim_ms}ms)" if self._moss_sim_ms else "moss(in-process)"
+                    # Shared tag so this lines up 1:1 with the instrumented memU
+                    # example — grep '[retrieval-latency]' in both agents' logs.
                     self.ten_env.log_info(
-                        f"[moss-speed] retrieval [{mode}] added {took_ms:.0f} ms to this turn"
+                        f"[retrieval-latency] backend={backend} took {took_ms:.0f} ms this turn"
                     )
                 except Exception as exc:  # noqa: BLE001
                     context = ""

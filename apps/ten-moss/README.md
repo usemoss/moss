@@ -93,22 +93,25 @@ turn — flip `enable_moss` in `property.json` to A/B the same thing in the play
 
 ## Showcase the speed (live, in the agent)
 
-The control extension logs the retrieval cost of **every turn**, e.g.:
+The control extension logs the retrieval cost of **every turn**:
 
 ```
-[moss-speed] retrieval [Moss in-process] added 2 ms to this turn
+[retrieval-latency] backend=moss(in-process) took 2 ms this turn
 ```
 
-To demo the difference for an audience, edit `moss_simulate_remote_ms` on the
-`main_control` node in `tenapp/property.json` and re-run `task run`:
+**TEN default retrieval vs Moss (real numbers).** TEN's shipped memory/RAG backends
+(memU, OceanBase PowerRAG, EverMemOS) are all remote services — every turn is a network
+round trip. To compare TEN's default (memU) against Moss with real logged latency from
+both agents, follow **[`BENCHMARK.md`](BENCHMARK.md)**: it adds the same one‑line
+latency log to TEN's shipped `voice-assistant-with-memU` example, then you run both agents
+and read `[retrieval-latency]` from each (memU: hundreds of ms; Moss: single‑digit ms).
 
-- `"moss_simulate_remote_ms": 0`   → Moss in-process (~2 ms) — the agent replies immediately.
-- `"moss_simulate_remote_ms": 400` → simulate a remote vector-DB round trip — the same agent
-  gives the same correct answer but audibly **pauses ~400 ms before every reply**.
+**Quick single‑agent approximation (no memU key).** If you just want to hear the effect in
+this one agent, set `moss_simulate_remote_ms` on the `main_control` node in
+`tenapp/property.json` to a remote‑like latency and re‑run `task run`:
 
-Ask the same question in both modes (e.g. *"how long do refunds take?"*): the reply is
-identical, so the only thing your audience hears is the latency Moss removes. The log line
-prints the real per-turn cost each time.
+- `0`   → Moss in‑process (~2 ms) — the agent replies immediately.
+- `400` → the same agent, same answer, but audibly **pauses ~400 ms before every reply**.
 
 ## Configuration
 
