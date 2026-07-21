@@ -2,7 +2,7 @@
 
 A real-time voice agent built on the [TEN Framework](https://github.com/ten-framework/ten-framework) that grounds its answers in a [Moss](https://moss.dev) session. On every final ASR transcript the control extension asks Moss for session-scoped context (~1–10ms, in-process) and injects it into the LLM prompt before the model responds, so answers reflect your knowledge base with no perceptible added latency.
 
-The Moss integration lives in the `main_python` control extension and is powered by the [`ten-moss`](../../packages/ten-moss) package (`MossSessionManager`).
+The Moss integration lives in the `main_python` control extension and is powered by the [`ten-moss`](https://pypi.org/project/ten-moss/) package (`MossSessionManager`).
 
 ## How it works
 
