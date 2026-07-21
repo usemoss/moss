@@ -91,12 +91,32 @@ Without grounding the model confidently invents plausible-but-wrong specifics; w
 answers from your knowledge base. This is the exact delta the live voice agent applies per
 turn — flip `enable_moss` in `property.json` to A/B the same thing in the playground.
 
+## Showcase the speed (live, in the agent)
+
+The control extension logs the retrieval cost of **every turn**, e.g.:
+
+```
+[moss-speed] retrieval [Moss in-process] added 2 ms to this turn
+```
+
+To demo the difference for an audience, edit `moss_simulate_remote_ms` on the
+`main_control` node in `tenapp/property.json` and re-run `task run`:
+
+- `"moss_simulate_remote_ms": 0`   → Moss in-process (~2 ms) — the agent replies immediately.
+- `"moss_simulate_remote_ms": 400` → simulate a remote vector-DB round trip — the same agent
+  gives the same correct answer but audibly **pauses ~400 ms before every reply**.
+
+Ask the same question in both modes (e.g. *"how long do refunds take?"*): the reply is
+identical, so the only thing your audience hears is the latency Moss removes. The log line
+prints the real per-turn cost each time.
+
 ## Configuration
 
 Moss is configured on the `main_control` node in `tenapp/property.json` (env-substituted):
 `moss_project_id`, `moss_project_key`, `moss_index_name`, `moss_model_id`,
-`moss_top_k`, `moss_alpha`, `moss_context_header`, `enable_moss`. Set `enable_moss`
-to `false` to run the plain voice assistant with no grounding.
+`moss_top_k`, `moss_alpha`, `moss_context_header`, `enable_moss`,
+`moss_simulate_remote_ms`. Set `enable_moss` to `false` to run the plain voice
+assistant with no grounding; set `moss_simulate_remote_ms` to imitate a slow remote store.
 
 ## Testing status
 

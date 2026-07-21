@@ -53,6 +53,9 @@
         },
         "enable_moss": {
           "type": "bool"
+        },
+        "moss_simulate_remote_ms": {
+          "type": "int64"
         }
       }
     }

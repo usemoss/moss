@@ -55,6 +55,7 @@ class MainControlExtension(AsyncExtension):
         # Load config from runtime properties
         config_json, _ = await ten_env.get_property_to_json(None)
         self.config = MainControlConfig.model_validate_json(config_json)
+        self._moss_sim_ms = self.config.moss_simulate_remote_ms
 
         # Open a Moss session for ambient, session-scoped grounding (best-effort:
         # if the session can't open, the agent still runs, just without grounding).
@@ -117,7 +118,17 @@ class MainControlExtension(AsyncExtension):
                 # query_context is designed not to raise, but guard anyway so a
                 # grounding failure can never drop the user's turn.
                 try:
+                    t0 = time.perf_counter()
+                    # Speed showcase: optionally imitate a remote vector-DB round
+                    # trip so the latency Moss saves is audible.
+                    if self._moss_sim_ms:
+                        await asyncio.sleep(self._moss_sim_ms / 1000.0)
                     context = await self.moss.query_context(event.text)
+                    took_ms = (time.perf_counter() - t0) * 1000.0
+                    mode = f"remote-sim +{self._moss_sim_ms} ms" if self._moss_sim_ms else "Moss in-process"
+                    self.ten_env.log_info(
+                        f"[moss-speed] retrieval [{mode}] added {took_ms:.0f} ms to this turn"
+                    )
                 except Exception as exc:  # noqa: BLE001
                     context = ""
                     self.ten_env.log_error(
