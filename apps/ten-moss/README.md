@@ -2,7 +2,7 @@
 
 A real-time voice agent built on the [TEN Framework](https://github.com/ten-framework/ten-framework) that grounds every answer in a [Moss](https://moss.dev) session. On each final ASR transcript, the control extension queries Moss for session-scoped context (single-digit milliseconds, in-process) and injects it into the LLM prompt before the model responds, so answers reflect your knowledge base with no perceptible added latency.
 
-The integration is powered by the [`ten-moss`](../../packages/ten-moss) package (`MossSessionManager`) and lives entirely in the `main_python` control extension.
+The integration is powered by the [`ten-moss`](https://pypi.org/project/ten-moss/) package (`MossSessionManager`) and lives entirely in the `main_python` control extension.
 
 | Role | Component |
 | --- | --- |
@@ -32,7 +32,54 @@ flowchart LR
 
 Everything on the retrieval path runs inside the agent process. There is no network hop between the transcript arriving and the grounded prompt reaching the LLM.
 
-### Anatomy of a turn
+## What's in this directory
+
+This example ships the TEN app plus a small index builder; the run harness (playground, server, Taskfile, Dockerfile) comes from the TEN Framework, so `tenapp/` drops into any TEN checkout.
+
+- `tenapp/`: the TEN app, i.e. the graph (`property.json`) and the `main_python` control extension that carries the Moss delta.
+- `create_index.py` + `data/knowledge.jsonl`: build the demo Moss index.
+- `.env.example`: every credential the agent needs.
+
+## Prerequisites
+
+- A **TEN Framework checkout**. This example runs with TEN's tooling and references shared TEN extensions by relative path (`../../../ten_packages/extension/...`), so it must live inside a TEN Framework repo.
+- A **Moss** project (`MOSS_PROJECT_ID` / `MOSS_PROJECT_KEY`) from [moss.dev](https://moss.dev).
+- Provider keys: **Agora** (transport), **Deepgram** (STT), **OpenAI** (LLM), **ElevenLabs** (TTS).
+
+## Quick start
+
+1. **Build the demo knowledge index** (from this directory; needs only the Moss SDK):
+
+   ```bash
+   pip install moss python-dotenv   # the Moss SDK (+ python-dotenv to load .env)
+   cp .env.example .env             # fill in MOSS_PROJECT_ID / MOSS_PROJECT_KEY / MOSS_INDEX_NAME
+   python create_index.py           # reads data/knowledge.jsonl, creates MOSS_INDEX_NAME
+   ```
+
+2. **Drop the app into a TEN checkout** by reusing the sibling `voice-assistant` example's harness and swapping in this `tenapp/`:
+
+   ```bash
+   cd ten-framework/ai_agents/agents/examples
+   cp -r voice-assistant voice-assistant-with-moss        # reuse its Taskfile, scripts/, Dockerfile
+   rm -rf voice-assistant-with-moss/tenapp
+   cp -r /path/to/moss/apps/ten-moss/tenapp voice-assistant-with-moss/tenapp
+   ```
+
+   `main_python` depends on [`ten-moss`](https://pypi.org/project/ten-moss/) (listed in `main_python/requirements.txt`), so `task install` pulls it from PyPI automatically.
+
+3. **Run with TEN's tooling** from that example directory (`task install && task run`, per the TEN docs), with the `MOSS_*` vars from step 1 plus the provider keys from Prerequisites (Agora, Deepgram, OpenAI, ElevenLabs). Open the TEN playground at http://localhost:3000, select the **`voice_assistant`** graph (a `predefined_graph` in `tenapp/property.json`, or open `?graph=voice_assistant`), and ask something covered by `data/knowledge.jsonl`, for example *"how long do refunds take?"*, to hear grounded answers.
+
+## Under the hood
+
+The difference from the stock TEN voice assistant is small and lives in three places in `main_python`:
+
+| Location | Change |
+| --- | --- |
+| `config.py` | `MainControlConfig` inherits `MossSessionConfig` (the `moss_*` properties). |
+| `extension.py` (`on_init`) | Opens the Moss session via `MossSessionManager.from_config(...).open()`, best-effort. |
+| `extension.py` (`_on_asr_result`) | Calls `query_context(text)` and prepends the grounding to the user's turn. |
+
+Anatomy of a turn:
 
 ```mermaid
 sequenceDiagram
@@ -44,7 +91,7 @@ sequenceDiagram
     participant LLM as OpenAI LLM
     participant TTS as ElevenLabs TTS
 
-    User->>STT: speech (via agora_rtc)
+    User->>STT: speech (via agora_rtc + streamid_adapter)
     STT->>Ctl: asr_result (final)
     Ctl->>Moss: query_context(text)
     Moss-->>Ctl: grounding (single-digit ms)
@@ -52,58 +99,6 @@ sequenceDiagram
     LLM-->>TTS: streamed response
     TTS-->>User: audio (via agora_rtc)
 ```
-
-## The Moss delta
-
-The difference from the stock TEN voice assistant is small and lives in three places in `main_python`:
-
-| Location | Change |
-| --- | --- |
-| `config.py` | `MainControlConfig` inherits `MossSessionConfig` (the `moss_*` properties). |
-| `extension.py` (`on_init`) | Opens the Moss session via `MossSessionManager.from_config(...).open()`, best-effort. |
-| `extension.py` (`_on_asr_result`) | Calls `query_context(text)` and prepends the grounding to the user's turn. |
-
-## Prerequisites
-
-- A **TEN Framework checkout**. This example references shared TEN extensions via relative paths (`../../../ten_packages/extension/...`) and runs with TEN's own tooling, so it lives inside a TEN Framework repo. It ships the TEN app (`tenapp/`), not the repo-level run harness (playground, server, Taskfile, Dockerfile), which the TEN Framework provides.
-- A **Moss** project (`MOSS_PROJECT_ID` / `MOSS_PROJECT_KEY`) from [moss.dev](https://moss.dev).
-- Provider keys: **Agora** (transport), **Deepgram** (STT), **OpenAI** (LLM), **ElevenLabs** (TTS).
-
-## Quick start
-
-1. **Build the demo knowledge index** (from this directory; needs only the Moss SDK):
-
-   ```bash
-   cp .env.example .env      # fill in MOSS_PROJECT_ID / MOSS_PROJECT_KEY / MOSS_INDEX_NAME
-   python create_index.py    # reads data/knowledge.jsonl, creates MOSS_INDEX_NAME
-   ```
-
-2. **Drop the app into a TEN checkout.** Copy `tenapp/` to `ten-framework/ai_agents/agents/examples/voice-assistant-with-moss/tenapp/`, alongside the sibling `voice-assistant` example whose Taskfile, playground, and server harness you reuse. `main_python` depends on [`ten-moss`](https://pypi.org/project/ten-moss/) (listed in `main_python/requirements.txt`), so `task install` pulls it from PyPI automatically.
-
-3. **Run with TEN's tooling** from that example directory (`task install && task run`, per the TEN docs), providing the same env vars as step 1. Open the TEN playground at http://localhost:3000 and ask something covered by `data/knowledge.jsonl`, for example *"how long do refunds take?"*, to hear grounded answers.
-
-## Compare answers with and without Moss
-
-No voice stack needed. `compare.py` answers the same questions with the same LLM twice, once without Moss and once with the exact grounding the agent injects, so you can see the improvement without standing up the full pipeline. It needs only your Moss and OpenAI keys (no Agora, STT, or TTS):
-
-```bash
-cp .env.example .env                       # MOSS_* + OPENAI_API_KEY (+ optional OPENAI_MODEL)
-python create_index.py                     # build the index once
-pip install ten-moss openai python-dotenv
-python compare.py                          # or: python compare.py "your own question?"
-```
-
-Sample run (`gpt-4o-mini` over `data/knowledge.jsonl`):
-
-| Question | Without Moss | With Moss |
-| --- | --- | --- |
-| How long do refunds take? | "5-10 business days" (wrong) | "3-5 business days once approved" (correct) |
-| Can I cancel my order? | "within a specific timeframe... check our policy" (vague) | "within 1 hour of placement" (correct) |
-| Which payment methods? | misses American Express | "Visa, Mastercard, Amex, PayPal, Apple Pay" (correct) |
-| Do you offer price matching? | "provide competitor details" (vague) | "authorized retailers within 14 days" (correct) |
-| How fast is express shipping? | "1-3 business days" (wrong) | "1-2 business days" (correct) |
-
-Without grounding, the model confidently invents plausible but wrong specifics; with Moss, it answers from your knowledge base. This is the exact delta the live voice agent applies per turn. Flip `enable_moss` in `property.json` to A/B the same thing in the playground.
 
 ## Measure the latency
 
@@ -138,16 +133,7 @@ ASR timing appears in the Deepgram STT extension logs and TTS audio-out in the E
 
 ### Benchmark against TEN's default retrieval
 
-TEN's shipped memory/RAG backends (memU, OceanBase PowerRAG, EverMemOS) are all remote services, so every turn pays a network round trip. To compare TEN's default (memU) against Moss with real logged latency from both agents, follow **[`BENCHMARK.md`](BENCHMARK.md)**: it adds the same one-line latency log to TEN's shipped `voice-assistant-with-memU` example, then you run both agents and read `[retrieval-latency]` from each (memU: hundreds of ms; Moss: single-digit ms).
-
-### Simulate a remote store (no memU key needed)
-
-If you just want to hear the effect in this one agent, set `moss_simulate_remote_ms` on the `main_control` node in `tenapp/property.json` to a remote-like latency and re-run `task run`:
-
-| Value | Behavior |
-| --- | --- |
-| `0` | Moss in-process (~2 ms); the agent replies immediately. |
-| `400` | Same agent, same answer, but it audibly pauses ~400 ms before every reply. |
+TEN's shipped memory/RAG backends (memU, OceanBase PowerRAG, EverMemOS) are remote services that pay a network round trip every turn, whereas Moss retrieves in-process, so the same grounding is a local call of single-digit milliseconds.
 
 ## Configuration
 
@@ -164,7 +150,6 @@ Moss is configured on the `main_control` node in `tenapp/property.json` (env-sub
 | `moss_context_header` | `Relevant knowledge from Moss:` | Header prepended to the injected grounding. |
 | `moss_max_context_chars` | `2000` | Cap on the injected grounding block; `0` means unlimited. |
 | `enable_moss` | `true` | Set to `false` to run the plain voice assistant with no grounding. |
-| `moss_simulate_remote_ms` | `0` | Artificial delay to imitate a slow remote store. |
 
 ## Provenance
 
