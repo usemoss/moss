@@ -27,8 +27,8 @@ class FakeMemory:
         self.insert_calls.append((content, tags))
         return "generated-id"
 
-    async def search_memory(self, query, *, top_k=5):
-        self.search_calls.append((query, top_k))
+    async def search_memory(self, query, *, top_k=5, tags=None):
+        self.search_calls.append((query, top_k, tags))
         from letta_moss.memory import ArchivalMemoryItem
 
         return [ArchivalMemoryItem(id="1", content="hit", tags=[], metadata={}, score=0.9)]
@@ -85,7 +85,7 @@ class TestMossMemorySearch:
 
         results = await moss_memory_search("query", top_k=2)
         [memory] = FakeMemory.instances
-        assert memory.search_calls == [("query", 2)]
+        assert memory.search_calls == [("query", 2, None)]
         expected_item = ArchivalMemoryItem(id="1", content="hit", tags=[], metadata={}, score=0.9)
         assert results == [dataclasses.asdict(expected_item)]
 

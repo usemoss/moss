@@ -38,7 +38,10 @@ async def _get_memory() -> MossLettaMemory:
         return _memory
     async with _memory_lock:
         if _memory is None:
-            memory = MossLettaMemory(index_name=os.environ["MOSS_INDEX_NAME"])
+            index_name = os.getenv("MOSS_INDEX_NAME")
+            if not index_name:
+                raise ValueError("MOSS_INDEX_NAME env var is required.")
+            memory = MossLettaMemory(index_name=index_name)
             await memory.load_index()
             _memory = memory
     return _memory
@@ -59,19 +62,23 @@ async def moss_memory_insert(content: str, tags: list[str] | None = None) -> str
     return await memory.insert_memory(content, tags=tags)
 
 
-async def moss_memory_search(query: str, top_k: int = 5) -> list[dict]:
+async def moss_memory_search(
+    query: str, top_k: int = 5, tags: list[str] | None = None
+) -> list[dict]:
     """Search Moss-backed archival storage for memories relevant to a query.
 
     Args:
         query: Natural-language query to search for.
         top_k: Maximum number of results to return.
+        tags: Optional list of tags to narrow results to — a memory is kept
+            if it has any of the given tags.
 
     Returns:
         A list of matching memories, each with ``id``, ``content``, ``tags``,
         ``metadata``, and ``score`` fields.
     """
     memory = await _get_memory()
-    items = await memory.search_memory(query, top_k=top_k)
+    items = await memory.search_memory(query, top_k=top_k, tags=tags)
     return [dataclasses.asdict(item) for item in items]
 
 

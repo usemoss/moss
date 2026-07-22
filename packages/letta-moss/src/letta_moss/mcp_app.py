@@ -45,15 +45,15 @@ def create_mcp_app(memory: MossLettaMemory) -> FastMCP:
         try:
             return await memory.insert_memory(content, tags=tags)
         except Exception as e:
-            raise RuntimeError(f"Moss memory insert failed: {e}") from e
+            raise RuntimeError("Moss memory insert failed") from e
 
     @app.tool(name=tools.moss_memory_search.__name__)
-    async def _search(query: str, top_k: int = 5) -> list[dict]:
+    async def _search(query: str, top_k: int = 5, tags: list[str] | None = None) -> list[dict]:
         """Search Moss-backed archival storage for memories relevant to a query."""
         try:
-            items = await memory.search_memory(query, top_k=top_k)
+            items = await memory.search_memory(query, top_k=top_k, tags=tags)
         except Exception as e:
-            raise RuntimeError(f"Moss memory search failed: {e}") from e
+            raise RuntimeError("Moss memory search failed") from e
         return [dataclasses.asdict(item) for item in items]
 
     @app.tool(name=tools.moss_memory_delete.__name__)
@@ -62,6 +62,6 @@ def create_mcp_app(memory: MossLettaMemory) -> FastMCP:
         try:
             await memory.delete_memory(memory_id)
         except Exception as e:
-            raise RuntimeError(f"Moss memory delete failed: {e}") from e
+            raise RuntimeError("Moss memory delete failed") from e
 
     return app

@@ -228,7 +228,7 @@ class MossLettaMemory:
         query_top_k = resolved_top_k * _TAGS_OVERSAMPLE_FACTOR if tags else resolved_top_k
         options = QueryOptions(top_k=query_top_k, alpha=self._alpha)
         result = await self._client.query(self._index_name, query, options=options)
-        items = [_doc_to_item(doc, score=doc.score) for doc in result.docs]
+        items = [_doc_to_item(doc) for doc in result.docs]
         if tags:
             wanted = set(tags)
             items = [item for item in items if wanted.intersection(item.tags)]

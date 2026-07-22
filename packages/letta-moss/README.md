@@ -68,7 +68,7 @@ Then register the server as an MCP tool source on your Letta agent, pointing at 
 |---|---|---|
 | `MossLettaMemory(*, project_id=None, project_key=None, index_name, top_k=5, alpha=0.8)` | class | Core adapter; `async load_index()`, `async insert_memory(content, tags=, metadata=) -> str`, `async search_memory(query, top_k=, tags=) -> list[ArchivalMemoryItem]`, `async delete_memory(memory_id)`, `async get_memory(memory_id) -> ArchivalMemoryItem \| None`, `async list_memories(limit=) -> list[ArchivalMemoryItem]`. Falls back to `MOSS_PROJECT_ID`/`MOSS_PROJECT_KEY` env vars when credentials are omitted. |
 | `moss_memory_insert(content, tags=None) -> str` | async function | Custom-tool wrapper; insert a memory, return its id. |
-| `moss_memory_search(query, top_k=5) -> list[dict]` | async function | Custom-tool wrapper; search memories, return dicts. |
+| `moss_memory_search(query, top_k=5, tags=None) -> list[dict]` | async function | Custom-tool wrapper; search memories, return dicts. |
 | `moss_memory_delete(memory_id) -> None` | async function | Custom-tool wrapper; delete a memory by id. |
 | `create_mcp_app(memory) -> FastMCP` | function | Returns a FastMCP server exposing `moss_memory_insert`/`moss_memory_search`/`moss_memory_delete`; runs `memory.load_index()` in its lifespan. |
 | `ArchivalMemoryItem` | dataclass | `id: str`, `content: str`, `tags: list[str]`, `metadata: dict`, `score: float \| None` (only populated on search results). |
@@ -86,7 +86,7 @@ Then register the server as an MCP tool source on your Letta agent, pointing at 
 ## Dependencies
 
 - `moss>=1.1.1`
-- `mcp>=1.2` (Model Context Protocol Python SDK, FastMCP) — only needed for the MCP server path
+- `mcp>=1.2` (Model Context Protocol Python SDK, FastMCP)
 - Python `>=3.10,<3.15`
 
 This package does not depend on `letta`/`letta-client` — it installs and runs standalone; you bring your own Letta client to register the tools.

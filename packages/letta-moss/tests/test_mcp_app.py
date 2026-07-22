@@ -15,7 +15,7 @@ class FakeMemory:
     async def insert_memory(self, content, *, tags=None):
         return "generated-id"
 
-    async def search_memory(self, query, *, top_k=5):
+    async def search_memory(self, query, *, top_k=5, tags=None):
         from letta_moss.memory import ArchivalMemoryItem
 
         return [ArchivalMemoryItem(id="1", content="hit", tags=[], metadata={}, score=0.9)]
