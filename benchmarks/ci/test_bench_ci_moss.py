@@ -103,7 +103,7 @@ def _git_sha() -> str:
 def moss_client():
     """Create a MossClient and load the benchmark index once per session."""
     # Import lazily — Moss native bindings may not be installed in every env.
-from moss import MossClient, DocumentInfo
+    from moss import MossClient, DocumentInfo
 
     project_id = os.getenv("MOSS_PROJECT_ID")
     project_key = os.getenv("MOSS_PROJECT_KEY")
@@ -243,9 +243,14 @@ class TestBenchmarkRecall:
 
         async def _evaluate():
             for q in QUERIES:
-                expected_ids = ground_truth.get(q, [])
+                expected_ids = ground_truth.get(q)
                 if not expected_ids:
-                    continue
+                    # Silently skipping would shrink the evaluated set and
+                    # inflate recall — fail loudly instead.
+                    raise AssertionError(
+                        f"Ground truth missing results for query {q!r}; "
+                        "regenerate benchmarks/ci/ground_truth.json"
+                    )
 
                 # recall@10 — fetch 10 results, also compute recall@5
                 result = await client.query(
@@ -356,7 +361,8 @@ class TestWriteResults:
     """Serialize benchmark results to JSON (always runs last)."""
 
     def test_write_results(self, request, benchmark_results):
-        output_path = request.config.getoption("--benchmark-output")
+        output_path = Path(request.config.getoption("--benchmark-output"))
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(benchmark_results, f, indent=2)
         print(f"\n  Results written to: {output_path}")
