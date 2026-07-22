@@ -113,6 +113,10 @@ The extension also emits a per-turn latency breakdown, both as a grep-able log l
 
 ASR timing appears in the Deepgram STT extension logs and TTS audio-out in the ElevenLabs TTS logs (both per turn in the worker log), so between those and the lines above you get the full component-by-component breakdown.
 
+### Benchmark against TEN's default retrieval
+
+TEN's shipped memory/RAG backends (memU, OceanBase PowerRAG, EverMemOS) are remote services that pay a network round trip every turn, whereas Moss retrieves in-process, so the same grounding is a local call of single-digit milliseconds.
+
 ### Simulate a remote store
 
 If you just want to hear the effect in this one agent, set `moss_simulate_remote_ms` on the `main_control` node in `tenapp/property.json` to a remote-like latency and re-run `task run`:
