@@ -103,7 +103,7 @@ def _git_sha() -> str:
 def moss_client():
     """Create a MossClient and load the benchmark index once per session."""
     # Import lazily — Moss native bindings may not be installed in every env.
-    from moss import MossClient, DocumentInfo, QueryOptions  # noqa: F811
+from moss import MossClient, DocumentInfo
 
     project_id = os.getenv("MOSS_PROJECT_ID")
     project_key = os.getenv("MOSS_PROJECT_KEY")
