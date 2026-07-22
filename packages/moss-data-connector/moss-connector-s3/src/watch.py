@@ -41,7 +41,9 @@ async def watch(
     The snapshot is taken *before* each ingest, so objects that change while
     an ingest is running are picked up on the next poll rather than lost.
 
-    If every matching object is deleted, the Moss index is deleted too, so
+    Every rebuild deletes the existing index and creates it afresh
+    (``create_index`` is create-only), which re-embeds the whole bucket. If
+    every matching object is deleted, the Moss index is deleted too, so
     stale documents never remain searchable; the index is re-created on the
     next change that adds objects back.
 
@@ -96,13 +98,21 @@ async def _sync(
 ) -> None:
     """Rebuild the index from the bucket, or delete it when the bucket emptied.
 
+    ``create_index`` is create-only, so every rebuild deletes the old index
+    first — including the initial one, in case a prior watch() run left the
+    index behind. The delete is best-effort: not-found on a first run (or
+    after an empty transition, or a concurrent external delete) is fine.
+
     ``ingest()`` is a no-op for an empty source, so a transition to an empty
-    bucket must delete the index explicitly — otherwise the old documents
-    would stay searchable forever.
+    bucket ends after the delete — otherwise the old documents would stay
+    searchable forever.
     """
-    if empty:
-        client = MossClient(project_id, project_key)
+    client = MossClient(project_id, project_key)
+    try:
         await client.delete_index(index_name)
+    except Exception:
+        pass  # index does not exist yet — nothing to delete
+    if empty:
         return
     # Materialize in a worker thread: iterating the connector performs
     # synchronous S3 downloads that would otherwise block the event loop.

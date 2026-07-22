@@ -90,6 +90,13 @@ If every matching object is deleted from the bucket, `watch()` deletes the
 Moss index rather than leaving stale documents searchable; the index is
 re-created on the next change that adds objects back.
 
+**Rebuild cost:** each change triggers a full rebuild — the existing index is
+deleted and every object is re-downloaded and re-embedded (`create_index` is
+create-only, and a rebuild is the simplest way to reflect deletes correctly).
+For large buckets that change often, this costs time and embedding spend
+proportional to the whole bucket, not the change; incremental sync
+(`add_docs`/`delete_docs` driven by the snapshot diff) is a planned follow-up.
+
 ## What the mapper receives
 
 Each object becomes a `dict` row with these keys:

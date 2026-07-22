@@ -38,15 +38,25 @@ class FakeMutationResult:
 
 @dataclass
 class FakeMossClient:
+    """Mimics the real client's strictness: create_index is create-only and
+    delete_index raises when the index is absent."""
+
     calls: list[dict[str, Any]] = field(default_factory=list)
     deleted: list[str] = field(default_factory=list)
+    existing: set[str] = field(default_factory=set)
 
     async def create_index(self, name, docs, model_id=None):
+        if name in self.existing:
+            raise ValueError(f"index '{name}' already exists")
+        self.existing.add(name)
         docs = list(docs)
         self.calls.append({"name": name, "docs": docs, "model_id": model_id})
         return FakeMutationResult(doc_count=len(docs), index_name=name)
 
     async def delete_index(self, name):
+        if name not in self.existing:
+            raise ValueError(f"index '{name}' not found")
+        self.existing.discard(name)
         self.deleted.append(name)
 
 
@@ -253,6 +263,7 @@ async def test_watch_reindexes_on_change(s3_bucket):
 
     with (
         patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_mutate),
     ):
         reindexed = await watch(
@@ -266,7 +277,10 @@ async def test_watch_reindexes_on_change(s3_bucket):
         )
 
     assert reindexed == 1
+    # The fake raises on duplicate create_index, so this also proves every
+    # rebuild deletes the previous index before re-creating it.
     assert len(fake_moss.calls) == 2  # initial ingest + one re-index
+    assert fake_moss.deleted == ["docs"]  # old index deleted before the rebuild
     assert len(fake_moss.calls[0]["docs"]) == 4
     second_keys = {d.id for d in fake_moss.calls[1]["docs"]}
     assert "docs/new.md" in second_keys
@@ -294,6 +308,7 @@ async def test_watch_deletes_index_when_bucket_emptied(s3_bucket):
     assert reindexed == 1
     assert len(fake_moss.calls) == 1  # only the initial ingest created an index
     assert fake_moss.deleted == ["docs"]
+    assert fake_moss.existing == set()  # nothing left searchable
 
 
 async def test_watch_async_on_change_awaited(s3_bucket):
@@ -310,6 +325,7 @@ async def test_watch_async_on_change_awaited(s3_bucket):
 
     with (
         patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_mutate),
     ):
         reindexed = await watch(
@@ -326,6 +342,30 @@ async def test_watch_async_on_change_awaited(s3_bucket):
     assert awaited and "docs/new.md" in awaited[0]
 
 
+async def test_watch_restart_with_existing_index(s3_bucket):
+    """A restarted watch() must replace an index left behind by a prior run."""
+    fake_moss = FakeMossClient()
+    fake_moss.existing.add("docs")  # index survives from a previous watch() run
+    source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
+
+    async def sleep_noop(_seconds):
+        return None
+
+    with (
+        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_noop),
+    ):
+        reindexed = await watch(
+            source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1
+        )
+
+    assert reindexed == 0
+    assert fake_moss.deleted == ["docs"]  # stale index replaced, not collided with
+    assert len(fake_moss.calls) == 1
+    assert fake_moss.existing == {"docs"}
+
+
 async def test_watch_no_change_no_reindex(s3_bucket):
     """watch() does not re-ingest when the bucket is unchanged."""
     fake_moss = FakeMossClient()
@@ -336,6 +376,7 @@ async def test_watch_no_change_no_reindex(s3_bucket):
 
     with (
         patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_noop),
     ):
         reindexed = await watch(
@@ -344,3 +385,4 @@ async def test_watch_no_change_no_reindex(s3_bucket):
 
     assert reindexed == 0
     assert len(fake_moss.calls) == 1  # only the initial ingest
+    assert fake_moss.deleted == []  # no needless rebuilds
