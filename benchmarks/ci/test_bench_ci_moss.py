@@ -314,7 +314,7 @@ class TestRegressionGuard:
 
         regression = (current_p95 - baseline_p95) / baseline_p95
 
-        print(f"\n  Latency regression check:")
+        print("\n  Latency regression check:")
         print(f"    Baseline P95 : {baseline_p95:.3f} ms")
         print(f"    Current  P95 : {current_p95:.3f} ms")
         print(f"    Change       : {regression:+.1%}")
@@ -344,7 +344,7 @@ class TestRegressionGuard:
 
         drop = baseline_recall - current_recall
 
-        print(f"\n  Recall regression check:")
+        print("\n  Recall regression check:")
         print(f"    Baseline Recall@5 : {baseline_recall:.4f}")
         print(f"    Current  Recall@5 : {current_recall:.4f}")
         print(f"    Drop              : {drop:+.4f}")
