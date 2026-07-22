@@ -1,4 +1,3 @@
-import asyncio
 import json
 import time
 from typing import Literal
@@ -65,7 +64,6 @@ class MainControlExtension(AsyncExtension):
         # Load config from runtime properties
         config_json, _ = await ten_env.get_property_to_json(None)
         self.config = MainControlConfig.model_validate_json(config_json)
-        self._moss_sim_ms = self.config.moss_simulate_remote_ms
 
         # Open a Moss session for ambient, session-scoped grounding (best-effort:
         # if the session can't open, the agent still runs, just without grounding).
@@ -133,10 +131,6 @@ class MainControlExtension(AsyncExtension):
                 # grounding failure can never drop the user's turn.
                 try:
                     t0 = time.perf_counter()
-                    # Speed showcase: optionally imitate a remote vector-DB round
-                    # trip so the latency Moss saves is audible.
-                    if self._moss_sim_ms:
-                        await asyncio.sleep(self._moss_sim_ms / 1000.0)
                     context = await self.moss.query_context(event.text)
                     took_ms = (time.perf_counter() - t0) * 1000.0
                     # The SDK reports the engine retrieval time on the result
@@ -146,7 +140,7 @@ class MainControlExtension(AsyncExtension):
                     self._retrieval_ms = float(sdk_ms) if sdk_ms is not None else took_ms
                     self._last_grounding = context
                     self._last_sdk_ms = sdk_ms
-                    backend = f"remote-sim(+{self._moss_sim_ms}ms)" if self._moss_sim_ms else "moss(in-process)"
+                    backend = "moss(in-process)"
                     # Shared tag so this lines up 1:1 with the instrumented memU
                     # example — grep '[retrieval-latency]' in both agents' logs.
                     self.ten_env.log_info(

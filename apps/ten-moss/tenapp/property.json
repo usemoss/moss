@@ -88,8 +88,7 @@
                 "moss_top_k": 3,
                 "moss_alpha": 0.8,
                 "moss_context_header": "Relevant knowledge from Moss:",
-                "enable_moss": true,
-                "moss_simulate_remote_ms": 0
+                "enable_moss": true
               }
             },
             {
