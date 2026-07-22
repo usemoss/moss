@@ -74,8 +74,9 @@ The difference from the stock TEN voice assistant is small and lives in three pl
 1. **Build the demo knowledge index** (from this directory; needs only the Moss SDK):
 
    ```bash
-   cp .env.example .env      # fill in MOSS_PROJECT_ID / MOSS_PROJECT_KEY / MOSS_INDEX_NAME
-   python create_index.py    # reads data/knowledge.jsonl, creates MOSS_INDEX_NAME
+   pip install moss python-dotenv   # the Moss SDK (+ python-dotenv to load .env)
+   cp .env.example .env             # fill in MOSS_PROJECT_ID / MOSS_PROJECT_KEY / MOSS_INDEX_NAME
+   python create_index.py           # reads data/knowledge.jsonl, creates MOSS_INDEX_NAME
    ```
 
 2. **Drop the app into a TEN checkout.** Create an example dir at `ten-framework/ai_agents/agents/examples/voice-assistant-with-moss/` by copying the sibling `voice-assistant` example (for its Taskfile, `scripts/`, and Dockerfile run harness), then replace that copy's `tenapp/` with this repo's `tenapp/`. `main_python` depends on [`ten-moss`](https://pypi.org/project/ten-moss/) (listed in `main_python/requirements.txt`), so `task install` pulls it from PyPI automatically.
@@ -117,15 +118,6 @@ ASR timing appears in the Deepgram STT extension logs and TTS audio-out in the E
 
 TEN's shipped memory/RAG backends (memU, OceanBase PowerRAG, EverMemOS) are remote services that pay a network round trip every turn, whereas Moss retrieves in-process, so the same grounding is a local call of single-digit milliseconds.
 
-### Simulate a remote store
-
-If you just want to hear the effect in this one agent, set `moss_simulate_remote_ms` on the `main_control` node in `tenapp/property.json` to a remote-like latency and re-run `task run`:
-
-| Value | Behavior |
-| --- | --- |
-| `0` | Moss in-process (~2 ms); the agent replies immediately. |
-| `400` | Same agent, same answer, but it audibly pauses ~400 ms before every reply. |
-
 ## Configuration
 
 Moss is configured on the `main_control` node in `tenapp/property.json` (env-substituted):
@@ -141,7 +133,6 @@ Moss is configured on the `main_control` node in `tenapp/property.json` (env-sub
 | `moss_context_header` | `Relevant knowledge from Moss:` | Header prepended to the injected grounding. |
 | `moss_max_context_chars` | `2000` | Cap on the injected grounding block; `0` means unlimited. |
 | `enable_moss` | `true` | Set to `false` to run the plain voice assistant with no grounding. |
-| `moss_simulate_remote_ms` | `0` | Artificial delay to imitate a slow remote store. |
 
 ## Provenance
 
