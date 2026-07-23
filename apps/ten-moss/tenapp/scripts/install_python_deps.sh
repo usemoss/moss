@@ -61,14 +61,29 @@ warm_moss_model_cache() {
     return 0
   fi
   echo "Warming the Moss embedding model cache..."
-  python3 - <<'PY' || echo "WARNING: Moss model warmup failed; the first session will download the model"
+  # Warming the cache IS the point of this step, so we do not swallow failures:
+  #   - a missing dependency (import error) is a broken install -> fail fast, and
+  #   - transient download/network errors are retried, then fail the install if
+  #     the model still cannot be warmed.
+  # A silent warmup failure would leave the cold-cache race in place (concurrent
+  # workers corrupt ~/.cache/moss-models and grounding degrades to nothing), so
+  # failing loudly here is better than an agent that looks fine but is ungrounded.
+  # (MOSS_* unset is handled above: it skips cleanly so credential-less installs
+  # still succeed.)
+  python3 - <<'PY'
 import asyncio
 import os
+import sys
+import time
 
+# A missing dependency means the install itself is broken: let this raise and
+# abort `task install` now, instead of surfacing later as a runtime import error.
 from ten_moss import MossSessionManager
 
+ATTEMPTS = 3
 
-async def main() -> None:
+
+async def _warm() -> None:
     manager = MossSessionManager(
         project_id=os.environ["MOSS_PROJECT_ID"],
         project_key=os.environ["MOSS_PROJECT_KEY"],
@@ -79,13 +94,28 @@ async def main() -> None:
     print(f"Moss model cache warm (doc_count={manager.doc_count})")
 
 
-try:
-    asyncio.run(main())
-except Exception as exc:  # noqa: BLE001 - warmup is best-effort
-    # Never fail `task install` over the warmup: a cold cache, unreachable
-    # index endpoint, etc. just mean the first session downloads the model.
-    # Print one clean line instead of dumping a traceback.
-    print(f"WARNING: Moss model warmup skipped ({exc}); first session will download the model")
+for attempt in range(1, ATTEMPTS + 1):
+    try:
+        asyncio.run(_warm())
+        break
+    except Exception as exc:  # noqa: BLE001 - retry transient download/network errors
+        if attempt == ATTEMPTS:
+            print(
+                f"ERROR: could not warm the Moss model cache after {ATTEMPTS} attempts: {exc}",
+                file=sys.stderr,
+            )
+            print(
+                "Aborting install: without a warm cache, concurrent workers race the "
+                "first model download and corrupt it, silently disabling grounding. "
+                "Fix connectivity/credentials and re-run `task install`.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print(
+            f"  warmup attempt {attempt}/{ATTEMPTS} failed ({exc}); retrying...",
+            file=sys.stderr,
+        )
+        time.sleep(2)
 PY
 }
 
