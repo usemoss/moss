@@ -5,11 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  postcss: ^8.5.13
-  esbuild: ^0.25.12
-  vite: ^6.4.3
-  undici: ^7.28.0
-  gray-matter: npm:@gr2m/gray-matter@4.0.3-with-pr-137
+  esbuild: ^0.28.0
+  postcss: ^8.5.19
+  vite: ^6.4.2
 
 importers:
 
@@ -17,7 +15,7 @@ importers:
     dependencies:
       '@moss-tools/md-indexer':
         specifier: file:../
-        version: file:..(vitepress@1.6.4(@algolia/client-search@5.56.0)(@types/node@24.13.3)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.23.1)(typescript@5.9.3))
+        version: file:..(vitepress@1.6.4(@algolia/client-search@5.51.0)(@types/node@24.10.4)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.21.0)(typescript@5.9.3))
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -33,7 +31,7 @@ importers:
         version: 5.9.3
       vitepress:
         specifier: ^1.6.4
-        version: 1.6.4(@algolia/client-search@5.56.0)(@types/node@24.13.3)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.23.1)(typescript@5.9.3)
+        version: 1.6.4(@algolia/client-search@5.51.0)(@types/node@24.10.4)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.21.0)(typescript@5.9.3)
 
 packages:
 
@@ -1005,7 +1003,7 @@ packages:
     hasBin: true
     peerDependencies:
       markdown-it-mathjax3: ^4
-      postcss: ^8.5.13
+      postcss: ^8.5.19
     peerDependenciesMeta:
       markdown-it-mathjax3:
         optional: true
@@ -1283,7 +1281,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@moss-tools/md-indexer@file:..(vitepress@1.6.4(@algolia/client-search@5.56.0)(@types/node@24.13.3)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.23.1)(typescript@5.9.3))':
+  '@moss-tools/md-indexer@file:..(vitepress@1.6.4(@algolia/client-search@5.51.0)(@types/node@24.10.4)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.21.0)(typescript@5.9.3))':
     dependencies:
       '@inferedge-rest/moss': 1.0.0-beta.3
       cheerio: 1.2.0
@@ -1292,7 +1290,7 @@ snapshots:
       gray-matter: '@gr2m/gray-matter@4.0.3-with-pr-137'
       p-limit: 7.3.0
       picocolors: 1.1.1
-      vitepress: 1.6.4(@algolia/client-search@5.56.0)(@types/node@24.13.3)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.23.1)(typescript@5.9.3)
+      vitepress: 1.6.4(@algolia/client-search@5.51.0)(@types/node@24.10.4)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.21.0)(typescript@5.9.3)
 
   '@rollup/rollup-android-arm-eabi@4.62.2':
     optional: true
@@ -1976,18 +1974,18 @@ snapshots:
 
   vite@6.4.3(@types/node@24.13.3)(tsx@4.23.1):
     dependencies:
-      esbuild: 0.25.12
-      fdir: 6.5.0(picomatch@4.0.5)
-      picomatch: 4.0.5
+      esbuild: 0.28.0
+      fdir: 6.5.0(picomatch@4.0.4)
+      picomatch: 4.0.4
       postcss: 8.5.19
-      rollup: 4.62.2
-      tinyglobby: 0.2.17
+      rollup: 4.60.2
+      tinyglobby: 0.2.16
     optionalDependencies:
       '@types/node': 24.13.3
       fsevents: 2.3.3
       tsx: 4.23.1
 
-  vitepress@1.6.4(@algolia/client-search@5.56.0)(@types/node@24.13.3)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.23.1)(typescript@5.9.3):
+  vitepress@1.6.4(@algolia/client-search@5.51.0)(@types/node@24.10.4)(postcss@8.5.19)(search-insights@2.17.3)(tsx@4.21.0)(typescript@5.9.3):
     dependencies:
       '@docsearch/css': 3.8.2
       '@docsearch/js': 3.8.2(@algolia/client-search@5.56.0)(search-insights@2.17.3)

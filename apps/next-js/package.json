@@ -34,10 +34,6 @@
     "vitest": "^4.1.8"
   },
   "overrides": {
-    "vite": "^8.1.5",
-    "undici": "^7.28.0",
-    "js-yaml": "^4.3.0",
-    "protobufjs": "^8.7.1",
-    "postcss": "^8.5.16"
+    "postcss": "^8.5.19"
   }
 }

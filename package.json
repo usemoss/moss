@@ -10,8 +10,8 @@
     "vitepress": "^1.6.4"
   },
   "overrides": {
-    "esbuild": "^0.25.12",
-    "postcss": "^8.5.16",
-    "vite": "^6.4.3"
+    "esbuild": "^0.28.0",
+    "postcss": "^8.5.19",
+    "vite": "^6.4.2"
   }
 }
