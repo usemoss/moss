@@ -51,6 +51,38 @@ install_python_requirements() {
   echo "Python dependencies installation completed!"
 }
 
+warm_moss_model_cache() {
+  # Download the Moss embedding model once, before any worker starts. Two
+  # workers starting at the same moment on a cold cache race the download and
+  # corrupt it; grounding then fails best-effort and the agent runs ungrounded.
+  # (Patch on the vendored baseline.)
+  if [[ -z "${MOSS_PROJECT_ID:-}" || -z "${MOSS_PROJECT_KEY:-}" || -z "${MOSS_INDEX_NAME:-}" ]]; then
+    echo "MOSS_* env vars not set; skipping Moss model warmup"
+    return 0
+  fi
+  echo "Warming the Moss embedding model cache..."
+  python3 - <<'PY' || echo "WARNING: Moss model warmup failed; the first session will download the model"
+import asyncio
+import os
+
+from ten_moss import MossSessionManager
+
+
+async def main() -> None:
+    manager = MossSessionManager(
+        project_id=os.environ["MOSS_PROJECT_ID"],
+        project_key=os.environ["MOSS_PROJECT_KEY"],
+        index_name=os.environ["MOSS_INDEX_NAME"],
+        model_id="moss-minilm",
+    )
+    await manager.open()
+    print(f"Moss model cache warm (doc_count={manager.doc_count})")
+
+
+asyncio.run(main())
+PY
+}
+
 build_go_app() {
   local app_dir=$1
   cd $app_dir
@@ -82,6 +114,8 @@ main() {
 
   # Install Python dependencies
   install_python_requirements "$APP_HOME"
+
+  warm_moss_model_cache
 }
 
 # If script is executed directly, run main function
