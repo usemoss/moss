@@ -382,7 +382,13 @@ module Moss
       return value if value
       return nil if @manage_url.nil? || @manage_url.empty?
 
-      @manage_url.sub("/v1/manage", "/query")
+      # Derive the query endpoint from the manage endpoint only when the
+      # substitution actually changes the URL. If manage_url was overridden to a
+      # value without "/v1/manage", return nil so the cloud fallback fails fast
+      # with a clear ConfigurationError instead of silently POSTing to the
+      # manage endpoint; callers can set query_url / MOSS_CLOUD_QUERY_URL.
+      derived = @manage_url.sub("/v1/manage", "/query")
+      derived == @manage_url ? nil : derived
     end
 
     # ---- conversions (Core -> Moss) ---------------------------------------

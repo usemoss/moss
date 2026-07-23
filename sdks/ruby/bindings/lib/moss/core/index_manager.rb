@@ -28,14 +28,15 @@ module Moss
       end
 
       def load_index(index_name, options = nil)
-        opts_ptr = load_index_options_pointer(options)
+        opts = Marshalling.build_load_index_options(options)
         out = ::FFI::MemoryPointer.new(:pointer)
 
         @handle.with_handle do |client|
           Marshalling.check!(
-            FFIBindings.moss_client_load_index(client, index_name.to_s, opts_ptr, out)
+            FFIBindings.moss_client_load_index(client, index_name.to_s, opts.pointer, out)
           )
         end
+        _retain(opts)
 
         struct = FFIBindings::IndexInfo.new(out.read_pointer)
         info = Marshalling.read_index_info(struct)
@@ -108,15 +109,6 @@ module Moss
       end
 
       private
-
-      def load_index_options_pointer(options)
-        return nil if options.nil?
-
-        struct = FFIBindings::LoadIndexOptions.new
-        struct[:auto_refresh] = options.auto_refresh ? true : false
-        struct[:polling_interval_secs] = options.polling_interval_secs.to_i
-        struct.to_ptr
-      end
 
       def _retain(_allocation); end
     end

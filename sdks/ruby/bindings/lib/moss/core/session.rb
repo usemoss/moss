@@ -33,18 +33,19 @@ module Moss
 
       def add_docs(docs, options = nil)
         input = Marshalling.build_documents(docs)
-        opts_ptr = add_docs_options_pointer(options)
+        opts = Marshalling.build_add_docs_options(options)
         added = ::FFI::MemoryPointer.new(:size_t)
         updated = ::FFI::MemoryPointer.new(:size_t)
 
         with_handle do |session|
           Marshalling.check!(
             FFIBindings.moss_session_add_docs(
-              session, input.pointer, docs.length, opts_ptr, added, updated
+              session, input.pointer, docs.length, opts.pointer, added, updated
             )
           )
         end
         _retain(input)
+        _retain(opts)
 
         Core::SessionAddResult.new(added: added.read(:size_t), updated: updated.read(:size_t))
       end
@@ -153,14 +154,6 @@ module Moss
 
           yield ptr
         end
-      end
-
-      def add_docs_options_pointer(options)
-        return nil if options.nil? || options.upsert.nil?
-
-        struct = FFIBindings::AddDocsOptions.new
-        struct[:upsert] = options.upsert ? true : false
-        struct.to_ptr
       end
 
       def _retain(_allocation); end

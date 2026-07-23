@@ -178,6 +178,35 @@ class ClientTest < Minitest::Test
     assert(index.calls.none? { |c| c[0] == :query })
   end
 
+  def test_cloud_query_raises_when_manage_url_has_no_derivable_query_endpoint
+    # manage_url without "/v1/manage" and no explicit query_url => query URL is
+    # undecidable, so the cloud fallback must fail fast rather than POST to the
+    # manage endpoint.
+    index = TestSupport::FakeIndexManager.new(loaded: [])
+    client = build_client(
+      manage: TestSupport::FakeManageClient.new, index: index,
+      manage_url: "https://custom.example/api"
+    )
+    assert_raises(Moss::ConfigurationError) { client.query("docs", "hello") }
+  end
+
+  def test_cloud_query_uses_explicit_query_url_when_manage_url_is_custom
+    index = TestSupport::FakeIndexManager.new(loaded: [])
+    client = build_client(
+      manage: TestSupport::FakeManageClient.new, index: index,
+      manage_url: "https://custom.example/api", query_url: "https://custom.example/search"
+    )
+    captured = nil
+    replacement = lambda { |**kwargs|
+      captured = kwargs
+      Moss::SearchResult.new(docs: [], query: kwargs[:query], index_name: kwargs[:index_name], time_taken_ms: 1)
+    }
+    TestSupport.with_stubbed_singleton(Moss::CloudQuery, :execute, replacement) do
+      client.query("docs", "hello")
+    end
+    assert_equal "https://custom.example/search", captured[:query_url]
+  end
+
   def test_search_is_an_alias_for_query
     index = TestSupport::FakeIndexManager.new(loaded: ["docs"])
     client = build_client(manage: TestSupport::FakeManageClient.new, index: index)

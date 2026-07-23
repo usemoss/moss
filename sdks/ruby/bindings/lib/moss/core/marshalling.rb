@@ -251,6 +251,47 @@ module Moss
         Allocation.new(opts.to_ptr, retained)
       end
 
+      # Option-struct builders. Each returns an Allocation whose #retained array
+      # keeps the FFI::Struct (and any backing strings) referenced for the
+      # duration of the native call, and whose #pointer is NULL when no options
+      # apply. Callers must keep the Allocation referenced until the call
+      # returns (see the _retain sinks in the client classes).
+
+      def build_mutation_options(options)
+        return Allocation.new(NULL, []) if options.nil? || options.upsert.nil?
+
+        struct = FFIBindings::MutationOptions.new
+        struct[:upsert] = options.upsert ? true : false
+        Allocation.new(struct.to_ptr, [struct])
+      end
+
+      def build_add_docs_options(options)
+        return Allocation.new(NULL, []) if options.nil? || options.upsert.nil?
+
+        struct = FFIBindings::AddDocsOptions.new
+        struct[:upsert] = options.upsert ? true : false
+        Allocation.new(struct.to_ptr, [struct])
+      end
+
+      def build_load_index_options(options)
+        return Allocation.new(NULL, []) if options.nil?
+
+        struct = FFIBindings::LoadIndexOptions.new
+        struct[:auto_refresh] = options.auto_refresh ? true : false
+        struct[:polling_interval_secs] = options.polling_interval_secs.to_i
+        Allocation.new(struct.to_ptr, [struct])
+      end
+
+      def build_session_options(options)
+        model_id = options&.model_id
+        return Allocation.new(NULL, []) if model_id.nil?
+
+        model_ptr = mem_string(model_id)
+        struct = FFIBindings::SessionOptions.new
+        struct[:model_id] = model_ptr
+        Allocation.new(struct.to_ptr, [struct, model_ptr])
+      end
+
       def apply_metadata(entry, metadata, retained)
         if metadata.nil? || metadata.empty?
           entry[:metadata] = NULL

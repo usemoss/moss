@@ -39,17 +39,18 @@ module Moss
 
       def add_docs(name, docs, options = nil)
         input = Marshalling.build_documents(docs)
-        opts_ptr = mutation_options_pointer(options)
+        opts = Marshalling.build_mutation_options(options)
         out = ::FFI::MemoryPointer.new(:pointer)
 
         @handle.with_handle do |client|
           Marshalling.check!(
             FFIBindings.moss_client_add_docs(
-              client, name.to_s, input.pointer, docs.length, opts_ptr, out
+              client, name.to_s, input.pointer, docs.length, opts.pointer, out
             )
           )
         end
         _retain(input)
+        _retain(opts)
 
         read_and_free_mutation_result(out)
       end
@@ -137,35 +138,18 @@ module Moss
       # Opens a session backed by this client. Keeps the ManageClient referenced
       # so the underlying native handle outlives the session.
       def session(name, options = nil)
-        opts_ptr = session_options_pointer(options)
+        opts = Marshalling.build_session_options(options)
         out = ::FFI::MemoryPointer.new(:pointer)
 
         @handle.with_handle do |client|
-          Marshalling.check!(FFIBindings.moss_client_session(client, name.to_s, opts_ptr, out))
+          Marshalling.check!(FFIBindings.moss_client_session(client, name.to_s, opts.pointer, out))
         end
+        _retain(opts)
 
         Session.new(out.read_pointer, owner: self)
       end
 
       private
-
-      def mutation_options_pointer(options)
-        return nil if options.nil? || options.upsert.nil?
-
-        struct = FFIBindings::MutationOptions.new
-        struct[:upsert] = options.upsert ? true : false
-        struct.to_ptr
-      end
-
-      def session_options_pointer(options)
-        model_id = options&.model_id
-        return nil if model_id.nil?
-
-        @session_model_id = Marshalling.mem_string(model_id) # retained on the instance for the call
-        struct = FFIBindings::SessionOptions.new
-        struct[:model_id] = @session_model_id
-        struct.to_ptr
-      end
 
       def read_and_free_mutation_result(out)
         struct = FFIBindings::MutationResult.new(out.read_pointer)
