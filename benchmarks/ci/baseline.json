@@ -1,0 +1,24 @@
+{
+  "commit": "f4732a1",
+  "timestamp": "2026-07-20T05:35:00+00:00",
+  "_note": "Recall values are measured (hardware-independent) so the recall guard is active. Latency values are intentionally zero — latency is hardware-dependent, so the guard skips until a baseline captured on CI runners replaces this file (run the Benchmark workflow, download the benchmark-results-<sha> artifact, commit it here).",
+  "latency_ms": {
+    "p50": 0,
+    "p95": 0,
+    "p99": 0,
+    "mean": 0,
+    "stdev": 0,
+    "count": 0
+  },
+  "recall": {
+    "recall_at_5": 1.0,
+    "recall_at_10": 1.0,
+    "queries_evaluated": 15
+  },
+  "config": {
+    "doc_count": 1000,
+    "query_rounds": 20,
+    "warmup_rounds": 3,
+    "top_k_latency": 5
+  }
+}

@@ -78,3 +78,15 @@ EMBEDDING_DIMENSION=768
 - **Warmup**: 3 rounds (excluded from measurements)
 - **Measured**: 50 rounds x 15 queries = 750 measurements per system
 - **top_k**: 5
+
+## CI Benchmark Suite
+
+For automated regression testing in CI, see [`benchmarks/ci/`](ci/).
+The workflow runs on every push to `main` and on PRs; benchmark tests skip
+when Moss credentials are unavailable (such as fork PRs). Authenticated runs
+track p50/p95/p99 latency and recall@k per commit and compare against a
+checked-in baseline, failing the build when regressions exceed the
+configured thresholds. The latency guard activates once a baseline measured
+on CI runners replaces the initial placeholder.
+
+See [`benchmarks/ci/README.md`](ci/README.md) for full documentation.
