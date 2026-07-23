@@ -12,6 +12,7 @@
   "overrides": {
     "esbuild": "^0.28.0",
     "postcss": "^8.5.16",
+    "protobufjs": "^8.7.1",
     "vite": "^6.4.2"
   }
 }
