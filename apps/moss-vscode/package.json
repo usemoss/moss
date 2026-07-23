@@ -171,5 +171,10 @@
     "@vscode/vsce": "^3.2.1",
     "esbuild": "^0.28.1",
     "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.0",
+    "undici": "^7.28.0",
+    "esbuild": "^0.28.1"
   }
 }

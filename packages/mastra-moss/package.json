@@ -46,5 +46,10 @@
     "typescript": "5.8.2",
     "vitest": "3.2.6",
     "zod": "3.25.76"
+  },
+  "overrides": {
+    "esbuild": "^0.25.12",
+    "vite": "^6.4.3",
+    "gray-matter": "npm:@gr2m/gray-matter@4.0.3-with-pr-137"
   }
 }

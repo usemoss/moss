@@ -1,0 +1,7 @@
+packages:
+  - '.'
+
+overrides:
+  postcss: ^8.5.13
+  esbuild: ^0.25.12
+  vite: ^6.4.3
