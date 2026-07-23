@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-moss.moss",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Data & Storage"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.moss.dev/docs/integrate/authentication"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/usemoss/moss/tree/main/packages/n8n-nodes-moss"
+			}
+		]
+	}
+}
