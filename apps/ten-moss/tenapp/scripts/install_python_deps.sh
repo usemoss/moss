@@ -51,6 +51,74 @@ install_python_requirements() {
   echo "Python dependencies installation completed!"
 }
 
+warm_moss_model_cache() {
+  # Download the Moss embedding model once, before any worker starts. Two
+  # workers starting at the same moment on a cold cache race the download and
+  # corrupt it; grounding then fails best-effort and the agent runs ungrounded.
+  # (Patch on the vendored baseline.)
+  if [[ -z "${MOSS_PROJECT_ID:-}" || -z "${MOSS_PROJECT_KEY:-}" || -z "${MOSS_INDEX_NAME:-}" ]]; then
+    echo "MOSS_* env vars not set; skipping Moss model warmup"
+    return 0
+  fi
+  echo "Warming the Moss embedding model cache..."
+  # Warming the cache IS the point of this step, so we do not swallow failures:
+  #   - a missing dependency (import error) is a broken install -> fail fast, and
+  #   - transient download/network errors are retried, then fail the install if
+  #     the model still cannot be warmed.
+  # A silent warmup failure would leave the cold-cache race in place (concurrent
+  # workers corrupt ~/.cache/moss-models and grounding degrades to nothing), so
+  # failing loudly here is better than an agent that looks fine but is ungrounded.
+  # (MOSS_* unset is handled above: it skips cleanly so credential-less installs
+  # still succeed.)
+  python3 - <<'PY'
+import asyncio
+import os
+import sys
+import time
+
+# A missing dependency means the install itself is broken: let this raise and
+# abort `task install` now, instead of surfacing later as a runtime import error.
+from ten_moss import MossSessionManager
+
+ATTEMPTS = 3
+
+
+async def _warm() -> None:
+    manager = MossSessionManager(
+        project_id=os.environ["MOSS_PROJECT_ID"],
+        project_key=os.environ["MOSS_PROJECT_KEY"],
+        index_name=os.environ["MOSS_INDEX_NAME"],
+        model_id="moss-minilm",
+    )
+    await manager.open()
+    print(f"Moss model cache warm (doc_count={manager.doc_count})")
+
+
+for attempt in range(1, ATTEMPTS + 1):
+    try:
+        asyncio.run(_warm())
+        break
+    except Exception as exc:  # noqa: BLE001 - retry transient download/network errors
+        if attempt == ATTEMPTS:
+            print(
+                f"ERROR: could not warm the Moss model cache after {ATTEMPTS} attempts: {exc}",
+                file=sys.stderr,
+            )
+            print(
+                "Aborting install: without a warm cache, concurrent workers race the "
+                "first model download and corrupt it, silently disabling grounding. "
+                "Fix connectivity/credentials and re-run `task install`.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print(
+            f"  warmup attempt {attempt}/{ATTEMPTS} failed ({exc}); retrying...",
+            file=sys.stderr,
+        )
+        time.sleep(2)
+PY
+}
+
 build_go_app() {
   local app_dir=$1
   cd $app_dir
@@ -82,6 +150,8 @@ main() {
 
   # Install Python dependencies
   install_python_requirements "$APP_HOME"
+
+  warm_moss_model_cache
 }
 
 # If script is executed directly, run main function
