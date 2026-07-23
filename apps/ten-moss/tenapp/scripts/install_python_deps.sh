@@ -79,7 +79,13 @@ async def main() -> None:
     print(f"Moss model cache warm (doc_count={manager.doc_count})")
 
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except Exception as exc:  # noqa: BLE001 - warmup is best-effort
+    # Never fail `task install` over the warmup: a cold cache, unreachable
+    # index endpoint, etc. just mean the first session downloads the model.
+    # Print one clean line instead of dumping a traceback.
+    print(f"WARNING: Moss model warmup skipped ({exc}); first session will download the model")
 PY
 }
 
