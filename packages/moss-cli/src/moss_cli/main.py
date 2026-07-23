@@ -7,6 +7,7 @@ from typing import Optional
 
 import typer
 
+from .commands.bench import bench_command
 from .commands.completions import completions_command
 from .commands.doc import doc_app
 from .commands.index import index_app
@@ -33,6 +34,7 @@ app.add_typer(job_app, name="job", help="Track background jobs")
 app.add_typer(profile_app, name="profile", help="Manage auth profiles")
 
 # Register top-level commands
+app.command(name="bench")(bench_command)
 app.command(name="query")(query_command)
 app.command(name="init")(init_command)
 app.command(name="version")(version_command)
