@@ -160,12 +160,14 @@ export interface QueryOptions {
 
   /**
    * Weight for hybrid search fusion (0.0 to 1.0).
+   * Only applies to locally loaded indexes; cloud queries ignore it and warn.
    * @default 0.8
    */
   alpha?: number;
 
   /**
    * Optional metadata filter to narrow query results.
+   * Requires a locally loaded index; cloud queries throw instead of returning unfiltered results.
    *
    * Supports field conditions and logical operators:
    * - Field: `{ field: "city", condition: { $eq: "NYC" } }`

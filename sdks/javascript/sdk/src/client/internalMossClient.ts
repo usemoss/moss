@@ -223,6 +223,17 @@ export class InternalMossClient {
       return this.indexManager.queryText(indexName, query, topK, alpha, options?.filter);
     }
 
+    if (options?.filter !== undefined) {
+      throw new Error(
+        `The filter query option requires a locally loaded index; call loadIndex('${indexName}') first`,
+      );
+    }
+    if (options?.alpha !== undefined) {
+      console.warn(
+        `moss: alpha is ignored for cloud queries on '${indexName}'; call loadIndex('${indexName}') to control hybrid weighting`,
+      );
+    }
+
     const topK = options?.topK ?? 5;
     const queryEmbedding = options?.embedding;
     return this.cloudClient.makeQueryRequest<SearchResult>(

@@ -25,32 +25,38 @@ const mockIndexLoadQueryModel = vi.fn();
 const mockIndexGetIndexInfo = vi.fn();
 
 vi.mock("../src/utils/cloudApiClient", () => ({
-  CloudApiClient: vi.fn().mockImplementation(() => ({
-    makeQueryRequest: mockMakeQueryRequest,
-  })),
+  CloudApiClient: vi.fn(function () {
+    return {
+      makeQueryRequest: mockMakeQueryRequest,
+    };
+  }),
 }));
 
 vi.mock("@moss-dev/moss-core", () => ({
-  ManageClient: vi.fn().mockImplementation(() => ({
-    createIndex: mockManageCreateIndex,
-    addDocs: mockManageAddDocs,
-    deleteDocs: mockManageDeleteDocs,
-    getJobStatus: mockManageGetJobStatus,
-    getIndex: mockManageGetIndex,
-    listIndexes: mockManageListIndexes,
-    deleteIndex: mockManageDeleteIndex,
-    getDocs: mockManageGetDocs,
-  })),
-  IndexManager: vi.fn().mockImplementation(() => ({
-    loadIndex: mockIndexLoadIndex,
-    unloadIndex: vi.fn(),
-    hasIndex: mockIndexHasIndex,
-    query: mockIndexQuery,
-    queryText: mockIndexQueryText,
-    loadQueryModel: mockIndexLoadQueryModel,
-    refreshIndex: vi.fn(),
-    getIndexInfo: mockIndexGetIndexInfo,
-  })),
+  ManageClient: vi.fn(function () {
+    return {
+      createIndex: mockManageCreateIndex,
+      addDocs: mockManageAddDocs,
+      deleteDocs: mockManageDeleteDocs,
+      getJobStatus: mockManageGetJobStatus,
+      getIndex: mockManageGetIndex,
+      listIndexes: mockManageListIndexes,
+      deleteIndex: mockManageDeleteIndex,
+      getDocs: mockManageGetDocs,
+    };
+  }),
+  IndexManager: vi.fn(function () {
+    return {
+      loadIndex: mockIndexLoadIndex,
+      unloadIndex: vi.fn(),
+      hasIndex: mockIndexHasIndex,
+      query: mockIndexQuery,
+      queryText: mockIndexQueryText,
+      loadQueryModel: mockIndexLoadQueryModel,
+      refreshIndex: vi.fn(),
+      getIndexInfo: mockIndexGetIndexInfo,
+    };
+  }),
   JobStatus: {
     PendingUpload: "pending_upload",
     Uploading: "uploading",
@@ -207,6 +213,43 @@ describe("InternalMossClient", () => {
       5,
       undefined,
     );
+  });
+
+  it("query rejects a filter on the cloud path instead of dropping it", async () => {
+    mockIndexHasIndex.mockResolvedValueOnce(false);
+    const client = new InternalMossClient("proj", "key");
+
+    await expect(
+      client.query("idx", "hello", {
+        filter: { field: "tenant", condition: { $eq: "acme" } },
+      }),
+    ).rejects.toThrow(
+      /filter query option requires a locally loaded index; call loadIndex\('idx'\) first/,
+    );
+    expect(mockMakeQueryRequest).not.toHaveBeenCalled();
+  });
+
+  it("query warns about alpha on the cloud path but still returns results", async () => {
+    mockIndexHasIndex.mockResolvedValueOnce(false);
+    mockMakeQueryRequest.mockResolvedValueOnce({ docs: [{ id: "cloud" }] });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const client = new InternalMossClient("proj", "key");
+
+    await expect(client.query("idx", "hello", { alpha: 0 })).resolves.toEqual({
+      docs: [{ id: "cloud" }],
+    });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("alpha is ignored for cloud queries"));
+    warn.mockRestore();
+  });
+
+  it("query still allows topK and embedding on the cloud path", async () => {
+    mockIndexHasIndex.mockResolvedValueOnce(false);
+    mockMakeQueryRequest.mockResolvedValueOnce({ docs: [] });
+    const client = new InternalMossClient("proj", "key");
+
+    await client.query("idx", "hello", { topK: 3, embedding: [0.1] });
+
+    expect(mockMakeQueryRequest).toHaveBeenCalledWith("idx", "hello", 3, [0.1]);
   });
 });
 
