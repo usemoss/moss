@@ -184,7 +184,7 @@ results = await client.query(
 )
 ```
 
-For a complete runnable example, see [`examples/python/metadata_filtering.py`](../../examples/python/metadata_filtering.py).
+For a complete runnable example, see [`examples/python/metadata_filtering.py`](../../../examples/python/metadata_filtering.py).
 
 ## 🧠 Providing custom embeddings
 

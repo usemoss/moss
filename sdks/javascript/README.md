@@ -67,4 +67,4 @@ npm test
 
 ## License
 
-[BSD 2-Clause License](./sdk/LICENSE.txt)
+[BSD 2-Clause License](./sdk/LICENSE)

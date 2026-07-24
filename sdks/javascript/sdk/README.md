@@ -134,8 +134,6 @@ const results = await mossClient.query("my-docs", "running shoes", {
 });
 ```
 
-For a complete runnable example, see [`samples/metadata-filtering.ts`](./samples/metadata-filtering.ts).
-
 ## 📄 License
 
 This package is licensed under the [BSD 2-Clause License](./LICENSE).
