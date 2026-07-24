@@ -8,7 +8,7 @@ The Go work now has the same two-layer direction as the other Moss SDKs:
 Current status:
 
 - bindings-backed manage operations for mutations and metadata reads
-- local `LoadIndex` / `UnloadIndex` / local `Query` via `libmoss`
+- local `LoadIndex` / `UnloadIndex` / `GetIndexInfo` / local `Query` via `libmoss`
 - examples under `examples/go/` and unit tests
 - env-gated integration test scaffold
 

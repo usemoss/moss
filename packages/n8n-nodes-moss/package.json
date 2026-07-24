@@ -1,0 +1,61 @@
+{
+	"name": "n8n-nodes-moss",
+	"version": "0.1.0",
+	"description": "n8n community node for Moss semantic search — create indexes, add documents, and query",
+	"license": "BSD-2-Clause",
+	"homepage": "https://docs.moss.dev",
+	"keywords": [
+		"n8n-community-node-package",
+		"moss",
+		"semantic-search",
+		"rag",
+		"vector-search"
+	],
+	"author": {
+		"name": "Moss Team",
+		"email": "contact@moss.dev"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/usemoss/moss.git",
+		"directory": "packages/n8n-nodes-moss"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"build": "tsc && node scripts/copy-icons.js",
+		"dev": "tsc --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"prepack": "npm run build && npm run test",
+		"prepublishOnly": "npm run build && npm run test"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/MossApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Moss/Moss.node.js"
+		]
+	},
+	"devDependencies": {
+		"@types/node": "^22.13.14",
+		"n8n-workflow": "*",
+		"typescript": "^5.8.2",
+		"vitest": "^3.2.6"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	},
+	"overrides": {
+		"lodash": "^4.18.1"
+	}
+}

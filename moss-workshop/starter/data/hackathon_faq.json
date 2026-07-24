@@ -1,62 +1,54 @@
 [
   {
     "id": "faq-about",
-    "text": "What is this hackathon? The Conversational AI Hackathon - a 24-hour hackathon hosted by Moss (YC F25) at the Y Combinator office in San Francisco, June 6-7, 2026. Build conversational AI: voice agents, chat agents, copilots, and more."
+    "text": "What is this hack day? Agents Hack Day at Bright Data - a focused, one-day building session on Saturday, July 18, 2026, from 9:30 AM to 7:00 PM PT at the Bright Data Web Data Loft, 625 2nd St, San Francisco. Hosted by Bright Data, presented by HackerSquad, with Moss (YC F25) as the official partner for real-time retrieval. Build practical AI agents and demo them by the end of the day."
   },
   {
     "id": "faq-theme",
-    "text": "Why is the hackathon about retrieval? Voice models are now cheap and fast - they are no longer the bottleneck; retrieval is. Moss makes real-time semantic search mature: sub-10ms lookups so agents can hold a fluid conversation, look up complex facts instantly, and act on them. The knowledge base is open and the latency is gone."
+    "text": "What is the theme? Building practical AI agents and developer tools - especially ones that use real web data. Voice and conversational models are cheap and fast now; the hard part is retrieval. Moss makes real-time semantic search mature: sub-10ms lookups so an agent can hold a fluid conversation, pull fresh facts instantly, and act on them."
   },
   {
-    "id": "faq-sponsors",
-    "text": "Who are the sponsors? LiveKit (real-time audio and video infrastructure), TrueFoundry (AI gateway to control, govern, and scale AI agents), Unsiloed (YC F25; API for parsing PDFs and unstructured documents), AWS (cloud computing), MiniMax (intelligence with everyone), and Qwen (voice design, cloning, and generation). Huge thanks to them for the credits, APIs, and prizes."
+    "id": "faq-focus",
+    "text": "What can I build? Anything in scope for the day: AI agents and developer tools; web data, research, crawling, and automation workflows; retrieval, evaluation, observability, and safety tooling; internal copilots and workflow automation; and multimodal or data-heavy prototypes. A great fit for this room: an agent that pulls live web data with Bright Data and grounds its answers in Moss."
   },
   {
-    "id": "faq-build",
-    "text": "What can I build? Anything conversational - voice agents, support copilots, real-time meeting assistants, cross-channel (SMS and voice) agents, on-device assistants. Pick one of the three tracks. Bonus points for real-time retrieval and a working live demo."
+    "id": "faq-hosts",
+    "text": "Who is hosting? Bright Data hosts the day at their Web Data Loft and provides the web data platform (crawling, search results, and product feeds). HackerSquad presents and runs the community. Moss is the official partner for real-time, on-device retrieval. LiveKit powers the audio pipeline in the voice-agent starter."
   },
   {
-    "id": "faq-tracks",
-    "text": "What are the tracks? Three tracks: (1) Lead Gen - agents that nurture and convert inbound leads; (2) Support - customer service bots that instantly pull docs and user history; (3) Co-Pilot - ambient agents that listen in and display live context."
+    "id": "faq-brightdata",
+    "text": "How do Bright Data and Moss work together? Bright Data fetches fresh web data - product listings, search results, crawled pages. Moss indexes that data locally and answers queries in under 10 milliseconds, so your agent can ground each reply in live web data without a slow round trip. Pull with Bright Data, index and query with Moss, respond in the same turn."
   },
   {
     "id": "faq-schedule",
-    "text": "What is the schedule? June 6: 1:00 PM doors open and lunch; 2:00 PM opening ceremony and sponsor intros; 2:30 PM hacking begins; 4:00 PM sponsor workshops and office hours; 6:30 PM dinner; 8:00 PM overnight hacking. June 7: 7:30 AM breakfast and final sprint; 11:00 AM submissions due and lunch; 1:00 PM judging, finalist demos, and closing ceremony."
+    "text": "What is the schedule? Saturday, July 18: 9:30 AM doors open; a focused kickoff sets the day's theme and constraints; then long, uninterrupted build blocks with optional team-formation check-ins. Meals are provided throughout the day. Informal demos happen near the end, and the day wraps at 7:00 PM PT."
   },
   {
-    "id": "faq-submissions",
-    "text": "When are submissions due? Submissions are due at 11:00 AM on June 7, followed by lunch."
+    "id": "faq-demos",
+    "text": "How do demos work? This is a build day, not a competition. Near the end there are informal demos - show what you made to the room. There is no formal submission portal, judging panel, or prize track; the goal is to ship something real and share it."
   },
   {
-    "id": "faq-judging",
-    "text": "When is judging? Judging, finalist demos, and the closing ceremony begin at 1:00 PM on June 7."
-  },
-  {
-    "id": "faq-prizes",
-    "text": "What are the prizes? First place: a YC interview, iPhones, sponsor credits, and prizes across the tracks. Second place: AirPods Max, sponsor credits, and track prizes. Third place: AirPods Pro, sponsor credits, and track prizes. Every attendee walks out with swag."
-  },
-  {
-    "id": "faq-judging-criteria",
-    "text": "What are the judges looking for? A working live demo, originality, and strong use of the sponsor tools. Track-specific prizes reward the best Lead Gen, Support, and Co-Pilot agents."
+    "id": "faq-team",
+    "text": "Do I need a team? No. Come solo or with a group. There are optional team-formation check-ins during the day if you want to find collaborators. Engineers, founders, designers, product builders, students, and technical operators are all here to build."
   },
   {
     "id": "faq-credits",
-    "text": "How do I get Moss credits? Sign up first at https://portal.usemoss.dev."
+    "text": "How do I get Moss credits? Sign up first at https://portal.usemoss.dev, create a project, and copy your Project ID and Project Key into your project's .env. If you need more credits, find the Moss team at their table."
   },
   {
     "id": "faq-use-moss",
-    "text": "How do I use Moss? Install with pip install moss. Create an index, load it, and query it in single-digit milliseconds. Docs at https://docs.moss.dev. The starter repo has runnable examples for quickstart, sessions, and a voice agent."
+    "text": "How do I use Moss? Install with pip install moss. Create an index, load it, and query it in single-digit milliseconds. Docs at https://docs.moss.dev. The starter repo has runnable examples: build_index.py to create the FAQ index and voice_agent.py for a LiveKit voice agent grounded in Moss."
   },
   {
     "id": "faq-why-moss",
-    "text": "What makes Moss good for conversational AI? Retrieval runs where your agent lives, so each lookup is a local call, not a network request - under 10 ms, versus hundreds of milliseconds for a cloud vector database. Sessions let you index the live conversation in real time and recall it instantly, then push to the cloud for handoff across agents, channels, and devices."
+    "text": "What makes Moss good for agents? Retrieval runs where your agent lives, so each lookup is a local call, not a network request - under 10 ms, versus hundreds of milliseconds for a cloud vector database. Sessions let you index the live conversation in real time and recall it instantly, then push to the cloud for handoff across agents, channels, and devices."
   },
   {
     "id": "faq-help",
-    "text": "Where do I get help this weekend? Find us at the Moss table any time, or join the Discord: https://discord.gg/eMXExuafBR. Sponsor workshops and office hours run from 4:00 PM on June 6. If you hit any issue using Moss, just reach out - we are here all weekend."
+    "text": "Where do I get help today? Find the Moss team at their table any time, or join the Discord: https://discord.gg/eMXExuafBR. If you hit any issue using Moss, just reach out - we are here all day."
   },
   {
     "id": "faq-logistics",
-    "text": "Where is food and wifi? Meals are provided: lunch at 1:00 PM and dinner at 6:30 PM on June 6, then breakfast at 7:30 AM and lunch at 11:00 AM on June 7. For the wifi network and restrooms, check the signage at the venue or ask at the Moss table."
+    "text": "Where is food and wifi? The venue is the Bright Data Web Data Loft, 625 2nd St, San Francisco. Meals and snacks are provided throughout the day. [FILL IN wifi network and password, and restroom locations.]"
   }
 ]

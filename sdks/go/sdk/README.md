@@ -12,7 +12,7 @@ The Go SDK now has two layers:
 - typed Go client and models
 - bindings-backed index creation and document mutation
 - bindings-backed index metadata and document reads
-- local index loading and query via native bindings
+- local index loading, metadata, and query via native bindings
 - cloud query fallback when an index is not loaded locally
 - optional caller-provided embeddings for custom indexes
 - env-gated live integration tests

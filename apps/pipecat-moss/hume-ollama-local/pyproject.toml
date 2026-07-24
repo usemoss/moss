@@ -2,9 +2,9 @@
 name = "pipecat-hume-ollama-local"
 version = "0.1.0"
 description = "Voice AI bot with local LLM (Ollama) + Moss semantic retrieval + Hume AI TTS"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
-    "pipecat-ai[webrtc,daily,silero,deepgram,openai,hume,runner]",
+    "pipecat-ai[webrtc,daily,silero,deepgram,openai,hume,runner]>=1.5.0",
     "pipecat-ai-cli",
     "pipecat-moss>=0.0.1",
 ]

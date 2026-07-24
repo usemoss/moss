@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Moss Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/apps/moss-vscode"],
+      "outFiles": ["${workspaceFolder}/apps/moss-vscode/dist/**/*.js"],
+      "preLaunchTask": "moss-vscode: build",
+      "envFile": "${workspaceFolder}/apps/moss-vscode/.env"
+    }
+  ]
+}

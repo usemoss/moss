@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "moss-vscode: build",
+      "type": "npm",
+      "script": "build",
+      "path": "apps/moss-vscode",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$esbuild"]
+    },
+    {
+      "label": "moss-vscode: watch",
+      "type": "npm",
+      "script": "watch",
+      "path": "apps/moss-vscode",
+      "isBackground": true,
+      "problemMatcher": ["$esbuild-watch"]
+    }
+  ]
+}

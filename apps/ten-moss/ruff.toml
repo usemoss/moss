@@ -1,0 +1,7 @@
+# `tenapp/` is vendored from the TEN Framework voice-assistant example (Apache-2.0;
+# see apps/ten-moss/README.md "Provenance"). Its runtime/agent modules ship with
+# star-imports and package re-exports upstream, which we don't restyle. Silence
+# those vendored-code lints; the Moss delta (extension.py, config.py) stays linted.
+[lint.per-file-ignores]
+"tenapp/ten_packages/extension/main_python/__init__.py" = ["F401"]
+"tenapp/ten_packages/extension/main_python/agent/*.py" = ["F401", "F403", "F405", "F841"]

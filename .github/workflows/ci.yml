@@ -21,7 +21,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install ruff mypy
+        # Pin ruff: 0.16.0 (released 2026-07-23) turned on a large new rule
+        # surface that flags ~460 pre-existing findings across the repo and
+        # breaks CI on every PR. Pinned to the last green version; bump only
+        # once those findings are addressed (see python-sdk-test for the twin).
+        pip install ruff==0.15.22 mypy
         if [ -f examples/python/requirements.txt ]; then pip install -r examples/python/requirements.txt; fi
     - name: Lint with ruff
       run: ruff check . --extend-exclude '**/*.ipynb'
@@ -91,7 +95,7 @@ jobs:
     - name: Lint with ruff
       working-directory: sdks/python/sdk
       run: |
-        pip install ruff
+        pip install ruff==0.15.22  # pinned; see python-lint job for why (ruff 0.16.0 regression)
         ruff check src/ tests/
     - name: Type check with mypy
       working-directory: sdks/python/sdk

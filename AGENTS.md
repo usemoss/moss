@@ -33,6 +33,7 @@ examples/
     dspy/          — DSPy notebook
     haystack/      — Haystack RAG pipeline integration
     langchain/     — LangChain retriever + tool integration
+    langflow/      — Langflow drag-and-drop retriever + search components
     langgraph/     - LangGraph stateful retrieval node
     mastra/        — Mastra agent createTool() integration
     pydantic-ai/   - Pydantic AI integration
@@ -49,6 +50,7 @@ apps/
     pipecat-quickstart/  — Cloud-deployable quickstart bot
     ollama-local/        — Local LLM + Moss + Pipecat via docker compose
     hume-ollama-local/   — Local LLM + Hume AI TTS + Moss + Pipecat
+  ten-moss/        — TEN Framework voice agent with Moss session-scoped grounding
   vapi-moss/       — VAPI Custom Tool webhook server
 packages/
   agora-moss/            — Agora Conversational AI MCP server package
@@ -62,7 +64,9 @@ packages/
   moss-md-indexer/       — Markdown docs → Moss index builder
   pipecat-moss/          — Pipecat Python integration package
   strands-agents-moss/   — AWS Strands Agents integration package
+  ten-moss/              — TEN Framework Moss session manager (MossSessionManager)
   vapi-moss/             — VAPI Custom Knowledge Base webhook adapter
+  n8n-nodes-moss/        — n8n community node for Moss index + query
   vercel-sdk/            — Vercel AI SDK tool wrappers (@moss-tools/vercel-sdk)
   vitepress-plugin-moss/ — VitePress search plugin (on-device fallback after cloud)
   zo-computer/           — Zo computer skill for Moss search
@@ -97,6 +101,7 @@ asks for an experimental landing spot.
 | `dspy/` | DSPy | Notebook-based DSPy + Moss integration |
 | `haystack/` | Haystack | `MossDocumentStore` and `MossRetriever` drop-in components for Haystack RAG pipelines |
 | `langchain/` | LangChain | `MossRetriever` (BaseRetriever) + `get_moss_tool()` factory; the canonical pattern for new Python cookbook integrations |
+| `langflow/` | Langflow | Drag-and-drop `MossRetrieverComponent` and `MossSearchComponent` for Langflow's visual flow builder |
 | `mastra/` | Mastra | Moss wrapped as a `createTool()` primitive for Mastra conversational agents (TypeScript) |
 | `sim/` | sim.ai | FastAPI webhook server exposing Moss as an external HTTP tool for sim.ai workflows |
 | `moss-cognee-daytona/` | Claude Code + Cognee + Daytona | Three Claude Code agents share a persistent Cognee memory graph backed by Moss, each running in an isolated Daytona sandbox |
@@ -111,6 +116,7 @@ asks for an experimental landing spot.
 | `pipecat-moss/pipecat-quickstart/` | Pipecat Cloud | Minimal Pipecat bot — local dev → Pipecat Cloud deployment |
 | `pipecat-moss/ollama-local/` | Pipecat + Ollama | Full-stack local voice AI: Ollama LLM + Moss RAG + Pipecat audio, one `docker compose up` |
 | `pipecat-moss/hume-ollama-local/` | Pipecat + Ollama + Hume | Same as above with Hume AI (Octave) expressive TTS |
+| `ten-moss/` | TEN Framework | Voice agent that grounds each turn in a Moss session (`MossSessionManager`); TEN `voice-assistant` example + the Moss delta |
 | `vapi-moss/` | VAPI | Webhook server connecting VAPI Custom Tool calls to Moss search; LLM-directed retrieval |
 
 ### Other Apps
@@ -137,7 +143,9 @@ asks for an experimental landing spot.
 | `pipecat-moss/` | `pipecat-moss` | `MossPipecatTool` — retrieval tool for Pipecat pipeline services |
 | `sim-moss/` | `sim-moss` | `MossSimSearch` — knowledge base adapter for sim.ai workflow HTTP tool nodes |
 | `strands-agents-moss/` | `strands-agents-moss` | Moss tool for AWS Strands Agents |
+| `ten-moss/` | `ten-moss` | `MossSessionManager` — session-scoped Moss grounding for TEN Framework control extensions |
 | `vapi-moss/` | `vapi-moss` | `MossVapiSearch` adapter + HMAC webhook verification for VAPI |
+| `n8n-nodes-moss/` | `n8n-nodes-moss` | n8n community node: create index, add/delete docs, list/get/delete indexes, query |
 | `vercel-sdk/` | `@moss-tools/vercel-sdk` | Vercel AI SDK 6 `tool()` wrappers: search, create index, manage documents |
 | `vitepress-plugin-moss/` | `vitepress-plugin-moss` | VitePress plugin: cloud search on first keystroke, on-device after index download |
 | `zo-computer/` | (internal) | Zo computer skill backed by Moss search |

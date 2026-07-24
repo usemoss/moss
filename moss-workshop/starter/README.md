@@ -1,7 +1,7 @@
 # Moss Hackathon Starter
 
-A real-time voice agent grounded in Moss - the Moss hackathon helper, and a head
-start for your own build. For the **YC x Moss · Conversational AI Hackathon**.
+A real-time voice agent grounded in Moss - the hack-day helper, and a head start for
+your own build. For **Agents Hack Day at Bright Data** (July 18, 2026).
 
 ## Run it
 
@@ -33,7 +33,8 @@ python voice_agent.py console
 LiveKit runs the audio (STT / LLM / TTS); Moss is the retrieval. The agent uses both
 Moss primitives: the FAQ **cloud index** (long-term knowledge) and a live **session**
 that indexes each turn so it can recall the conversation. Both query in-process, under
-10 ms. Edit `data/hackathon_faq.json`, or point it at your own data to build your own agent.
+10 ms. Edit `data/hackathon_faq.json`, or point it at your own data - e.g. live web data
+pulled with Bright Data - to build your own agent.
 
 ## Docs
 https://docs.moss.dev · Discord: https://discord.gg/eMXExuafBR

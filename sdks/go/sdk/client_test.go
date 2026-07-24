@@ -529,6 +529,82 @@ func TestLoadIndexRejectsUnsupportedCachePath(t *testing.T) {
 	}
 }
 
+func TestGetIndexInfoUsesLocalRuntime(t *testing.T) {
+	manageCalled := false
+	client := newTestClient(&fakeManageRuntime{
+		getIndexFn: func(name string) (mosscore.IndexInfo, error) {
+			manageCalled = true
+			return mosscore.IndexInfo{}, nil
+		},
+	}, &fakeIndexRuntime{
+		getIndexInfoFn: func(indexName string) (mosscore.IndexInfo, error) {
+			if indexName != "support-docs" {
+				t.Fatalf("unexpected index name: %q", indexName)
+			}
+			version := "v1"
+			createdAt := "2026-01-02T03:04:05Z"
+			updatedAt := "2026-01-03T03:04:05Z"
+			modelVersion := "0.8.7"
+			return mosscore.IndexInfo{
+				ID:        "idx-local",
+				Name:      "support-docs",
+				Version:   &version,
+				Status:    "Ready",
+				DocCount:  42,
+				CreatedAt: &createdAt,
+				UpdatedAt: &updatedAt,
+				Model:     mosscore.ModelRef{ID: string(ModelMossMiniLM), Version: &modelVersion},
+			}, nil
+		},
+	})
+
+	info, err := client.GetIndexInfo(context.Background(), "support-docs")
+	if err != nil {
+		t.Fatalf("GetIndexInfo returned error: %v", err)
+	}
+	if manageCalled {
+		t.Fatal("expected GetIndexInfo to use local index runtime, not manage runtime")
+	}
+	if info.ID != "idx-local" || info.Name != "support-docs" || info.DocCount != 42 {
+		t.Fatalf("unexpected index info: %#v", info)
+	}
+	if info.Version == nil || *info.Version != "v1" {
+		t.Fatalf("unexpected version: %#v", info.Version)
+	}
+	if info.Model.ID != string(ModelMossMiniLM) || info.Model.Version == nil || *info.Model.Version != "0.8.7" {
+		t.Fatalf("unexpected model: %#v", info.Model)
+	}
+}
+
+func TestGetIndexInfoValidatesCredentialsBeforeInitializingRuntime(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		projectID  string
+		projectKey string
+		wantErr    error
+	}{
+		{name: "missing project ID", projectID: "", projectKey: "project-key", wantErr: ErrMissingProjectID},
+		{name: "missing project key", projectID: "project-id", projectKey: "", wantErr: ErrMissingProjectKey},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := NewClient(tc.projectID, tc.projectKey)
+			factoryCalled := false
+			client.indexFactory = func(projectID, projectKey string) (indexRuntime, error) {
+				factoryCalled = true
+				return &fakeIndexRuntime{}, nil
+			}
+
+			_, err := client.GetIndexInfo(context.Background(), "support-docs")
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("expected %v, got %v", tc.wantErr, err)
+			}
+			if factoryCalled {
+				t.Fatal("expected index runtime initialization to be skipped")
+			}
+		})
+	}
+}
+
 func TestRefreshIndexValidatesCredentialsBeforeInitializingRuntime(t *testing.T) {
 	for _, tc := range []struct {
 		name       string

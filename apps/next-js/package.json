@@ -34,6 +34,6 @@
     "vitest": "^4.1.8"
   },
   "overrides": {
-    "postcss": "^8.5.16"
+    "postcss": "^8.5.19"
   }
 }
