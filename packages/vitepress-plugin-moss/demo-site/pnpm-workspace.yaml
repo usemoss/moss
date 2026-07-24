@@ -1,0 +1,5 @@
+allowBuilds:
+  esbuild: true
+overrides:
+  esbuild: "^0.28.1"
+  vite: "^8.1.4"

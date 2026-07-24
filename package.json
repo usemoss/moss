@@ -2,6 +2,9 @@
   "name": "moss-samples-root",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "type-check": "npm run type-check --prefix examples/javascript && npm run type-check --prefix apps/next-js",
     "lint": "npm run lint --prefix examples/javascript && npm run lint --prefix apps/next-js"
@@ -12,6 +15,6 @@
   "overrides": {
     "esbuild": "^0.28.0",
     "postcss": "^8.5.19",
-    "vite": "^6.4.2"
+    "vite": "^8.1.4"
   }
 }
