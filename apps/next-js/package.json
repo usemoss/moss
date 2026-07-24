@@ -15,7 +15,7 @@
     "framer-motion": "^12.38.0",
     "geist": "^1.7.0",
     "lucide-react": "^0.563.0",
-    "next": "16.2.6",
+    "next": "16.2.11",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "styled-jsx": "^5.1.6"
@@ -27,13 +27,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.1.5",
     "jsdom": "^29.1.0",
     "typescript": "^5",
     "vitest": "^4.1.8"
   },
   "overrides": {
-    "postcss": "^8.5.19"
+    "postcss": "^8.5.22"
   }
 }
