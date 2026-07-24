@@ -18,6 +18,10 @@ venv/
 # Claude
 *.claude/
 
+# Local agent skills (not part of the repo)
+.agents/
+skills-lock.json
+
 *.egg-info
 .moss-cache
 

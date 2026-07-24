@@ -1,0 +1,60 @@
+name: Moss VS Code Extension CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/moss-vscode/**"
+      - ".github/workflows/moss-vscode-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/moss-vscode/**"
+      - ".github/workflows/moss-vscode-ci.yml"
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: apps/moss-vscode
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/moss-vscode/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Package VSIX (Ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run package
+
+      - name: Verify VSIX contents (Ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run verify-package
+
+      - name: Upload VSIX artifact (Ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: moss-vscode-vsix
+          path: apps/moss-vscode/*.vsix
