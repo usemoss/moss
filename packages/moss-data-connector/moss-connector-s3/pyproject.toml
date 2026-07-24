@@ -1,0 +1,61 @@
+[project]
+name = "moss-connector-s3"
+version = "0.0.1"
+description = "Amazon S3 source connector for moss-connectors, with watch-based incremental sync."
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+license = { text = "BSD-2-Clause" }
+authors = [{ name = "InferEdge Inc.", email = "contact@moss.dev" }]
+keywords = ["moss", "connectors", "s3", "aws", "ingest", "etl", "sync"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+]
+dependencies = [
+    "moss>=1.1.1",
+    "boto3>=1.34",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "python-dotenv>=1.0.0",
+    "ruff>=0.5.0",
+    "moto[s3]>=5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/usemoss/moss"
+Repository = "https://github.com/usemoss/moss"
+Source = "https://github.com/usemoss/moss/tree/main/packages/moss-data-connector/moss-connector-s3"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+# Flat layout: src/ itself IS the package `moss_connector_s3`.
+[tool.setuptools]
+packages = ["moss_connector_s3"]
+package-dir = { "moss_connector_s3" = "src" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_integration_s3_moss.py" = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
