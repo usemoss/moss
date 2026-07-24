@@ -209,6 +209,19 @@ async def test_empty_bucket():
     assert fake_moss.calls == []
 
 
+async def test_ingest_accepts_plain_iterables():
+    """The exported ingest() wraps the shared one; pre-materialized docs work too."""
+    fake_moss = FakeMossClient()
+    docs = [DocumentInfo(id="a", text="alpha"), DocumentInfo(id="b", text="beta")]
+
+    with patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss):
+        result = await ingest(docs, "fake_id", "fake_key", index_name="plain")
+
+    assert result is not None
+    assert result.doc_count == 2
+    assert {d.id for d in fake_moss.calls[0]["docs"]} == {"a", "b"}
+
+
 async def test_auto_id_replaces_mapper_id(s3_bucket):
     fake_moss = FakeMossClient()
 

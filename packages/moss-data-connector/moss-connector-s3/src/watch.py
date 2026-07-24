@@ -20,8 +20,8 @@ from typing import Any
 
 from moss import MossClient
 
+from .aio import ingest
 from .connector import S3Connector
-from .ingest import ingest
 
 
 async def watch(
@@ -114,7 +114,6 @@ async def _sync(
         pass  # index does not exist yet — nothing to delete
     if empty:
         return
-    # Materialize in a worker thread: iterating the connector performs
-    # synchronous S3 downloads that would otherwise block the event loop.
-    docs = await asyncio.to_thread(list, source)
-    await ingest(docs, project_id, project_key, index_name, model_id=model_id, auto_id=auto_id)
+    # aio.ingest materializes the source in a worker thread, so the
+    # synchronous S3 downloads never block the event loop.
+    await ingest(source, project_id, project_key, index_name, model_id=model_id, auto_id=auto_id)

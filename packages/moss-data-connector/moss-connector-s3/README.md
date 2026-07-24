@@ -159,9 +159,15 @@ S3Connector(
 src/
 ├── __init__.py      # re-exports S3Connector, ingest, watch
 ├── connector.py     # S3Connector class (list, fetch, snapshot)
+├── aio.py           # exported ingest() — materializes S3 I/O in a worker thread
 ├── watch.py         # watch() — poll the bucket, re-index on change
-└── ingest.py        # ingest() - keep in sync with the other connector packages
+└── ingest.py        # shared ingest() - keep in sync with the other connector packages
 ```
+
+The package's exported `ingest()` (from `aio.py`) has the same signature as
+the shared template `ingest()`, but downloads the bucket in a worker thread
+via `asyncio.to_thread` so the event loop is never blocked, then delegates
+to the shared implementation.
 
 ## Tests
 
