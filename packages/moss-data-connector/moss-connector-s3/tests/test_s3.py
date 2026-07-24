@@ -258,6 +258,17 @@ async def test_snapshot_tracks_add_modify_delete(s3_bucket):
     assert after["docs/refunds.md"] != before["docs/refunds.md"]  # ETag changed
 
 
+async def test_snapshot_marker_includes_last_modified(s3_bucket):
+    """Markers pair ETag with LastModified/Size so metadata-only rewrites are seen."""
+    source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
+    head = s3_bucket.head_object(Bucket=BUCKET, Key="docs/refunds.md")
+
+    marker = source.snapshot()["docs/refunds.md"]
+    assert marker.startswith(f"{head['ETag'].strip(chr(34))}|")
+    assert head["LastModified"].isoformat() in marker
+    assert marker.endswith(str(head["ContentLength"]))
+
+
 async def test_snapshot_respects_filters(s3_bucket):
     source = S3Connector(
         bucket=BUCKET, mapper=_simple_mapper, prefix="docs/", suffix=".md", region_name=REGION
@@ -353,6 +364,33 @@ async def test_watch_async_on_change_awaited(s3_bucket):
 
     assert reindexed == 1
     assert awaited and "docs/new.md" in awaited[0]
+
+
+async def test_watch_failed_rebuild_keeps_old_index(s3_bucket):
+    """A rebuild that fails mid-download must not delete the live index."""
+    fake_moss = FakeMossClient()
+
+    def poison_aware_mapper(row: dict[str, Any]) -> DocumentInfo:
+        if row["key"] == "docs/poison.md":
+            raise ValueError("bad object body")
+        return _simple_mapper(row)
+
+    source = S3Connector(bucket=BUCKET, mapper=poison_aware_mapper, region_name=REGION)
+
+    async def sleep_then_poison(_seconds):
+        s3_bucket.put_object(Bucket=BUCKET, Key="docs/poison.md", Body=b"corrupt")
+
+    with (
+        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_poison),
+    ):
+        with pytest.raises(ValueError, match="bad object body"):
+            await watch(source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1)
+
+    assert fake_moss.existing == {"docs"}  # live index survived the failed rebuild
+    assert fake_moss.deleted == []
+    assert len(fake_moss.calls) == 1  # only the initial ingest
 
 
 async def test_watch_restart_with_existing_index(s3_bucket):

@@ -135,7 +135,12 @@ class S3Connector:
                 yield self.mapper(row)
 
     def snapshot(self) -> dict[str, str]:
-        """Return ``{key: etag}`` for every matching object in the bucket.
+        """Return ``{key: version marker}`` for every matching object.
+
+        The marker combines ETag, LastModified, and Size — the ETag alone
+        misses metadata-only rewrites, which keep the content hash but bump
+        LastModified, and the mapper does expose ``metadata`` /
+        ``content_type`` / ``last_modified``.
 
         Only lists keys — no object bodies are downloaded — so it is cheap
         to call repeatedly. ``watch()`` compares successive snapshots to
@@ -146,6 +151,10 @@ class S3Connector:
         for page in self._pages(s3):
             for obj in page.get("Contents", []):
                 key = obj["Key"]
-                if self._matches(key):
-                    snap[key] = str(obj.get("ETag", "")).strip('"')
+                if not self._matches(key):
+                    continue
+                etag = str(obj.get("ETag", "")).strip('"')
+                last_modified = obj.get("LastModified")
+                modified = last_modified.isoformat() if last_modified is not None else ""
+                snap[key] = f"{etag}|{modified}|{obj.get('Size', '')}"
         return snap

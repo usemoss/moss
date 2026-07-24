@@ -55,8 +55,9 @@ stable ids and you want Moss to generate UUID document IDs.
 
 `watch()` ingests the bucket once, then polls it and rebuilds the index
 whenever an object is added, removed, or modified (detected by comparing
-`{key: etag}` snapshots — polls only *list* the bucket; bodies are downloaded
-only when a re-index actually runs):
+`{key: version}` snapshots built from ETag + LastModified + Size, so
+metadata-only rewrites count too — polls only *list* the bucket; bodies are
+downloaded only when a re-index actually runs):
 
 ```python
 import asyncio
@@ -84,7 +85,7 @@ asyncio.run(main())
 
 Pass `max_polls=N` to stop after N polls (useful for one-shot sync jobs in a
 scheduler), and `on_change=callback` (sync or async) to be notified with the
-new `{key: etag}` snapshot after each re-index.
+new `{key: version}` snapshot after each re-index.
 
 If every matching object is deleted from the bucket, `watch()` deletes the
 Moss index rather than leaving stale documents searchable; the index is

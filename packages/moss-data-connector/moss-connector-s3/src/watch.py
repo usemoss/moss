@@ -2,9 +2,10 @@
 
 ``watch()`` ingests the bucket once, then polls it and rebuilds the index
 whenever the bucket contents change. Change detection compares
-``{key: etag}`` snapshots from ``S3Connector.snapshot()``, so added,
-removed, and modified objects all trigger a re-index. Snapshots only list
-keys — object bodies are downloaded only when a re-index actually runs.
+``{key: version marker}`` snapshots from ``S3Connector.snapshot()`` (ETag +
+LastModified + Size), so added, removed, and modified objects — including
+metadata-only rewrites — all trigger a re-index. Snapshots only list keys —
+object bodies are downloaded only when a re-index actually runs.
 
 S3 network I/O is synchronous under the hood (``boto3``), so snapshots and
 object downloads run in a worker thread via ``asyncio.to_thread`` to avoid
@@ -56,7 +57,7 @@ async def watch(
         model_id: Optional Moss model id, forwarded to ``ingest``.
         auto_id: Forwarded to ``ingest``; replaces mapper ids with UUIDs.
         on_change: Optional callback invoked after each re-index with the
-            new ``{key: etag}`` snapshot. May be sync or async.
+            new ``{key: version marker}`` snapshot. May be sync or async.
         max_polls: Stop after this many polls (useful for tests and one-shot
             sync jobs). ``None`` (the default) polls until cancelled.
 
@@ -98,22 +99,29 @@ async def _sync(
 ) -> None:
     """Rebuild the index from the bucket, or delete it when the bucket emptied.
 
-    ``create_index`` is create-only, so every rebuild deletes the old index
-    first — including the initial one, in case a prior watch() run left the
-    index behind. The delete is best-effort: not-found on a first run (or
-    after an empty transition, or a concurrent external delete) is fine.
+    The replacement docs are downloaded, decoded, and mapped *before* the old
+    index is touched, so a transient S3 error or a bad object body raises
+    while the live index is still intact and searchable. Only once the
+    materialized replacement is in hand does the rebuild delete the old index
+    (``create_index`` is create-only) and create the new one from the
+    already-validated list.
 
-    ``ingest()`` is a no-op for an empty source, so a transition to an empty
-    bucket ends after the delete — otherwise the old documents would stay
-    searchable forever.
+    The delete is best-effort: not-found on a first run (or after an empty
+    transition, or a concurrent external delete) is fine. An empty
+    replacement — the bucket emptied, or every object vanished between the
+    snapshot and the download — ends after the delete, because ``ingest()``
+    is a no-op for an empty source and stale documents must not stay
+    searchable.
     """
+    # Materialize first (in a worker thread — the S3 downloads are
+    # synchronous): if anything fails here, the old index is untouched.
+    docs = [] if empty else await asyncio.to_thread(list, source)
+
     client = MossClient(project_id, project_key)
     try:
         await client.delete_index(index_name)
     except Exception:
         pass  # index does not exist yet — nothing to delete
-    if empty:
+    if not docs:
         return
-    # aio.ingest materializes the source in a worker thread, so the
-    # synchronous S3 downloads never block the event loop.
-    await ingest(source, project_id, project_key, index_name, model_id=model_id, auto_id=auto_id)
+    await ingest(docs, project_id, project_key, index_name, model_id=model_id, auto_id=auto_id)
