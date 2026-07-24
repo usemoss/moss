@@ -14,7 +14,7 @@ description: >-
 | Doc | Purpose |
 |-----|---------|
 | [project-summary.md](../../project-summary.md) | Full technical reference |
-| [how-to.md](../../how-to.md) | End-user guide |
+| [how-to.md](../../../how-to.md) | End-user guide |
 | [contribution.md](../../contribution.md) | Contributor guide |
 
 ## Specialized skills
