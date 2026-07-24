@@ -2,7 +2,7 @@
 
 Populates a temporary S3 bucket (against real AWS or a local endpoint such
 as MinIO / LocalStack), ingests it into a live Moss project via ``ingest()``,
-runs a real semantic query, exercises ``watch()`` re-indexing, and cleans
+runs a real semantic query, exercises ``watch()`` syncing, and cleans
 everything up on exit.
 
 SKIPPED unless both MOSS_PROJECT_ID and MOSS_PROJECT_KEY are set.

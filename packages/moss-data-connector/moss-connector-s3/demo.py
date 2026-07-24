@@ -181,9 +181,9 @@ async def run_queries(client: MossClient) -> None:
             print(f"      → [{doc.id}] {doc.text}")
 
 
-# ── step 5: change the bucket, watch() re-indexes ───────────────────────────
+# ── step 5: change the bucket, watch() syncs the change ─────────────────────
 async def watch_once(s3) -> None:
-    sep("Step 5 — Add an object, watch() re-indexes")
+    sep("Step 5 — Add an object, watch() syncs it")
 
     async def add_soon():
         await asyncio.sleep(0.5)
@@ -200,7 +200,7 @@ async def watch_once(s3) -> None:
         watch(make_source(), MOSS_ID, MOSS_KEY, INDEX_NAME, poll_interval=1.0, max_polls=5),
         add_soon(),
     )
-    print(f"  ✓ watch() performed {reindexed} re-index(es)")
+    print(f"  ✓ watch() applied {reindexed} change sync(s)")
 
 
 # ── step 6: cleanup ──────────────────────────────────────────────────────────

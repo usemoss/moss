@@ -36,27 +36,64 @@ class FakeMutationResult:
     index_name: str = ""
 
 
+class _FakeIndexInfo:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
 @dataclass
 class FakeMossClient:
-    """Mimics the real client's strictness: create_index is create-only and
-    delete_index raises when the index is absent."""
+    """Stateful fake mimicking the real client's strictness: create_index is
+    create-only, and every other mutation raises when the index is absent.
+    Documents are stored per index so upserts and deletes can be verified."""
 
     calls: list[dict[str, Any]] = field(default_factory=list)
     deleted: list[str] = field(default_factory=list)
-    existing: set[str] = field(default_factory=set)
+    indexes: dict[str, dict[str, DocumentInfo]] = field(default_factory=dict)
+
+    @property
+    def existing(self) -> set[str]:
+        return set(self.indexes)
+
+    def docs_in(self, name: str) -> dict[str, DocumentInfo]:
+        return self.indexes[name]
 
     async def create_index(self, name, docs, model_id=None):
-        if name in self.existing:
+        if name in self.indexes:
             raise ValueError(f"index '{name}' already exists")
-        self.existing.add(name)
         docs = list(docs)
-        self.calls.append({"name": name, "docs": docs, "model_id": model_id})
+        self.indexes[name] = {d.id: d for d in docs}
+        self.calls.append({"op": "create", "name": name, "docs": docs, "model_id": model_id})
         return FakeMutationResult(doc_count=len(docs), index_name=name)
 
-    async def delete_index(self, name):
-        if name not in self.existing:
+    async def add_docs(self, name, docs, options=None):
+        if name not in self.indexes:
             raise ValueError(f"index '{name}' not found")
-        self.existing.discard(name)
+        docs = list(docs)
+        self.indexes[name].update({d.id: d for d in docs})
+        self.calls.append({"op": "add", "name": name, "docs": docs, "options": options})
+        return FakeMutationResult(doc_count=len(docs), index_name=name)
+
+    async def delete_docs(self, name, doc_ids):
+        if name not in self.indexes:
+            raise ValueError(f"index '{name}' not found")
+        for doc_id in doc_ids:
+            self.indexes[name].pop(doc_id, None)
+        self.calls.append({"op": "delete_docs", "name": name, "doc_ids": list(doc_ids)})
+        return FakeMutationResult(doc_count=len(doc_ids), index_name=name)
+
+    async def get_docs(self, name, options=None):
+        if name not in self.indexes:
+            raise ValueError(f"index '{name}' not found")
+        return list(self.indexes[name].values())
+
+    async def list_indexes(self):
+        return [_FakeIndexInfo(name) for name in self.indexes]
+
+    async def delete_index(self, name):
+        if name not in self.indexes:
+            raise ValueError(f"index '{name}' not found")
+        del self.indexes[name]
         self.deleted.append(name)
 
 
@@ -276,8 +313,8 @@ async def test_snapshot_respects_filters(s3_bucket):
     assert set(source.snapshot()) == {"docs/refunds.md", "docs/shipping.md"}
 
 
-async def test_watch_reindexes_on_change(s3_bucket):
-    """watch() ingests once, then re-ingests when the bucket changes."""
+async def test_watch_added_object_syncs_incrementally(s3_bucket):
+    """A new object is upserted on its own — the index is never rebuilt."""
     fake_moss = FakeMossClient()
     source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
     changes: list[dict[str, str]] = []
@@ -286,11 +323,10 @@ async def test_watch_reindexes_on_change(s3_bucket):
         s3_bucket.put_object(Bucket=BUCKET, Key="docs/new.md", Body=b"Newly added document.")
 
     with (
-        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_mutate),
     ):
-        reindexed = await watch(
+        synced = await watch(
             source,
             "fake_id",
             "fake_key",
@@ -300,15 +336,62 @@ async def test_watch_reindexes_on_change(s3_bucket):
             on_change=changes.append,
         )
 
-    assert reindexed == 1
-    # The fake raises on duplicate create_index, so this also proves every
-    # rebuild deletes the previous index before re-creating it.
-    assert len(fake_moss.calls) == 2  # initial ingest + one re-index
-    assert fake_moss.deleted == ["docs"]  # old index deleted before the rebuild
-    assert len(fake_moss.calls[0]["docs"]) == 4
-    second_keys = {d.id for d in fake_moss.calls[1]["docs"]}
-    assert "docs/new.md" in second_keys
+    assert synced == 1
+    assert fake_moss.deleted == []  # the live index was never dropped
+    assert [c["op"] for c in fake_moss.calls] == ["create", "add"]
+    assert len(fake_moss.calls[0]["docs"]) == 4  # initial create: whole bucket
+    add_docs = fake_moss.calls[1]["docs"]
+    assert [d.id for d in add_docs] == ["docs/new.md"]  # only the diff was pushed
+    assert set(fake_moss.docs_in("docs")) == set(SAMPLE_OBJECTS) | {"docs/new.md"}
     assert changes and "docs/new.md" in changes[0]
+
+
+async def test_watch_modified_object_upserts_only_that_doc(s3_bucket):
+    """An overwritten object is re-pushed alone, with its new content."""
+    fake_moss = FakeMossClient()
+    source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
+
+    async def sleep_then_overwrite(_seconds):
+        s3_bucket.put_object(
+            Bucket=BUCKET, Key="docs/refunds.md", Body=b"Refunds now take 7 days."
+        )
+
+    with (
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_overwrite),
+    ):
+        synced = await watch(
+            source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1
+        )
+
+    assert synced == 1
+    assert [c["op"] for c in fake_moss.calls] == ["create", "add"]
+    assert [d.id for d in fake_moss.calls[1]["docs"]] == ["docs/refunds.md"]
+    assert fake_moss.docs_in("docs")["docs/refunds.md"].text == "Refunds now take 7 days."
+    assert len(fake_moss.docs_in("docs")) == 4  # no duplicates
+
+
+async def test_watch_removed_object_deletes_only_that_doc(s3_bucket):
+    """A deleted object is removed by id — the other docs stay untouched."""
+    fake_moss = FakeMossClient()
+    source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
+
+    async def sleep_then_remove(_seconds):
+        s3_bucket.delete_object(Bucket=BUCKET, Key="docs/support.txt")
+
+    with (
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_remove),
+    ):
+        synced = await watch(
+            source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1
+        )
+
+    assert synced == 1
+    assert [c["op"] for c in fake_moss.calls] == ["create", "delete_docs"]
+    assert fake_moss.calls[1]["doc_ids"] == ["docs/support.txt"]
+    assert set(fake_moss.docs_in("docs")) == set(SAMPLE_OBJECTS) - {"docs/support.txt"}
+    assert fake_moss.deleted == []
 
 
 async def test_watch_deletes_index_when_bucket_emptied(s3_bucket):
@@ -321,16 +404,15 @@ async def test_watch_deletes_index_when_bucket_emptied(s3_bucket):
             s3_bucket.delete_object(Bucket=BUCKET, Key=key)
 
     with (
-        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_empty),
     ):
-        reindexed = await watch(
+        synced = await watch(
             source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1
         )
 
-    assert reindexed == 1
-    assert len(fake_moss.calls) == 1  # only the initial ingest created an index
+    assert synced == 1
+    assert [c["op"] for c in fake_moss.calls] == ["create"]
     assert fake_moss.deleted == ["docs"]
     assert fake_moss.existing == set()  # nothing left searchable
 
@@ -348,11 +430,10 @@ async def test_watch_async_on_change_awaited(s3_bucket):
         s3_bucket.put_object(Bucket=BUCKET, Key="docs/new.md", Body=b"Newly added document.")
 
     with (
-        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_mutate),
     ):
-        reindexed = await watch(
+        synced = await watch(
             source,
             "fake_id",
             "fake_key",
@@ -362,12 +443,12 @@ async def test_watch_async_on_change_awaited(s3_bucket):
             on_change=async_on_change,
         )
 
-    assert reindexed == 1
+    assert synced == 1
     assert awaited and "docs/new.md" in awaited[0]
 
 
-async def test_watch_failed_rebuild_keeps_old_index(s3_bucket):
-    """A rebuild that fails mid-download must not delete the live index."""
+async def test_watch_failed_sync_keeps_old_index(s3_bucket):
+    """A sync that fails mid-download must leave the live index untouched."""
     fake_moss = FakeMossClient()
 
     def poison_aware_mapper(row: dict[str, Any]) -> DocumentInfo:
@@ -381,44 +462,50 @@ async def test_watch_failed_rebuild_keeps_old_index(s3_bucket):
         s3_bucket.put_object(Bucket=BUCKET, Key="docs/poison.md", Body=b"corrupt")
 
     with (
-        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_poison),
     ):
         with pytest.raises(ValueError, match="bad object body"):
             await watch(source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1)
 
-    assert fake_moss.existing == {"docs"}  # live index survived the failed rebuild
+    assert fake_moss.existing == {"docs"}  # live index survived the failed sync
     assert fake_moss.deleted == []
-    assert len(fake_moss.calls) == 1  # only the initial ingest
+    assert [c["op"] for c in fake_moss.calls] == ["create"]
+    assert set(fake_moss.docs_in("docs")) == set(SAMPLE_OBJECTS)  # content intact
 
 
-async def test_watch_restart_with_existing_index(s3_bucket):
-    """A restarted watch() must replace an index left behind by a prior run."""
+async def test_watch_restart_reconciles_existing_index(s3_bucket):
+    """A restarted watch() reuses a surviving index: upserts current docs and
+    purges stale ones, without ever deleting the index."""
     fake_moss = FakeMossClient()
-    fake_moss.existing.add("docs")  # index survives from a previous watch() run
+    fake_moss.indexes["docs"] = {  # index survives from a previous watch() run
+        "docs/refunds.md": DocumentInfo(id="docs/refunds.md", text="old refund text"),
+        "docs/gone.md": DocumentInfo(id="docs/gone.md", text="object no longer in bucket"),
+    }
     source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
 
     async def sleep_noop(_seconds):
         return None
 
     with (
-        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_noop),
     ):
-        reindexed = await watch(
+        synced = await watch(
             source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1
         )
 
-    assert reindexed == 0
-    assert fake_moss.deleted == ["docs"]  # stale index replaced, not collided with
-    assert len(fake_moss.calls) == 1
-    assert fake_moss.existing == {"docs"}
+    assert synced == 0
+    assert fake_moss.deleted == []  # reconciled in place, never dropped
+    assert [c["op"] for c in fake_moss.calls] == ["add", "delete_docs"]
+    assert fake_moss.calls[1]["doc_ids"] == ["docs/gone.md"]  # stale doc purged
+    assert set(fake_moss.docs_in("docs")) == set(SAMPLE_OBJECTS)
+    refund = fake_moss.docs_in("docs")["docs/refunds.md"]
+    assert refund.text == SAMPLE_OBJECTS["docs/refunds.md"]  # upserted, not stale
 
 
-async def test_watch_no_change_no_reindex(s3_bucket):
-    """watch() does not re-ingest when the bucket is unchanged."""
+async def test_watch_no_change_no_sync(s3_bucket):
+    """watch() pushes nothing when the bucket is unchanged."""
     fake_moss = FakeMossClient()
     source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
 
@@ -426,14 +513,13 @@ async def test_watch_no_change_no_reindex(s3_bucket):
         return None
 
     with (
-        patch("moss_connector_s3.ingest.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
         patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_noop),
     ):
-        reindexed = await watch(
+        synced = await watch(
             source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=3
         )
 
-    assert reindexed == 0
-    assert len(fake_moss.calls) == 1  # only the initial ingest
-    assert fake_moss.deleted == []  # no needless rebuilds
+    assert synced == 0
+    assert [c["op"] for c in fake_moss.calls] == ["create"]  # only the initial sync
+    assert fake_moss.deleted == []

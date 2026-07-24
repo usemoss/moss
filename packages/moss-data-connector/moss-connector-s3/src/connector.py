@@ -27,7 +27,7 @@ so coerce non-string values (e.g. ``size``, ``last_modified``) to ``str``.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from typing import Any
 
 import boto3
@@ -102,6 +102,34 @@ class S3Connector:
             kwargs["Prefix"] = self.prefix
         yield from paginator.paginate(**kwargs)
 
+    def _fetch_row(self, s3: Any, key: str) -> dict[str, Any] | None:
+        """Download one object and build its mapper row.
+
+        Returns ``None`` when the object vanished between listing and
+        fetching (an actively modified bucket), so callers can skip it
+        rather than abort — watch() picks the change up on the next poll.
+        """
+        try:
+            response = s3.get_object(Bucket=self.bucket, Key=key)
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "")
+            if code in ("NoSuchKey", "404"):
+                return None
+            raise
+        body: bytes = response["Body"].read()
+        # etag / last_modified / size come from the get_object response, not
+        # the (possibly stale) list entry, so each row describes a single
+        # consistent object version.
+        return {
+            "key": key,
+            "text": body.decode(self.encoding, errors=self.encoding_errors),
+            "etag": str(response.get("ETag", "")).strip('"'),
+            "last_modified": response.get("LastModified"),
+            "size": response.get("ContentLength"),
+            "content_type": response.get("ContentType"),
+            "metadata": response.get("Metadata", {}),
+        }
+
     def __iter__(self) -> Iterator[DocumentInfo]:
         s3 = self._client()
         for page in self._pages(s3):
@@ -109,30 +137,22 @@ class S3Connector:
                 key = obj["Key"]
                 if not self._matches(key):
                     continue
-                try:
-                    response = s3.get_object(Bucket=self.bucket, Key=key)
-                except ClientError as exc:
-                    # The object can vanish between listing and fetching in an
-                    # actively modified bucket; skip it rather than abort the
-                    # whole iteration. watch() picks the change up next poll.
-                    code = exc.response.get("Error", {}).get("Code", "")
-                    if code in ("NoSuchKey", "404"):
-                        continue
-                    raise
-                body: bytes = response["Body"].read()
-                # etag / last_modified / size come from the get_object
-                # response, not the (possibly stale) list entry, so each row
-                # describes a single consistent object version.
-                row: dict[str, Any] = {
-                    "key": key,
-                    "text": body.decode(self.encoding, errors=self.encoding_errors),
-                    "etag": str(response.get("ETag", "")).strip('"'),
-                    "last_modified": response.get("LastModified"),
-                    "size": response.get("ContentLength"),
-                    "content_type": response.get("ContentType"),
-                    "metadata": response.get("Metadata", {}),
-                }
-                yield self.mapper(row)
+                row = self._fetch_row(s3, key)
+                if row is not None:
+                    yield self.mapper(row)
+
+    def fetch(self, keys: Iterable[str]) -> Iterator[tuple[str, DocumentInfo]]:
+        """Yield ``(key, DocumentInfo)`` for each of the given keys.
+
+        Downloads only the requested objects — this is what lets ``watch()``
+        sync incrementally instead of re-reading the whole bucket. Keys that
+        no longer exist are skipped.
+        """
+        s3 = self._client()
+        for key in keys:
+            row = self._fetch_row(s3, key)
+            if row is not None:
+                yield key, self.mapper(row)
 
     def snapshot(self) -> dict[str, str]:
         """Return ``{key: version marker}`` for every matching object.

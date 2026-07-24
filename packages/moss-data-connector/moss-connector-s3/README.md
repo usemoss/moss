@@ -2,7 +2,7 @@
 
 Amazon S3 source connector for Moss. Reads objects from an S3 bucket and
 ingests them into a Moss index via `boto3`, with an optional `watch()` loop
-that re-indexes whenever the bucket contents change.
+that incrementally syncs the index whenever the bucket contents change.
 
 ## Install
 
@@ -51,13 +51,13 @@ asyncio.run(main())
 filters. Pass `auto_id=True` to `ingest()` when your object keys are not
 stable ids and you want Moss to generate UUID document IDs.
 
-## Usage — watch a bucket (re-index on change)
+## Usage — watch a bucket (sync on change)
 
-`watch()` ingests the bucket once, then polls it and rebuilds the index
-whenever an object is added, removed, or modified (detected by comparing
-`{key: version}` snapshots built from ETag + LastModified + Size, so
-metadata-only rewrites count too — polls only *list* the bucket; bodies are
-downloaded only when a re-index actually runs):
+`watch()` syncs the bucket into the index once, then polls and applies
+incremental updates whenever an object is added, removed, or modified
+(detected by comparing `{key: version}` snapshots built from ETag +
+LastModified + Size, so metadata-only rewrites count too — polls only *list*
+the bucket; only the changed objects are downloaded and re-embedded):
 
 ```python
 import asyncio
@@ -71,7 +71,7 @@ async def main():
         mapper=lambda row: DocumentInfo(id=row["key"], text=row["text"]),
         region_name="us-east-1",
     )
-    # Runs until cancelled; re-creates the index on every bucket change.
+    # Runs until cancelled; pushes every bucket change to the index.
     await watch(
         source,
         project_id="your_project_id",
@@ -85,18 +85,25 @@ asyncio.run(main())
 
 Pass `max_polls=N` to stop after N polls (useful for one-shot sync jobs in a
 scheduler), and `on_change=callback` (sync or async) to be notified with the
-new `{key: version}` snapshot after each re-index.
+new `{key: version}` snapshot after each applied change.
 
-If every matching object is deleted from the bucket, `watch()` deletes the
-Moss index rather than leaving stale documents searchable; the index is
-re-created on the next change that adds objects back.
+Sync behavior:
 
-**Rebuild cost:** each change triggers a full rebuild — the existing index is
-deleted and every object is re-downloaded and re-embedded (`create_index` is
-create-only, and a rebuild is the simplest way to reflect deletes correctly).
-For large buckets that change often, this costs time and embedding spend
-proportional to the whole bucket, not the change; incremental sync
-(`add_docs`/`delete_docs` driven by the snapshot diff) is a planned follow-up.
+- **Startup** — the index is created from the bucket if it does not exist;
+  a surviving index from a prior run is *reconciled in place* (current
+  objects upserted, stale documents purged) rather than deleted and rebuilt.
+- **On change** — only the added/modified objects are downloaded and pushed
+  via `add_docs(upsert=True)`, and removed objects are dropped via
+  `delete_docs`. A one-file edit in a 10k-object bucket re-embeds one file.
+- **Failure safety** — the live index is never deleted while a replacement
+  is pending: if a download, decode, mapping, or Moss call fails mid-sync,
+  the error propagates with the existing index intact and searchable.
+- **Emptied bucket** — if every matching object is deleted, the index is
+  deleted too rather than leaving stale documents searchable; it is
+  re-created on the next change that adds objects back.
+- **Stable ids required** — updates are applied by document id, so your
+  mapper must give each object a stable id (`row["key"]` is the natural
+  choice). Random ids would duplicate documents on every update.
 
 ## What the mapper receives
 
@@ -161,7 +168,7 @@ src/
 ├── __init__.py      # re-exports S3Connector, ingest, watch
 ├── connector.py     # S3Connector class (list, fetch, snapshot)
 ├── aio.py           # exported ingest() — materializes S3 I/O in a worker thread
-├── watch.py         # watch() — poll the bucket, re-index on change
+├── watch.py         # watch() — poll the bucket, sync changes incrementally
 └── ingest.py        # shared ingest() - keep in sync with the other connector packages
 ```
 

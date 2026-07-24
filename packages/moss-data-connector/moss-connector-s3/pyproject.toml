@@ -1,7 +1,7 @@
 [project]
 name = "moss-connector-s3"
 version = "0.0.1"
-description = "Amazon S3 source connector for moss-connectors, with watch-based re-indexing."
+description = "Amazon S3 source connector for moss-connectors, with watch-based incremental sync."
 readme = "README.md"
 requires-python = ">=3.10,<3.15"
 license = { text = "BSD-2-Clause" }
