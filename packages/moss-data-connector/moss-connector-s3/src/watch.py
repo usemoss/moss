@@ -34,6 +34,21 @@ from moss import MossClient, MutationOptions
 from .connector import S3Connector
 
 
+async def _delete_index_if_exists(client: MossClient, index_name: str) -> None:
+    """Delete the index, treating only confirmed absence as a no-op.
+
+    The SDK has no typed not-found error, so absence is confirmed via
+    ``list_indexes()`` instead of by swallowing delete failures — an auth,
+    network, or server error from ``delete_index`` propagates, because
+    treating it as success would leave stale documents searchable while
+    watch() believes the index is gone.
+    """
+    names = {idx.name for idx in await client.list_indexes()}
+    if index_name not in names:
+        return  # confirmed missing (e.g. deleted externally) — nothing to do
+    await client.delete_index(index_name)
+
+
 async def watch(
     source: S3Connector,
     project_id: str,
@@ -85,10 +100,7 @@ async def watch(
     if index_exists and not docs:
         # Bucket is empty but a prior run left an index — stale docs must
         # not stay searchable.
-        try:
-            await client.delete_index(index_name)
-        except Exception:
-            pass  # already gone (e.g. deleted externally) — fine
+        await _delete_index_if_exists(client, index_name)
         index_exists = False
     elif index_exists:
         await client.add_docs(index_name, docs, options=MutationOptions(upsert=True))
@@ -113,10 +125,7 @@ async def watch(
             # Bucket emptied: nothing to replace the docs with, so drop the
             # index entirely rather than leave stale documents searchable.
             if index_exists:
-                try:
-                    await client.delete_index(index_name)
-                except Exception:
-                    pass  # already gone (e.g. deleted externally) — fine
+                await _delete_index_if_exists(client, index_name)
                 index_exists = False
             key_ids.clear()
         else:

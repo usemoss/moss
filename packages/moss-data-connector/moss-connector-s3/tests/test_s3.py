@@ -50,6 +50,7 @@ class FakeMossClient:
     calls: list[dict[str, Any]] = field(default_factory=list)
     deleted: list[str] = field(default_factory=list)
     indexes: dict[str, dict[str, DocumentInfo]] = field(default_factory=dict)
+    fail_delete: bool = False  # simulate an auth/network/server error on delete
 
     @property
     def existing(self) -> set[str]:
@@ -91,6 +92,8 @@ class FakeMossClient:
         return [_FakeIndexInfo(name) for name in self.indexes]
 
     async def delete_index(self, name):
+        if self.fail_delete:
+            raise ConnectionError("moss unreachable")
         if name not in self.indexes:
             raise ValueError(f"index '{name}' not found")
         del self.indexes[name]
@@ -415,6 +418,52 @@ async def test_watch_deletes_index_when_bucket_emptied(s3_bucket):
     assert [c["op"] for c in fake_moss.calls] == ["create"]
     assert fake_moss.deleted == ["docs"]
     assert fake_moss.existing == set()  # nothing left searchable
+
+
+async def test_watch_delete_failure_propagates(s3_bucket):
+    """An auth/network/server error on delete_index must raise, not be
+    silently treated as 'already gone' — the stale index is still live."""
+    fake_moss = FakeMossClient()
+    source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
+
+    async def sleep_then_empty(_seconds):
+        fake_moss.fail_delete = True
+        for key in list(SAMPLE_OBJECTS):
+            s3_bucket.delete_object(Bucket=BUCKET, Key=key)
+
+    with (
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_empty),
+    ):
+        with pytest.raises(ConnectionError, match="moss unreachable"):
+            await watch(source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1)
+
+    assert fake_moss.existing == {"docs"}  # index still live, not marked gone
+    assert fake_moss.deleted == []
+
+
+async def test_watch_externally_deleted_index_is_noop(s3_bucket):
+    """An index already removed externally is confirmed missing via
+    list_indexes and skipped — no exception, no blind delete."""
+    fake_moss = FakeMossClient()
+    source = S3Connector(bucket=BUCKET, mapper=_simple_mapper, region_name=REGION)
+
+    async def sleep_then_empty_and_drop_index(_seconds):
+        for key in list(SAMPLE_OBJECTS):
+            s3_bucket.delete_object(Bucket=BUCKET, Key=key)
+        fake_moss.indexes.pop("docs", None)  # someone else deleted the index
+
+    with (
+        patch("moss_connector_s3.watch.MossClient", return_value=fake_moss),
+        patch("moss_connector_s3.watch.asyncio.sleep", side_effect=sleep_then_empty_and_drop_index),
+    ):
+        synced = await watch(
+            source, "fake_id", "fake_key", "docs", poll_interval=0, max_polls=1
+        )
+
+    assert synced == 1
+    assert fake_moss.deleted == []  # nothing to delete — confirmed missing
+    assert fake_moss.existing == set()
 
 
 async def test_watch_async_on_change_awaited(s3_bucket):
