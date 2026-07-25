@@ -11,7 +11,8 @@ moss-data-connector/
 ├── moss-connector-mongodb/     # MongoDB source (requires pymongo)
 ├── moss-connector-mysql/       # MySQL / MariaDB source (requires pymysql)
 ├── moss-connector-supabase/    # Supabase source (requires supabase)
-└── moss-connector-dynamodb/    # Amazon DynamoDB source (requires boto3)
+├── moss-connector-dynamodb/    # Amazon DynamoDB source (requires boto3)
+└── moss-connector-postgres/    # PostgreSQL source (requires psycopg)
 ```
 
 
@@ -35,15 +36,15 @@ Use `auto_id=True` when your mapper does not have a stable primary key and you w
 
 ## Available connectors
 
-| Package                                                    | Source        | Extra driver |
-| ---------------------------------------------------------- | ------------- | ------------ |
-| [`moss-connector-sqlite`](moss-connector-sqlite)           | SQLite        | —            |
-| [`moss-connector-mongodb`](moss-connector-mongodb)         | MongoDB       | `pymongo`    |
-| [`moss-connector-mysql`](moss-connector-mysql)             | MySQL         | `pymysql`    |
-| [`moss-connector-supabase`](moss-connector-supabase)       | Supabase      | `supabase`   |
-| [`moss-connector-dynamodb`](moss-connector-dynamodb)       | Amazon DynamoDB | `boto3`    |
+| Package                                                    | Source          | Extra driver |
+| ---------------------------------------------------------- | --------------- | ------------ |
+| [`moss-connector-sqlite`](moss-connector-sqlite)           | SQLite          | —            |
+| [`moss-connector-mongodb`](moss-connector-mongodb)         | MongoDB         | `pymongo`    |
+| [`moss-connector-mysql`](moss-connector-mysql)             | MySQL           | `pymysql`    |
+| [`moss-connector-supabase`](moss-connector-supabase)       | Supabase        | `supabase`   |
+| [`moss-connector-dynamodb`](moss-connector-dynamodb)       | Amazon DynamoDB | `boto3`      |
+| [`moss-connector-postgres`](moss-connector-postgres)       | PostgreSQL      | `psycopg`    |
 
 ## Adding a new connector
 
 See [`_template/README.md`](_template/README.md).
-
