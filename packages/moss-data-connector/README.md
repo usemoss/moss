@@ -10,6 +10,7 @@ moss-data-connector/
 ├── moss-connector-sqlite/      # SQLite source (stdlib, no driver)
 ├── moss-connector-mongodb/     # MongoDB source (requires pymongo)
 ├── moss-connector-mysql/       # MySQL / MariaDB source (requires pymysql)
+├── moss-connector-notion/      # Notion source (requires notion-client)
 ├── moss-connector-supabase/    # Supabase source (requires supabase)
 └── moss-connector-dynamodb/    # Amazon DynamoDB source (requires boto3)
 ```
@@ -35,13 +36,14 @@ Use `auto_id=True` when your mapper does not have a stable primary key and you w
 
 ## Available connectors
 
-| Package                                                    | Source        | Extra driver |
-| ---------------------------------------------------------- | ------------- | ------------ |
-| [`moss-connector-sqlite`](moss-connector-sqlite)           | SQLite        | —            |
-| [`moss-connector-mongodb`](moss-connector-mongodb)         | MongoDB       | `pymongo`    |
-| [`moss-connector-mysql`](moss-connector-mysql)             | MySQL         | `pymysql`    |
-| [`moss-connector-supabase`](moss-connector-supabase)       | Supabase      | `supabase`   |
-| [`moss-connector-dynamodb`](moss-connector-dynamodb)       | Amazon DynamoDB | `boto3`    |
+| Package | Source | Extra driver |
+| --- | --- | --- |
+| [`moss-connector-sqlite`](moss-connector-sqlite) | SQLite | — |
+| [`moss-connector-mongodb`](moss-connector-mongodb) | MongoDB | `pymongo` |
+| [`moss-connector-mysql`](moss-connector-mysql) | MySQL | `pymysql` |
+| [`moss-connector-notion`](moss-connector-notion) | Notion | `notion-client` |
+| [`moss-connector-supabase`](moss-connector-supabase) | Supabase | `supabase` |
+| [`moss-connector-dynamodb`](moss-connector-dynamodb) | Amazon DynamoDB | `boto3` |
 
 ## Adding a new connector
 
