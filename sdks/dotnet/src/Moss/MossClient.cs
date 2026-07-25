@@ -14,12 +14,15 @@ namespace Moss;
 /// </summary>
 /// <remarks>
 /// The client owns native resources; dispose it when finished. Native calls are
-/// blocking and are marshaled onto the thread pool; access to the underlying
-/// handle is serialized, so a single client may be shared across tasks.
+/// blocking and are marshaled onto the thread pool. Operations are serialized
+/// through a cancellable gate, so a single client may be shared across tasks.
+/// Inputs are snapshotted before work is queued, so callers may safely mutate
+/// their own collections after an async method returns.
 /// </remarks>
 public sealed class MossClient : IDisposable
 {
     private readonly NativeClient _native;
+    private readonly SemaphoreSlim _gate = new(1, 1);
     private int _disposed;
 
     /// <summary>Create a client for the given Moss project credentials.</summary>
@@ -39,8 +42,8 @@ public sealed class MossClient : IDisposable
         string name, IEnumerable<DocumentInfo> docs, string? modelId = null, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        IReadOnlyList<DocumentInfo> list = Materialize(docs, nameof(docs));
-        return Run(() => _native.CreateIndex(name, list, modelId), cancellationToken);
+        DocumentInfo[] snapshot = SnapshotDocs(docs);
+        return RunAsync(() => _native.CreateIndex(name, snapshot, modelId), cancellationToken);
     }
 
     /// <summary>Add (or upsert) documents to an existing index.</summary>
@@ -48,8 +51,9 @@ public sealed class MossClient : IDisposable
         string name, IEnumerable<DocumentInfo> docs, MutationOptions? options = null, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        IReadOnlyList<DocumentInfo> list = Materialize(docs, nameof(docs));
-        return Run(() => _native.AddDocs(name, list, options), cancellationToken);
+        DocumentInfo[] snapshot = SnapshotDocs(docs);
+        MutationOptions? optionsCopy = options is null ? null : new MutationOptions { Upsert = options.Upsert };
+        return RunAsync(() => _native.AddDocs(name, snapshot, optionsCopy), cancellationToken);
     }
 
     /// <summary>Delete documents from an index by id.</summary>
@@ -57,8 +61,8 @@ public sealed class MossClient : IDisposable
         string name, IEnumerable<string> docIds, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        IReadOnlyList<string> ids = Materialize(docIds, nameof(docIds));
-        return Run(() => _native.DeleteDocs(name, ids), cancellationToken);
+        string[] snapshot = SnapshotIds(docIds);
+        return RunAsync(() => _native.DeleteDocs(name, snapshot), cancellationToken);
     }
 
     /// <summary>Fetch documents from an index by id.</summary>
@@ -66,33 +70,33 @@ public sealed class MossClient : IDisposable
         string name, IEnumerable<string> docIds, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        IReadOnlyList<string> ids = Materialize(docIds, nameof(docIds));
-        return Run(() => _native.GetDocs(name, ids), cancellationToken);
+        string[] snapshot = SnapshotIds(docIds);
+        return RunAsync(() => _native.GetDocs(name, snapshot), cancellationToken);
     }
 
     /// <summary>Get metadata for a single index.</summary>
     public Task<IndexInfo> GetIndexAsync(string name, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        return Run(() => _native.GetIndex(name), cancellationToken);
+        return RunAsync(() => _native.GetIndex(name), cancellationToken);
     }
 
     /// <summary>List all indexes in the project.</summary>
     public Task<IReadOnlyList<IndexInfo>> ListIndexesAsync(CancellationToken cancellationToken = default)
-        => Run(() => _native.ListIndexes(), cancellationToken);
+        => RunAsync(() => _native.ListIndexes(), cancellationToken);
 
     /// <summary>Delete an index. Returns true if an index was removed.</summary>
     public Task<bool> DeleteIndexAsync(string name, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        return Run(() => _native.DeleteIndex(name), cancellationToken);
+        return RunAsync(() => _native.DeleteIndex(name), cancellationToken);
     }
 
     /// <summary>Poll the status of an asynchronous indexing job.</summary>
     public Task<JobStatusResponse> GetJobStatusAsync(string jobId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(jobId)) throw new ArgumentException("jobId is required", nameof(jobId));
-        return Run(() => _native.GetJobStatus(jobId), cancellationToken);
+        return RunAsync(() => _native.GetJobStatus(jobId), cancellationToken);
     }
 
     // ---- Local runtime ---------------------------------------------------
@@ -102,21 +106,24 @@ public sealed class MossClient : IDisposable
         string name, LoadIndexOptions? options = null, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        return Run(() => _native.LoadIndex(name, options), cancellationToken);
+        LoadIndexOptions? optionsCopy = options is null
+            ? null
+            : new LoadIndexOptions { AutoRefresh = options.AutoRefresh, PollingIntervalInSeconds = options.PollingIntervalInSeconds };
+        return RunAsync(() => _native.LoadIndex(name, optionsCopy), cancellationToken);
     }
 
     /// <summary>Unload a previously loaded index from the local runtime.</summary>
     public Task UnloadIndexAsync(string name, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        return Run(() => { _native.UnloadIndex(name); return true; }, cancellationToken);
+        return RunAsync(() => { _native.UnloadIndex(name); return true; }, cancellationToken);
     }
 
     /// <summary>Refresh a locally loaded index against the latest cloud state.</summary>
     public Task<RefreshResult> RefreshIndexAsync(string name, CancellationToken cancellationToken = default)
     {
         RequireName(name);
-        return Run(() => _native.RefreshIndex(name), cancellationToken);
+        return RunAsync(() => _native.RefreshIndex(name), cancellationToken);
     }
 
     /// <summary>Run a hybrid (lexical + semantic) query against a loaded index.</summary>
@@ -125,27 +132,65 @@ public sealed class MossClient : IDisposable
     {
         RequireName(name);
         if (query is null) throw new ArgumentNullException(nameof(query));
-        QueryOptions opts = options ?? new QueryOptions();
-        return Run(() => _native.Query(name, query, opts), cancellationToken);
+        QueryOptions snapshot = SnapshotQuery(options ?? new QueryOptions());
+        return RunAsync(() => _native.Query(name, query, snapshot), cancellationToken);
     }
 
-    // ---- Helpers ---------------------------------------------------------
+    // ---- Serialization + cancellation ------------------------------------
 
-    private Task<T> Run<T>(Func<T> action, CancellationToken cancellationToken)
+    private async Task<T> RunAsync<T>(Func<T> action, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
-        return Task.Run(action, cancellationToken);
+        // WaitAsync honors cancellation while the operation is still queued, so a
+        // cancelled call never reaches the native layer.
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return await Task.Run(action, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
+
+    // ---- Input snapshots -------------------------------------------------
+
+    private static DocumentInfo[] SnapshotDocs(IEnumerable<DocumentInfo> docs)
+    {
+        if (docs is null) throw new ArgumentNullException(nameof(docs));
+        return docs.Select(SnapshotDoc).ToArray();
+    }
+
+    internal static DocumentInfo SnapshotDoc(DocumentInfo doc)
+    {
+        if (doc is null) throw new ArgumentNullException(nameof(doc));
+        IReadOnlyDictionary<string, string>? metadata =
+            doc.Metadata is null ? null : new Dictionary<string, string>(doc.Metadata);
+        IReadOnlyList<float>? embedding = doc.Embedding?.ToArray();
+        return new DocumentInfo(doc.Id, doc.Text, metadata, embedding);
+    }
+
+    private static string[] SnapshotIds(IEnumerable<string> docIds)
+    {
+        if (docIds is null) throw new ArgumentNullException(nameof(docIds));
+        return docIds.ToArray();
+    }
+
+    internal static QueryOptions SnapshotQuery(QueryOptions options) => new()
+    {
+        TopK = options.TopK,
+        Alpha = options.Alpha,
+        FilterJson = options.FilterJson,
+        Embedding = options.Embedding?.ToArray(),
+    };
+
+    // ---- Helpers ---------------------------------------------------------
 
     private static void RequireName(string name)
     {
         if (string.IsNullOrEmpty(name)) throw new ArgumentException("index name is required", nameof(name));
-    }
-
-    private static IReadOnlyList<T> Materialize<T>(IEnumerable<T> items, string paramName)
-    {
-        if (items is null) throw new ArgumentNullException(paramName);
-        return items as IReadOnlyList<T> ?? items.ToList();
     }
 
     private void ThrowIfDisposed()
@@ -158,5 +203,6 @@ public sealed class MossClient : IDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _native.Dispose();
+        _gate.Dispose();
     }
 }

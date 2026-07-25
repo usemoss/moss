@@ -14,14 +14,16 @@ namespace Moss.Interop;
 internal sealed class NativeClient : IDisposable
 {
     private readonly object _gate = new();
-    private IntPtr _handle;
+    private readonly MossClientHandle _handle;
 
     public NativeClient(string projectId, string projectKey)
     {
         using var arena = new NativeArena();
-        Check(NativeMethods.moss_client_new(arena.String(projectId), arena.String(projectKey), out _handle));
-        if (_handle == IntPtr.Zero)
+        Check(NativeMethods.moss_client_new(arena.String(projectId), arena.String(projectKey), out IntPtr raw));
+        if (raw == IntPtr.Zero)
             throw new MossException(-1, "moss_client_new returned a null client");
+        _handle = new MossClientHandle();
+        _handle.SetRawHandle(raw);
     }
 
     // ---- Management ------------------------------------------------------
@@ -401,7 +403,7 @@ internal sealed class NativeClient : IDisposable
 
     private void EnsureOpen()
     {
-        if (_handle == IntPtr.Zero)
+        if (_handle.IsInvalid || _handle.IsClosed)
             throw new ObjectDisposedException(nameof(MossClient));
     }
 
@@ -417,11 +419,7 @@ internal sealed class NativeClient : IDisposable
     {
         lock (_gate)
         {
-            if (_handle != IntPtr.Zero)
-            {
-                NativeMethods.moss_client_free(_handle);
-                _handle = IntPtr.Zero;
-            }
+            _handle.Dispose();
         }
     }
 }
