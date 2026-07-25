@@ -41,18 +41,16 @@ jobs:
 
           print(f"Publishing version: {version}")
 
-  build-and-publish:
+  # Build + smoke-test on every supported Python version. Publishing waits for
+  # the whole matrix (see the publish job's `needs`), so a failure on any
+  # version blocks the upload/tag instead of racing it.
+  build-test:
     needs: determine-version
     strategy:
       fail-fast: false
       matrix:
         python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      VERSION: ${{ needs.determine-version.outputs.version }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -63,7 +61,7 @@ jobs:
       - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install build
 
       - name: Build distributions
         working-directory: packages/moss-data-connector/moss-connector-zeroentropy
@@ -87,8 +85,33 @@ jobs:
           module = importlib.import_module("moss_connector_zeroentropy")
           print("import ok; sample attrs:", dir(module)[:5])
 
+  # Only runs once every build-test matrix leg has passed.
+  publish:
+    needs: [determine-version, build-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.determine-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build distributions
+        working-directory: packages/moss-data-connector/moss-connector-zeroentropy
+        run: |
+          rm -rf dist
+          python -m build
+
       - name: Publish to PyPI
-        if: matrix.python == '3.11'
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
@@ -96,7 +119,6 @@ jobs:
           twine upload --skip-existing packages/moss-data-connector/moss-connector-zeroentropy/dist/*
 
       - name: Tag release
-        if: matrix.python == '3.11'
         env:
           VERSION: ${{ env.VERSION }}
         run: |

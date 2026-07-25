@@ -159,6 +159,13 @@ async def test_include_content_false_skips_get_info():
     fake_ze.documents.get_info.assert_not_called()
 
 
+def test_include_content_false_with_default_mapper_raises():
+    # The default mapper reads content, so opting out without a custom mapper
+    # would silently index empty documents; the connector must reject it.
+    with pytest.raises(ValueError, match="include_content=False"):
+        ZeroEntropyConnector(collection_name="c", include_content=False)
+
+
 async def test_path_prefix_forwarded():
     fake_ze = _fake_ze_client([], {})
     with patch("moss_connector_zeroentropy.connector.ZeroEntropy", return_value=fake_ze):

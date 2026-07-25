@@ -65,6 +65,16 @@ class ZeroEntropyConnector:
         path_prefix: str | None = None,
         include_content: bool = True,
     ) -> None:
+        # The default mapper reads `content`, so turning it off would silently
+        # produce empty-text documents. Fail fast: opting out of content fetch
+        # only makes sense with a custom mapper that does not use `content`.
+        if not include_content and mapper is default_mapper:
+            raise ValueError(
+                "include_content=False with the default mapper would index empty "
+                "documents. Pass a custom mapper that does not read 'content', or "
+                "leave include_content=True."
+            )
+
         self.collection_name = collection_name
         self.mapper = mapper
         self.api_key = api_key
