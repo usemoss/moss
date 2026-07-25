@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Moss;
 using Xunit;
@@ -50,5 +51,30 @@ public class SnapshotTests
         Assert.Equal(0.2f, snap.Alpha);
         Assert.Equal("{}", snap.FilterJson);
         Assert.Equal(0.5f, snap.Embedding![0]);
+    }
+
+    [Fact]
+    public void SnapshotDoc_ThrowsOnNullId()
+    {
+        Assert.Throws<ArgumentException>(() => MossClient.SnapshotDoc(new DocumentInfo(null!, "text")));
+    }
+
+    [Fact]
+    public void SnapshotDoc_ThrowsOnNullText()
+    {
+        Assert.Throws<ArgumentException>(() => MossClient.SnapshotDoc(new DocumentInfo("1", null!)));
+    }
+
+    [Fact]
+    public void SnapshotDoc_ThrowsOnNullMetadataValue()
+    {
+        var meta = new Dictionary<string, string> { ["k"] = null! };
+        Assert.Throws<ArgumentException>(() => MossClient.SnapshotDoc(new DocumentInfo("1", "text", meta)));
+    }
+
+    [Fact]
+    public void SnapshotIds_ThrowsOnNullEntry()
+    {
+        Assert.Throws<ArgumentException>(() => MossClient.SnapshotIds(new[] { "a", null! }));
     }
 }

@@ -166,16 +166,36 @@ public sealed class MossClient : IDisposable
     internal static DocumentInfo SnapshotDoc(DocumentInfo doc)
     {
         if (doc is null) throw new ArgumentNullException(nameof(doc));
-        IReadOnlyDictionary<string, string>? metadata =
-            doc.Metadata is null ? null : new Dictionary<string, string>(doc.Metadata);
+        // Required C-ABI strings must never be marshaled as NULL. Nullable
+        // annotations don't protect against nullable-disabled callers,
+        // deserialization, or `null!`, so validate explicitly.
+        if (doc.Id is null) throw new ArgumentException("DocumentInfo.Id must not be null", nameof(doc));
+        if (doc.Text is null) throw new ArgumentException("DocumentInfo.Text must not be null", nameof(doc));
+
+        IReadOnlyDictionary<string, string>? metadata = null;
+        if (doc.Metadata is not null)
+        {
+            var copy = new Dictionary<string, string>(doc.Metadata.Count);
+            foreach (KeyValuePair<string, string> kv in doc.Metadata)
+            {
+                if (kv.Key is null) throw new ArgumentException("DocumentInfo.Metadata keys must not be null", nameof(doc));
+                if (kv.Value is null) throw new ArgumentException("DocumentInfo.Metadata values must not be null", nameof(doc));
+                copy[kv.Key] = kv.Value;
+            }
+            metadata = copy;
+        }
+
         IReadOnlyList<float>? embedding = doc.Embedding?.ToArray();
         return new DocumentInfo(doc.Id, doc.Text, metadata, embedding);
     }
 
-    private static string[] SnapshotIds(IEnumerable<string> docIds)
+    internal static string[] SnapshotIds(IEnumerable<string> docIds)
     {
         if (docIds is null) throw new ArgumentNullException(nameof(docIds));
-        return docIds.ToArray();
+        string[] array = docIds.ToArray();
+        foreach (string id in array)
+            if (id is null) throw new ArgumentException("document ids must not be null", nameof(docIds));
+        return array;
     }
 
     internal static QueryOptions SnapshotQuery(QueryOptions options) => new()
@@ -203,6 +223,10 @@ public sealed class MossClient : IDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _native.Dispose();
-        _gate.Dispose();
+        // Intentionally not disposing _gate: an in-flight RunAsync still owns it
+        // and releases it in its finally block, so disposing here would race and
+        // surface a spurious ObjectDisposedException from Release(). SemaphoreSlim
+        // holds no unmanaged resource unless its AvailableWaitHandle is
+        // materialized, which this type never does.
     }
 }
