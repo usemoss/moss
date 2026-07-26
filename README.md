@@ -239,11 +239,13 @@ Full API reference: [docs.moss.dev](https://docs.moss.dev).
 | [Vapi](https://vapi.ai) | Available | [`apps/vapi-moss/`](apps/vapi-moss/) |
 | [ElevenLabs](https://elevenlabs.io) | Available | [`apps/elevenlabs-moss/`](apps/elevenlabs-moss/) |
 | [Agora](https://www.agora.io/) | Available | [`apps/agora-moss/`](apps/agora-moss/) |
+| [TEN Framework](https://github.com/ten-framework/ten-framework) | Available | [`apps/ten-moss/`](apps/ten-moss/) |
 | [Strands Agents](https://github.com/strands-agents/sdk-python) | Available | [`packages/strands-agents-moss/`](packages/strands-agents-moss/) |
 | [Langflow](https://github.com/langflow-ai/langflow) | Available | [`examples/cookbook/langflow/`](examples/cookbook/langflow/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
 | [VitePress](https://vitepress.dev) | Available | [`packages/vitepress-plugin-moss/`](packages/vitepress-plugin-moss/) |
 | [Vercel AI SDK](https://sdk.vercel.ai) | Available | [`examples/cookbook/vercel-ai-sdk/`](examples/cookbook/vercel-ai-sdk/) |
+| [n8n](https://n8n.io) | Available | [`packages/n8n-nodes-moss/`](packages/n8n-nodes-moss/) |
 
 ## Architecture
 

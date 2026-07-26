@@ -33,7 +33,7 @@
   },
   "overrides": {
     "esbuild": "^0.28.0",
-    "postcss": "^8.5.13",
+    "postcss": "^8.5.19",
     "undici": "^7.24.0",
     "rollup": "^4.59.0",
     "vite": "^6.4.2"
@@ -41,7 +41,7 @@
   "pnpm": {
     "overrides": {
       "esbuild": "^0.28.0",
-      "postcss": "^8.5.13",
+      "postcss": "^8.5.19",
       "undici": "^7.24.0",
       "rollup": "^4.59.0",
       "vite": "^6.4.2"

@@ -88,3 +88,24 @@ func (c *Client) RefreshIndex(ctx context.Context, indexName string) (RefreshRes
 		WasUpdated:        result.WasUpdated,
 	}, nil
 }
+
+// GetIndexInfo returns metadata for a locally loaded index.
+func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (IndexInfo, error) {
+	if err := ctx.Err(); err != nil {
+		return IndexInfo{}, err
+	}
+	if err := c.validateManageRequest(indexName); err != nil {
+		return IndexInfo{}, err
+	}
+
+	manager, err := c.ensureIndexManager()
+	if err != nil {
+		return IndexInfo{}, err
+	}
+
+	info, err := manager.GetIndexInfo(indexName)
+	if err != nil {
+		return IndexInfo{}, err
+	}
+	return fromCoreIndexInfo(info), nil
+}

@@ -16,8 +16,7 @@ INDEX = os.getenv("MOSS_INDEX_NAME", "hackathon")
 
 async def main():
     client = MossClient(os.environ["MOSS_PROJECT_ID"], os.environ["MOSS_PROJECT_KEY"])
-    faq = Path(__file__).parent / "data" / "hackathon_faq.json"
-    entries = json.loads(faq.read_text(encoding="utf-8"))
+    entries = json.loads(Path("data/hackathon_faq.json").read_text())
     docs = [DocumentInfo(id=e["id"], text=e["text"]) for e in entries]
 
     print(f"indexing {len(docs)} entries into '{INDEX}'...")

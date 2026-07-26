@@ -2,25 +2,25 @@
 # Code owners are automatically requested for review when someone opens a pull request.
 
 # Default owner for everything
-* @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+* @HarshaNalluru @r4ghu @ashvathsureshkumar
 
 # Language SDKs (Python, JS/TS, Elixir, C bindings)
-/sdks/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+/sdks/ @HarshaNalluru @r4ghu @ashvathsureshkumar
 
 # Applications and end-to-end integrations
-/apps/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+/apps/ @HarshaNalluru @r4ghu @ashvathsureshkumar
 
 # Standalone language examples, framework cookbooks, voice agents
-/examples/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+/examples/  @HarshaNalluru @r4ghu @ashvathsureshkumar
 
 # Reusable packages (CLI, connectors, framework adapters, plugins)
-/packages/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+/packages/ @HarshaNalluru @r4ghu @ashvathsureshkumar
 
 # Moss Live Labs (experimental SDKs, voice/image demos, community demos)
-/moss-live-labs/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+/moss-live-labs/ @HarshaNalluru @r4ghu @ashvathsureshkumar
 
 # Latency / throughput benchmarks
-/benchmarks/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+/benchmarks/ @HarshaNalluru @r4ghu @ashvathsureshkumar
 
 # CI/CD workflows
-/.github/ @HarshaNalluru @yatharthk2 @r4ghu @CoderOMaster
+/.github/  @HarshaNalluru @r4ghu @ashvathsureshkumar

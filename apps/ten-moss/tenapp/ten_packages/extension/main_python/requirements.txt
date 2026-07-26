@@ -1,0 +1,4 @@
+# MossSessionManager for the TEN Framework — https://pypi.org/project/ten-moss/
+# (pulls in `moss`, `pydantic`, and `loguru` transitively). Installed by
+# scripts/install_python_deps.sh via `task install`.
+ten-moss>=0.1.0
