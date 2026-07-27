@@ -96,6 +96,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fail if this version was already released
+        run: |
+          git fetch --tags --force
+          if git rev-parse "moss-connector-zeroentropy-v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::moss-connector-zeroentropy v${VERSION} is already tagged/released; bump the version in pyproject.toml before releasing."
+            exit 1
+          fi
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -116,18 +124,11 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          twine upload --skip-existing packages/moss-data-connector/moss-connector-zeroentropy/dist/*
+          twine upload packages/moss-data-connector/moss-connector-zeroentropy/dist/*
 
       - name: Tag release
-        env:
-          VERSION: ${{ env.VERSION }}
         run: |
-          git fetch --tags --force
-          if git rev-parse "moss-connector-zeroentropy-v${VERSION}" >/dev/null 2>&1; then
-            echo "Tag moss-connector-zeroentropy-v${VERSION} already exists"
-          else
-            git config user.name "github-actions"
-            git config user.email "github-actions@users.noreply.github.com"
-            git tag "moss-connector-zeroentropy-v${VERSION}"
-            git push origin "moss-connector-zeroentropy-v${VERSION}"
-          fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "moss-connector-zeroentropy-v${VERSION}"
+          git push origin "moss-connector-zeroentropy-v${VERSION}"
