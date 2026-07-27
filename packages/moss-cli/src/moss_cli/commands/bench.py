@@ -53,9 +53,10 @@ def bench_command(
     profile: str | None = typer.Option(
         None, "--profile", help="Credential profile name"
     ),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ) -> None:
     """Benchmark retrieval latency and report p50/p95/p99 percentiles."""
-    json_mode = ctx.obj.get("json_output", False)
+    json_mode = json_output or ctx.obj.get("json_output", False)
     if profile:
         ctx.obj["profile"] = profile
 

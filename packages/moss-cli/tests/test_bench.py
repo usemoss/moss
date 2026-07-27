@@ -194,3 +194,20 @@ def test_bench_warmup_calls_are_discarded() -> None:
         )
     # 2 warmup + 4 timed = 6 total calls
     assert mock_client.query.call_count == 6
+
+
+def test_bench_json_flag_after_subcommand() -> None:
+    """--json placed after the subcommand (moss bench ... --json) must work."""
+    mock_client = _make_mock_client()
+    with (
+        patch("moss_cli.commands.bench.resolve_credentials", return_value=("pid", "pkey")),
+        patch("moss_cli.commands.bench.MossClient", return_value=mock_client),
+    ):
+        result = runner.invoke(
+            app,
+            ["bench", "my-index", "--query", "hello", "--runs", "3", "--warmup", "0", "--json"],
+        )
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["index"] == "my-index"
+    assert "overall" in data
