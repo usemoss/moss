@@ -196,6 +196,50 @@ def test_bench_warmup_calls_are_discarded() -> None:
     assert mock_client.query.call_count == 6
 
 
+def test_bench_cloud_omits_alpha() -> None:
+    """In cloud mode QueryOptions must not receive alpha."""
+    mock_client = _make_mock_client()
+    captured: list[Any] = []
+
+    async def capture_query(index: str, q: str, opts: Any) -> Any:
+        captured.append(opts)
+        return mock_client.query.return_value
+
+    mock_client.query = capture_query  # type: ignore[method-assign]
+
+    with (
+        patch("moss_cli.commands.bench.resolve_credentials", return_value=("pid", "pkey")),
+        patch("moss_cli.commands.bench.MossClient", return_value=mock_client),
+        patch("moss_cli.commands.bench.QueryOptions") as mock_qo,
+    ):
+        mock_qo.return_value = MagicMock()
+        runner.invoke(
+            app,
+            ["bench", "my-index", "--query", "hello", "--cloud", "--runs", "1", "--warmup", "0"],
+        )
+        mock_qo.assert_called_once_with(top_k=10)
+
+
+def test_bench_duplicate_queries_are_deduplicated(tmp_path: Path) -> None:
+    """Duplicate queries in a file must be collapsed to one workload entry."""
+    qfile = tmp_path / "queries.txt"
+    qfile.write_text("hello\nhello\nworld\n")
+    mock_client = _make_mock_client()
+    with (
+        patch("moss_cli.commands.bench.resolve_credentials", return_value=("pid", "pkey")),
+        patch("moss_cli.commands.bench.MossClient", return_value=mock_client),
+    ):
+        result = runner.invoke(
+            app,
+            ["--json", "bench", "my-index", "--queries-file", str(qfile), "--runs", "2", "--warmup", "0"],
+        )
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    # "hello" and "world" — deduplicated to 2 unique queries
+    assert len(data["queries"]) == 2
+    assert data["overall"]["total_runs"] == 4  # 2 queries × 2 runs
+
+
 def test_bench_json_flag_after_subcommand() -> None:
     """--json placed after the subcommand (moss bench ... --json) must work."""
     mock_client = _make_mock_client()

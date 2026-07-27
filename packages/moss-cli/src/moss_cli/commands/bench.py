@@ -75,6 +75,21 @@ def bench_command(
         )
         raise typer.Exit(1)
 
+    # De-duplicate while preserving order; warn so users know their input was collapsed.
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for q in all_queries:
+        if q not in seen:
+            seen.add(q)
+            deduped.append(q)
+    if len(deduped) < len(all_queries) and not json_mode:
+        removed = len(all_queries) - len(deduped)
+        console.print(
+            f"[yellow]Removed {removed} duplicate quer{'y' if removed == 1 else 'ies'} "
+            f"from the workload.[/yellow]"
+        )
+    all_queries = deduped
+
     if runs < 1:
         output.print_error("--runs must be >= 1.", json_mode)
         raise typer.Exit(1)
@@ -95,7 +110,7 @@ def bench_command(
                 console.print(f"Loading index [cyan]{index_name}[/cyan] locally...")
             await client.load_index(index_name)
 
-        options = QueryOptions(top_k=top_k, alpha=alpha)
+        options = QueryOptions(top_k=top_k) if cloud else QueryOptions(top_k=top_k, alpha=alpha)
 
         if not json_mode:
             q_word = "query" if len(all_queries) == 1 else "queries"
