@@ -8,10 +8,9 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from typer.testing import CliRunner
-
 from moss_cli.commands.bench import _percentile
 from moss_cli.main import app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 

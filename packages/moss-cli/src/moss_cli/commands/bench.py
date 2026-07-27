@@ -6,13 +6,11 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import List, Optional
 
 import typer
+from moss import MossClient, QueryOptions
 from rich.console import Console
 from rich.table import Table
-
-from moss import MossClient, QueryOptions
 
 from .. import output
 from ..completion import complete_index_name
@@ -37,10 +35,10 @@ def bench_command(
     index_name: str = typer.Argument(
         ..., help="Index name to benchmark", autocompletion=complete_index_name
     ),
-    queries: Optional[List[str]] = typer.Option(
+    queries: list[str] | None = typer.Option(  # noqa: B008
         None, "--query", "-q", help="Query string (repeatable)"
     ),
-    queries_file: Optional[Path] = typer.Option(
+    queries_file: Path | None = typer.Option(  # noqa: B008
         None, "--queries-file", "-f", help="File with one query per line"
     ),
     runs: int = typer.Option(20, "--runs", "-n", help="Number of timed runs per query"),
@@ -52,7 +50,7 @@ def bench_command(
         3, "--warmup", help="Number of warmup runs before timing (discarded)"
     ),
     cloud: bool = typer.Option(False, "--cloud", "-c", help="Query via cloud API"),
-    profile: Optional[str] = typer.Option(
+    profile: str | None = typer.Option(
         None, "--profile", help="Credential profile name"
     ),
 ) -> None:
