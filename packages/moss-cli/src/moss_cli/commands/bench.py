@@ -75,21 +75,6 @@ def bench_command(
         )
         raise typer.Exit(1)
 
-    # De-duplicate while preserving order; warn so users know their input was collapsed.
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for q in all_queries:
-        if q not in seen:
-            seen.add(q)
-            deduped.append(q)
-    if len(deduped) < len(all_queries) and not json_mode:
-        removed = len(all_queries) - len(deduped)
-        console.print(
-            f"[yellow]Removed {removed} duplicate quer{'y' if removed == 1 else 'ies'} "
-            f"from the workload.[/yellow]"
-        )
-    all_queries = deduped
-
     if runs < 1:
         output.print_error("--runs must be >= 1.", json_mode)
         raise typer.Exit(1)
@@ -124,16 +109,18 @@ def bench_command(
             for _ in range(warmup):
                 await client.query(index_name, q, options)
 
-        per_query: dict[str, list[float]] = {q: [] for q in all_queries}
-        for q in all_queries:
+        # Store latencies by input position so repeated queries are each tracked separately,
+        # preserving weighted-workload semantics.
+        per_query: list[tuple[str, list[float]]] = [(q, []) for q in all_queries]
+        for q, latencies in per_query:
             for _ in range(runs):
                 t0 = time.perf_counter()
                 await client.query(index_name, q, options)
-                per_query[q].append((time.perf_counter() - t0) * 1000)
+                latencies.append((time.perf_counter() - t0) * 1000)
 
         all_latencies: list[float] = []
         query_stats = []
-        for q, latencies in per_query.items():
+        for q, latencies in per_query:
             s = sorted(latencies)
             all_latencies.extend(s)
             query_stats.append(

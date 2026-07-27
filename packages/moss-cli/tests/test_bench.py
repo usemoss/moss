@@ -220,8 +220,8 @@ def test_bench_cloud_omits_alpha() -> None:
         mock_qo.assert_called_once_with(top_k=10)
 
 
-def test_bench_duplicate_queries_are_deduplicated(tmp_path: Path) -> None:
-    """Duplicate queries in a file must be collapsed to one workload entry."""
+def test_bench_duplicate_queries_preserved_as_separate_entries(tmp_path: Path) -> None:
+    """Repeated queries must be tracked as separate workload entries (weighted traffic)."""
     qfile = tmp_path / "queries.txt"
     qfile.write_text("hello\nhello\nworld\n")
     mock_client = _make_mock_client()
@@ -235,9 +235,9 @@ def test_bench_duplicate_queries_are_deduplicated(tmp_path: Path) -> None:
         )
     assert result.exit_code == 0
     data = json.loads(result.output)
-    # "hello" and "world" — deduplicated to 2 unique queries
-    assert len(data["queries"]) == 2
-    assert data["overall"]["total_runs"] == 4  # 2 queries × 2 runs
+    # 3 input lines → 3 separate entries, not 2
+    assert len(data["queries"]) == 3
+    assert data["overall"]["total_runs"] == 6  # 3 entries × 2 runs
 
 
 def test_bench_json_flag_after_subcommand() -> None:
