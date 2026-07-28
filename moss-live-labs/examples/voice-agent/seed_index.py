@@ -33,7 +33,7 @@ async def main() -> None:
             "Missing MOSS_PROJECT_ID / MOSS_PROJECT_KEY. Copy .env.example to .env and fill them in."
         )
 
-    faqs = json.loads(FAQS_PATH.read_text())
+    faqs = json.loads(FAQS_PATH.read_text(encoding="utf-8"))
     docs = [
         DocumentInfo(
             id=f["id"],
