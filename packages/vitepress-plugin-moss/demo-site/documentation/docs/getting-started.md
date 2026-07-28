@@ -112,6 +112,29 @@ asyncio.run(main())
 
 ---
 
+## Local playground UI
+
+Moss includes a local playground for exploring an index. It provides a web interface to load an index, run queries, and inspect results and scores without writing code.
+
+To start the playground, use the CLI:
+
+```bash
+moss playground
+```
+
+This opens a local web server (default port `3210`) with a UI where you can:
+
+- Select an existing index
+- Enter search queries and see ranked results
+- View similarity scores and document snippets
+- Test different parameters and filters
+
+The playground uses the same Moss JS API under the hood, so it's useful for visually verifying search quality before integrating into your application.
+
+> For API reference, see the [JavaScript SDK docs](/reference/js/README.md).
+
+---
+
 ## Sample code
 
 The [samples repository](https://github.com/usemoss/moss-samples) contains working examples covering authentication, batch context, and streaming replies.
