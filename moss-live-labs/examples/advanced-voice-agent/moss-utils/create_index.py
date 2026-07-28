@@ -2,11 +2,12 @@
 
 import asyncio
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from moss import MossClient, ParseFileInput  # noqa: E402
+from moss import MossClient, ParseFileInput
 
 PROJECT_ID = os.getenv("MOSS_PROJECT_ID")
 PROJECT_KEY = os.getenv("MOSS_PROJECT_KEY")
