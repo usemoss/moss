@@ -70,15 +70,15 @@ export async function runMetadataFilterExample(example: MetadataFilterExample): 
   const projectKey = requireEnv("MOSS_PROJECT_KEY");
   const indexName = `metadata-filter-${example.operator.slice(1)}-${Date.now()}`;
   const client = new MossClient(projectId, projectKey);
-  let indexCreated = false;
+  let cleanupNeeded = false;
 
   try {
     console.log(`Moss metadata filter example: ${example.operator}`);
     console.log(example.description);
 
     console.log(`\nCreating temporary index: ${indexName}`);
+    cleanupNeeded = true;
     await client.createIndex(indexName, documents, { modelId: "moss-minilm" });
-    indexCreated = true;
 
     console.log("Loading index locally for filtered query...");
     await client.loadIndex(indexName);
@@ -92,16 +92,21 @@ export async function runMetadataFilterExample(example: MetadataFilterExample): 
       filter: example.filter,
     });
 
-    console.log(`\nFound ${results.docs.length} result(s) in ${results.timeTakenInMs}ms:`);
+    const timing = results.timeTakenInMs === undefined ? "" : ` in ${results.timeTakenInMs}ms`;
+    console.log(`\nFound ${results.docs.length} result(s)${timing}:`);
     results.docs.forEach((doc, index) => {
       const preview = doc.text.length > 80 ? `${doc.text.slice(0, 80)}...` : doc.text;
       console.log(`${index + 1}. [${doc.id}] score=${doc.score.toFixed(3)} ${preview}`);
       console.log(`   metadata=${JSON.stringify(doc.metadata ?? {})}`);
     });
   } finally {
-    if (indexCreated) {
+    if (cleanupNeeded) {
       console.log(`\nDeleting temporary index: ${indexName}`);
-      await client.deleteIndex(indexName);
+      try {
+        await client.deleteIndex(indexName);
+      } catch (cleanupError) {
+        console.warn(`Failed to delete temporary index: ${indexName}`, cleanupError);
+      }
     }
   }
 }
