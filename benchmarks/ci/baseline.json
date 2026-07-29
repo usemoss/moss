@@ -1,0 +1,28 @@
+{
+  "commit": "f4732a1",
+  "timestamp": "2026-07-20T05:35:00+00:00",
+  "latency_guard": "unarmed",
+  "_note": "Recall values are measured (hardware-independent) so the recall guard is active. Latency values are zero and 'latency_guard: unarmed' marks this file as the explicit placeholder: the latency regression test skips (loudly) instead of failing every trusted run. To arm the latency guard, run the Benchmark workflow on a trusted ref, download the benchmark-results-<sha> artifact, and commit it as this file \u2014 artifacts carry no latency_guard flag, so committing one arms the guard automatically. A zero p95 WITHOUT the unarmed flag fails the run as a misconfigured baseline. Latency baselines must come from CI runners; numbers from other hardware are not comparable.",
+  "latency_ms": {
+    "p50": 0,
+    "p95": 0,
+    "p99": 0,
+    "mean": 0,
+    "stdev": 0,
+    "count": 0
+  },
+  "recall": {
+    "recall_at_5": 1.0,
+    "recall_at_10": 1.0,
+    "queries_evaluated": 15
+  },
+  "config": {
+    "doc_count": 1000,
+    "query_rounds": 20,
+    "warmup_rounds": 3,
+    "top_k_latency": 5,
+    "signature": "73d5e83176f7",
+    "query_set_hash": "70d932a5a939",
+    "query_count": 15
+  }
+}

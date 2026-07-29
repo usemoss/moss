@@ -274,3 +274,10 @@ The `.github/workflows/ci.yml` pipeline runs on push to `main` and on PRs:
 - `python-sdk-test` — matrix over Python 3.10–3.14
 - `javascript-lint` — eslint
 - Separate release workflows publish to PyPI / npm on tagged releases
+
+The `.github/workflows/benchmark.yml` runs on push to `main` and on PRs:
+- Runs the CI benchmark suite (`benchmarks/ci/`) measuring p50/p95/p99 latency and recall@k
+- Compares against `benchmarks/ci/baseline.json` and fails on regressions exceeding thresholds
+- Uploads `benchmark_results.json` as a workflow artifact for each run
+- Supports `workflow_dispatch` with `update_baseline` input to refresh the baseline
+
