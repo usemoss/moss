@@ -9,6 +9,7 @@ This is a living document. We update it as priorities shift based on community f
 - [x] Python SDK (`moss`) — async-first, type-safe
 - [x] TypeScript SDK (`@moss-dev/moss`) — full feature parity with Python
 - [x] Elixir SDK (`moss`) — Hex package for Phoenix / LiveView apps
+- [x] Go SDK — bindings-backed manage + local query via `libmoss` (`sdks/go/`)
 - [x] C bindings — example usage, metadata filtering, session management
 - [x] Bun runtime support — native Bun example application
 - [x] WebAssembly runtime — client-side semantic search in the browser, no server required
@@ -36,6 +37,8 @@ This is a living document. We update it as priorities shift based on community f
 - [x] Daytona sandbox integration — log ingestion Q&A agent; code execution in isolated Daytona sandboxes
 - [x] Cognee + Daytona integration — multi-agent shared memory graph (Cognee + Moss) across isolated Daytona sandboxes
 - [x] LangGraph integration — retrieval node for stateful multi-agent workflows
+- [x] Langflow integration — drag-and-drop `MossRetrieverComponent` and `MossSearchComponent`
+- [x] n8n community node — create index, manage documents, and query from n8n workflows
 
 ### Voice AI
 
@@ -46,6 +49,7 @@ This is a living document. We update it as priorities shift based on community f
 - [x] ElevenLabs integration — `elevenlabs-moss` package; knowledge-base-backed Conversational AI bot
 - [x] Agora Conversational AI integration — `agora-moss` MCP server; `search_knowledge_base` tool for Agora voice agents
 - [x] VAPI integration — `vapi-moss` webhook adapter with HMAC verification; LLM-directed retrieval via Custom Tool
+- [x] TEN Framework integration — `MossSessionManager` + voice-assistant app with session-scoped grounding
 
 ### Developer Tools & Packages
 
@@ -65,7 +69,7 @@ This is a living document. We update it as priorities shift based on community f
 
 ### Apps & Deployment
 
-- [x] Next.js example app — Next.js 15 Server Actions + Moss SDK; reference semantic search UI
+- [x] Next.js example app — Next.js 16 browser-based semantic search UI (`@moss-dev/moss-web`)
 - [x] Docker deployment examples (ECS / Kubernetes patterns) — Python + JS SDK in containers
 
 ---
@@ -86,7 +90,6 @@ These are well-scoped and ready for contributors. Each one has (or will have) a 
 ### New SDK Bindings
 
 - [ ] **Swift bindings** — for iOS/macOS apps with on-device retrieval ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
-- [ ] **Go bindings** — for backend services and CLI tools ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Rust bindings** — for performance-critical pipelines ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 - [ ] **Kotlin bindings** — for Android apps and Spring Boot backend services ([`good first issue`](https://github.com/usemoss/moss/labels/good%20first%20issue))
 

@@ -25,10 +25,11 @@ INDEX = os.getenv("MOSS_INDEX_NAME", "hackathon")
 class HackathonAgent(Agent):
     def __init__(self, moss: MossClient, moss_session):
         super().__init__(instructions=(
-            "You are the Moss hackathon helper. Answer in at most two short sentences, "
-            "conversationally. Call search_hackathon for facts about the event, and "
-            "recall_conversation for what the user said earlier. If it is not covered, "
-            "say so briefly and point them to the Moss table."
+            "You are the helper agent for Agents Hack Day at Bright Data (Moss is the "
+            "official partner). Answer in at most two short sentences, conversationally. "
+            "Call search_hackathon for facts about the event, and recall_conversation for "
+            "what the user said earlier. If it is not covered, say so briefly and point "
+            "them to the Moss table."
         ))
         self.moss = moss
         self.moss_session = moss_session  # SessionIndex: this call's live memory (Agent.session is reserved)
@@ -36,7 +37,7 @@ class HackathonAgent(Agent):
 
     @function_tool
     async def search_hackathon(self, context: RunContext, query: str) -> str:
-        """Search the hackathon knowledge base (schedule, rules, prizes, how to use Moss)."""
+        """Search the hack-day knowledge base (schedule, what to build, logistics, how to use Moss)."""
         res = await self.moss.query(INDEX, query, QueryOptions(top_k=4))
         return "\n".join(f"- {d.text}" for d in res.docs) or "No matching info found."
 
@@ -47,10 +48,9 @@ class HackathonAgent(Agent):
         return "\n".join(f"- {d.text}" for d in res.docs) or "Nothing relevant earlier."
 
     async def on_user_turn_completed(self, turn_ctx: ChatContext, new_message: ChatMessage) -> None:
-        # Index each turn locally (no network). Skip empty/None turns (transcription artifacts).
-        if new_message.text_content and new_message.text_content.strip():
-            self._turn += 1
-            await self.moss_session.add_docs([DocumentInfo(id=f"turn-{self._turn}", text=new_message.text_content)])
+        # Index each turn into the session locally (no network) so it can be recalled later.
+        self._turn += 1
+        await self.moss_session.add_docs([DocumentInfo(id=f"turn-{self._turn}", text=new_message.text_content)])
         await super().on_user_turn_completed(turn_ctx, new_message)
 
 
@@ -60,10 +60,7 @@ async def entrypoint(ctx: JobContext):
 
     await moss.load_index(INDEX)                              # long-term: FAQ (run build_index.py first)
     session = await moss.session(index_name=f"call-{ctx.room.name}")  # short-term: live session
-
-    async def persist(*_):                                    # LiveKit may pass a reason arg
-        await session.push_index()                            # persist for handoff at call end
-    ctx.add_shutdown_callback(persist)
+    ctx.add_shutdown_callback(lambda: session.push_index())   # persist for handoff at call end
 
     agent_session = AgentSession(
         stt=deepgram.STT(),
@@ -73,7 +70,7 @@ async def entrypoint(ctx: JobContext):
     )
     await agent_session.start(agent=HackathonAgent(moss, session), room=ctx.room)
     await agent_session.generate_reply(        # agent speaks first
-        instructions="Greet the user in one sentence and invite a question about the hackathon or building with Moss."
+        instructions="Greet the user in one sentence and invite a question about the hack day or building with Moss."
     )
 
 

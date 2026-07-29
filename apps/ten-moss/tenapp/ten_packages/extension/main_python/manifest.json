@@ -1,0 +1,60 @@
+{
+  "type": "extension",
+  "name": "main_python",
+  "version": "0.1.0",
+  "dependencies": [
+    {
+      "type": "system",
+      "name": "ten_runtime_python",
+      "version": "0.11"
+    },
+    {
+      "type": "system",
+      "name": "ten_ai_base",
+      "version": "0.7"
+    }
+  ],
+  "package": {
+    "include": [
+      "manifest.json",
+      "property.json",
+      "**.tent",
+      "**.py",
+      "README.md",
+      "tests/**"
+    ]
+  },
+  "api": {
+    "property": {
+      "properties": {
+        "greeting": {
+          "type": "string"
+        },
+        "moss_project_id": {
+          "type": "string"
+        },
+        "moss_project_key": {
+          "type": "string"
+        },
+        "moss_index_name": {
+          "type": "string"
+        },
+        "moss_model_id": {
+          "type": "string"
+        },
+        "moss_top_k": {
+          "type": "int64"
+        },
+        "moss_alpha": {
+          "type": "float64"
+        },
+        "moss_context_header": {
+          "type": "string"
+        },
+        "enable_moss": {
+          "type": "bool"
+        }
+      }
+    }
+  }
+}

@@ -89,7 +89,7 @@ export default function UploadSection({ onUpload, isUploading }: UploadSectionPr
 						<p className='mt-1 text-xs text-[--color-moss-muted]'>Up to 5 documents, PDF format</p>
 					</div>
 				</div>
-			</div>
+			</label>
 
 			{/* File list */}
 			{files.length > 0 && (
