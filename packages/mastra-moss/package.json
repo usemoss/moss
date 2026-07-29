@@ -40,7 +40,7 @@
     "fast-uri": "4.1.1"
   },
   "devDependencies": {
-    "@mastra/core": "1.26.0",
+    "@mastra/core": "1.54.0",
     "@moss-dev/moss": "1.0.0",
     "@types/node": "22.13.14",
     "tsup": "8.4.0",
