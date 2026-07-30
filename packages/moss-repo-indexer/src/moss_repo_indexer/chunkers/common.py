@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from moss import DocumentInfo
 
@@ -29,8 +28,8 @@ class FileChunkRequest:
     root: Path
     content: str
     language: str
-    repo_name: Optional[str] = None
-    ref: Optional[str] = None
+    repo_name: str | None = None
+    ref: str | None = None
 
 
 @dataclass
@@ -67,7 +66,7 @@ def _chunk_id(rel: str, symbol: str, start_line: int, end_line: int) -> str:
     return f"{rel}:{start_line}-{end_line}"
 
 
-def _metadata(request: FileChunkRequest, slice_: ChunkSlice, rel: str) -> Dict[str, str]:
+def _metadata(request: FileChunkRequest, slice_: ChunkSlice, rel: str) -> dict[str, str]:
     meta = {
         METADATA_PATH: rel,
         METADATA_LANGUAGE: request.language,
@@ -85,5 +84,5 @@ def _metadata(request: FileChunkRequest, slice_: ChunkSlice, rel: str) -> Dict[s
     return meta
 
 
-def split_lines(content: str) -> List[str]:
+def split_lines(content: str) -> list[str]:
     return content.splitlines()

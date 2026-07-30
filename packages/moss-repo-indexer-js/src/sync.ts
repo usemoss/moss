@@ -42,6 +42,7 @@ async function syncResolved(
   }
   const mutation = await uploadDocuments(documents, options.creds, {
     upsert: options.upsert ?? false,
+    replace: options.replace ?? false,
   })
   return {
     documents,

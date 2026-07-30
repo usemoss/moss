@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import List, Optional
 
 from moss import DocumentInfo, MutationResult
 
@@ -15,8 +14,8 @@ from .uploader import UploadOptions, upload_documents
 
 @dataclass
 class SyncResult:
-    documents: List[DocumentInfo]
-    mutation: Optional[MutationResult]
+    documents: list[DocumentInfo]
+    mutation: MutationResult | None
     dry_run: bool
     repo_name: str
     root: str
@@ -46,7 +45,7 @@ async def _sync_resolved(options: SyncOptions, resolved: ResolvedSource) -> Sync
     mutation = await upload_documents(
         documents,
         options.creds,
-        UploadOptions(upsert=options.upsert),
+        UploadOptions(upsert=options.upsert, replace=options.replace),
     )
     return SyncResult(
         documents=documents,

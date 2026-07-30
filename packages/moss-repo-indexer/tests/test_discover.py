@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from moss_repo_indexer import IndexOptions, discover_files, resolve_source
+from moss_repo_indexer import IndexOptions, build_documents, discover_files, resolve_source
 from moss_repo_indexer.clone import _is_git_url, _repo_name_from_url
 
 
@@ -41,5 +41,29 @@ def test_discover_filters(tmp_path: Path):
     huge.write_bytes(b"x" * 1_000_001)
 
     files = discover_files(tmp_path, IndexOptions())
-    rels = sorted(p.relative_to(tmp_path).as_posix() for p in files)
+    rels = sorted(p.relative_to(tmp_path.resolve()).as_posix() for p in files)
     assert rels == ["README.md", "src/app.py"]
+
+
+def test_discover_skips_symlink_escape(tmp_path: Path, tmp_path_factory):
+    outside = tmp_path_factory.mktemp("outside")
+    secret = outside / "secret.py"
+    secret.write_text("SECRET = 1\n")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "app.py").write_text("print(1)\n")
+    link = tmp_path / "leak.py"
+    link.symlink_to(secret)
+
+    files = discover_files(tmp_path, IndexOptions())
+    rels = [p.relative_to(tmp_path.resolve()).as_posix() for p in files]
+    assert "leak.py" not in rels
+    assert "src/app.py" in rels
+
+
+def test_build_documents_accepts_relative_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "app.py").write_text("def main():\n    return 0\n")
+    monkeypatch.chdir(tmp_path)
+    docs = build_documents(Path("./src"), IndexOptions(repo_name="demo"))
+    assert docs
+    assert all(d.metadata and d.metadata.get("path", "").startswith("app.py") for d in docs)

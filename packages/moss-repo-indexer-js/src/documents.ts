@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import path from 'node:path'
 
 import type { RepoDocument } from './document.js'
 import { chunkCode, chunkMarkdown, type FileChunkRequest } from './chunkers/index.js'
@@ -7,10 +8,11 @@ import { isMarkdownPath, languageForPath } from './language.js'
 import { IndexOptions, resolveIndexOptions } from './types.js'
 
 export function buildDocuments(root: string, options: IndexOptions = {}): RepoDocument[] {
+  const resolvedRoot = path.resolve(root)
   const opts = resolveIndexOptions(options)
   const documents: RepoDocument[] = []
-  for (const filePath of discoverFiles(root, opts)) {
-    documents.push(...chunkFile(filePath, root, opts))
+  for (const filePath of discoverFiles(resolvedRoot, opts)) {
+    documents.push(...chunkFile(filePath, resolvedRoot, opts))
   }
   return documents
 }

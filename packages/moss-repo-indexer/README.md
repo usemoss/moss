@@ -43,11 +43,14 @@ result = await sync(
 )
 print(len(result.documents), "chunks")
 
-# Fresh index (delete + create_index)
+# Create index (fails if it already exists)
 result = await sync(SyncOptions(source="./my-repo", creds=creds))
 
 # Incremental upsert
 result = await sync(SyncOptions(source="./my-repo", creds=creds, upsert=True))
+
+# Destructive recreate (opt-in)
+result = await sync(SyncOptions(source="./my-repo", creds=creds, replace=True))
 ```
 
 ## Example

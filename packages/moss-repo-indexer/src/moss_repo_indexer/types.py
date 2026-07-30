@@ -7,8 +7,6 @@ emit the same JSON shape for Moss DocumentInfo.metadata.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-
 
 # --- Document metadata contract (mirrored by the TS package) ---
 
@@ -30,7 +28,7 @@ CHUNK_TYPE_TEXT = "text"
 CHUNK_TYPE_PAGE = "page"
 
 DEFAULT_MODEL_NAME = "moss-minilm"
-DEFAULT_INCLUDE_GLOBS: List[str] = [
+DEFAULT_INCLUDE_GLOBS: list[str] = [
     "**/*.py",
     "**/*.ts",
     "**/*.tsx",
@@ -42,7 +40,7 @@ DEFAULT_INCLUDE_GLOBS: List[str] = [
     "**/*.md",
     "**/*.mdx",
 ]
-DEFAULT_EXCLUDE_DIRS: List[str] = [
+DEFAULT_EXCLUDE_DIRS: list[str] = [
     ".git",
     "node_modules",
     "vendor",
@@ -69,12 +67,12 @@ class MossCreds:
 class IndexOptions:
     """Options for discovering and chunking a repository."""
 
-    include_globs: List[str] = field(default_factory=lambda: list(DEFAULT_INCLUDE_GLOBS))
-    exclude_dirs: List[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDE_DIRS))
+    include_globs: list[str] = field(default_factory=lambda: list(DEFAULT_INCLUDE_GLOBS))
+    exclude_dirs: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDE_DIRS))
     respect_gitignore: bool = True
-    ref: Optional[str] = None
+    ref: str | None = None
     max_file_bytes: int = 1_000_000
-    repo_name: Optional[str] = None
+    repo_name: str | None = None
 
 
 @dataclass
@@ -86,9 +84,10 @@ class SyncOptions:
     index: IndexOptions = field(default_factory=IndexOptions)
     dry_run: bool = False
     upsert: bool = False
+    replace: bool = False
 
 
-def metadata_contract() -> Dict[str, str]:
+def metadata_contract() -> dict[str, str]:
     """Return the canonical metadata key → description mapping."""
     return {
         METADATA_PATH: "Repository-relative file path",

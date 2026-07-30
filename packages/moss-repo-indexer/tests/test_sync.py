@@ -27,7 +27,26 @@ def test_sync_dry_run(tmp_path: Path):
     assert result.repo_name == tmp_path.name
 
 
-def test_upload_recreate():
+def test_upload_default_does_not_delete():
+    from moss import DocumentInfo
+
+    creds = MossCreds("pid", "pkey", "idx", model_name="moss-minilm")
+    docs = [DocumentInfo(id="1", text="hello", metadata={"path": "a.py"})]
+    client = AsyncMock()
+    client.delete_index = AsyncMock()
+    client.create_index = AsyncMock(return_value=type("R", (), {"doc_count": 1})())
+
+    async def run():
+        with patch("moss_repo_indexer.uploader.MossClient", return_value=client):
+            return await upload_documents(docs, creds)
+
+    result = asyncio.run(run())
+    client.delete_index.assert_not_awaited()
+    client.create_index.assert_awaited_once()
+    assert result.doc_count == 1
+
+
+def test_upload_replace():
     from moss import DocumentInfo
 
     creds = MossCreds("pid", "pkey", "idx", model_name="moss-minilm")
@@ -38,9 +57,10 @@ def test_upload_recreate():
 
     async def run():
         with patch("moss_repo_indexer.uploader.MossClient", return_value=client):
-            return await upload_documents(docs, creds)
+            return await upload_documents(docs, creds, UploadOptions(replace=True))
 
     result = asyncio.run(run())
+    client.delete_index.assert_awaited_once()
     client.create_index.assert_awaited_once()
     assert result.doc_count == 1
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Pattern
 
 from moss import DocumentInfo
 
@@ -13,7 +12,7 @@ from .common import ChunkSlice, FileChunkRequest, make_document, split_lines
 WINDOW_LINES = 60
 OVERLAP_LINES = 15
 
-_SYMBOL_PATTERNS: List[Pattern[str]] = [
+_SYMBOL_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^\s*(?:async\s+)?def\s+([A-Za-z_][\w]*)"),
     re.compile(r"^\s*class\s+([A-Za-z_][\w]*)"),
     re.compile(r"^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_][\w]*)"),
@@ -23,11 +22,11 @@ _SYMBOL_PATTERNS: List[Pattern[str]] = [
 ]
 
 
-def chunk_code(request: FileChunkRequest) -> List[DocumentInfo]:
+def chunk_code(request: FileChunkRequest) -> list[DocumentInfo]:
     lines = split_lines(request.content)
     if not lines:
         return []
-    docs: List[DocumentInfo] = []
+    docs: list[DocumentInfo] = []
     start = 1
     total = len(lines)
     while start <= total:
@@ -54,7 +53,7 @@ def chunk_code(request: FileChunkRequest) -> List[DocumentInfo]:
     return docs
 
 
-def _detect_symbol(window_lines: List[str]) -> Optional[str]:
+def _detect_symbol(window_lines: list[str]) -> str | None:
     for line in window_lines:
         for pattern in _SYMBOL_PATTERNS:
             match = pattern.match(line)

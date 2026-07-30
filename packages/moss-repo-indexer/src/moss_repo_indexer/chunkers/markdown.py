@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
 
 from moss import DocumentInfo
 
@@ -13,7 +12,7 @@ from .common import ChunkSlice, FileChunkRequest, make_document, relative_path, 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
-def chunk_markdown(request: FileChunkRequest) -> List[DocumentInfo]:
+def chunk_markdown(request: FileChunkRequest) -> list[DocumentInfo]:
     lines = split_lines(request.content)
     docs = [_page_document(request)]
     sections = _parse_sections(lines, relative_path(request.path, request.root))
@@ -40,12 +39,15 @@ def _page_document(request: FileChunkRequest) -> DocumentInfo:
     return DocumentInfo(id=rel, text=generated.text, metadata=generated.metadata)
 
 
-def _parse_sections(lines: List[str], fallback_title: str) -> List[Tuple[str, int, int, str]]:
+def _parse_sections(
+    lines: list[str],
+    fallback_title: str,
+) -> list[tuple[str, int, int, str]]:
     """Return (heading, start_line, end_line, body) tuples."""
-    sections: List[Tuple[str, int, List[str]]] = []
+    sections: list[tuple[str, int, list[str]]] = []
     heading = fallback_title
     start = 1
-    body: List[str] = []
+    body: list[str] = []
 
     for index, line in enumerate(lines, start=1):
         match = _HEADING_RE.match(line)
@@ -62,10 +64,10 @@ def _parse_sections(lines: List[str], fallback_title: str) -> List[Tuple[str, in
 
 
 def _flush_section(
-    sections: List[Tuple[str, int, List[str]]],
+    sections: list[tuple[str, int, list[str]]],
     heading: str,
     start: int,
-    body: List[str],
+    body: list[str],
 ) -> None:
     if body:
         sections.append((heading, start, list(body)))
@@ -73,8 +75,8 @@ def _flush_section(
 
 def _documents_for_section(
     request: FileChunkRequest,
-    section: Tuple[str, int, int, str],
-) -> List[DocumentInfo]:
+    section: tuple[str, int, int, str],
+) -> list[DocumentInfo]:
     heading, start_line, end_line, body = section
     docs = [
         make_document(

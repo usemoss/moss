@@ -68,6 +68,8 @@ export interface SyncOptions {
   index?: IndexOptions
   dryRun?: boolean
   upsert?: boolean
+  /** Opt-in destructive recreate (delete index then create). */
+  replace?: boolean
 }
 
 export function metadataContract(): Record<string, string> {

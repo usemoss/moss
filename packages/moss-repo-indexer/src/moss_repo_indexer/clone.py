@@ -8,7 +8,6 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 _GIT_SSH_RE = re.compile(r"^git@[^:]+:.+\.git$")
@@ -19,7 +18,7 @@ _GIT_URL_RE = re.compile(r"^(https?|git)://", re.IGNORECASE)
 class ResolvedSource:
     root: Path
     repo_name: str
-    ref: Optional[str]
+    ref: str | None
     cleanup: bool
 
     def close(self) -> None:
@@ -27,7 +26,7 @@ class ResolvedSource:
             shutil.rmtree(self.root, ignore_errors=True)
 
 
-def resolve_source(source: str, ref: Optional[str] = None) -> ResolvedSource:
+def resolve_source(source: str, ref: str | None = None) -> ResolvedSource:
     """Return a local directory for `source` (filesystem path or git URL)."""
     stripped = source.strip()
     if _is_git_url(stripped):
@@ -43,7 +42,7 @@ def _is_git_url(source: str) -> bool:
     return False
 
 
-def _resolve_local_path(source: str, ref: Optional[str]) -> ResolvedSource:
+def _resolve_local_path(source: str, ref: str | None) -> ResolvedSource:
     root = Path(source).expanduser().resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"Source path is not a directory: {root}")
@@ -55,7 +54,7 @@ def _resolve_local_path(source: str, ref: Optional[str]) -> ResolvedSource:
     )
 
 
-def _clone_git_url(url: str, ref: Optional[str]) -> ResolvedSource:
+def _clone_git_url(url: str, ref: str | None) -> ResolvedSource:
     if shutil.which("git") is None:
         raise RuntimeError("git is required to clone a repository URL")
 
@@ -74,7 +73,7 @@ def _clone_git_url(url: str, ref: Optional[str]) -> ResolvedSource:
     )
 
 
-def _run_git_clone(url: str, dest: Path, ref: Optional[str]) -> None:
+def _run_git_clone(url: str, dest: Path, ref: str | None) -> None:
     command = ["git", "clone", "--depth", "1"]
     if ref:
         command.extend(["--branch", ref])

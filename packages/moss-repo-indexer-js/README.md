@@ -35,6 +35,17 @@ const uploaded = await sync({
     indexName: 'my-codebase',
   },
 })
+
+// Destructive recreate (opt-in)
+await sync({
+  source: './my-repo',
+  creds: {
+    projectId: process.env.MOSS_PROJECT_ID!,
+    projectKey: process.env.MOSS_PROJECT_KEY!,
+    indexName: 'my-codebase',
+  },
+  replace: true,
+})
 ```
 
 ## Document metadata contract

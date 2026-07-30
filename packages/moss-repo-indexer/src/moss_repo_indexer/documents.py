@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
 
 from moss import DocumentInfo
 
@@ -13,16 +12,20 @@ from .language import is_markdown_path, language_for_path
 from .types import IndexOptions
 
 
-def build_documents(root: Path, options: Optional[IndexOptions] = None) -> List[DocumentInfo]:
+def build_documents(
+    root: Path | str,
+    options: IndexOptions | None = None,
+) -> list[DocumentInfo]:
     """Discover files under `root`, chunk them, and return DocumentInfo rows."""
+    resolved_root = Path(root).expanduser().resolve()
     opts = options or IndexOptions()
-    documents: List[DocumentInfo] = []
-    for path in discover_files(root, opts):
-        documents.extend(_chunk_file(path, root, opts))
+    documents: list[DocumentInfo] = []
+    for path in discover_files(resolved_root, opts):
+        documents.extend(_chunk_file(path, resolved_root, opts))
     return documents
 
 
-def _chunk_file(path: Path, root: Path, options: IndexOptions) -> List[DocumentInfo]:
+def _chunk_file(path: Path, root: Path, options: IndexOptions) -> list[DocumentInfo]:
     content = _read_text(path)
     if content is None:
         return []
@@ -39,7 +42,7 @@ def _chunk_file(path: Path, root: Path, options: IndexOptions) -> List[DocumentI
     return chunk_code(request)
 
 
-def _read_text(path: Path) -> Optional[str]:
+def _read_text(path: Path) -> str | None:
     try:
         return path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):

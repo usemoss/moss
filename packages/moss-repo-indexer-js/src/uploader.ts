@@ -3,6 +3,8 @@ import { DEFAULT_MODEL_NAME, type MossCreds } from './types.js'
 
 export interface UploadOptions {
   upsert?: boolean
+  /** When true, delete the existing index then recreate it. Opt-in destructive path. */
+  replace?: boolean
 }
 
 export interface MutationResultLike {
@@ -18,12 +20,17 @@ export async function uploadDocuments(
   if (documents.length === 0) {
     throw new Error('No documents to upload')
   }
+  if (options.upsert && options.replace) {
+    throw new Error('Pass only one of upsert or replace')
+  }
   const { MossClient } = await import('@moss-dev/moss')
   const client = new MossClient(creds.projectId, creds.projectKey)
   if (options.upsert) {
     return client.addDocs(creds.indexName, documents, { upsert: true })
   }
-  await deleteIndexIfPresent(client, creds.indexName)
+  if (options.replace) {
+    await deleteIndexIfPresent(client, creds.indexName)
+  }
   return client.createIndex(creds.indexName, documents, {
     modelId: creds.modelName ?? DEFAULT_MODEL_NAME,
   })
