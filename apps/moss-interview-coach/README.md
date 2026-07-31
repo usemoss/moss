@@ -85,6 +85,8 @@ Open [http://localhost:3000](http://localhost:3000) → pick a track (**System D
 | `WHISPER_DEVICE` | no | `auto` |
 | `PIPER_VOICE` | no | `en_US-lessac-medium` |
 | `GRADE_SUBPROCESS_TIMEOUT_SECS` | no | `60` |
+| `SESSION_HANDSHAKE_TIMEOUT_SECS` | no | `45` — ends a session whose client never completes the WebRTC/RTVI handshake |
+| `MAX_ACTIVE_BOTS` | no | `2` — further offers get 503 until a slot frees |
 | `BACKEND_HOST` | no | `127.0.0.1` |
 | `BACKEND_PORT` | no | `8000` |
 | `BACKEND_RELOAD` | no | unset — uvicorn autoreload off; set `1` for development only |

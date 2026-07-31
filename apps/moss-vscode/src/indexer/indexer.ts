@@ -122,14 +122,20 @@ export class CodebaseIndexer {
           staleIds.push(`${rel}#chunk-${i}`);
         }
       }
-      // Past this point the previous index is being destroyed, so any exit that
-      // is not "ready" leaves the persisted cache describing documents that no
-      // longer exist. A failure *before* here (scan, session setup) leaves the
-      // old documents intact, and the cache with them.
-      this.discardedPreviousIndex = true;
       if (staleIds.length) {
         await this.deleteInBatches(staleIds);
       }
+      // Only once the stale delete has fully succeeded. If it throws partway,
+      // some old documents survive — and the persisted cache is the only record
+      // of their ids, so it must be kept for a later rebuild to retry the
+      // cleanup. Clearing it there would strand those documents in the index
+      // permanently, still answering searches for deleted or renamed files.
+      //
+      // From here on the previous index really is gone, so any exit that is not
+      // "ready" must invalidate the cache. A failure before this point (scan,
+      // session setup, a partial delete) leaves the old documents intact and
+      // the cache with them.
+      this.discardedPreviousIndex = true;
       this.pathChunkCounts.clear();
 
       let processed = 0;

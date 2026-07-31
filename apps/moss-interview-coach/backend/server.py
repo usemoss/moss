@@ -82,6 +82,11 @@ WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "auto")
 PIPER_VOICE = os.getenv("PIPER_VOICE", "en_US-lessac-medium")
 GRADER_WORKER_PATH = Path(__file__).resolve().parent / "grader_worker.py"
 GRADE_SUBPROCESS_TIMEOUT_SECS = float(os.getenv("GRADE_SUBPROCESS_TIMEOUT_SECS", "60"))
+# Generous relative to the frontend's own 30s connect timeout, so a slow but
+# genuine client is never cut off — this only catches offers that go nowhere.
+SESSION_HANDSHAKE_TIMEOUT_SECS = float(os.getenv("SESSION_HANDSHAKE_TIMEOUT_SECS", "45"))
+# Each session loads Whisper/Piper and drives Ollama, so concurrency is bounded.
+MAX_ACTIVE_BOTS = int(os.getenv("MAX_ACTIVE_BOTS", "2"))
 
 COACH_BEHAVIOR = (
     "Conduct a live voice interview. Ask probing follow-ups, push for trade-offs, "
@@ -845,9 +850,11 @@ async def run_interview_bot(
         # PipelineWorker enables RTVI by default and add_event_handler appends,
         # so this runs alongside pipecat's own set_bot_ready() handler.
         greeted = False
+        client_ready = asyncio.Event()
 
         @worker.rtvi.event_handler("on_client_ready")
         async def on_client_ready(rtvi: Any) -> None:
+            client_ready.set()
             # A client that re-sends ready (reconnect) must not replay the
             # welcome over an interview already in progress.
             nonlocal greeted
@@ -893,8 +900,34 @@ async def run_interview_bot(
         # signal handling; the worker is still torn down from
         # on_client_disconnected above.
         runner = WorkerRunner(handle_sigint=False, handle_sigterm=False)
-        await runner.add_workers(worker)
-        await runner.run()
+
+        async def _handshake_watchdog(current: ActiveSession) -> None:
+            """Tear the session down if the client never finishes connecting.
+
+            /api/offer accepts an SDP and starts the pipeline immediately, so a
+            caller that never completes the WebRTC/RTVI handshake would leave
+            Whisper, Piper and Ollama loaded until the transport happened to
+            notice or the process exited.
+            """
+            try:
+                await asyncio.wait_for(
+                    client_ready.wait(), timeout=SESSION_HANDSHAKE_TIMEOUT_SECS
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"No client handshake within {SESSION_HANDSHAKE_TIMEOUT_SECS:.0f}s "
+                    f"(track={track_id}); ending session."
+                )
+                await current.shutdown()
+
+        watchdog = asyncio.create_task(_handshake_watchdog(session))
+        try:
+            await runner.add_workers(worker)
+            await runner.run()
+        finally:
+            watchdog.cancel()
+            with suppress(asyncio.CancelledError):
+                await watchdog
     finally:
         if session is not None:
             active_sessions.discard(session)
@@ -1093,6 +1126,16 @@ async def offer(request: Request) -> dict[str, Any]:
         raise HTTPException(
             status_code=503,
             detail=f"Grader worker missing at {GRADER_WORKER_PATH.name}.",
+        )
+    # Refuse before spawning: every session loads Whisper/Piper and competes for
+    # the same local Ollama, so unbounded offers would degrade the live ones.
+    if active_bots >= MAX_ACTIVE_BOTS:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"At capacity: {active_bots} interview(s) already running "
+                f"(MAX_ACTIVE_BOTS={MAX_ACTIVE_BOTS}). Try again shortly."
+            ),
         )
 
     body = await _json_object_body(request)
