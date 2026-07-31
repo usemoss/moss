@@ -367,10 +367,20 @@ public final class MossClientSharedObject: SharedObject {
     var out: [Float] = []
     out.reserveCapacity(values.count)
     for element in values {
-      guard let value = doubleValue(element), value.isFinite else {
+      guard let value = doubleValue(element) else {
         throw mossError(code: -2, message: "\(key) must contain only finite numbers")
       }
-      out.append(Float(value))
+      // Check finiteness *after* narrowing: a finite Double beyond
+      // Float.greatestFiniteMagnitude (~3.4e38) rounds to Float.infinity, so
+      // testing the Double alone would still let a non-finite value through.
+      let narrowed = Float(value)
+      guard narrowed.isFinite else {
+        throw mossError(
+          code: -2,
+          message: "\(key) must contain only values representable as 32-bit floats, got \(value)"
+        )
+      }
+      out.append(narrowed)
     }
     return out
   }

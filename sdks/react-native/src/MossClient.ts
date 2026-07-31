@@ -99,8 +99,9 @@ export class MossClient {
   ): Promise<MutationResult> {
     const hasEmbeddings = docs.some((d) => Array.isArray(d.embedding) && d.embedding.length > 0);
     const modelId = options?.modelId ?? (hasEmbeddings ? 'custom' : DEFAULT_MODEL_ID);
+    const docsJson = serializeDocs(docs);
     try {
-      return await this.#native.createIndex(indexName, JSON.stringify(docs), modelId);
+      return await this.#native.createIndex(indexName, docsJson, modelId);
     } catch (err) {
       throw wrapNativeError(err);
     }
@@ -176,8 +177,9 @@ export class MossClient {
     docs: DocumentInfo[],
     options?: MutationOptions,
   ): Promise<MutationResult> {
+    const docsJson = serializeDocs(docs);
     try {
-      return await this.#native.addDocs(indexName, JSON.stringify(docs), options?.upsert ?? true);
+      return await this.#native.addDocs(indexName, docsJson, options?.upsert ?? true);
     } catch (err) {
       throw wrapNativeError(err);
     }
@@ -190,6 +192,43 @@ export class MossClient {
     } catch {
       // already closed
     }
+  }
+}
+
+/** Largest finite 32-bit float; the native side stores embeddings as `Float`. */
+const MAX_FLOAT32 = 3.4028234663852886e38;
+
+/**
+ * Serializes documents for the native layer.
+ *
+ * `JSON.stringify` turns `NaN` / `±Infinity` into `null`, so an embedding
+ * containing either would reach the engine silently corrupted rather than
+ * rejected. Values beyond the 32-bit float range are also refused, since the
+ * native side narrows to `Float` and would round them to infinity.
+ */
+function serializeDocs(docs: DocumentInfo[]): string {
+  if (!Array.isArray(docs)) {
+    throw new MossError(-2, 'docs must be an array');
+  }
+  for (const doc of docs) {
+    const embedding = doc?.embedding;
+    if (embedding === undefined) continue;
+    if (!Array.isArray(embedding)) {
+      throw new MossError(-2, `embedding for doc "${doc?.id}" must be an array of numbers`);
+    }
+    for (const value of embedding) {
+      if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > MAX_FLOAT32) {
+        throw new MossError(
+          -2,
+          `embedding for doc "${doc?.id}" must contain only finite 32-bit-float values`,
+        );
+      }
+    }
+  }
+  try {
+    return JSON.stringify(docs);
+  } catch (err) {
+    throw new MossError(-2, `docs are not JSON-serializable: ${String(err)}`);
   }
 }
 

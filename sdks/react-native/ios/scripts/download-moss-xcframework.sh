@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Downloads Moss.xcframework (MossC) used by the Expo iOS module.
-# Invoked from the CocoaPods prepare_command so the binary is not committed.
+# Invoked while MossReactNative.podspec is evaluated (not from prepare_command,
+# which CocoaPods skips for development pods) so the binary is not committed.
+# Idempotent: exits early when the framework is already in place.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
