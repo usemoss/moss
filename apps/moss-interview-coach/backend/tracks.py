@@ -61,7 +61,7 @@ INTERVIEW_TRACKS: dict[str, dict[str, Any]] = {
         "label": "Machine Learning Concepts",
         "blurb": "ML fundamentals, evaluation, training, and model systems.",
         "fallback_tips": [
-            "Name the metric you are optimising and why it fits the problem.",
+            "Name the metric you are optimizing and why it fits the problem.",
             "Separate training-time choices from inference-time constraints.",
             "Say how you would detect the model degrading in production.",
         ],

@@ -10,6 +10,8 @@ type InterviewTrack = {
   id: string;
   label: string;
   blurb: string;
+  /** False when the track's Moss index is not loaded on the backend. */
+  ready: boolean;
 };
 
 type GradeFeedback = {
@@ -109,13 +111,16 @@ function extractQuestionFromBotText(text: string): string {
   return (questions.at(-1) ?? parts.at(-1) ?? cleaned).trim();
 }
 
-function mapApiTracks(
-  apiTracks: Array<{ id: string; label: string; blurb?: string }>,
-): InterviewTrack[] {
+type ApiTrack = { id: string; label: string; blurb?: string; ready?: boolean };
+
+function mapApiTracks(apiTracks: ApiTrack[]): InterviewTrack[] {
   return apiTracks.map((track) => ({
     id: track.id,
     label: track.label,
     blurb: track.blurb ?? "",
+    // Absent means the backend did not report readiness; treat as usable so an
+    // older backend does not render every track unselectable.
+    ready: track.ready !== false,
   }));
 }
 
@@ -165,7 +170,8 @@ export default function HomePage() {
         if (cancelled) return;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as {
-          tracks?: Array<{ id: string; label: string; blurb?: string }>;
+          tracks?: ApiTrack[];
+          default?: string;
         };
         if (cancelled) return;
         if (!Array.isArray(data.tracks) || data.tracks.length === 0) {
@@ -173,11 +179,17 @@ export default function HomePage() {
         }
         const mapped = mapApiTracks(data.tracks);
         setTracks(mapped);
-        // Drop a selection whose track vanished from the refreshed list, so
-        // Start cannot fire an id the backend would normalise to the default.
-        setSelectedTrack((current) =>
-          current && mapped.some((t) => t.id === current) ? current : null,
-        );
+        // Keep a still-valid selection; otherwise adopt the backend's default,
+        // falling back to the first usable track. Anything unready is skipped,
+        // and a selection whose track vanished is dropped so Start cannot fire
+        // an id the backend would normalise to something else.
+        setSelectedTrack((current) => {
+          if (current && mapped.some((t) => t.id === current && t.ready)) {
+            return current;
+          }
+          const preferred = mapped.find((t) => t.id === data.default && t.ready);
+          return (preferred ?? mapped.find((t) => t.ready))?.id ?? null;
+        });
         setTracksStatus("ready");
       } catch {
         if (cancelled) return;
@@ -713,23 +725,42 @@ function IdleView({
           <ul className="space-y-1 border-y border-[var(--cream)]/10 py-2">
             {tracks.map((track) => {
               const selected = selectedTrack === track.id;
+              // The backend reports whether this track's Moss index is loaded.
+              // Starting an unready one only fails later at /health, so show it
+              // as unavailable rather than letting it be picked.
+              const unavailable = !track.ready;
               return (
                 <li key={track.id}>
                   <button
                     type="button"
                     aria-pressed={selected}
+                    disabled={unavailable}
+                    title={unavailable ? "Moss index not loaded for this track" : undefined}
                     onClick={() => onSelectTrack(track.id)}
                     className={`flex w-full items-baseline justify-between gap-6 px-1 py-3 text-left transition ${
-                      selected
-                        ? "text-[var(--accent)]"
-                        : "text-[var(--cream)] hover:text-[var(--accent)]"
+                      unavailable
+                        ? "cursor-not-allowed text-[var(--cream)]/35"
+                        : selected
+                          ? "text-[var(--accent)]"
+                          : "text-[var(--cream)] hover:text-[var(--accent)]"
                     }`}
                   >
-                    <span className="font-display text-2xl md:text-[1.75rem]">{track.label}</span>
+                    <span className="font-display text-2xl md:text-[1.75rem]">
+                      {track.label}
+                      {unavailable ? (
+                        <span className="ml-3 align-middle text-xs tracking-wide text-[var(--warn)]">
+                          index not loaded
+                        </span>
+                      ) : null}
+                    </span>
                     {track.blurb ? (
                       <span
                         className={`max-w-[14rem] text-right text-xs leading-snug md:max-w-xs md:text-sm ${
-                          selected ? "text-[var(--accent)]/80" : "text-[var(--fog)]"
+                          unavailable
+                            ? "text-[var(--fog)]/50"
+                            : selected
+                              ? "text-[var(--accent)]/80"
+                              : "text-[var(--fog)]"
                         }`}
                       >
                         {track.blurb}

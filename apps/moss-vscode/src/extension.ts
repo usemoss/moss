@@ -512,14 +512,17 @@ async function runCreateIndex(
       statusBarItem.tooltip = message;
     }
   } finally {
-    // rebuild() deletes the previous documents before scanning, so *any* run
-    // that does not end in a ready index leaves the on-disk cache describing
+    // rebuild() deletes the previous documents before scanning, so any run that
+    // got that far and did not end ready leaves the on-disk cache describing
     // documents that no longer exist — cancelled, or thrown from
     // readFileForIndex()/addDocs() midway. persistIndex() refuses to write
     // while unindexed, so drop the cache here instead, in a finally so the
-    // throw path cannot skip it; otherwise the next launch restores stale
-    // metadata for an index that is gone.
-    if (!indexer.isIndexed()) {
+    // throw path cannot skip it.
+    //
+    // Gated on hasDiscardedPreviousIndex() so a failure *before* deletion began
+    // (session setup, workspace scan) keeps the cache — those documents are
+    // still intact and re-indexing from scratch would be wasted work.
+    if (!indexer.isIndexed() && indexer.hasDiscardedPreviousIndex()) {
       await clearIndexCache(context).catch(() => undefined);
       log("Index not ready; cleared stale index cache.");
     }

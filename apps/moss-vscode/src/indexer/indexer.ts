@@ -24,6 +24,8 @@ export class CodebaseIndexer {
   private watchers: vscode.Disposable[] = [];
   private indexing = false;
   private watchingEnabled = false;
+  /** True once rebuild() has begun destroying the previous index. */
+  private discardedPreviousIndex = false;
   private onPersist: (() => void) | undefined;
 
   setPersistHandler(handler: (() => void) | undefined): void {
@@ -42,6 +44,16 @@ export class CodebaseIndexer {
 
   getPathChunkCounts(): Record<string, number> {
     return Object.fromEntries(this.pathChunkCounts.entries());
+  }
+
+  /**
+   * Whether the last rebuild got far enough to destroy the previous index.
+   *
+   * Lets the caller decide if a non-ready outcome must also invalidate the
+   * persisted cache, or whether the old documents are still intact.
+   */
+  hasDiscardedPreviousIndex(): boolean {
+    return this.discardedPreviousIndex;
   }
 
   isIndexed(): boolean {
@@ -97,6 +109,7 @@ export class CodebaseIndexer {
       return;
     }
     this.indexing = true;
+    this.discardedPreviousIndex = false;
 
     try {
       const files = await scanWorkspaceFiles(token);
@@ -109,6 +122,11 @@ export class CodebaseIndexer {
           staleIds.push(`${rel}#chunk-${i}`);
         }
       }
+      // Past this point the previous index is being destroyed, so any exit that
+      // is not "ready" leaves the persisted cache describing documents that no
+      // longer exist. A failure *before* here (scan, session setup) leaves the
+      // old documents intact, and the cache with them.
+      this.discardedPreviousIndex = true;
       if (staleIds.length) {
         await this.deleteInBatches(staleIds);
       }
@@ -215,6 +233,7 @@ export class CodebaseIndexer {
         return;
       }
       this.watchingEnabled = true;
+      this.discardedPreviousIndex = false;
       this.setStatus({
         state: "ready",
         files: this.pathChunkCounts.size,
