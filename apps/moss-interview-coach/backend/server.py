@@ -19,7 +19,7 @@ from typing import Any
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from moss import MossClient, QueryOptions
@@ -128,6 +128,20 @@ class ActiveSession:
 
 
 active_sessions: set[ActiveSession] = set()
+
+# Detached interview tasks (see webrtc_connection_callback for why they are not
+# Starlette background tasks). Held so shutdown can cancel them.
+bot_tasks: set[asyncio.Task[None]] = set()
+
+
+def _on_bot_task_done(task: asyncio.Task[None]) -> None:
+    bot_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.warning(f"Interview task ended with an error: {exc}")
+
 
 ICE_SERVERS = [IceServer(urls="stun:stun.l.google.com:19302")]
 small_webrtc_handler = SmallWebRTCRequestHandler(ice_servers=ICE_SERVERS)
@@ -934,6 +948,14 @@ async def lifespan(app: FastAPI):
                 *(s.shutdown() for s in sessions), return_exceptions=True
             )
 
+        # Then the detached interview tasks themselves, so none outlive the app.
+        tasks = [t for t in bot_tasks if not t.done()]
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        bot_tasks.clear()
+
 
 app = FastAPI(title="Interview Coach", lifespan=lifespan)
 
@@ -1053,7 +1075,7 @@ async def _json_object_body(request: Request) -> dict[str, Any]:
 
 
 @app.post("/api/offer")
-async def offer(request: Request, background_tasks: BackgroundTasks) -> dict[str, Any]:
+async def offer(request: Request) -> dict[str, Any]:
     try:
         track_id = resolve_track_id_for_offer(request.query_params.get("topic"))
     except ValueError as exc:
@@ -1076,7 +1098,18 @@ async def offer(request: Request, background_tasks: BackgroundTasks) -> dict[str
     body = await _json_object_body(request)
 
     async def webrtc_connection_callback(connection: SmallWebRTCConnection) -> None:
-        background_tasks.add_task(run_interview_bot, connection, track_id)
+        # Detached deliberately, not a Starlette background task. Those are
+        # awaited as part of the request lifecycle, and uvicorn waits for
+        # outstanding request tasks *before* running lifespan shutdown — with
+        # timeout_graceful_shutdown defaulting to None, that wait is unbounded.
+        # An interview attached to the request would therefore hang Ctrl-C
+        # forever and the lifespan cleanup below would never get to cancel it.
+        task = asyncio.create_task(
+            run_interview_bot(connection, track_id),
+            name=f"moss-interview-{track_id}",
+        )
+        bot_tasks.add(task)
+        task.add_done_callback(_on_bot_task_done)
 
     try:
         answer = await small_webrtc_handler.handle_web_request(
