@@ -34,6 +34,10 @@ import { useEffect, useState } from 'react';
 import { Button, ScrollView, Text, View } from 'react-native';
 import { MossClient, type SearchResult } from '@moss-dev/moss-react-native';
 
+// Development build only. `EXPO_PUBLIC_*` values are inlined into the shipped JS
+// bundle, so a project key set this way is readable by anyone with the app and
+// grants mutating access (createIndex / addDocs / deleteIndex). Do not ship it
+// in a production app — see the package README's "Credentials" section.
 const PROJECT_ID = process.env.EXPO_PUBLIC_MOSS_PROJECT_ID!;
 const PROJECT_KEY = process.env.EXPO_PUBLIC_MOSS_PROJECT_KEY!;
 

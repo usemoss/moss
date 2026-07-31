@@ -134,11 +134,12 @@ export class MossClient {
    * for those. Text-model indexes ignore it.
    */
   async query(indexName: string, query: string, options?: QueryOptions): Promise<SearchResult> {
+    const filterJson = resolveFilterJson(options);
     try {
       return await this.#native.query(indexName, query, {
         topK: options?.topK ?? 5,
         alpha: options?.alpha ?? 0.8,
-        filterJson: options?.filterJson ?? null,
+        filterJson,
         embedding: options?.embedding ?? null,
       });
     } catch (err) {
@@ -190,6 +191,33 @@ export class MossClient {
       // already closed
     }
   }
+}
+
+/**
+ * Resolves the metadata filter to the engine's JSON form.
+ *
+ * `filter` is the shape `@moss-dev/moss` uses, so callers migrating from the
+ * Node SDK reach for it first. Silently ignoring it would run the query
+ * unfiltered and return documents outside the intended scope, so an
+ * unserializable filter is an error rather than a fallback to `null`.
+ */
+function resolveFilterJson(options?: QueryOptions): string | null {
+  if (options?.filter !== undefined && options?.filterJson !== undefined) {
+    throw new MossError(-2, 'Pass either `filter` or `filterJson`, not both');
+  }
+  if (options?.filter !== undefined) {
+    let encoded: string;
+    try {
+      encoded = JSON.stringify(options.filter);
+    } catch (err) {
+      throw new MossError(-2, `filter is not JSON-serializable: ${String(err)}`);
+    }
+    if (typeof encoded !== 'string') {
+      throw new MossError(-2, 'filter is not JSON-serializable');
+    }
+    return encoded;
+  }
+  return options?.filterJson ?? null;
 }
 
 function wrapNativeError(err: unknown): Error {

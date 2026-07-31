@@ -39,9 +39,15 @@ CocoaPods downloads `Moss.xcframework` during `pod install` (checksum-verified a
 
 ## Quick start
 
+> [!WARNING]
+> The snippet below reads the project key from `EXPO_PUBLIC_*`, which is fine
+> for a local dev build but **must not ship in a production app**. See
+> [Credentials](#credentials) before you release.
+
 ```tsx
 import { MossClient } from '@moss-dev/moss-react-native';
 
+// Development builds only — see the Credentials section below.
 const client = new MossClient(process.env.EXPO_PUBLIC_MOSS_PROJECT_ID!, process.env.EXPO_PUBLIC_MOSS_PROJECT_KEY!);
 
 await client.createIndex('support-docs', [
@@ -58,6 +64,29 @@ for (const doc of result.docs) {
 client.close();
 ```
 
+## Credentials
+
+Anything in an `EXPO_PUBLIC_*` variable is **inlined into the JS bundle at build
+time**. It is shipped to every user and can be read straight out of the app —
+it is not a secret. A project key exposed that way is usable by anyone who
+extracts it, and `MossClient` also exposes mutating calls (`createIndex`,
+`addDocs`, `deleteIndex`), so a leaked key is not merely read access to your
+project.
+
+For this first release that means:
+
+- **Development / internal builds** — `EXPO_PUBLIC_MOSS_PROJECT_KEY` is fine.
+- **Production apps** — do not embed a project key. Either scope the key to
+  read-only in the portal (if your project supports it), or keep Moss behind
+  your own backend until the token-based auth path below lands.
+
+The Swift SDK's `Authenticator` (a callback that mints a short-lived,
+server-issued bearer token, backed by
+`moss_client_new_with_authenticator` in the native ABI) is the intended fix, and
+is **not yet bridged in this package** — Session / Authenticator APIs are
+deferred for this first release. Until it ships, treat an embedded project key
+as public.
+
 ## API
 
 Mirrors the Node `@moss-dev/moss` client for the core cloud + local query loop:
@@ -73,6 +102,19 @@ Mirrors the Node `@moss-dev/moss` client for the core cloud + local query loop:
 - `MossClient.setModelCacheDir(path)` (optional; iOS defaults to `Library/Caches/moss-models`)
 
 Session / Authenticator APIs from the Swift SDK are intentionally out of scope for this first release.
+
+### Metadata filters
+
+`query` takes the same `filter` shape as `@moss-dev/moss`:
+
+```ts
+await client.query('support-docs', 'refund timing', {
+  filter: { field: 'locale', condition: { $eq: 'en-US' } },
+});
+```
+
+Pass `filterJson` instead if you already hold the engine's serialized form.
+Supplying both is an error rather than a silent precedence rule.
 
 ### Custom embeddings
 

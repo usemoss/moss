@@ -34,7 +34,19 @@ export interface QueryOptions {
   topK?: number;
   /** Hybrid weight: 1.0 = dense only, 0.0 = sparse only. Default 0.8. */
   alpha?: number;
-  /** Metadata filter as a JSON string (engine filter format). */
+  /**
+   * Metadata filter, same shape as `@moss-dev/moss`:
+   * - Field: `{ field: 'city', condition: { $eq: 'NYC' } }`
+   * - And: `{ $and: [filter, filter, ...] }`
+   * - Or: `{ $or: [filter, filter, ...] }`
+   *
+   * Operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$near`.
+   */
+  filter?: Record<string, unknown>;
+  /**
+   * Pre-serialized metadata filter, for callers that already hold the engine's
+   * JSON form. Mutually exclusive with `filter`.
+   */
   filterJson?: string;
   /**
    * Precomputed query vector. Required for indexes built from custom document
