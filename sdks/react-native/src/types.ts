@@ -94,6 +94,24 @@ export interface MutationOptions {
   upsert?: boolean;
 }
 
+/**
+ * Supplies a short-lived bearer token.
+ *
+ * Return the raw token only — the native side builds the
+ * `Authorization: Bearer <token>` header itself, so do not include the
+ * `Bearer ` prefix. Called whenever the runtime needs a token, so cache until
+ * expiry on your side if the round trip is expensive.
+ */
+export type AuthTokenProvider = () => Promise<string> | string;
+
+/** Options for constructing a client that authenticates with short-lived tokens. */
+export interface MossClientAuthOptions {
+  projectId: string;
+  getAuthToken: AuthTokenProvider;
+  /** Override the cloud endpoint. Defaults to the standard Moss endpoint. */
+  baseUrl?: string;
+}
+
 export class MossError extends Error {
   readonly code: number;
 

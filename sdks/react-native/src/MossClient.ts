@@ -2,11 +2,13 @@ import { SharedObject } from 'expo-modules-core';
 
 import MossModule from './MossModule';
 import type {
+  AuthTokenProvider,
   CreateIndexOptions,
   DocumentInfo,
   IndexInfo,
   LoadIndexOptions,
   MutationOptions,
+  MossClientAuthOptions,
   MutationResult,
   QueryOptions,
   SearchResult,
@@ -26,12 +28,75 @@ type NativeClient = SharedObject & {
 };
 
 declare class NativeMossClient extends SharedObject {
-  constructor(projectId: string, projectKey: string);
+  constructor(
+    projectId: string,
+    projectKey: string | null,
+    useAuthenticator: boolean,
+    baseUrl: string | null,
+    clientId: number,
+  );
 }
 
 const NativeMossClientCtor = (MossModule as { MossClient: typeof NativeMossClient }).MossClient;
 
 const DEFAULT_MODEL_ID = 'moss-minilm';
+
+type AuthNative = {
+  addListener(
+    name: string,
+    listener: (event: { clientId: number; requestId: number }) => void,
+  ): { remove(): void };
+  resolveAuthRequest(requestId: number, token: string): Promise<void>;
+  rejectAuthRequest(requestId: number, message: string | null): Promise<void>;
+};
+
+const authNative = MossModule as unknown as AuthNative;
+
+/** Token providers by client id, for clients constructed with an authenticator. */
+const authProviders = new Map<number, AuthTokenProvider>();
+let nextAuthClientId = 1;
+let authSubscription: { remove(): void } | null = null;
+
+/**
+ * Answers a native auth request.
+ *
+ * Always responds, on every path: an unanswered request leaves the native call
+ * that triggered it waiting indefinitely, so a throwing or missing provider
+ * must still produce a rejection.
+ */
+async function handleAuthRequest(event: { clientId: number; requestId: number }): Promise<void> {
+  const reject = async (message: string) => {
+    try {
+      await authNative.rejectAuthRequest(event.requestId, message);
+    } catch {
+      // The request was already answered, or the client is gone.
+    }
+  };
+
+  const provider = authProviders.get(event.clientId);
+  if (!provider) {
+    await reject('MossClient was closed before an auth token could be provided');
+    return;
+  }
+  try {
+    const token = await provider();
+    if (typeof token !== 'string' || token.length === 0) {
+      await reject('getAuthToken must resolve to a non-empty string');
+      return;
+    }
+    await authNative.resolveAuthRequest(event.requestId, token);
+  } catch (err) {
+    await reject(err instanceof Error ? err.message : String(err));
+  }
+}
+
+/** Subscribes once, on first authenticator-backed client. */
+function ensureAuthListener(): void {
+  if (authSubscription) return;
+  authSubscription = authNative.addListener('onMossAuthRequest', (event) => {
+    void handleAuthRequest(event);
+  });
+}
 
 /**
  * On-device Moss client for React Native / Expo.
@@ -62,14 +127,66 @@ const DEFAULT_MODEL_ID = 'moss-minilm';
  */
 export class MossClient {
   readonly #native: NativeClient;
+  /** Non-zero only for authenticator-backed clients. */
+  readonly #authClientId: number;
 
-  constructor(projectId: string, projectKey: string) {
-    if (!projectId || !projectKey) {
-      throw new MossError(-2, 'projectId and projectKey are required');
+  /**
+   * Construct with a long-lived project key.
+   *
+   * Only suitable for development and internal builds — the key ends up in the
+   * shipped JS bundle. Use the authenticator form for production.
+   */
+  constructor(projectId: string, projectKey: string);
+  /**
+   * Construct with a token callback, so no long-lived secret is embedded in
+   * the app. `getAuthToken` is invoked whenever the native runtime needs a
+   * bearer token and should fetch a short-lived one from your backend.
+   */
+  constructor(init: MossClientAuthOptions);
+  constructor(projectIdOrInit: string | MossClientAuthOptions, projectKey?: string) {
+    if (typeof projectIdOrInit === 'string') {
+      if (!projectIdOrInit || !projectKey) {
+        throw new MossError(-2, 'projectId and projectKey are required');
+      }
+      this.#authClientId = 0;
+      try {
+        this.#native = new NativeMossClientCtor(
+          projectIdOrInit,
+          projectKey,
+          false,
+          null,
+          0,
+        ) as unknown as NativeClient;
+      } catch (err) {
+        throw wrapNativeError(err);
+      }
+      return;
     }
+
+    const { projectId, getAuthToken, baseUrl } = projectIdOrInit;
+    if (!projectId) {
+      throw new MossError(-2, 'projectId is required');
+    }
+    if (typeof getAuthToken !== 'function') {
+      throw new MossError(-2, 'getAuthToken must be a function');
+    }
+
+    const clientId = nextAuthClientId++;
+    // Register before constructing: the native side may request a token as
+    // soon as the client exists.
+    authProviders.set(clientId, getAuthToken);
+    ensureAuthListener();
+    this.#authClientId = clientId;
     try {
-      this.#native = new NativeMossClientCtor(projectId, projectKey) as unknown as NativeClient;
+      this.#native = new NativeMossClientCtor(
+        projectId,
+        null,
+        true,
+        baseUrl ?? null,
+        clientId,
+      ) as unknown as NativeClient;
     } catch (err) {
+      authProviders.delete(clientId);
       throw wrapNativeError(err);
     }
   }
@@ -187,6 +304,9 @@ export class MossClient {
 
   /** Release the native client. Safe to call more than once. */
   close(): void {
+    if (this.#authClientId !== 0) {
+      authProviders.delete(this.#authClientId);
+    }
     try {
       this.#native.close();
     } catch {

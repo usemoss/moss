@@ -7,10 +7,36 @@ import UIKit
  * SharedObject wrapping a native MossClient handle.
  * Methods return dictionaries / arrays that map cleanly across the JSI bridge.
  */
+/// Holds the closure that forwards a native auth-token request to JS.
+///
+/// A pointer to this box is handed to the native side as `user_data` and must
+/// stay valid for the whole life of the client, so it is retained manually and
+/// released only after `moss_client_free`.
+final class AuthBridgeBox {
+  let emit: (UInt32) -> Void
+  init(emit: @escaping (UInt32) -> Void) { self.emit = emit }
+}
+
+/// C trampoline registered as `MossAuthNotifyFn`.
+///
+/// The native runtime calls this from an arbitrary Rust thread, possibly
+/// concurrently, whenever it needs a bearer token. It must not block: it only
+/// forwards the request id to JS, which answers later via
+/// `moss_resolve_auth_request` / `moss_reject_auth_request`.
+@_cdecl("_moss_rn_auth_notify")
+func mossRNAuthNotify(requestId: UInt32, userData: UnsafeMutableRawPointer?) {
+  guard let userData else { return }
+  let box = Unmanaged<AuthBridgeBox>.fromOpaque(userData).takeUnretainedValue()
+  box.emit(requestId)
+}
+
 public final class MossClientSharedObject: SharedObject {
   private var handle: OpaquePointer?
   private var closed = false
   private var inFlight = 0
+  /// Retained `AuthBridgeBox` pointer for authenticator-backed clients, or nil
+  /// for project-key clients. Released exactly once, after the handle is freed.
+  private var authUserData: UnsafeMutableRawPointer?
   /// Guards `handle` / `closed` / `inFlight`.
   ///
   /// The operations are `AsyncFunction`s that run off the JS thread while
@@ -35,7 +61,63 @@ public final class MossClientSharedObject: SharedObject {
       throw Self.mossError(code: -7)
     }
     self.handle = raw
+    self.authUserData = nil
     super.init()
+  }
+
+  /// Construct a client that asks the host for a short-lived bearer token
+  /// instead of embedding a long-lived project key.
+  ///
+  /// `emit` is invoked from an arbitrary native thread whenever a token is
+  /// needed; it must not block. The host answers out-of-band with
+  /// `resolveAuthRequest` / `rejectAuthRequest`.
+  public init(projectId: String, baseUrl: String?, emit: @escaping (UInt32) -> Void) throws {
+    try Self.ensureModelCacheDir()
+    let deviceId = Self.stableDeviceId()
+    // Retained deliberately: the native side keeps this pointer for the
+    // client's lifetime. Ownership comes back to us on every error path below,
+    // and otherwise transfers to close()/release().
+    let userData = Unmanaged.passRetained(AuthBridgeBox(emit: emit)).toOpaque()
+
+    var raw: OpaquePointer?
+    let status = projectId.withCString { pid in
+      withOptionalCString(baseUrl) { base in
+        deviceId.withCString { did in
+          moss_client_new_with_authenticator_and_device_id(
+            pid,
+            mossRNAuthNotify,
+            userData,
+            base,
+            did,
+            &raw
+          )
+        }
+      }
+    }
+    if status != 0 {
+      Unmanaged<AuthBridgeBox>.fromOpaque(userData).release()
+      try Self.throwIfErr(status)
+    }
+    guard let raw else {
+      Unmanaged<AuthBridgeBox>.fromOpaque(userData).release()
+      throw Self.mossError(code: -7)
+    }
+    self.handle = raw
+    self.authUserData = userData
+    super.init()
+  }
+
+  /// Answer a pending auth request with a bearer token (no `Bearer ` prefix —
+  /// the native side builds the header). Unknown ids are no-ops natively.
+  static func resolveAuthRequest(requestId: UInt32, token: String) throws {
+    let status = token.withCString { moss_resolve_auth_request(requestId, $0) }
+    try throwIfErr(status)
+  }
+
+  /// Fail a pending auth request so the in-flight native call errors out
+  /// instead of hanging.
+  static func rejectAuthRequest(requestId: UInt32, message: String?) {
+    _ = withOptionalCString(message) { moss_reject_auth_request(requestId, $0) }
   }
 
   deinit {
@@ -59,16 +141,29 @@ public final class MossClientSharedObject: SharedObject {
     }
     closed = true
     guard inFlight == 0 else {
-      // Still in use — the last one out owns the free.
+      // Still in use — the last one out owns the teardown.
       state.unlock()
       return
     }
     let doomed = handle
+    let doomedAuth = authUserData
     handle = nil
+    authUserData = nil
     state.unlock()
 
+    Self.teardown(doomed, doomedAuth)
+  }
+
+  /// Frees the native handle, then releases the auth box.
+  ///
+  /// Order matters: the native side can invoke the notify callback — and so
+  /// dereference `user_data` — right up until the client is freed.
+  private static func teardown(_ doomed: OpaquePointer?, _ auth: UnsafeMutableRawPointer?) {
     if let doomed {
       moss_client_free(doomed)
+    }
+    if let auth {
+      Unmanaged<AuthBridgeBox>.fromOpaque(auth).release()
     }
   }
 
@@ -259,18 +354,19 @@ public final class MossClientSharedObject: SharedObject {
   private func release() {
     state.lock()
     inFlight -= 1
-    // If close() landed while this call was running it deferred the free to
+    // If close() landed while this call was running it deferred teardown to
     // whoever finished last. That is us.
     var doomed: OpaquePointer?
+    var doomedAuth: UnsafeMutableRawPointer?
     if inFlight == 0, closed {
       doomed = handle
+      doomedAuth = authUserData
       handle = nil
+      authUserData = nil
     }
     state.unlock()
 
-    if let doomed {
-      moss_client_free(doomed)
-    }
+    Self.teardown(doomed, doomedAuth)
   }
 
   /// Upper bound for `topK`. Far above any sane result count, but small enough
@@ -400,6 +496,19 @@ public final class MossClientSharedObject: SharedObject {
       out.append(narrowed)
     }
     return out
+  }
+
+  /// Narrows a bridged JS number to the native request-id type. `UInt32(_:)`
+  /// would trap on a negative or oversized value.
+  static func authRequestId(_ raw: Int) throws -> UInt32 {
+    guard raw >= 0, raw <= Int(UInt32.max) else {
+      throw mossError(code: -2, message: "requestId out of range: \(raw)")
+    }
+    return UInt32(raw)
+  }
+
+  static func argumentError(_ message: String) -> NSError {
+    mossError(code: -2, message: message)
   }
 
   private static func throwIfErr(_ status: Int32) throws {

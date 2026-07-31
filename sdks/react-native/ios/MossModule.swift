@@ -9,13 +9,49 @@ public class MossModule: Module {
       String(cString: moss_sdk_version())
     }
 
+    // Emitted when an authenticator-backed client needs a bearer token. The JS
+    // side answers with resolveAuthRequest / rejectAuthRequest.
+    Events("onMossAuthRequest")
+
     AsyncFunction("setModelCacheDir") { (path: String) in
       try MossClientSharedObject.setModelCacheDir(path)
     }
 
+    AsyncFunction("resolveAuthRequest") { (requestId: Int, token: String) in
+      try MossClientSharedObject.resolveAuthRequest(
+        requestId: try MossClientSharedObject.authRequestId(requestId),
+        token: token
+      )
+    }
+
+    AsyncFunction("rejectAuthRequest") { (requestId: Int, message: String?) in
+      MossClientSharedObject.rejectAuthRequest(
+        requestId: try MossClientSharedObject.authRequestId(requestId),
+        message: message
+      )
+    }
+
     Class("MossClient", MossClientSharedObject.self) {
-      Constructor { (projectId: String, projectKey: String) -> MossClientSharedObject in
-        try MossClientSharedObject(projectId: projectId, projectKey: projectKey)
+      Constructor { [weak self] (
+        projectId: String,
+        projectKey: String?,
+        useAuthenticator: Bool,
+        baseUrl: String?,
+        clientId: Int
+      ) -> MossClientSharedObject in
+        guard useAuthenticator else {
+          guard let projectKey, !projectKey.isEmpty else {
+            throw MossClientSharedObject.argumentError("projectKey is required")
+          }
+          return try MossClientSharedObject(projectId: projectId, projectKey: projectKey)
+        }
+        // Called from an arbitrary native thread; just hands the request to JS.
+        return try MossClientSharedObject(projectId: projectId, baseUrl: baseUrl) { requestId in
+          self?.sendEvent(
+            "onMossAuthRequest",
+            ["clientId": clientId, "requestId": Int(requestId)]
+          )
+        }
       }
 
       AsyncFunction("createIndex") { (client: MossClientSharedObject, name: String, docsJson: String, modelId: String?) -> [String: Any] in

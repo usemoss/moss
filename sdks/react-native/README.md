@@ -73,25 +73,49 @@ extracts it, and `MossClient` also exposes mutating calls (`createIndex`,
 `addDocs`, `deleteIndex`), so a leaked key is not merely read access to your
 project.
 
-For this first release that means:
+So:
 
 - **Development / internal builds** — `EXPO_PUBLIC_MOSS_PROJECT_KEY` is fine.
-- **Production apps** — do not embed a project key. Either scope the key to
-  read-only in the portal (if your project supports it), or keep Moss behind
-  your own backend until the token-based auth path below lands.
+- **Production apps** — do not embed a project key. Use the token form below.
 
-The Swift SDK's `Authenticator` (a callback that mints a short-lived,
-server-issued bearer token, backed by
-`moss_client_new_with_authenticator` in the native ABI) is the intended fix, and
-is **not yet bridged in this package** — Session / Authenticator APIs are
-deferred for this first release. Until it ships, treat an embedded project key
-as public.
+### Short-lived tokens (production)
+
+Pass `getAuthToken` instead of a project key. It is called whenever the native
+runtime needs a bearer token, so your backend mints a short-lived, scoped one
+and nothing long-lived is ever in the bundle:
+
+```ts
+const client = new MossClient({
+  projectId: process.env.EXPO_PUBLIC_MOSS_PROJECT_ID!,
+  getAuthToken: async () => {
+    const res = await fetch('https://api.example.com/moss-token', {
+      headers: { Authorization: `Bearer ${await mySessionToken()}` },
+    });
+    const { token } = await res.json();
+    return token; // raw token — do NOT prefix with "Bearer "
+  },
+});
+```
+
+Notes:
+
+- Return the **raw token**. The native side builds the
+  `Authorization: Bearer <token>` header itself.
+- `getAuthToken` may be called from a background thread and more than once —
+  cache until expiry if the round trip is expensive.
+- Throwing (or returning a non-string / empty string) fails the in-flight
+  request with your error rather than hanging it.
+- `projectId` is not a secret; only the key is.
+
+This is the same mechanism as the Swift SDK's `Authenticator`, wired through
+`moss_client_new_with_authenticator` in the native ABI.
 
 ## API
 
 Mirrors the Node `@moss-dev/moss` client for the core cloud + local query loop:
 
-- `new MossClient(projectId, projectKey)`
+- `new MossClient(projectId, projectKey)` (development builds)
+- `new MossClient({ projectId, getAuthToken, baseUrl? })` (short-lived tokens; see [Credentials](#credentials))
 - `createIndex(name, docs, options?)`
 - `addDocs(name, docs, options?)`
 - `loadIndex(name, options?)` / `unloadIndex(name)`
@@ -101,7 +125,8 @@ Mirrors the Node `@moss-dev/moss` client for the core cloud + local query loop:
 - `MossClient.sdkVersion`
 - `MossClient.setModelCacheDir(path)` (optional; iOS defaults to `Library/Caches/moss-models`)
 
-Session / Authenticator APIs from the Swift SDK are intentionally out of scope for this first release.
+The Swift SDK's `Authenticator` is bridged (see [Credentials](#credentials)).
+Session APIs remain out of scope for this first release.
 
 ### Metadata filters
 
