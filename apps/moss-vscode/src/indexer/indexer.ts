@@ -472,10 +472,12 @@ export class CodebaseIndexer {
   /**
    * Remove every document this rebuild added and forget their ids.
    *
-   * If the delete fails, `discardedPreviousIndex` is cleared so the caller
-   * keeps the persisted cache: the ids stay recorded there for a later rebuild
-   * to retry, rather than leaving documents in the index that nothing knows
-   * how to remove.
+   * If the delete fails, `pathChunkCounts` is kept so a retry in this session
+   * can still remove what was missed, but `discardedPreviousIndex` stays true
+   * so the caller still drops the persisted cache. That cache describes the
+   * previous documents, which this rebuild already deleted — keeping it would
+   * let `restoreFromMeta()` report a ready index for documents that no longer
+   * exist on the next launch.
    */
   private async discardPartialIndex(): Promise<void> {
     const partialIds: string[] = [];

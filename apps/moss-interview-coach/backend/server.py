@@ -1164,10 +1164,24 @@ async def offer(request: Request) -> dict[str, Any]:
             status_code=503,
             detail=f"Grader worker missing at {GRADER_WORKER_PATH.name}.",
         )
-    # Reserve before spawning: every session loads Whisper/Piper and competes for
-    # the same local Ollama, so unbounded offers would degrade the live ones.
-    # Taken here rather than inside the bot task — that runs several awaits
-    # later, so concurrent offers would all pass a mere check and overshoot.
+    # Parse and validate before reserving. A slot is scarce, and reading the
+    # request body can stall on a slow client — holding capacity for an offer
+    # that may never be well-formed enough to start a bot.
+    body = await _json_object_body(request)
+    try:
+        offer_request = SmallWebRTCRequest.from_dict(body)
+    except (KeyError, TypeError, ValueError) as exc:
+        # A malformed offer is the caller's mistake, not a server fault.
+        logger.warning(f"Malformed WebRTC offer: {exc}")
+        raise HTTPException(
+            status_code=422, detail=f"Malformed WebRTC offer: {exc}"
+        ) from exc
+
+    # Reserve immediately before handling: every session loads Whisper/Piper and
+    # competes for the same local Ollama, so unbounded offers would degrade the
+    # live ones. Taken here rather than inside the bot task — that runs several
+    # awaits later, so concurrent offers would all pass a mere check and
+    # overshoot the limit together.
     if not await reserve_bot_slot():
         raise HTTPException(
             status_code=503,
@@ -1180,7 +1194,6 @@ async def offer(request: Request) -> dict[str, Any]:
     # until then this request must hand it back on every failure path.
     slot_handed_over = False
     try:
-        body = await _json_object_body(request)
 
         async def webrtc_connection_callback(connection: SmallWebRTCConnection) -> None:
             # Detached deliberately, not a Starlette background task. Those are
@@ -1202,14 +1215,13 @@ async def offer(request: Request) -> dict[str, Any]:
 
         try:
             answer = await small_webrtc_handler.handle_web_request(
-                request=SmallWebRTCRequest.from_dict(body),
+                request=offer_request,
                 webrtc_connection_callback=webrtc_connection_callback,
             )
         except HTTPException:
             # Already carries an intended status; do not flatten it to a 500.
             raise
         except (KeyError, TypeError, ValueError) as exc:
-            # A malformed offer is the caller's mistake, not a server fault.
             logger.warning(f"Malformed WebRTC offer: {exc}")
             raise HTTPException(
                 status_code=422, detail=f"Malformed WebRTC offer: {exc}"
