@@ -256,7 +256,18 @@ function resolveFilterJson(options?: QueryOptions): string | null {
     }
     return encoded;
   }
-  return options?.filterJson ?? null;
+  const filterJson = options?.filterJson;
+  if (filterJson === undefined || filterJson === null) {
+    return null;
+  }
+  // Plain-JS callers are not bound by the type. A non-string would arrive at
+  // the Swift side, fail its `as? String` cast, and silently run the query
+  // unfiltered — which for a tenant- or user-scoping filter means returning
+  // documents the caller never intended to expose.
+  if (typeof filterJson !== 'string') {
+    throw new MossError(-2, 'filterJson must be a string');
+  }
+  return filterJson;
 }
 
 function wrapNativeError(err: unknown): Error {

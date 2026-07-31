@@ -11,11 +11,13 @@ public final class MossClientSharedObject: SharedObject {
   private var handle: OpaquePointer?
   private var closed = false
   private var inFlight = 0
-  /// Guards `handle` / `closed` / `inFlight`. Also used to let `close()` wait
-  /// for in-flight native calls: the operations are `AsyncFunction`s that run
-  /// off the JS thread, while `close()` is a synchronous `Function` on it, so
-  /// freeing the handle eagerly would be a use-after-free.
-  private let state = NSCondition()
+  /// Guards `handle` / `closed` / `inFlight`.
+  ///
+  /// The operations are `AsyncFunction`s that run off the JS thread while
+  /// `close()` is a synchronous `Function` on it, so freeing the handle
+  /// eagerly would be a use-after-free. Ownership of the free is therefore
+  /// handed to whoever is last out — see `close()` and `release()`.
+  private let state = NSLock()
 
   public init(projectId: String, projectKey: String) throws {
     try Self.ensureModelCacheDir()
@@ -40,9 +42,15 @@ public final class MossClientSharedObject: SharedObject {
     close()
   }
 
-  /// Marks the client closed, waits for any in-flight native calls to return,
-  /// then frees the handle. Safe to call while operations are running and safe
-  /// to call more than once.
+  /// Marks the client closed and frees the handle once nothing is using it.
+  ///
+  /// Never blocks: this is a synchronous `Function` on the JS thread, so
+  /// waiting here would freeze the UI for as long as an in-flight
+  /// `loadIndex` / query / mutation takes. If calls are still running the
+  /// handle is left for the last `release()` to free instead. Either way no
+  /// new work can start, since `acquire()` refuses once `closed` is set.
+  ///
+  /// Safe to call while operations are running, and safe to call twice.
   public func close() {
     state.lock()
     if closed {
@@ -50,9 +58,10 @@ public final class MossClientSharedObject: SharedObject {
       return
     }
     closed = true
-    // No new borrows can start now; drain the ones already running.
-    while inFlight > 0 {
-      state.wait()
+    guard inFlight == 0 else {
+      // Still in use — the last one out owns the free.
+      state.unlock()
+      return
     }
     let doomed = handle
     handle = nil
@@ -227,10 +236,10 @@ public final class MossClientSharedObject: SharedObject {
 
   // MARK: - Internals
 
-  /// Runs `body` with the native handle held open. `close()` blocks until every
-  /// such call has returned, so the pointer stays valid for the whole call.
-  /// Concurrent operations are still allowed — the native client is thread-safe;
-  /// only teardown is serialized against them.
+  /// Runs `body` with the native handle held open. The handle is not freed
+  /// while any such call is in flight, so the pointer stays valid for the whole
+  /// call even if `close()` arrives mid-flight. Concurrent operations are still
+  /// allowed — the native client is thread-safe.
   private func withHandle<R>(_ body: (OpaquePointer) throws -> R) throws -> R {
     let h = try acquire()
     defer { release() }
@@ -250,10 +259,18 @@ public final class MossClientSharedObject: SharedObject {
   private func release() {
     state.lock()
     inFlight -= 1
-    if inFlight == 0 {
-      state.broadcast()
+    // If close() landed while this call was running it deferred the free to
+    // whoever finished last. That is us.
+    var doomed: OpaquePointer?
+    if inFlight == 0, closed {
+      doomed = handle
+      handle = nil
     }
     state.unlock()
+
+    if let doomed {
+      moss_client_free(doomed)
+    }
   }
 
   /// Upper bound for `topK`. Far above any sane result count, but small enough
