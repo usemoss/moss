@@ -26,6 +26,10 @@ export class CodebaseIndexer {
   private watchingEnabled = false;
   /** True once rebuild() has begun destroying the previous index. */
   private discardedPreviousIndex = false;
+  /** Bumped by each rebuild so watcher work started earlier can bail out. */
+  private generation = 0;
+  /** Watcher operations already past their `indexing` guard. */
+  private watcherOps = new Set<Promise<void>>();
   private onPersist: (() => void) | undefined;
 
   setPersistHandler(handler: (() => void) | undefined): void {
@@ -110,8 +114,12 @@ export class CodebaseIndexer {
     }
     this.indexing = true;
     this.discardedPreviousIndex = false;
+    // Invalidate watcher work already in flight, then wait for it to settle so
+    // no late write lands between our delete and our rewrite.
+    this.generation += 1;
 
     try {
+      await this.drainWatcherOps();
       const files = await scanWorkspaceFiles(token);
       this.setStatus({ state: "indexing", processed: 0, total: files.length });
 
@@ -216,16 +224,7 @@ export class CodebaseIndexer {
         // snapshot is already gone (stale docs were deleted above), so discard
         // the partial index rather than presenting it as ready. The user re-runs
         // indexing from the "unindexed" state.
-        const partialIds: string[] = [];
-        for (const [rel, count] of this.pathChunkCounts) {
-          for (let i = 0; i < count; i++) {
-            partialIds.push(`${rel}#chunk-${i}`);
-          }
-        }
-        if (partialIds.length) {
-          await this.deleteInBatches(partialIds);
-        }
-        this.pathChunkCounts.clear();
+        await this.discardPartialIndex();
         this.watchingEnabled = false;
         this.setStatus({ state: "unindexed" });
         return;
@@ -247,6 +246,14 @@ export class CodebaseIndexer {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      // If the throw landed after the stale delete, documents from this run may
+      // already be in the index while the persisted cache — soon to be dropped
+      // by the caller — is the only record of their ids. Remove them now so
+      // nothing is stranded answering searches for files that no longer exist.
+      if (this.discardedPreviousIndex) {
+        await this.discardPartialIndex();
+      }
+      this.watchingEnabled = false;
       this.setStatus({ state: "error", message });
       throw err;
     } finally {
@@ -263,17 +270,55 @@ export class CodebaseIndexer {
     }
   }
 
+  /**
+   * Register a watcher operation so a rebuild can wait for it to finish.
+   *
+   * The `indexing` guard only stops watcher work from *starting*; an operation
+   * already awaiting a file read would otherwise run its writes concurrently
+   * with a rebuild's cleanup.
+   */
+  private trackWatcherOp(run: () => Promise<void>): Promise<void> {
+    const op = run();
+    this.watcherOps.add(op);
+    void op.catch(() => undefined).finally(() => this.watcherOps.delete(op));
+    return op;
+  }
+
+  /** Let watcher work that predates this rebuild settle before mutating. */
+  private async drainWatcherOps(): Promise<void> {
+    while (this.watcherOps.size) {
+      const inflight = Array.from(this.watcherOps);
+      await Promise.allSettled(inflight);
+      for (const op of inflight) {
+        this.watcherOps.delete(op);
+      }
+    }
+  }
+
   async upsertFile(uri: vscode.Uri): Promise<void> {
     if (!this.session || !this.watchingEnabled || this.indexing) {
       return;
     }
+    return this.trackWatcherOp(() => this.applyUpsert(uri, this.session!));
+  }
+
+  private async applyUpsert(uri: vscode.Uri, session: LocalMossSession): Promise<void> {
+    // A rebuild starting mid-operation invalidates everything below: its
+    // pathChunkCounts are being rewritten and its documents deleted, so writing
+    // here would resurrect ids the rebuild has already accounted for.
+    const generation = this.generation;
+    const stale = () => generation !== this.generation;
+
     const relativePath = toWorkspaceRelative(uri);
     if (isExcludedFromIndex(relativePath)) {
       return;
     }
     const file = await readFileForIndex(uri);
+    if (stale()) {
+      return;
+    }
     if (!file) {
-      await this.removeFile(uri);
+      await this.applyRemove(uri, session);
       return;
     }
 
@@ -287,14 +332,25 @@ export class CodebaseIndexer {
         toDelete.push(`${file.relativePath}#chunk-${i}`);
       }
       if (toDelete.length) {
-        await this.session.deleteDocs(toDelete);
+        await session.deleteDocs(toDelete);
+        if (stale()) {
+          return;
+        }
       }
     }
 
     if (chunks.length) {
-      await this.session.addDocs(chunks, { upsert: true });
+      await session.addDocs(chunks, { upsert: true });
+      // Re-checked after the write: if a rebuild took over we must not record
+      // these ids, and it will delete them as part of its own cleanup.
+      if (stale()) {
+        return;
+      }
       this.pathChunkCounts.set(file.relativePath, next);
     } else {
+      if (stale()) {
+        return;
+      }
       this.pathChunkCounts.delete(file.relativePath);
     }
 
@@ -306,16 +362,26 @@ export class CodebaseIndexer {
     if (!this.session || !this.watchingEnabled || this.indexing) {
       return;
     }
+    return this.trackWatcherOp(() => this.applyRemove(uri, this.session!));
+  }
+
+  private async applyRemove(uri: vscode.Uri, session: LocalMossSession): Promise<void> {
+    const generation = this.generation;
+    const stale = () => generation !== this.generation;
+
     const relativePath = toWorkspaceRelative(uri);
     const count = this.pathChunkCounts.get(relativePath) ?? 0;
     if (!count) {
       // Best-effort: try deleting a reasonable number of chunks
       const guessIds = Array.from({ length: 64 }, (_, i) => `${relativePath}#chunk-${i}`);
-      await this.session.deleteDocs(guessIds).catch(() => undefined);
+      await session.deleteDocs(guessIds).catch(() => undefined);
       return;
     }
     const ids = Array.from({ length: count }, (_, i) => `${relativePath}#chunk-${i}`);
-    await this.session.deleteDocs(ids);
+    await session.deleteDocs(ids);
+    if (stale()) {
+      return;
+    }
     this.pathChunkCounts.delete(relativePath);
     this.refreshReadyStatus();
     this.requestPersist();
@@ -395,6 +461,32 @@ export class CodebaseIndexer {
       files: this.pathChunkCounts.size,
       chunks,
     });
+  }
+
+  /**
+   * Remove every document this rebuild added and forget their ids.
+   *
+   * If the delete fails, `discardedPreviousIndex` is cleared so the caller
+   * keeps the persisted cache: the ids stay recorded there for a later rebuild
+   * to retry, rather than leaving documents in the index that nothing knows
+   * how to remove.
+   */
+  private async discardPartialIndex(): Promise<void> {
+    const partialIds: string[] = [];
+    for (const [rel, count] of this.pathChunkCounts) {
+      for (let i = 0; i < count; i++) {
+        partialIds.push(`${rel}#chunk-${i}`);
+      }
+    }
+    if (partialIds.length) {
+      try {
+        await this.deleteInBatches(partialIds);
+      } catch {
+        this.discardedPreviousIndex = false;
+        return;
+      }
+    }
+    this.pathChunkCounts.clear();
   }
 
   private async deleteInBatches(ids: string[]): Promise<void> {

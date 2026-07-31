@@ -109,6 +109,27 @@ moss_client: MossClient | None = None
 moss_indexes_ready: dict[str, bool] = {tid: False for tid in INTERVIEW_TRACKS}
 moss_ready = False
 active_bots = 0
+# Guards active_bots. The capacity check and the increment have to be one
+# critical section: offer() runs concurrently, and the bot task that used to do
+# the incrementing is spawned several awaits later, so checking there let any
+# number of simultaneous offers pass the limit together.
+active_bots_lock = asyncio.Lock()
+
+
+async def reserve_bot_slot() -> bool:
+    """Take a slot if one is free. Caller must release exactly once."""
+    global active_bots
+    async with active_bots_lock:
+        if active_bots >= MAX_ACTIVE_BOTS:
+            return False
+        active_bots += 1
+        return True
+
+
+async def release_bot_slot() -> None:
+    global active_bots
+    async with active_bots_lock:
+        active_bots = max(0, active_bots - 1)
 
 
 class ActiveSession:
@@ -744,7 +765,18 @@ async def run_interview_bot(
     webrtc_connection: SmallWebRTCConnection,
     track_id: str = DEFAULT_TRACK_ID,
 ) -> None:
-    global active_bots
+    # The slot is reserved by offer() before this task is created, so every exit
+    # path here — including the readiness check below — must release it.
+    try:
+        await _run_interview_bot(webrtc_connection, track_id)
+    finally:
+        await release_bot_slot()
+
+
+async def _run_interview_bot(
+    webrtc_connection: SmallWebRTCConnection,
+    track_id: str = DEFAULT_TRACK_ID,
+) -> None:
     track_id = normalize_track_id(track_id)
     if moss_client is None or not moss_indexes_ready.get(track_id):
         raise RuntimeError(
@@ -756,7 +788,6 @@ async def run_interview_bot(
     index_name = track["index_name"]
     system_prompt = build_system_prompt(track_id)
 
-    active_bots += 1
     session: ActiveSession | None = None
     try:
         transport = SmallWebRTCTransport(
@@ -931,7 +962,6 @@ async def run_interview_bot(
     finally:
         if session is not None:
             active_sessions.discard(session)
-        active_bots = max(0, active_bots - 1)
 
 
 async def ensure_moss_loaded() -> None:
@@ -1127,53 +1157,65 @@ async def offer(request: Request) -> dict[str, Any]:
             status_code=503,
             detail=f"Grader worker missing at {GRADER_WORKER_PATH.name}.",
         )
-    # Refuse before spawning: every session loads Whisper/Piper and competes for
+    # Reserve before spawning: every session loads Whisper/Piper and competes for
     # the same local Ollama, so unbounded offers would degrade the live ones.
-    if active_bots >= MAX_ACTIVE_BOTS:
+    # Taken here rather than inside the bot task — that runs several awaits
+    # later, so concurrent offers would all pass a mere check and overshoot.
+    if not await reserve_bot_slot():
         raise HTTPException(
             status_code=503,
             detail=(
-                f"At capacity: {active_bots} interview(s) already running "
+                f"At capacity: {MAX_ACTIVE_BOTS} interview(s) already running "
                 f"(MAX_ACTIVE_BOTS={MAX_ACTIVE_BOTS}). Try again shortly."
             ),
         )
-
-    body = await _json_object_body(request)
-
-    async def webrtc_connection_callback(connection: SmallWebRTCConnection) -> None:
-        # Detached deliberately, not a Starlette background task. Those are
-        # awaited as part of the request lifecycle, and uvicorn waits for
-        # outstanding request tasks *before* running lifespan shutdown — with
-        # timeout_graceful_shutdown defaulting to None, that wait is unbounded.
-        # An interview attached to the request would therefore hang Ctrl-C
-        # forever and the lifespan cleanup below would never get to cancel it.
-        task = asyncio.create_task(
-            run_interview_bot(connection, track_id),
-            name=f"moss-interview-{track_id}",
-        )
-        bot_tasks.add(task)
-        task.add_done_callback(_on_bot_task_done)
-
+    # Ownership of the reserved slot moves to the bot task once it is created;
+    # until then this request must hand it back on every failure path.
+    slot_handed_over = False
     try:
-        answer = await small_webrtc_handler.handle_web_request(
-            request=SmallWebRTCRequest.from_dict(body),
-            webrtc_connection_callback=webrtc_connection_callback,
-        )
-    except HTTPException:
-        # Already carries an intended status; do not flatten it to a 500.
-        raise
-    except (KeyError, TypeError, ValueError) as exc:
-        # A malformed offer is the caller's mistake, not a server fault.
-        logger.warning(f"Malformed WebRTC offer: {exc}")
-        raise HTTPException(
-            status_code=422, detail=f"Malformed WebRTC offer: {exc}"
-        ) from exc
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Failed to handle WebRTC offer")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to handle WebRTC offer",
-        ) from exc
+        body = await _json_object_body(request)
+
+        async def webrtc_connection_callback(connection: SmallWebRTCConnection) -> None:
+            # Detached deliberately, not a Starlette background task. Those are
+            # awaited as part of the request lifecycle, and uvicorn waits for
+            # outstanding request tasks *before* running lifespan shutdown — with
+            # timeout_graceful_shutdown defaulting to None, that wait is unbounded.
+            # An interview attached to the request would therefore hang Ctrl-C
+            # forever and the lifespan cleanup below would never get to cancel it.
+            nonlocal slot_handed_over
+            task = asyncio.create_task(
+                run_interview_bot(connection, track_id),
+                name=f"moss-interview-{track_id}",
+            )
+            # From here run_interview_bot's finally releases the slot, so this
+            # request must not — even if handle_web_request fails afterwards.
+            slot_handed_over = True
+            bot_tasks.add(task)
+            task.add_done_callback(_on_bot_task_done)
+
+        try:
+            answer = await small_webrtc_handler.handle_web_request(
+                request=SmallWebRTCRequest.from_dict(body),
+                webrtc_connection_callback=webrtc_connection_callback,
+            )
+        except HTTPException:
+            # Already carries an intended status; do not flatten it to a 500.
+            raise
+        except (KeyError, TypeError, ValueError) as exc:
+            # A malformed offer is the caller's mistake, not a server fault.
+            logger.warning(f"Malformed WebRTC offer: {exc}")
+            raise HTTPException(
+                status_code=422, detail=f"Malformed WebRTC offer: {exc}"
+            ) from exc
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to handle WebRTC offer")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to handle WebRTC offer",
+            ) from exc
+    finally:
+        if not slot_handed_over:
+            await release_bot_slot()
 
     return answer
 
