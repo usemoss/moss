@@ -5,7 +5,7 @@ import { chunkFile } from "./chunker";
 import { isExcludedFromIndex } from "./excludes";
 import { readFileForIndex, scanWorkspaceFiles, toWorkspaceRelative } from "./scanner";
 
-const BATCH_SIZE = 4;
+const BATCH_SIZE = 64;
 const YIELD_EVERY_FILES = 25;
 
 export type IndexStatus =
@@ -126,8 +126,10 @@ export class CodebaseIndexer {
         await this.session.addDocs(batch, { upsert: true });
       };
 
+      let cancelled = false;
       for (const uri of files) {
         if (token?.isCancellationRequested) {
+          cancelled = true;
           break;
         }
         const file = await readFileForIndex(uri);
@@ -153,6 +155,41 @@ export class CodebaseIndexer {
         if (pending.length >= BATCH_SIZE) {
           await flush();
         }
+      }
+
+      if (cancelled) {
+        const pendingByPath = new Map<string, number>();
+        for (const doc of pending) {
+          const filePath = doc.metadata?.filePath;
+          if (typeof filePath === "string") {
+            pendingByPath.set(filePath, (pendingByPath.get(filePath) ?? 0) + 1);
+          }
+        }
+        for (const [rel, unflushed] of pendingByPath) {
+          const current = this.pathChunkCounts.get(rel) ?? 0;
+          const remaining = current - unflushed;
+          if (remaining <= 0) {
+            this.pathChunkCounts.delete(rel);
+          } else {
+            this.pathChunkCounts.set(rel, remaining);
+          }
+        }
+        pending.length = 0;
+        totalChunks = 0;
+        for (const count of this.pathChunkCounts.values()) {
+          totalChunks += count;
+        }
+        if (this.pathChunkCounts.size === 0) {
+          this.setStatus({ state: "unindexed" });
+        } else {
+          this.watchingEnabled = true;
+          this.setStatus({
+            state: "ready",
+            files: this.pathChunkCounts.size,
+            chunks: totalChunks,
+          });
+        }
+        return;
       }
 
       await flush();

@@ -161,6 +161,8 @@ apps/
 ├── livekit-moss-vercel/     # LiveKit voice agent on Vercel
 ├── agora-moss/              # Agora Conversational AI MCP server with Moss retrieval
 ├── moss-llamaindex/         # LlamaIndex RAG backend + frontend
+├── moss-interview-coach/    # Local voice interview coach (Pipecat + Ollama + Moss rubrics)
+├── moss-vscode/             # VS Code extension for local semantic code search
 ├── moss-bun/                # Bun runtime example
 └── docker/                  # Dockerized examples (ECS/K8s pattern)
 
@@ -218,6 +220,24 @@ A privacy-first voice AI stack: **Ollama** for LLM inference, **Moss** for retri
 ```bash
 cd apps/pipecat-moss/ollama-local
 docker compose up
+```
+
+### Run the system design interview coach
+
+A local Pipecat voice coach that grades system-design answers against Moss-retrieved rubrics (Whisper + Ollama + Piper, Next.js assist UI).
+
+```bash
+cd apps/moss-interview-coach
+# See README for backend + frontend setup
+```
+
+### Run the Moss VS Code extension
+
+Local semantic code search over the active workspace (persisted indexes, optional cloud sync).
+
+```bash
+cd apps/moss-vscode
+# See README for packaging, F5 launch, and publish steps
 ```
 
 Full API reference: [docs.moss.dev](https://docs.moss.dev).
