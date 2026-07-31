@@ -125,6 +125,9 @@ class InterviewAssistState:
         self.last_question: str | None = None
         self.bot_buf: list[str] = []
         self.bot_speaking: bool = False
+        # Incremented each time the coach starts speaking. Lets a waiter tell
+        # "has not started yet" apart from "already finished".
+        self.bot_speech_turns: int = 0
         self._grade_generation: int = 0
         self._grade_tasks: set[asyncio.Task[None]] = set()
         self._grade_lock = asyncio.Lock()
@@ -303,6 +306,7 @@ class BotSpeechTracker(FrameProcessor):
 
         if isinstance(frame, BotStartedSpeakingFrame):
             self._assist.bot_speaking = True
+            self._assist.bot_speech_turns += 1
 
         if isinstance(frame, BotStoppedSpeakingFrame):
             self._assist.bot_speaking = False
@@ -457,12 +461,33 @@ async def _wait_until_coach_quiet(
     assist: InterviewAssistState,
     *,
     timeout_secs: float,
+    start_timeout_secs: float = 4.0,
 ) -> None:
+    """Block until the coach's spoken follow-up is done.
+
+    Grading is launched straight after the tool ack, while the follow-up is
+    still being generated — so `bot_speaking` is False and the gap before
+    speech starts looks identical to silence. Waiting on silence alone
+    therefore returned after ~450ms and put the grader's Ollama request in
+    competition with the coach's own response, which hurts on a single local
+    GPU. Wait for speech to actually begin first, then for it to finish.
+    """
     deadline = time.perf_counter() + timeout_secs
-    # First wait out any active TTS / speaking window.
-    while assist.bot_speaking and time.perf_counter() < deadline:
+    start_deadline = min(deadline, time.perf_counter() + start_timeout_secs)
+    turns_before = assist.bot_speech_turns
+
+    # Wait for the follow-up to start. Bounded, because the coach may not speak
+    # at all for this turn; the turn counter also covers an utterance that began
+    # and ended between polls.
+    while (
+        not assist.bot_speaking
+        and assist.bot_speech_turns == turns_before
+        and time.perf_counter() < start_deadline
+    ):
         await asyncio.sleep(0.12)
-    # Small quiet period so a multi-segment utterance can finish.
+
+    # Then wait it out, plus a short quiet period so a multi-segment utterance
+    # can finish before grading starts.
     quiet_for = 0.0
     while time.perf_counter() < deadline:
         if assist.bot_speaking:
@@ -857,17 +882,44 @@ app.add_middleware(
 )
 
 
+def _ollama_model_available(available: set[str], wanted: str) -> bool:
+    """Ollama lists fully-qualified tags (`llama3.1:latest`); config omits `:latest`."""
+    return wanted in available or (":" not in wanted and f"{wanted}:latest" in available)
+
+
 @app.get("/health")
 async def health() -> dict[str, Any]:
     ollama_ok = False
     ollama_error: str | None = None
+    missing_models: list[str] = []
     try:
         base = OLLAMA_BASE_URL.removesuffix("/v1")
         async with httpx.AsyncClient(timeout=2.0) as client:
             resp = await client.get(f"{base}/api/tags")
-            ollama_ok = resp.status_code == 200
-            if not ollama_ok:
-                ollama_error = f"status={resp.status_code}"
+        if resp.status_code != 200:
+            ollama_error = f"status={resp.status_code}"
+        else:
+            payload = resp.json()
+            entries = payload.get("models") or []
+            available = {
+                str(entry.get("name") or entry.get("model") or "")
+                for entry in entries
+                if isinstance(entry, dict)
+            }
+            available.discard("")
+            # A responding daemon is not enough. An unpulled model would only
+            # fail later, inside the background pipeline, after WebRTC is
+            # already negotiated — so refuse the interview here instead.
+            missing_models = sorted(
+                {OLLAMA_MODEL, OLLAMA_GRADE_MODEL}
+                - {m for m in {OLLAMA_MODEL, OLLAMA_GRADE_MODEL} if _ollama_model_available(available, m)}
+            )
+            if missing_models:
+                ollama_error = "missing Ollama model(s): " + ", ".join(
+                    f"{m} (ollama pull {m})" for m in missing_models
+                )
+            else:
+                ollama_ok = True
     except Exception as exc:  # noqa: BLE001
         ollama_error = str(exc)
 
@@ -884,6 +936,7 @@ async def health() -> dict[str, Any]:
         "moss_index_names": all_index_names(),
         "ollama_ok": ollama_ok,
         "ollama_error": ollama_error,
+        "ollama_missing_models": missing_models,
         "ollama_model": OLLAMA_MODEL,
         "ollama_grade_model": OLLAMA_GRADE_MODEL,
         "whisper_model": WHISPER_MODEL,

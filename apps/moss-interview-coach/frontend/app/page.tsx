@@ -282,6 +282,12 @@ export default function HomePage() {
   }, []);
 
   const endInterview = useCallback(async () => {
+    // onConnected / onBotReady can flip the UI to "active" while connect() is
+    // still awaiting, so End can be pressed with a startInterview still in
+    // flight. Retire its controller too, or that call would still own the
+    // session and resurrect it when it resumes.
+    connectAbortRef.current?.abort();
+    connectAbortRef.current = null;
     const client = clientRef.current;
     clientRef.current = null;
     setSession("idle");
@@ -505,9 +511,11 @@ export default function HomePage() {
           abort.signal,
         );
         if (abort.signal.aborted) throw abortReason(abort.signal);
-        // A newer interview may have taken over while we were connecting.
-        // Retire quietly rather than presenting this one as the live session.
-        if (!ownsSession()) {
+        // A newer interview may have taken over, or the user may have ended the
+        // session, while we were connecting. Both are checked: the controller
+        // covers a newer start, and clientRef covers endInterview clearing the
+        // live client. Retire quietly rather than presenting this as live.
+        if (!ownsSession() || clientRef.current !== client) {
           if (clientRef.current === client) clientRef.current = null;
           try {
             await client.disconnect();
@@ -561,7 +569,12 @@ export default function HomePage() {
 
   useEffect(() => {
     return () => {
+      // Abort first: an in-flight startInterview would otherwise run to
+      // completion against a client we are about to disconnect.
+      connectAbortRef.current?.abort();
+      connectAbortRef.current = null;
       void clientRef.current?.disconnect();
+      clientRef.current = null;
     };
   }, []);
 
