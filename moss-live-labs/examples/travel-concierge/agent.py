@@ -32,6 +32,9 @@ CATALOG_INDEX = os.getenv("TRAVEL_CATALOG_INDEX", "demo-travel-catalog")
 
 # Bound how long the next turn waits for in-flight fact writes (never cancels them).
 REMEMBER_WAIT_TIMEOUT_S = 2.0
+# Bound a single session write. This runs under the serialization lock, so an unbounded
+# Moss call would block every later turn's writes, not just the turn that stalled.
+STORE_ATTEMPT_TIMEOUT_S = 5.0
 # Session recall should cover all stored prefs for a short call.
 SESSION_TOP_K = 20
 
@@ -75,6 +78,13 @@ def _docs(result):
         {"id": getattr(d, "id", None), "text": d.text, "score": float(getattr(d, "score", 0.0))}
         for d in (result.docs if result and result.docs else [])
     ]
+
+
+def _store_error(exc: BaseException) -> str:
+    """Readable reason for a failed write — a bare TimeoutError stringifies to nothing."""
+    if isinstance(exc, asyncio.TimeoutError):
+        return f"timed out after {STORE_ATTEMPT_TIMEOUT_S:.1f}s"
+    return str(exc)
 
 
 def _normalize_facts(raw) -> list[tuple[str, str]]:
@@ -324,23 +334,36 @@ class TravelConciergeAgent(Agent):
             return []
 
     async def _store_fact(self, doc_id: str, fact_text: str, fact_id: str, seq: int) -> bool:
-        """Write one preference document, retrying once after an initial failure."""
+        """Write one preference document, retrying once after an initial failure.
+
+        Each attempt is capped at STORE_ATTEMPT_TIMEOUT_S. The caller holds
+        _remember_write_lock across this call, so an unbounded write would not merely
+        stall its own turn — it would hold the lock forever and silently stop every
+        later turn from storing preferences at all.
+        """
         doc = DocumentInfo(
             id=doc_id,
             text=fact_text,
             metadata={"role": "traveler", "category": fact_id, "seq": str(seq)},
         )
         try:
-            await self.session_index.add_docs([doc])
+            await asyncio.wait_for(self.session_index.add_docs([doc]), STORE_ATTEMPT_TIMEOUT_S)
             return True
         except Exception as e:
-            logger.warning(f"Failed to store fact {doc_id}: {e}; retrying once")
+            logger.warning(f"Failed to store fact {doc_id}: {_store_error(e)}; retrying once")
             try:
-                await self.session_index.add_docs([doc])
+                await asyncio.wait_for(self.session_index.add_docs([doc]), STORE_ATTEMPT_TIMEOUT_S)
                 return True
             except Exception as e2:
-                logger.warning(f"Retry store failed for {doc_id}: {e2}")
+                logger.warning(f"Retry store failed for {doc_id}: {_store_error(e2)}")
                 return False
+
+    async def aclose(self) -> None:
+        """Release the extractor's HTTP pool; one client is created per room."""
+        try:
+            await self._extractor.close()
+        except Exception as e:
+            logger.warning(f"Failed to close fact extractor client: {e}")
 
     async def _remember_facts(self, text: str, seq: int) -> None:
         facts = await self._extract_facts(text)
@@ -437,6 +460,9 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Opened live session: {session_name}")
 
     agent = TravelConciergeAgent(client, session_index, ctx.room)
+    # The agent opens its own extractor client per room; close it when the job ends so a
+    # long-lived worker does not accumulate connection pools across calls.
+    ctx.add_shutdown_callback(agent.aclose)
 
     session = AgentSession(
         stt=deepgram.STT(model="nova-2", language="en-US"),
