@@ -36,6 +36,12 @@ export interface QueryOptions {
   alpha?: number;
   /** Metadata filter as a JSON string (engine filter format). */
   filterJson?: string;
+  /**
+   * Precomputed query vector. Required for indexes built from custom document
+   * embeddings (`modelId: 'custom'`), which have no on-device model to embed
+   * the query text with. Must match the index's dimensionality.
+   */
+  embedding?: number[];
 }
 
 export interface ModelRef {

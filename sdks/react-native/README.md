@@ -74,6 +74,23 @@ Mirrors the Node `@moss-dev/moss` client for the core cloud + local query loop:
 
 Session / Authenticator APIs from the Swift SDK are intentionally out of scope for this first release.
 
+### Custom embeddings
+
+Passing documents with an `embedding` makes `createIndex` select `modelId: 'custom'`,
+which means there is no on-device model to embed query text with. Supply the query
+vector yourself:
+
+```ts
+await client.createIndex('vectors', [
+  { id: '1', text: 'Refunds take 3-5 business days.', embedding: myVector },
+]);
+await client.loadIndex('vectors');
+
+const result = await client.query('vectors', 'refund timing', {
+  embedding: myQueryVector, // must match the index dimensionality
+});
+```
+
 ## Requirements
 
 - Expo SDK 54+ (or a React Native app with Expo Modules)

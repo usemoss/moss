@@ -85,7 +85,14 @@ public final class MossClientSharedObject: SharedObject {
   public func loadIndex(name: String, options: [String: Any]) throws {
     try withHandle { h in
       let autoRefresh = (options["autoRefresh"] as? Bool) ?? false
-      let interval = UInt64((options["pollingIntervalSeconds"] as? Double) ?? 600)
+      let intervalSeconds = try Self.integerOption(
+        options,
+        "pollingIntervalSeconds",
+        default: 600,
+        minimum: 1,
+        maximum: Self.maxPollingIntervalSeconds
+      )
+      let interval = UInt64(intervalSeconds)
       let cachePath = options["cachePath"] as? String
 
       let status = name.withCString { cname in
@@ -114,22 +121,38 @@ public final class MossClientSharedObject: SharedObject {
 
   public func query(name: String, query: String, options: [String: Any]) throws -> [String: Any] {
     try withHandle { h in
-      let topK = max(0, Int((options["topK"] as? Double) ?? 5))
-      let alpha = Float((options["alpha"] as? Double) ?? 0.8)
+      let topK = try Self.integerOption(
+        options,
+        "topK",
+        default: 5,
+        minimum: 0,
+        maximum: Self.maxTopK
+      )
+      let alpha = try Self.unitIntervalOption(options, "alpha", default: 0.8)
       let filterJson = options["filterJson"] as? String
+      let embedding = try Self.embeddingOption(options, "embedding")
 
       return try name.withCString { iname in
         try query.withCString { q in
           try withOptionalCString(filterJson) { filter in
-            var nativeOpts = MossQueryOptions(
-              top_k: UInt(topK),
-              alpha: alpha,
-              filter_json: filter,
-              embedding: nil,
-              embedding_dim: 0
-            )
+            // `embedding` must stay alive for the duration of the call, so the
+            // buffer pointer is taken around `invoke` rather than escaping it.
             var result: UnsafeMutablePointer<MossSearchResult>?
-            let status = moss_client_query(h, iname, q, &nativeOpts, &result)
+            let invoke: (UnsafePointer<Float>?, Int) -> Int32 = { embPtr, embLen in
+              var nativeOpts = MossQueryOptions(
+                top_k: UInt(topK),
+                alpha: alpha,
+                filter_json: filter,
+                embedding: embPtr,
+                embedding_dim: UInt(embLen)
+              )
+              return moss_client_query(h, iname, q, &nativeOpts, &result)
+            }
+            let status: Int32 = if let embedding {
+              embedding.withUnsafeBufferPointer { bp in invoke(bp.baseAddress, bp.count) }
+            } else {
+              invoke(nil, 0)
+            }
             try Self.throwIfErr(status)
             guard let result else {
               throw Self.mossError(code: -7)
@@ -233,6 +256,14 @@ public final class MossClientSharedObject: SharedObject {
     state.unlock()
   }
 
+  /// Upper bound for `topK`. Far above any sane result count, but small enough
+  /// that `UInt(_:)` and the engine's own allocation stay well-defined.
+  private static let maxTopK = 100_000
+
+  /// Upper bound for `pollingIntervalSeconds` (~136 years). Exactly
+  /// representable as a `Double` and safely inside `UInt64`.
+  private static let maxPollingIntervalSeconds = Int(UInt32.max)
+
   private static let cacheDirLock = NSLock()
   private static var cacheDirConfigured = false
 
@@ -263,6 +294,85 @@ public final class MossClientSharedObject: SharedObject {
       return idfv
     }
     return UUID().uuidString
+  }
+
+  // MARK: - Option decoding
+  //
+  // JS numbers reach us as `Double`, so NaN, ±Infinity, negatives and huge
+  // magnitudes are all reachable from user code. `Int(_:)` and `UInt64(_:)`
+  // *trap* on those, which kills the app process outright — there is no error
+  // to bridge back. Validate first and throw a MossError instead.
+
+  private static func doubleValue(_ raw: Any) -> Double? {
+    if let d = raw as? Double { return d }
+    if let n = raw as? NSNumber { return n.doubleValue }
+    if let i = raw as? Int { return Double(i) }
+    return nil
+  }
+
+  /// Reads a whole-number option, rejecting anything `Int(_:)` would trap on.
+  /// Bounds stay well inside 2^53 so the `Double` comparisons are exact.
+  private static func integerOption(
+    _ options: [String: Any],
+    _ key: String,
+    default defaultValue: Int,
+    minimum: Int,
+    maximum: Int
+  ) throws -> Int {
+    guard let raw = options[key], !(raw is NSNull) else { return defaultValue }
+    guard let value = doubleValue(raw) else {
+      throw mossError(code: -2, message: "\(key) must be a number")
+    }
+    guard value.isFinite else {
+      throw mossError(code: -2, message: "\(key) must be a finite number")
+    }
+    let truncated = value.rounded(.towardZero)
+    guard truncated >= Double(minimum), truncated <= Double(maximum) else {
+      throw mossError(
+        code: -2,
+        message: "\(key) must be between \(minimum) and \(maximum), got \(value)"
+      )
+    }
+    return Int(truncated)
+  }
+
+  /// Reads a 0...1 weight. `Float(_:)` does not trap on NaN/Infinity, but
+  /// forwarding either into the engine is meaningless — reject them here.
+  private static func unitIntervalOption(
+    _ options: [String: Any],
+    _ key: String,
+    default defaultValue: Float
+  ) throws -> Float {
+    guard let raw = options[key], !(raw is NSNull) else { return defaultValue }
+    guard let value = doubleValue(raw) else {
+      throw mossError(code: -2, message: "\(key) must be a number")
+    }
+    guard value.isFinite else {
+      throw mossError(code: -2, message: "\(key) must be a finite number")
+    }
+    guard value >= 0, value <= 1 else {
+      throw mossError(code: -2, message: "\(key) must be between 0 and 1, got \(value)")
+    }
+    return Float(value)
+  }
+
+  /// Reads a query embedding, rejecting non-finite components before they reach
+  /// the engine.
+  private static func embeddingOption(_ options: [String: Any], _ key: String) throws -> [Float]? {
+    guard let raw = options[key], !(raw is NSNull) else { return nil }
+    guard let values = raw as? [Any] else {
+      throw mossError(code: -2, message: "\(key) must be an array of numbers")
+    }
+    if values.isEmpty { return nil }
+    var out: [Float] = []
+    out.reserveCapacity(values.count)
+    for element in values {
+      guard let value = doubleValue(element), value.isFinite else {
+        throw mossError(code: -2, message: "\(key) must contain only finite numbers")
+      }
+      out.append(Float(value))
+    }
+    return out
   }
 
   private static func throwIfErr(_ status: Int32) throws {

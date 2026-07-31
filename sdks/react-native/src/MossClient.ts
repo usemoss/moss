@@ -126,12 +126,20 @@ export class MossClient {
     }
   }
 
+  /**
+   * Search a loaded index.
+   *
+   * Indexes built from custom document embeddings have no on-device model to
+   * embed `query` with — pass `options.embedding` with a matching query vector
+   * for those. Text-model indexes ignore it.
+   */
   async query(indexName: string, query: string, options?: QueryOptions): Promise<SearchResult> {
     try {
       return await this.#native.query(indexName, query, {
         topK: options?.topK ?? 5,
         alpha: options?.alpha ?? 0.8,
         filterJson: options?.filterJson ?? null,
+        embedding: options?.embedding ?? null,
       });
     } catch (err) {
       throw wrapNativeError(err);
