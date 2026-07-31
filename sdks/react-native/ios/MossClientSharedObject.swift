@@ -10,7 +10,12 @@ import UIKit
 public final class MossClientSharedObject: SharedObject {
   private var handle: OpaquePointer?
   private var closed = false
-  private let lock = NSLock()
+  private var inFlight = 0
+  /// Guards `handle` / `closed` / `inFlight`. Also used to let `close()` wait
+  /// for in-flight native calls: the operations are `AsyncFunction`s that run
+  /// off the JS thread, while `close()` is a synchronous `Function` on it, so
+  /// freeing the handle eagerly would be a use-after-free.
+  private let state = NSCondition()
 
   public init(projectId: String, projectKey: String) throws {
     try Self.ensureModelCacheDir()
@@ -35,157 +40,197 @@ public final class MossClientSharedObject: SharedObject {
     close()
   }
 
+  /// Marks the client closed, waits for any in-flight native calls to return,
+  /// then frees the handle. Safe to call while operations are running and safe
+  /// to call more than once.
   public func close() {
-    lock.lock()
-    defer { lock.unlock() }
-    guard !closed else { return }
-    closed = true
-    if let handle {
-      moss_client_free(handle)
+    state.lock()
+    if closed {
+      state.unlock()
+      return
     }
+    closed = true
+    // No new borrows can start now; drain the ones already running.
+    while inFlight > 0 {
+      state.wait()
+    }
+    let doomed = handle
     handle = nil
+    state.unlock()
+
+    if let doomed {
+      moss_client_free(doomed)
+    }
   }
 
   public func createIndex(name: String, docsJson: String, modelId: String?) throws -> [String: Any] {
-    let h = try borrow()
-    var out: UnsafeMutablePointer<CChar>?
-    let status = name.withCString { cname in
-      docsJson.withCString { cdocs in
-        withOptionalCString(modelId) { cmodel in
-          moss_client_create_index_from_json(h, cname, cdocs, cmodel, &out)
+    try withHandle { h in
+      var out: UnsafeMutablePointer<CChar>?
+      let status = name.withCString { cname in
+        docsJson.withCString { cdocs in
+          withOptionalCString(modelId) { cmodel in
+            moss_client_create_index_from_json(h, cname, cdocs, cmodel, &out)
+          }
         }
       }
+      try Self.throwIfErr(status)
+      guard let out else {
+        throw Self.mossError(code: -7)
+      }
+      defer { moss_free_string(out) }
+      return try Self.decodeJsonObject(String(cString: out))
     }
-    try Self.throwIfErr(status)
-    guard let out else {
-      throw Self.mossError(code: -7)
-    }
-    defer { moss_free_string(out) }
-    return try Self.decodeJsonObject(String(cString: out))
   }
 
   public func loadIndex(name: String, options: [String: Any]) throws {
-    let h = try borrow()
-    let autoRefresh = (options["autoRefresh"] as? Bool) ?? false
-    let interval = UInt64((options["pollingIntervalSeconds"] as? Double) ?? 600)
-    let cachePath = options["cachePath"] as? String
+    try withHandle { h in
+      let autoRefresh = (options["autoRefresh"] as? Bool) ?? false
+      let interval = UInt64((options["pollingIntervalSeconds"] as? Double) ?? 600)
+      let cachePath = options["cachePath"] as? String
 
-    let status = name.withCString { cname in
-      withOptionalCString(cachePath) { cache in
-        var nativeOpts = MossLoadIndexOptions(
-          auto_refresh: autoRefresh,
-          polling_interval_secs: interval,
-          cache_path: cache
-        )
-        var info: UnsafeMutablePointer<MossIndexInfo>?
-        let r = moss_client_load_index(h, cname, &nativeOpts, &info)
-        if let info { moss_free_index_info(info) }
-        return r
+      let status = name.withCString { cname in
+        withOptionalCString(cachePath) { cache in
+          var nativeOpts = MossLoadIndexOptions(
+            auto_refresh: autoRefresh,
+            polling_interval_secs: interval,
+            cache_path: cache
+          )
+          var info: UnsafeMutablePointer<MossIndexInfo>?
+          let r = moss_client_load_index(h, cname, &nativeOpts, &info)
+          if let info { moss_free_index_info(info) }
+          return r
+        }
       }
+      try Self.throwIfErr(status)
     }
-    try Self.throwIfErr(status)
   }
 
   public func unloadIndex(name: String) throws {
-    let h = try borrow()
-    let status = name.withCString { cname in moss_client_unload_index(h, cname) }
-    try Self.throwIfErr(status)
+    try withHandle { h in
+      let status = name.withCString { cname in moss_client_unload_index(h, cname) }
+      try Self.throwIfErr(status)
+    }
   }
 
   public func query(name: String, query: String, options: [String: Any]) throws -> [String: Any] {
-    let h = try borrow()
-    let topK = max(0, Int((options["topK"] as? Double) ?? 5))
-    let alpha = Float((options["alpha"] as? Double) ?? 0.8)
-    let filterJson = options["filterJson"] as? String
+    try withHandle { h in
+      let topK = max(0, Int((options["topK"] as? Double) ?? 5))
+      let alpha = Float((options["alpha"] as? Double) ?? 0.8)
+      let filterJson = options["filterJson"] as? String
 
-    return try name.withCString { iname in
-      try query.withCString { q in
-        try withOptionalCString(filterJson) { filter in
-          var nativeOpts = MossQueryOptions(
-            top_k: UInt(topK),
-            alpha: alpha,
-            filter_json: filter,
-            embedding: nil,
-            embedding_dim: 0
-          )
-          var result: UnsafeMutablePointer<MossSearchResult>?
-          let status = moss_client_query(h, iname, q, &nativeOpts, &result)
-          try Self.throwIfErr(status)
-          guard let result else {
-            throw Self.mossError(code: -7)
+      return try name.withCString { iname in
+        try query.withCString { q in
+          try withOptionalCString(filterJson) { filter in
+            var nativeOpts = MossQueryOptions(
+              top_k: UInt(topK),
+              alpha: alpha,
+              filter_json: filter,
+              embedding: nil,
+              embedding_dim: 0
+            )
+            var result: UnsafeMutablePointer<MossSearchResult>?
+            let status = moss_client_query(h, iname, q, &nativeOpts, &result)
+            try Self.throwIfErr(status)
+            guard let result else {
+              throw Self.mossError(code: -7)
+            }
+            defer { moss_free_search_result(result) }
+            return Self.parseSearchResult(result.pointee)
           }
-          defer { moss_free_search_result(result) }
-          return Self.parseSearchResult(result.pointee)
         }
       }
     }
   }
 
   public func listIndexes() throws -> [[String: Any]] {
-    let h = try borrow()
-    var infos: UnsafeMutablePointer<MossIndexInfo>?
-    var count: UInt = 0
-    let status = moss_client_list_indexes(h, &infos, &count)
-    try Self.throwIfErr(status)
-    guard let infos else { return [] }
-    defer { moss_free_index_info_list(infos, count) }
-    var out: [[String: Any]] = []
-    out.reserveCapacity(Int(count))
-    for i in 0..<Int(count) {
-      out.append(Self.parseIndexInfo(infos.advanced(by: i).pointee))
+    try withHandle { h in
+      var infos: UnsafeMutablePointer<MossIndexInfo>?
+      var count: UInt = 0
+      let status = moss_client_list_indexes(h, &infos, &count)
+      try Self.throwIfErr(status)
+      guard let infos else { return [] }
+      defer { moss_free_index_info_list(infos, count) }
+      var out: [[String: Any]] = []
+      out.reserveCapacity(Int(count))
+      for i in 0..<Int(count) {
+        out.append(Self.parseIndexInfo(infos.advanced(by: i).pointee))
+      }
+      return out
     }
-    return out
   }
 
   public func getIndex(name: String) throws -> [String: Any] {
-    let h = try borrow()
-    return try name.withCString { cname in
-      var info: UnsafeMutablePointer<MossIndexInfo>?
-      let status = moss_client_get_index(h, cname, &info)
-      try Self.throwIfErr(status)
-      guard let info else {
-        throw Self.mossError(code: -7)
+    try withHandle { h in
+      try name.withCString { cname in
+        var info: UnsafeMutablePointer<MossIndexInfo>?
+        let status = moss_client_get_index(h, cname, &info)
+        try Self.throwIfErr(status)
+        guard let info else {
+          throw Self.mossError(code: -7)
+        }
+        defer { moss_free_index_info(info) }
+        return Self.parseIndexInfo(info.pointee)
       }
-      defer { moss_free_index_info(info) }
-      return Self.parseIndexInfo(info.pointee)
     }
   }
 
   public func deleteIndex(name: String) throws -> Bool {
-    let h = try borrow()
-    return try name.withCString { cname in
-      var deleted = false
-      let status = moss_client_delete_index(h, cname, &deleted)
-      try Self.throwIfErr(status)
-      return deleted
+    try withHandle { h in
+      try name.withCString { cname in
+        var deleted = false
+        let status = moss_client_delete_index(h, cname, &deleted)
+        try Self.throwIfErr(status)
+        return deleted
+      }
     }
   }
 
   public func addDocs(name: String, docsJson: String, upsert: Bool) throws -> [String: Any] {
-    let h = try borrow()
-    var out: UnsafeMutablePointer<CChar>?
-    let status = name.withCString { cname in
-      docsJson.withCString { cdocs in
-        moss_client_add_docs_from_json(h, cname, cdocs, upsert, &out)
+    try withHandle { h in
+      var out: UnsafeMutablePointer<CChar>?
+      let status = name.withCString { cname in
+        docsJson.withCString { cdocs in
+          moss_client_add_docs_from_json(h, cname, cdocs, upsert, &out)
+        }
       }
+      try Self.throwIfErr(status)
+      guard let out else {
+        throw Self.mossError(code: -7)
+      }
+      defer { moss_free_string(out) }
+      return try Self.decodeJsonObject(String(cString: out))
     }
-    try Self.throwIfErr(status)
-    guard let out else {
-      throw Self.mossError(code: -7)
-    }
-    defer { moss_free_string(out) }
-    return try Self.decodeJsonObject(String(cString: out))
   }
 
   // MARK: - Internals
 
-  private func borrow() throws -> OpaquePointer {
-    lock.lock()
-    defer { lock.unlock() }
+  /// Runs `body` with the native handle held open. `close()` blocks until every
+  /// such call has returned, so the pointer stays valid for the whole call.
+  /// Concurrent operations are still allowed — the native client is thread-safe;
+  /// only teardown is serialized against them.
+  private func withHandle<R>(_ body: (OpaquePointer) throws -> R) throws -> R {
+    let h = try acquire()
+    defer { release() }
+    return try body(h)
+  }
+
+  private func acquire() throws -> OpaquePointer {
+    state.lock()
+    defer { state.unlock() }
     guard !closed, let handle else {
       throw Self.mossError(code: -1, message: "MossClient already closed")
     }
+    inFlight += 1
     return handle
+  }
+
+  private func release() {
+    state.lock()
+    inFlight -= 1
+    if inFlight == 0 {
+      state.broadcast()
+    }
+    state.unlock()
   }
 
   private static let cacheDirLock = NSLock()
@@ -254,20 +299,33 @@ public final class MossClientSharedObject: SharedObject {
     ]
   }
 
+  /// Nullable C strings are omitted rather than boxed with `as Any` — that
+  /// would put an `Optional.none` into the dictionary and hand a non-JSON value
+  /// to the bridge. Absent keys read as `undefined` in JS, which the optional
+  /// fields on `IndexInfo` / `ModelRef` already allow.
   private static func parseIndexInfo(_ info: MossIndexInfo) -> [String: Any] {
-    [
+    var model: [String: Any] = ["id": cstr(info.model.id)]
+    if let version = cstrOpt(info.model.version) {
+      model["version"] = version
+    }
+
+    var out: [String: Any] = [
       "id": cstr(info.id),
       "name": cstr(info.name),
       "status": cstr(info.status),
       "docCount": Int(info.doc_count),
-      "model": [
-        "id": cstr(info.model.id),
-        "version": cstrOpt(info.model.version) as Any,
-      ],
-      "version": cstrOpt(info.version) as Any,
-      "createdAt": cstrOpt(info.created_at) as Any,
-      "updatedAt": cstrOpt(info.updated_at) as Any,
+      "model": model,
     ]
+    if let version = cstrOpt(info.version) {
+      out["version"] = version
+    }
+    if let createdAt = cstrOpt(info.created_at) {
+      out["createdAt"] = createdAt
+    }
+    if let updatedAt = cstrOpt(info.updated_at) {
+      out["updatedAt"] = updatedAt
+    }
+    return out
   }
 
   private static func parseSearchResult(_ result: MossSearchResult) -> [String: Any] {
