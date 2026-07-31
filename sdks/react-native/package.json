@@ -31,7 +31,9 @@
   "homepage": "https://github.com/usemoss/moss/tree/main/sdks/react-native#readme",
   "files": [
     "build",
-    "ios",
+    "ios/*.swift",
+    "ios/*.podspec",
+    "ios/scripts",
     "android",
     "app.plugin.js",
     "expo-module.config.json",
