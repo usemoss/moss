@@ -192,6 +192,12 @@ class InterviewAssistState:
         # Incremented each time the coach starts speaking. Lets a waiter tell
         # "has not started yet" apart from "already finished".
         self.bot_speech_turns: int = 0
+        # Incremented per captured user turn, and snapshotted when an LLM
+        # response begins. A tool call outlives its turn (the grading tool sets
+        # cancel_on_interruption=False), so comparing the two tells us whether
+        # the captured transcript still belongs to the call being handled.
+        self.user_turn_seq: int = 0
+        self.response_turn_seq: int = -1
         self._grade_generation: int = 0
         self._grade_tasks: set[asyncio.Task[None]] = set()
         self._grade_lock = asyncio.Lock()
@@ -231,11 +237,13 @@ class MossContextInjector(FrameProcessor):
         *,
         system_prompt: str,
         index_name: str,
+        assist_state: InterviewAssistState,
         top_k: int = 1,
         alpha: float = 0.6,
     ) -> None:
         super().__init__()
         self._client = client
+        self._assist = assist_state
         self._system_prompt = system_prompt
         self._index_name = index_name
         self._top_k = top_k
@@ -259,6 +267,7 @@ class MossContextInjector(FrameProcessor):
             return
 
         self.last_user_answer = user_text
+        self._assist.user_turn_seq += 1
         started = time.perf_counter()
         try:
             results = await self._client.query(
@@ -319,6 +328,8 @@ class CoachQuestionEmitter(FrameProcessor):
 
         if isinstance(frame, LLMFullResponseStartFrame):
             self._state.bot_buf = []
+            # This response answers whatever turn was captured most recently.
+            self._state.response_turn_seq = self._state.user_turn_seq
 
         if isinstance(frame, LLMTextFrame) and frame.text:
             self._state.bot_buf.append(frame.text)
@@ -438,11 +449,24 @@ async def grade_candidate_answer(
     # no ill intent the model tends to paraphrase rather than quote. The server
     # already captured the real turn, so that is the source of truth; the tool
     # arguments are only a fallback for when nothing was captured.
+    #
+    # Only when the capture still belongs to *this* call, though. The tool sets
+    # cancel_on_interruption=False, so a call issued for one turn can execute
+    # after the candidate has spoken again and overwritten last_user_answer —
+    # grading the wrong turn. user_turn_seq advances on every captured turn and
+    # response_turn_seq is snapshotted when the response carrying this call
+    # began, so an inequality means a newer turn has landed and the supplied
+    # argument (produced from the right turn) is the better record.
+    capture_matches_call = assist is not None and assist.user_turn_seq == assist.response_turn_seq
     supplied_answer = (answer or "").strip()
-    captured_answer = (moss.last_user_answer or "").strip() if moss else ""
+    captured_answer = (
+        (moss.last_user_answer or "").strip() if moss and capture_matches_call else ""
+    )
     answer_text = captured_answer or supplied_answer
     if captured_answer and supplied_answer and supplied_answer != captured_answer:
         logger.info("Grading the captured transcript rather than the model-supplied answer.")
+    elif not capture_matches_call and supplied_answer:
+        logger.info("Transcript moved on since this tool call; grading its supplied answer.")
     if not answer_text:
         await params.result_callback(
             {
@@ -455,7 +479,9 @@ async def grade_candidate_answer(
 
     # Same ordering for the question: assist.last_question is what the coach was
     # recorded as actually asking, so it outranks the model's restatement.
-    captured_question = (assist.last_question or "").strip() if assist else ""
+    captured_question = (
+        (assist.last_question or "").strip() if assist and capture_matches_call else ""
+    )
     question_text = (
         captured_question or (question or "").strip() or f"General {track_label} answer"
     )
@@ -824,12 +850,13 @@ async def _run_interview_bot(
             settings=PiperTTSService.Settings(voice=PIPER_VOICE),
         )
 
+        assist_state = InterviewAssistState()
         moss_injector = MossContextInjector(
             moss_client,
             system_prompt=system_prompt,
             index_name=index_name,
+            assist_state=assist_state,
         )
-        assist_state = InterviewAssistState()
 
         context = LLMContext(
             messages=[{"role": "system", "content": system_prompt}],
