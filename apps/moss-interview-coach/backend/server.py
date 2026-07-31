@@ -105,6 +105,30 @@ moss_indexes_ready: dict[str, bool] = {tid: False for tid in INTERVIEW_TRACKS}
 moss_ready = False
 active_bots = 0
 
+
+class ActiveSession:
+    """Handle for tearing down one in-flight interview.
+
+    Uvicorn owns the process signals (see the WorkerRunner construction in
+    run_interview_bot), so nothing cancels a running session on Ctrl-C unless
+    shutdown reaches it explicitly — it would otherwise keep Whisper / Ollama /
+    Piper and any grading subprocess alive until the server's shutdown timeout.
+    """
+
+    def __init__(self, worker: PipelineWorker, assist: InterviewAssistState) -> None:
+        self.worker = worker
+        self.assist = assist
+
+    async def shutdown(self) -> None:
+        """Cancel grading, then the pipeline worker. Idempotent enough to race."""
+        grade_tasks = self.assist.cancel_grades()
+        if grade_tasks:
+            await asyncio.gather(*grade_tasks, return_exceptions=True)
+        await self.worker.cancel()
+
+
+active_sessions: set[ActiveSession] = set()
+
 ICE_SERVERS = [IceServer(urls="stun:stun.l.google.com:19302")]
 small_webrtc_handler = SmallWebRTCRequestHandler(ice_servers=ICE_SERVERS)
 
@@ -694,6 +718,7 @@ async def run_interview_bot(
     system_prompt = build_system_prompt(track_id)
 
     active_bots += 1
+    session: ActiveSession | None = None
     try:
         transport = SmallWebRTCTransport(
             webrtc_connection=webrtc_connection,
@@ -770,6 +795,11 @@ async def run_interview_bot(
             },
         )
 
+        # Registered so the lifespan shutdown can reach this interview; Uvicorn
+        # keeps the signal handlers, so nothing else would cancel it on Ctrl-C.
+        session = ActiveSession(worker, assist_state)
+        active_sessions.add(session)
+
         @transport.event_handler("on_client_connected")
         async def on_client_connected(transport: SmallWebRTCTransport, client: Any) -> None:
             logger.info(f"Client connected over SmallWebRTC (track={track_id})")
@@ -819,10 +849,7 @@ async def run_interview_bot(
         @transport.event_handler("on_client_disconnected")
         async def on_client_disconnected(transport: SmallWebRTCTransport, client: Any) -> None:
             logger.info("Client disconnected; ending pipeline.")
-            grade_tasks = assist_state.cancel_grades()
-            if grade_tasks:
-                await asyncio.gather(*grade_tasks, return_exceptions=True)
-            await worker.cancel()
+            await ActiveSession(worker, assist_state).shutdown()
 
         # This runner is per-session and lives inside Uvicorn, so it must not
         # own process signals. WorkerRunner defaults handle_sigint=True and
@@ -835,6 +862,8 @@ async def run_interview_bot(
         await runner.add_workers(worker)
         await runner.run()
     finally:
+        if session is not None:
+            active_sessions.discard(session)
         active_bots = max(0, active_bots - 1)
 
 
@@ -870,7 +899,20 @@ async def ensure_moss_loaded() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await ensure_moss_loaded()
-    yield
+    try:
+        yield
+    finally:
+        # Uvicorn owns SIGINT/SIGTERM, so on Ctrl-C it stops accepting requests
+        # but nothing cancels an interview already in flight — it would hold
+        # Whisper / Ollama / Piper and any grading subprocess until the shutdown
+        # timeout. Cancel them here instead.
+        sessions = list(active_sessions)
+        active_sessions.clear()
+        if sessions:
+            logger.info(f"Shutting down {len(sessions)} active interview(s)")
+            await asyncio.gather(
+                *(s.shutdown() for s in sessions), return_exceptions=True
+            )
 
 
 app = FastAPI(title="Interview Coach", lifespan=lifespan)
