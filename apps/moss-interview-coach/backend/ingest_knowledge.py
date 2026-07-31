@@ -243,7 +243,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--source",
         type=Path,
         default=None,
-        help="JSON file or markdown directory (overrides --track; uses --index-name).",
+        help=(
+            "JSON file or markdown directory to ingest instead of the built-in "
+            "rubrics. Destination index comes from --index-name, else from the "
+            "single --track given, else the default track."
+        ),
     )
     parser.add_argument(
         "--index-name",
@@ -263,7 +267,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "with --source, omit to skip the sample query."
         ),
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    # --track is repeatable, but --source writes to exactly one index. Silently
+    # taking the first would make argument order decide the destination.
+    if args.source is not None and args.tracks and len(args.tracks) > 1:
+        parser.error(
+            "--source ingests into a single index, so pass at most one --track "
+            "(or use --index-name to name the destination explicitly)."
+        )
+    return args
 
 
 def main() -> None:
