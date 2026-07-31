@@ -137,7 +137,7 @@ class GradeResult(BaseModel):
     type: str = "grade_result"
     topic: str | None = None
     score: int = Field(ge=1, le=5)
-    max_score: int = 5
+    max_score: int = Field(default=5, ge=1)
     summary: str
     tips: list[str] = Field(default_factory=list)
 
@@ -462,7 +462,7 @@ async def grade_candidate_answer(
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(f"Background grader subprocess failed: {exc}")
-                    result = _fallback_grade_result(rubric_id)
+                    result = _fallback_grade_result(rubric_id, track_meta=track_meta)
             if not assist.grading_still_current(turn_id):
                 return
             grade_payload = result.model_dump()
@@ -541,15 +541,28 @@ def _extract_question(
     return parts[-1] if parts else text
 
 
-def _fallback_grade_result(rubric_id: str | None) -> GradeResult:
+def _fallback_grade_result(
+    rubric_id: str | None,
+    *,
+    track_meta: dict[str, Any] | None = None,
+) -> GradeResult:
+    """Grade shown when the grader subprocess fails.
+
+    Tips come from the active track — the generic default below is only used
+    when a track omits them, so an ML or agent-infra candidate is not handed
+    system-design advice.
+    """
+    tips = (track_meta or {}).get("fallback_tips")
     return GradeResult(
         topic=rubric_id,
         score=3,
         summary="Could not grade this turn automatically. Keep covering trade-offs.",
-        tips=[
-            "State assumptions out loud before diving into components.",
-            "Compare at least two design alternatives with trade-offs.",
-            "Call out bottlenecks and how you would scale them.",
+        tips=list(tips)
+        if tips
+        else [
+            "State your assumptions out loud before you go deeper.",
+            "Compare at least two alternatives with explicit trade-offs.",
+            "Name the main constraint and how you would address it.",
         ],
     )
 
@@ -567,7 +580,9 @@ def _grade_result_from_worker_payload(
     return GradeResult(
         topic=topic,
         score=score,
-        max_score=int(data.get("max_score") or 5),
+        # Clamped like `score`: the payload is LLM-derived, and a negative
+        # max_score would otherwise fail validation inside the grade task.
+        max_score=max(1, int(data.get("max_score") or 5)),
         summary=str(
             data.get("summary") or "Review the rubric points for this topic."
         ).strip(),
@@ -616,12 +631,17 @@ async def _grade_in_subprocess(
         "model": OLLAMA_GRADE_MODEL,
         "base_url": OLLAMA_BASE_URL,
     }
+    # The grader only talks to local Ollama, and takes model/base_url from the
+    # stdin job above — it reads no environment at all. Strip MOSS_* so the
+    # cloud credentials load_dotenv() put in this process do not reach it.
+    grader_env = {k: v for k, v in os.environ.items() if not k.startswith("MOSS_")}
     proc = await asyncio.create_subprocess_exec(
         sys.executable,
         str(GRADER_WORKER_PATH),
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
+        env=grader_env,
     )
     try:
         stdout, stderr = await asyncio.wait_for(
@@ -922,10 +942,17 @@ cors_origins = [
     for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
     if origin.strip()
 ]
+if "*" in cors_origins:
+    logger.warning(
+        "CORS_ORIGINS contains '*'. /api/offer is unauthenticated — list explicit origins."
+    )
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    # No endpoint here reads cookies or an Authorization header, so credentialed
+    # cross-origin requests are never needed. Leaving this on would make a
+    # wildcard CORS_ORIGINS reflect the caller's origin.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -1125,5 +1152,7 @@ if __name__ == "__main__":
         "server:app",
         host=os.getenv("BACKEND_HOST", "127.0.0.1"),
         port=int(os.getenv("BACKEND_PORT", "8000")),
-        reload=True,
+        # Off by default: a reload mid-interview kills live WebRTC sessions and
+        # can orphan grader subprocesses. Opt in with BACKEND_RELOAD=1.
+        reload=os.getenv("BACKEND_RELOAD", "").strip().lower() in {"1", "true", "yes"},
     )

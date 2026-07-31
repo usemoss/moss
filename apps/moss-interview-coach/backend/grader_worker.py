@@ -32,7 +32,14 @@ def _parse_grade_payload(raw: str, *, rubric_id: str | None) -> dict[str, Any]:
             cleaned = cleaned[start : end + 1]
 
     data = json.loads(cleaned)
-    score = int(data.get("score", 3))
+    # The model can emit a list or scalar, or a non-numeric score. Degrade to
+    # the default rather than failing the whole grade.
+    if not isinstance(data, dict):
+        data = {}
+    try:
+        score = int(data.get("score", 3))
+    except (TypeError, ValueError):
+        score = 3
     score = max(1, min(5, score))
     tips_raw = data.get("tips")
     if isinstance(tips_raw, list):

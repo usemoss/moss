@@ -501,6 +501,14 @@ async function runCreateIndex(
       vscode.window.showInformationMessage(
         `Moss index ready — ${files} files indexed (saved for next time).`,
       );
+    } else {
+      // rebuild() deletes the previous documents before scanning, so a
+      // cancelled or failed run leaves the on-disk cache describing documents
+      // that no longer exist. persistIndex() refuses to write while unindexed,
+      // so drop the cache instead — otherwise the next launch restores stale
+      // metadata for an index that is gone.
+      await clearIndexCache(context).catch(() => undefined);
+      log("Index not created; cleared stale index cache.");
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

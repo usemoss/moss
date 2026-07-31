@@ -157,6 +157,16 @@ export class CodebaseIndexer {
         }
       }
 
+      // The loop only tests the token *before* each file, so cancellation
+      // arriving during the last readFileForIndex() — or during the final
+      // flush() below — would otherwise fall through and publish "ready" over
+      // an incomplete scan.
+      cancelled = cancelled || (token?.isCancellationRequested ?? false);
+      if (!cancelled) {
+        await flush();
+        cancelled = token?.isCancellationRequested ?? false;
+      }
+
       if (cancelled) {
         const pendingByPath = new Map<string, number>();
         for (const doc of pending) {
@@ -197,7 +207,6 @@ export class CodebaseIndexer {
         return;
       }
 
-      await flush();
       if (this.pathChunkCounts.size === 0) {
         this.setStatus({
           state: "error",

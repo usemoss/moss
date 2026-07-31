@@ -271,7 +271,11 @@ def main() -> None:
     args = parse_args()
     try:
         if args.source is not None:
-            track = INTERVIEW_TRACKS[DEFAULT_TRACK_ID]
+            # --index-name still wins; otherwise fall back to the requested
+            # track's index rather than always the default one, which would
+            # write e.g. ML documents into the system-design index.
+            track_id = normalize_track_id(args.tracks[0]) if args.tracks else DEFAULT_TRACK_ID
+            track = INTERVIEW_TRACKS[track_id]
             index_name = args.index_name or track["index_name"]
             sample_query = args.sample_query
             asyncio.run(

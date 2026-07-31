@@ -6,14 +6,20 @@ Single source of truth for backend ingest + server (+ grader persona).
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 KNOWLEDGE_DIR = Path(__file__).resolve().parent / "knowledge"
 
 # Each track has its own Moss index so retrieval/grading stay on-topic.
-INTERVIEW_TRACKS: dict[str, dict[str, str]] = {
+INTERVIEW_TRACKS: dict[str, dict[str, Any]] = {
     "system-design": {
         "label": "System Design",
         "blurb": "Distributed systems, APIs, scale, and reliability.",
+        "fallback_tips": [
+            "State assumptions out loud before diving into components.",
+            "Compare at least two design alternatives with trade-offs.",
+            "Call out bottlenecks and how you would scale them.",
+        ],
         "index_name": "system-design-rubric",
         "knowledge_file": str(KNOWLEDGE_DIR / "system_design_rubrics.json"),
         "sample_query": "How would you design rate limiting for a public API?",
@@ -32,6 +38,11 @@ INTERVIEW_TRACKS: dict[str, dict[str, str]] = {
     "agent-native-infrastructure": {
         "label": "Agent-Native Infrastructure",
         "blurb": "Agent runtimes, tools, memory, orchestration, and evals.",
+        "fallback_tips": [
+            "Say which agent boundary you are designing: runtime, tools, or memory.",
+            "Explain how the agent recovers when a tool call fails or times out.",
+            "Describe how you would evaluate the change, not just ship it.",
+        ],
         "index_name": "agent-native-infrastructure-rubric",
         "knowledge_file": str(KNOWLEDGE_DIR / "agent_native_rubrics.json"),
         "sample_query": "How would you design tool calling and memory for a production agent?",
@@ -49,6 +60,11 @@ INTERVIEW_TRACKS: dict[str, dict[str, str]] = {
     "machine-learning-concepts": {
         "label": "Machine Learning Concepts",
         "blurb": "ML fundamentals, evaluation, training, and model systems.",
+        "fallback_tips": [
+            "Name the metric you are optimising and why it fits the problem.",
+            "Separate training-time choices from inference-time constraints.",
+            "Say how you would detect the model degrading in production.",
+        ],
         "index_name": "machine-learning-concepts-rubric",
         "knowledge_file": str(KNOWLEDGE_DIR / "ml_concepts_rubrics.json"),
         "sample_query": "How do you choose evaluation metrics for a classification model?",

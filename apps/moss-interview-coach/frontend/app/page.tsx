@@ -53,6 +53,10 @@ type TracksStatus = "loading" | "ready" | "error";
 /** Backoff for the initial track load — covers the frontend booting first. */
 const TRACKS_RETRY_DELAYS_MS = [1_000, 2_000, 4_000];
 
+/** Per-attempt cap. A backend that accepts the socket but never answers would
+ * otherwise leave the request pending and the picker stuck on "loading". */
+const TRACKS_REQUEST_TIMEOUT_MS = 10_000;
+
 function abortReason(signal: AbortSignal): unknown {
   return signal.reason ?? new DOMException("Connection timed out", "AbortError");
 }
@@ -143,10 +147,21 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
     const timers: number[] = [];
+    let active: AbortController | null = null;
 
     const attempt = async (index: number): Promise<void> => {
+      // Fresh controller per attempt, so a retry after a timeout is still
+      // cancellable rather than starting out already-aborted.
+      const controller = new AbortController();
+      active = controller;
+      const timeoutId = window.setTimeout(
+        () => controller.abort(),
+        TRACKS_REQUEST_TIMEOUT_MS,
+      );
       try {
-        const res = await fetch(`${BACKEND_URL}/api/tracks`);
+        const res = await fetch(`${BACKEND_URL}/api/tracks`, {
+          signal: controller.signal,
+        });
         if (cancelled) return;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as {
@@ -156,7 +171,13 @@ export default function HomePage() {
         if (!Array.isArray(data.tracks) || data.tracks.length === 0) {
           throw new Error("no tracks returned");
         }
-        setTracks(mapApiTracks(data.tracks));
+        const mapped = mapApiTracks(data.tracks);
+        setTracks(mapped);
+        // Drop a selection whose track vanished from the refreshed list, so
+        // Start cannot fire an id the backend would normalise to the default.
+        setSelectedTrack((current) =>
+          current && mapped.some((t) => t.id === current) ? current : null,
+        );
         setTracksStatus("ready");
       } catch {
         if (cancelled) return;
@@ -166,6 +187,9 @@ export default function HomePage() {
           return;
         }
         timers.push(window.setTimeout(() => void attempt(index + 1), delay));
+      } finally {
+        window.clearTimeout(timeoutId);
+        if (active === controller) active = null;
       }
     };
 
@@ -174,6 +198,7 @@ export default function HomePage() {
 
     return () => {
       cancelled = true;
+      active?.abort();
       timers.forEach((id) => window.clearTimeout(id));
     };
   }, [tracksReloadToken]);

@@ -87,6 +87,7 @@ Open [http://localhost:3000](http://localhost:3000) → pick a track (**System D
 | `GRADE_SUBPROCESS_TIMEOUT_SECS` | no | `60` |
 | `BACKEND_HOST` | no | `127.0.0.1` |
 | `BACKEND_PORT` | no | `8000` |
+| `BACKEND_RELOAD` | no | unset — uvicorn autoreload off; set `1` for development only |
 | `CORS_ORIGINS` | no | `http://localhost:3000` |
 | `NEXT_PUBLIC_BACKEND_URL` | no | `http://localhost:8000` |
 
@@ -100,7 +101,7 @@ Each track loads its own Moss index:
 
 ## Architecture
 
-```
+```text
 Browser (SmallWebRTC)
   ↔ POST /api/offer (SDP)
   ↔ Pipecat: Silero VAD → Whisper → MossContextInjector → Ollama(+tools) → Piper
