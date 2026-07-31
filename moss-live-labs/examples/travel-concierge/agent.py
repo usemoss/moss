@@ -35,7 +35,13 @@ REMEMBER_WAIT_TIMEOUT_S = 2.0
 # Session recall should cover all stored prefs for a short call.
 SESSION_TOP_K = 20
 
-FACT_IDS = frozenset({"budget", "dates", "party", "interests", "destination", "must_haves"})
+# Singleton categories hold one value at a time: a new budget replaces the old budget, so
+# each one owns a single stable doc id and later turns overwrite it.
+SINGLETON_FACT_IDS = frozenset({"budget", "dates", "party", "destination"})
+# Additive categories accumulate: "we love beaches" and "we also want museums" are both
+# true, so each fact gets its own doc id instead of replacing the previous one.
+ADDITIVE_FACT_IDS = frozenset({"interests", "must_haves"})
+FACT_IDS = SINGLETON_FACT_IDS | ADDITIVE_FACT_IDS
 
 # Turns the traveler's raw speech into clean, standalone facts before we store them.
 # Questions, recall requests, and small talk yield no facts, so they never hit the session.
@@ -123,7 +129,8 @@ class TravelConciergeAgent(Agent):
         self.turn = 0
         # Monotonic schedule order so a slow older extract cannot overwrite a newer correction.
         self._remember_seq = 0
-        # Highest seq observed per canonical category (advanced before write attempts).
+        # Highest seq observed per singleton category (advanced before write attempts).
+        # Additive categories never overwrite, so they are not gated here.
         self._category_seq: dict[str, int] = {}
         # Increments on each successful store batch; used to order panel refreshes.
         self._session_write_gen = 0
@@ -306,7 +313,7 @@ class TravelConciergeAgent(Agent):
         async with self._remember_write_lock:
             for fact_id, fact_text in facts:
                 self.turn += 1
-                if fact_id in FACT_IDS:
+                if fact_id in SINGLETON_FACT_IDS:
                     last = self._category_seq.get(fact_id, 0)
                     if seq < last:
                         logger.debug(
@@ -320,6 +327,10 @@ class TravelConciergeAgent(Agent):
                     # cannot be overwritten by an older extract that finishes later.
                     self._category_seq[fact_id] = seq
                     doc_id = f"pref-{fact_id}"
+                elif fact_id in ADDITIVE_FACT_IDS:
+                    # Each fact is its own document, so out-of-order turns cannot clobber
+                    # one another and the seq gate does not apply.
+                    doc_id = f"pref-{fact_id}-{self.turn}"
                 else:
                     doc_id = f"pref-other-{self.turn}"
 
