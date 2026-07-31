@@ -112,14 +112,20 @@ export class CodebaseIndexer {
     if (this.indexing) {
       return;
     }
+    // `indexing` is already set, so no *new* watcher work can start.
     this.indexing = true;
     this.discardedPreviousIndex = false;
-    // Invalidate watcher work already in flight, then wait for it to settle so
-    // no late write lands between our delete and our rewrite.
-    this.generation += 1;
 
     try {
+      // Drain before bumping the generation, not after. A watcher that has
+      // already called addDocs() must be allowed to record those chunks in
+      // pathChunkCounts — marking it stale first would make it return silently,
+      // leaving its writes out of the staleIds we compute below and stranding
+      // them in the index. Once everything in flight has settled, the bump
+      // covers anything that slips through afterwards.
       await this.drainWatcherOps();
+      this.generation += 1;
+
       const files = await scanWorkspaceFiles(token);
       this.setStatus({ state: "indexing", processed: 0, total: files.length });
 
@@ -482,7 +488,13 @@ export class CodebaseIndexer {
       try {
         await this.deleteInBatches(partialIds);
       } catch {
-        this.discardedPreviousIndex = false;
+        // Deliberately leave discardedPreviousIndex true so the caller still
+        // drops the persisted cache. That cache describes the *previous*
+        // documents, which this rebuild already deleted — keeping it would let
+        // restoreFromMeta() come back on the next launch reporting a ready
+        // index for documents that no longer exist, which is worse than the
+        // leftovers. pathChunkCounts is kept so a retry in this session can
+        // still delete what we failed to remove here.
         return;
       }
     }

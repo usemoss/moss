@@ -961,6 +961,13 @@ async def _run_interview_bot(
                 await watchdog
     finally:
         if session is not None:
+            # runner.run() can also end on a transport or LLM error, which
+            # reaches none of the disconnect / watchdog / lifespan paths. Tear
+            # the session down here before dropping the only handle to it, or a
+            # spawned grader keeps its subprocess and Ollama request alive until
+            # timeout and then queues a result into a dead worker.
+            with suppress(Exception):
+                await session.shutdown()
             active_sessions.discard(session)
 
 
