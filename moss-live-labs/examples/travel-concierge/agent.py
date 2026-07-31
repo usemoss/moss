@@ -142,6 +142,9 @@ class TravelConciergeAgent(Agent):
         self._refresh_lock = asyncio.Lock()
         # In-flight remember *write* tasks — awaited briefly next turn (refresh is detached).
         self._remember_tasks: set[asyncio.Task] = set()
+        # Writes that outlived the wait window: still running and still referenced, but no
+        # longer awaited, so one stalled call cannot tax every remaining turn.
+        self._overdue_remember_tasks: set[asyncio.Task] = set()
         # Detached panel refreshes — owned for error logging, never block voice turns.
         self._refresh_tasks: set[asyncio.Task] = set()
         # Last catalog snapshot so a post-remember republish can keep catalog hits.
@@ -166,8 +169,24 @@ class TravelConciergeAgent(Agent):
         except Exception as e:
             logger.warning(f"Failed to publish retrieval data: {e}")
 
+    def _on_overdue_remember_done(self, task: asyncio.Task) -> None:
+        """Report an overdue write once it finally lands, long after we stopped waiting."""
+        self._overdue_remember_tasks.discard(task)
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            return
+        except Exception as e:
+            logger.warning(f"Overdue fact storage failed: {e}")
+        else:
+            logger.info("Overdue fact storage finished after the wait window")
+
     async def _await_pending_remember(self) -> None:
         """Wait briefly for in-flight preference *writes* so recall can see them; never cancel.
+
+        A write that misses the window is retired from the wait set so one stalled call
+        cannot charge every later turn another REMEMBER_WAIT_TIMEOUT_S. It keeps running,
+        and _on_overdue_remember_done reports how it ended.
 
         Panel refresh runs on detached tasks and is intentionally not awaited here.
         """
@@ -182,9 +201,17 @@ class TravelConciergeAgent(Agent):
                 logger.warning(f"Pending fact storage failed: {e}")
         if still:
             logger.warning(
-                "Fact storage still running after %.1fs; continuing without cancelling",
+                "Fact storage still running after %.1fs; continuing without cancelling "
+                "and no longer waiting on %d task(s)",
                 REMEMBER_WAIT_TIMEOUT_S,
+                len(still),
             )
+            for task in still:
+                # Hold a reference in the overdue set: asyncio only keeps weak references,
+                # so dropping our last one could let a live write be garbage collected.
+                self._remember_tasks.discard(task)
+                self._overdue_remember_tasks.add(task)
+                task.add_done_callback(self._on_overdue_remember_done)
 
     def _schedule_remember(self, query: str) -> None:
         self._remember_seq += 1
@@ -419,6 +446,12 @@ async def entrypoint(ctx: JobContext):
         turn_handling={
             "turn_detection": MultilingualModel(),
             "endpointing": {"min_delay": 0.5, "max_delay": 1.5},
+            # Preemptive generation defaults to enabled, but it speculates on the chat
+            # context captured *before* on_user_turn_completed runs. This agent injects
+            # retrieved catalog and preference context on every turn that gets hits, so
+            # the speculative call is always discarded and regenerated — paying for the
+            # tokens twice and adding the retry latency it was meant to save.
+            "preemptive_generation": {"enabled": False},
         },
     )
 
