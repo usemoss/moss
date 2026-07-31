@@ -432,9 +432,17 @@ async def grade_candidate_answer(
     track_meta: dict[str, str] = resources.get("track") or INTERVIEW_TRACKS[DEFAULT_TRACK_ID]
     track_label = track_meta.get("label", "Interview")
 
-    answer_text = (answer or "").strip()
-    if not answer_text and moss and moss.last_user_answer:
-        answer_text = moss.last_user_answer
+    # These arguments are produced by the coach LLM *after* it has read the
+    # candidate's own transcript, so they sit downstream of untrusted input: a
+    # candidate can talk the model into grading a forged answer, and even with
+    # no ill intent the model tends to paraphrase rather than quote. The server
+    # already captured the real turn, so that is the source of truth; the tool
+    # arguments are only a fallback for when nothing was captured.
+    supplied_answer = (answer or "").strip()
+    captured_answer = (moss.last_user_answer or "").strip() if moss else ""
+    answer_text = captured_answer or supplied_answer
+    if captured_answer and supplied_answer and supplied_answer != captured_answer:
+        logger.info("Grading the captured transcript rather than the model-supplied answer.")
     if not answer_text:
         await params.result_callback(
             {
@@ -445,8 +453,11 @@ async def grade_candidate_answer(
         )
         return
 
-    question_text = (question or "").strip() or (
-        (assist.last_question if assist else None) or f"General {track_label} answer"
+    # Same ordering for the question: assist.last_question is what the coach was
+    # recorded as actually asking, so it outranks the model's restatement.
+    captured_question = (assist.last_question or "").strip() if assist else ""
+    question_text = (
+        captured_question or (question or "").strip() or f"General {track_label} answer"
     )
     rubric_id = moss.last_rubric_id if moss else None
     rubric_text = moss.last_rubric_text if moss else None
