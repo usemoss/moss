@@ -1326,15 +1326,15 @@ wheels = [
 
 [[package]]
 name = "livekit-protocol"
-version = "1.1.20"
+version = "1.1.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "protobuf" },
     { name = "types-protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/e7/912a7d303e4c1ff79c23b5b4425a7abefe161329cda78a5ba3571a7533bf/livekit_protocol-1.1.20.tar.gz", hash = "sha256:cf379e99ddf5890c145053ba340c4b0e92d492591a757e34f741eea9694af6af", size = 122448, upload-time = "2026-07-20T14:08:11.569Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/ae/9d60fe37d85623e68a2e36ae31d18c671949db67d2a13a6438410d930466/livekit_protocol-1.1.21.tar.gz", hash = "sha256:8bb1ac1aba5d37d0af43e9d56d129a5d16295cbd91518b00fd157e258f20a6ef", size = 122363, upload-time = "2026-07-21T18:28:26.372Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/35/dc5559169397e36f9e3bf1f67bb75312dfcdc3d6666dbd7c1cd61c6b50c6/livekit_protocol-1.1.20-py3-none-any.whl", hash = "sha256:8685a8c014afb83113b5d784f816cb3c54e1d9d3da6c142bbac30c0773c9c760", size = 149257, upload-time = "2026-07-20T14:08:10.132Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/d2/ec10b1cdf912235c2b07898be6ba2535e50f23e8980bb719f29decbd8034/livekit_protocol-1.1.21-py3-none-any.whl", hash = "sha256:ce0bb763327c91349ee8831843c4f8bd72132c4d06ac572171f2ae5c0217211d", size = 149245, upload-time = "2026-07-21T18:28:24.985Z" },
 ]
 
 [[package]]

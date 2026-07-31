@@ -52,7 +52,7 @@
   },
   "pnpm": {
     "overrides": {
-      "postcss": "^8.5.13"
+      "postcss": "^8.5.19"
     }
   },
   "packageManager": "pnpm@9.15.9"
