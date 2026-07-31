@@ -175,20 +175,25 @@ export class CodebaseIndexer {
           }
         }
         pending.length = 0;
-        totalChunks = 0;
-        for (const count of this.pathChunkCounts.values()) {
-          totalChunks += count;
+
+        // A cancelled scan only ever reached a prefix of the workspace, and the
+        // watchers fire on *changes* — so files never scanned would stay absent
+        // and searches would silently return partial results. The pre-index
+        // snapshot is already gone (stale docs were deleted above), so discard
+        // the partial index rather than presenting it as ready. The user re-runs
+        // indexing from the "unindexed" state.
+        const partialIds: string[] = [];
+        for (const [rel, count] of this.pathChunkCounts) {
+          for (let i = 0; i < count; i++) {
+            partialIds.push(`${rel}#chunk-${i}`);
+          }
         }
-        if (this.pathChunkCounts.size === 0) {
-          this.setStatus({ state: "unindexed" });
-        } else {
-          this.watchingEnabled = true;
-          this.setStatus({
-            state: "ready",
-            files: this.pathChunkCounts.size,
-            chunks: totalChunks,
-          });
+        if (partialIds.length) {
+          await this.deleteInBatches(partialIds);
         }
+        this.pathChunkCounts.clear();
+        this.watchingEnabled = false;
+        this.setStatus({ state: "unindexed" });
         return;
       }
 

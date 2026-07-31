@@ -47,6 +47,12 @@ const EMPTY_ASSIST: AssistPanelState = {
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 const CONNECT_TIMEOUT_MS = 30_000;
 
+/** Tracks now come only from the backend, so a cold start must be survivable. */
+type TracksStatus = "loading" | "ready" | "error";
+
+/** Backoff for the initial track load — covers the frontend booting first. */
+const TRACKS_RETRY_DELAYS_MS = [1_000, 2_000, 4_000];
+
 function abortReason(signal: AbortSignal): unknown {
   return signal.reason ?? new DOMException("Connection timed out", "AbortError");
 }
@@ -120,6 +126,8 @@ export default function HomePage() {
   const [remoteLevel, setRemoteLevel] = useState(0);
   const [assist, setAssist] = useState<AssistPanelState>(EMPTY_ASSIST);
   const [tracks, setTracks] = useState<InterviewTrack[]>([]);
+  const [tracksStatus, setTracksStatus] = useState<TracksStatus>("loading");
+  const [tracksReloadToken, setTracksReloadToken] = useState(0);
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
   const [activeTrackLabel, setActiveTrackLabel] = useState<string | null>(null);
 
@@ -129,25 +137,49 @@ export default function HomePage() {
   const connectAbortRef = useRef<AbortController | null>(null);
   const userCancelledRef = useRef(false);
 
+  // The backend is the only source of tracks, so a failed load leaves nothing
+  // to pick. Retry a few times to ride out the frontend starting first, then
+  // surface the failure with a manual retry rather than a silently empty list.
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
+    const timers: number[] = [];
+
+    const attempt = async (index: number): Promise<void> => {
       try {
         const res = await fetch(`${BACKEND_URL}/api/tracks`);
-        if (!res.ok || cancelled) return;
+        if (cancelled) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as {
           tracks?: Array<{ id: string; label: string; blurb?: string }>;
         };
-        if (!Array.isArray(data.tracks) || data.tracks.length === 0 || cancelled) return;
+        if (cancelled) return;
+        if (!Array.isArray(data.tracks) || data.tracks.length === 0) {
+          throw new Error("no tracks returned");
+        }
         setTracks(mapApiTracks(data.tracks));
+        setTracksStatus("ready");
       } catch {
-        // Tracks stay empty; the start screen shows a loading/empty state until
-        // the backend is reachable.
+        if (cancelled) return;
+        const delay = TRACKS_RETRY_DELAYS_MS[index];
+        if (delay === undefined) {
+          setTracksStatus("error");
+          return;
+        }
+        timers.push(window.setTimeout(() => void attempt(index + 1), delay));
       }
-    })();
+    };
+
+    setTracksStatus("loading");
+    void attempt(0);
+
     return () => {
       cancelled = true;
+      timers.forEach((id) => window.clearTimeout(id));
     };
+  }, [tracksReloadToken]);
+
+  const reloadTracks = useCallback(() => {
+    setTracksReloadToken((n) => n + 1);
   }, []);
 
   const handleServerMessage = useCallback((raw: unknown) => {
@@ -555,6 +587,8 @@ export default function HomePage() {
       {session === "idle" && (
         <IdleView
           tracks={tracks}
+          tracksStatus={tracksStatus}
+          onReloadTracks={reloadTracks}
           selectedTrack={selectedTrack}
           onSelectTrack={setSelectedTrack}
           onStart={(trackId) => void startInterview(trackId)}
@@ -582,12 +616,16 @@ export default function HomePage() {
 
 function IdleView({
   tracks,
+  tracksStatus,
+  onReloadTracks,
   selectedTrack,
   onSelectTrack,
   onStart,
   error,
 }: {
   tracks: InterviewTrack[];
+  tracksStatus: TracksStatus;
+  onReloadTracks: () => void;
   selectedTrack: string | null;
   onSelectTrack: (id: string) => void;
   onStart: (id: string) => void;
@@ -610,36 +648,61 @@ function IdleView({
         <p className="mb-4 text-xs tracking-[0.22em] text-[var(--fog)] uppercase">
           Choose a track
         </p>
-        <ul className="space-y-1 border-y border-[var(--cream)]/10 py-2">
-          {tracks.map((track) => {
-            const selected = selectedTrack === track.id;
-            return (
-              <li key={track.id}>
-                <button
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => onSelectTrack(track.id)}
-                  className={`flex w-full items-baseline justify-between gap-6 px-1 py-3 text-left transition ${
-                    selected
-                      ? "text-[var(--accent)]"
-                      : "text-[var(--cream)] hover:text-[var(--accent)]"
-                  }`}
-                >
-                  <span className="font-display text-2xl md:text-[1.75rem]">{track.label}</span>
-                  {track.blurb ? (
-                    <span
-                      className={`max-w-[14rem] text-right text-xs leading-snug md:max-w-xs md:text-sm ${
-                        selected ? "text-[var(--accent)]/80" : "text-[var(--fog)]"
-                      }`}
-                    >
-                      {track.blurb}
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        {tracksStatus === "loading" && tracks.length === 0 ? (
+          <div className="border-y border-[var(--cream)]/10 py-6">
+            <div className="loading-shimmer h-1.5 w-40 rounded-full" />
+            <p className="mt-4 text-sm text-[var(--fog)]">Loading tracks from the backend…</p>
+          </div>
+        ) : null}
+
+        {tracksStatus === "error" && tracks.length === 0 ? (
+          <div className="rounded-md border border-[var(--danger)]/40 bg-[var(--danger)]/10 px-4 py-4">
+            <p className="text-sm text-[var(--danger)]">
+              Could not load interview tracks from <span className="font-mono">{BACKEND_URL}</span>.
+              Start the backend (<span className="font-mono">python server.py</span>), then retry.
+            </p>
+            <button
+              type="button"
+              onClick={onReloadTracks}
+              className="mt-3 rounded-md border border-[var(--cream)]/25 px-4 py-2 text-sm font-medium text-[var(--cream)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
+
+        {tracks.length > 0 ? (
+          <ul className="space-y-1 border-y border-[var(--cream)]/10 py-2">
+            {tracks.map((track) => {
+              const selected = selectedTrack === track.id;
+              return (
+                <li key={track.id}>
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => onSelectTrack(track.id)}
+                    className={`flex w-full items-baseline justify-between gap-6 px-1 py-3 text-left transition ${
+                      selected
+                        ? "text-[var(--accent)]"
+                        : "text-[var(--cream)] hover:text-[var(--accent)]"
+                    }`}
+                  >
+                    <span className="font-display text-2xl md:text-[1.75rem]">{track.label}</span>
+                    {track.blurb ? (
+                      <span
+                        className={`max-w-[14rem] text-right text-xs leading-snug md:max-w-xs md:text-sm ${
+                          selected ? "text-[var(--accent)]/80" : "text-[var(--fog)]"
+                        }`}
+                      >
+                        {track.blurb}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
       </div>
 
       <div className="mt-10 flex flex-wrap items-center gap-4">

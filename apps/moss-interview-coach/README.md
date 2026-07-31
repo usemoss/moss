@@ -13,7 +13,9 @@ Real-time voice interview coach grounded by **Moss** sub-10ms hybrid retrieval. 
 ## Prerequisites
 
 - Python 3.11+
-- Node.js 20+
+- Node.js 22.14+ — required by `@daily-co/daily-js`, pulled in via
+  `@pipecat-ai/small-webrtc-transport`; installs under Node 20 fail when
+  `engine-strict` is set
 - [Ollama](https://ollama.com) with `llama3.1`
 - Moss project credentials from [moss.dev](https://moss.dev) / [docs.moss.dev](https://docs.moss.dev)
 
