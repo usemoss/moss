@@ -56,7 +56,13 @@ This example ships the TEN app plus a small index builder; the run harness (play
    python create_index.py           # reads data/knowledge.jsonl, creates MOSS_INDEX_NAME
    ```
 
-2. **Drop the app into a TEN checkout** by reusing the sibling `voice-assistant` example's harness and swapping in this `tenapp/`:
+2. **Drop the app into a TEN checkout**:
+
+   ```bash
+   ./setup.sh /path/to/ten-framework
+   ```
+
+   The script reuses the sibling `voice-assistant` example's harness (Taskfile, `scripts/`, Dockerfile), swaps in this `tenapp/`, and seeds `ai_agents/.env` from this directory's `.env` if you created one in step 1. To do it by hand instead:
 
    ```bash
    cd ten-framework/ai_agents/agents/examples
@@ -65,9 +71,11 @@ This example ships the TEN app plus a small index builder; the run harness (play
    cp -r /path/to/moss/apps/ten-moss/tenapp voice-assistant-with-moss/tenapp
    ```
 
-   `main_python` depends on [`ten-moss`](https://pypi.org/project/ten-moss/) (listed in `main_python/requirements.txt`), so `task install` pulls it from PyPI automatically.
+   `main_python` depends on [`ten-moss`](https://pypi.org/project/ten-moss/) (listed in `main_python/requirements.txt`), so `task install` pulls it from PyPI automatically. `task install` also pre-downloads the `moss-minilm` embedding model (when the `MOSS_*` env vars are set) so the first agent session does not have to.
 
 3. **Run with TEN's tooling** from that example directory (`task install && task run`, per the TEN docs), with the `MOSS_*` vars from step 1 plus the provider keys from Prerequisites (Agora, Deepgram, OpenAI, ElevenLabs). Open the TEN playground at http://localhost:3000, select the **`voice_assistant`** graph (a `predefined_graph` in `tenapp/property.json`, or open `?graph=voice_assistant`), and ask something covered by `data/knowledge.jsonl`, for example *"how long do refunds take?"*, to hear grounded answers.
+
+   **Apple Silicon note:** TEN's `ten_agent_build` dev image is amd64-only. On colima, start the VM with Rosetta (`colima start --vz-rosetta`); under plain qemu emulation the Go toolchain segfaults during `task install`. Docker Desktop and OrbStack enable Rosetta by default.
 
 ## Under the hood
 
@@ -155,7 +163,7 @@ Moss is configured on the `main_control` node in `tenapp/property.json` (env-sub
 
 The `tenapp/` baseline (graph, `main_python` control extension, agent runtime, scripts) is vendored from the TEN Framework `voice-assistant` example at commit [`c385d27`](https://github.com/ten-framework/ten-framework/tree/c385d2724a1f3e6ac4ee0b81fcc7dada8346c0e0/ai_agents/agents/examples/voice-assistant), licensed under **Apache-2.0** (headers preserved). Only the Moss delta described above is Moss-authored.
 
-Two small correctness patches were applied on top of the vendored baseline: `agent/decorators.py` fixes the `agent_event_handler` annotation to `type[AgentEvent]`, and `extension.py` parses `session_id` defensively so a non-numeric value cannot crash the ASR handler.
+Three small patches were applied on top of the vendored baseline: `agent/decorators.py` fixes the `agent_event_handler` annotation to `type[AgentEvent]`; `extension.py` parses `session_id` defensively so a non-numeric value cannot crash the ASR handler; and `scripts/install_python_deps.sh` fails fast (`set -euo pipefail`) and pre-warms the `moss-minilm` model cache, because two workers racing the first download corrupt the cache and grounding then silently degrades to an ungrounded assistant.
 
 ## Testing status
 

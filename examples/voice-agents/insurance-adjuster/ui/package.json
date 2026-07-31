@@ -23,7 +23,8 @@
     "tailwind-merge": "^3.3.0"
   },
   "overrides": {
-    "postcss": "8.5.19"
+    "postcss": "8.5.19",
+    "js-yaml": "^4.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -34,8 +35,5 @@
     "eslint-config-next": "^15.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
-  },
-  "overrides": {
-    "js-yaml": "^4.3.0"
   }
 }

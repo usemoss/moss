@@ -2,5 +2,5 @@ packages:
   - '.'
 
 overrides:
-  postcss: ^8.5.13
-  vite: ^8.1.5
+  postcss: ^8.5.19
+  vite: ~8.1.5
