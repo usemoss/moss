@@ -824,7 +824,14 @@ async def run_interview_bot(
                 await asyncio.gather(*grade_tasks, return_exceptions=True)
             await worker.cancel()
 
-        runner = WorkerRunner()
+        # This runner is per-session and lives inside Uvicorn, so it must not
+        # own process signals. WorkerRunner defaults handle_sigint=True and
+        # calls loop.add_signal_handler(SIGINT, ...) in run(), which *replaces*
+        # Uvicorn's handler — and it never removes it, so Ctrl-C would stay
+        # bound to a dead runner for the rest of the process. Uvicorn keeps
+        # signal handling; the worker is still torn down from
+        # on_client_disconnected above.
+        runner = WorkerRunner(handle_sigint=False, handle_sigterm=False)
         await runner.add_workers(worker)
         await runner.run()
     finally:
