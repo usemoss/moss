@@ -900,6 +900,7 @@ async def list_tracks() -> dict[str, Any]:
             {
                 "id": track_id,
                 "label": meta["label"],
+                "blurb": meta["blurb"],
                 "index_name": meta["index_name"],
                 "ready": moss_indexes_ready.get(track_id, False),
             }

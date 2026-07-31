@@ -44,24 +44,6 @@ const EMPTY_ASSIST: AssistPanelState = {
   feedback: null,
 };
 
-const INTERVIEW_TRACKS: InterviewTrack[] = [
-  {
-    id: "system-design",
-    label: "System Design",
-    blurb: "Distributed systems, APIs, scale, and reliability.",
-  },
-  {
-    id: "agent-native-infrastructure",
-    label: "Agent-Native Infrastructure",
-    blurb: "Agent runtimes, tools, memory, orchestration, and evals.",
-  },
-  {
-    id: "machine-learning-concepts",
-    label: "Machine Learning Concepts",
-    blurb: "ML fundamentals, evaluation, training, and model systems.",
-  },
-];
-
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 const CONNECT_TIMEOUT_MS = 30_000;
 
@@ -118,12 +100,12 @@ function extractQuestionFromBotText(text: string): string {
 }
 
 function mapApiTracks(
-  apiTracks: Array<{ id: string; label: string }>,
+  apiTracks: Array<{ id: string; label: string; blurb?: string }>,
 ): InterviewTrack[] {
   return apiTracks.map((track) => ({
     id: track.id,
     label: track.label,
-    blurb: INTERVIEW_TRACKS.find((t) => t.id === track.id)?.blurb ?? "",
+    blurb: track.blurb ?? "",
   }));
 }
 
@@ -137,7 +119,7 @@ export default function HomePage() {
   const [localLevel, setLocalLevel] = useState(0);
   const [remoteLevel, setRemoteLevel] = useState(0);
   const [assist, setAssist] = useState<AssistPanelState>(EMPTY_ASSIST);
-  const [tracks, setTracks] = useState<InterviewTrack[]>(INTERVIEW_TRACKS);
+  const [tracks, setTracks] = useState<InterviewTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
   const [activeTrackLabel, setActiveTrackLabel] = useState<string | null>(null);
 
@@ -153,11 +135,14 @@ export default function HomePage() {
       try {
         const res = await fetch(`${BACKEND_URL}/api/tracks`);
         if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { tracks?: Array<{ id: string; label: string }> };
+        const data = (await res.json()) as {
+          tracks?: Array<{ id: string; label: string; blurb?: string }>;
+        };
         if (!Array.isArray(data.tracks) || data.tracks.length === 0 || cancelled) return;
         setTracks(mapApiTracks(data.tracks));
       } catch {
-        // Keep hardcoded INTERVIEW_TRACKS fallback.
+        // Tracks stay empty; the start screen shows a loading/empty state until
+        // the backend is reachable.
       }
     })();
     return () => {

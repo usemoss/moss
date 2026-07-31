@@ -13,6 +13,7 @@ KNOWLEDGE_DIR = Path(__file__).resolve().parent / "knowledge"
 INTERVIEW_TRACKS: dict[str, dict[str, str]] = {
     "system-design": {
         "label": "System Design",
+        "blurb": "Distributed systems, APIs, scale, and reliability.",
         "index_name": "system-design-rubric",
         "knowledge_file": str(KNOWLEDGE_DIR / "system_design_rubrics.json"),
         "sample_query": "How would you design rate limiting for a public API?",
@@ -30,6 +31,7 @@ INTERVIEW_TRACKS: dict[str, dict[str, str]] = {
     },
     "agent-native-infrastructure": {
         "label": "Agent-Native Infrastructure",
+        "blurb": "Agent runtimes, tools, memory, orchestration, and evals.",
         "index_name": "agent-native-infrastructure-rubric",
         "knowledge_file": str(KNOWLEDGE_DIR / "agent_native_rubrics.json"),
         "sample_query": "How would you design tool calling and memory for a production agent?",
@@ -46,6 +48,7 @@ INTERVIEW_TRACKS: dict[str, dict[str, str]] = {
     },
     "machine-learning-concepts": {
         "label": "Machine Learning Concepts",
+        "blurb": "ML fundamentals, evaluation, training, and model systems.",
         "index_name": "machine-learning-concepts-rubric",
         "knowledge_file": str(KNOWLEDGE_DIR / "ml_concepts_rubrics.json"),
         "sample_query": "How do you choose evaluation metrics for a classification model?",

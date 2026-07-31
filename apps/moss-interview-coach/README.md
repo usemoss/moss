@@ -78,7 +78,7 @@ Open [http://localhost:3000](http://localhost:3000) → pick a track (**System D
 | `MOSS_PROJECT_KEY` | yes | — |
 | `OLLAMA_BASE_URL` | no | `http://localhost:11434/v1` |
 | `OLLAMA_MODEL` | no | `llama3.1` |
-| `OLLAMA_GRADE_MODEL` | no | same as `OLLAMA_MODEL` |
+| `OLLAMA_GRADE_MODEL` | no | unset — follows `OLLAMA_MODEL` (leave commented in `.env.example`) |
 | `WHISPER_MODEL` | no | `base` |
 | `WHISPER_DEVICE` | no | `auto` |
 | `PIPER_VOICE` | no | `en_US-lessac-medium` |
