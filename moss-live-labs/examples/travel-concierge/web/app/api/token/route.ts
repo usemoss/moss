@@ -15,22 +15,32 @@ function unauthorized() {
   return new NextResponse("Unauthorized", { status: 401 });
 }
 
+function tooManyRequests(retryAfterSec: number) {
+  return new NextResponse("Too many requests", {
+    status: 429,
+    headers: { "Retry-After": String(retryAfterSec) },
+  });
+}
+
 export async function GET(request: Request) {
   try {
     const ip = clientKey(request);
-    const limited = rateLimit(`token:${ip}`, { limit: 30, windowMs: 60_000 });
-    if (!limited.ok) {
-      return new NextResponse("Too many requests", {
-        status: 429,
-        headers: { "Retry-After": String(limited.retryAfterSec) },
-      });
-    }
 
     if (APP_SECRET) {
       if (!hasValidGateCookie(request.headers.get("cookie"), APP_SECRET)) {
+        // Rejected callers are capped on their own bucket. Charging them the mint bucket
+        // would let anyone without the access code spend the allowance unlocked visitors
+        // depend on — and since clientKey() falls back to a shared "global" key unless
+        // TRUSTED_CLIENT_IP_HEADER is set, that is every visitor at once.
+        const probe = rateLimit(`token:unauth:${ip}`, { limit: 30, windowMs: 60_000 });
+        if (!probe.ok) return tooManyRequests(probe.retryAfterSec);
         return unauthorized();
       }
     }
+
+    // Only gate-passing callers (or an ungated deployment) spend the mint allowance.
+    const limited = rateLimit(`token:${ip}`, { limit: 30, windowMs: 60_000 });
+    if (!limited.ok) return tooManyRequests(limited.retryAfterSec);
 
     if (!LIVEKIT_URL) throw new Error("LIVEKIT_URL is not defined");
     if (!API_KEY) throw new Error("LIVEKIT_API_KEY is not defined");
