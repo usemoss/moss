@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { COOKIE_NAME, GATE_TTL_MS, mintGateCookie, secretsEqual } from "@/lib/gate";
-import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { clientKey, isLocked, rateLimit } from "@/lib/rate-limit";
 
 const APP_SECRET = process.env.APP_SECRET;
+
+// Failed-guess budget. Shared by the lockout check and the counter so they cannot drift.
+const FAIL_LIMIT = 5;
+const FAIL_WINDOW_MS = 15 * 60_000;
 
 export const revalidate = 0;
 
@@ -27,6 +31,14 @@ export async function POST(request: Request) {
   const overall = rateLimit(`gate:all:${ip}`, { limit: 30, windowMs: 60_000 });
   if (!overall.ok) return tooMany(overall.retryAfterSec);
 
+  // Enforce the failed-guess lockout before comparing, not inside the mismatch branch.
+  // Checking it only on a wrong guess never blocks a right one, so an attacker who has
+  // burned the budget keeps guessing: wrong answers 429 but a correct answer still mints
+  // a cookie — the lockout would stop nothing it exists to stop.
+  const failKey = `gate:fail:${ip}`;
+  const locked = isLocked(failKey, FAIL_LIMIT);
+  if (locked) return tooMany(locked.retryAfterSec);
+
   let body: unknown;
   try {
     body = await request.json();
@@ -40,8 +52,8 @@ export async function POST(request: Request) {
       : "";
 
   if (!secretsEqual(secret, APP_SECRET)) {
-    const fails = rateLimit(`gate:fail:${ip}`, { limit: 5, windowMs: 15 * 60_000 });
-    if (!fails.ok) return tooMany(fails.retryAfterSec);
+    // Only wrong guesses spend the budget; the check above rejects everything once spent.
+    rateLimit(failKey, { limit: FAIL_LIMIT, windowMs: FAIL_WINDOW_MS });
     return new NextResponse("Unauthorized", { status: 401 });
   }
 

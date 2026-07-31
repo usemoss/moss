@@ -57,6 +57,21 @@ export function rateLimit(
 }
 
 /**
+ * Read-only lockout check: has `key` already spent `limit` in the current window?
+ *
+ * Consumes nothing, so a caller can reject *every* submission while a window is locked
+ * while charging the bucket only for the submissions that deserve it (e.g. wrong
+ * guesses). Pairing rateLimit() alone with a conditional branch cannot do this: the
+ * branch that never calls it is never blocked by it.
+ */
+export function isLocked(key: string, limit: number): false | { retryAfterSec: number } {
+  const now = Date.now();
+  const entry = buckets.get(key);
+  if (!entry || now >= entry.resetAt || entry.count < limit) return false;
+  return { retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)) };
+}
+
+/**
  * Rate-limit identity from exactly one configured trusted header.
  *
  * Set TRUSTED_CLIENT_IP_HEADER to one of: cf-connecting-ip | x-vercel-forwarded-for | x-real-ip.
