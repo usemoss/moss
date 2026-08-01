@@ -182,6 +182,25 @@ class GradeResult(BaseModel):
     tips: list[str] = Field(default_factory=list)
 
 
+# Cap on retained per-call snapshots; far above the handful ever in flight.
+MAX_CALL_SNAPSHOTS = 32
+
+
+class CallSnapshot(BaseModel):
+    """What was true for the turn a tool call was issued for.
+
+    Frozen deliberately: the point is to survive later turns mutating the
+    shared state these values were read from.
+    """
+
+    model_config = {"frozen": True}
+
+    answer: str | None = None
+    question: str | None = None
+    rubric_id: str | None = None
+    rubric_text: str | None = None
+
+
 class InterviewAssistState:
     """Shared question text for the Assist panel and grading tool."""
 
@@ -192,15 +211,27 @@ class InterviewAssistState:
         # Incremented each time the coach starts speaking. Lets a waiter tell
         # "has not started yet" apart from "already finished".
         self.bot_speech_turns: int = 0
-        # Incremented per captured user turn, and snapshotted when an LLM
-        # response begins. A tool call outlives its turn (the grading tool sets
-        # cancel_on_interruption=False), so comparing the two tells us whether
-        # the captured transcript still belongs to the call being handled.
-        self.user_turn_seq: int = 0
-        self.response_turn_seq: int = -1
+        # Immutable per-tool-call snapshots of the turn a call was issued for,
+        # keyed by tool_call_id. A grading call outlives its turn (the tool sets
+        # cancel_on_interruption=False), so reading shared state when it finally
+        # runs can bind it to a later turn. Recorded when the LLM announces the
+        # call — i.e. while the originating turn is still current.
+        self.call_snapshots: dict[str, CallSnapshot] = {}
         self._grade_generation: int = 0
         self._grade_tasks: set[asyncio.Task[None]] = set()
         self._grade_lock = asyncio.Lock()
+
+    def record_call_snapshot(self, tool_call_id: str, snapshot: CallSnapshot) -> None:
+        """Bind the current turn to a tool call before it can be rebound."""
+        # Bounded: a call whose handler never runs would otherwise leak an entry.
+        if len(self.call_snapshots) >= MAX_CALL_SNAPSHOTS:
+            oldest = next(iter(self.call_snapshots))
+            self.call_snapshots.pop(oldest, None)
+        self.call_snapshots[tool_call_id] = snapshot
+
+    def take_call_snapshot(self, tool_call_id: str) -> CallSnapshot | None:
+        """Consume the snapshot for a call. Each call may only claim its own."""
+        return self.call_snapshots.pop(tool_call_id, None)
 
     def cancel_grades(self) -> list[asyncio.Task[None]]:
         """Cancel in-flight grade tasks so subprocess workers are torn down."""
@@ -267,7 +298,6 @@ class MossContextInjector(FrameProcessor):
             return
 
         self.last_user_answer = user_text
-        self._assist.user_turn_seq += 1
         started = time.perf_counter()
         try:
             results = await self._client.query(
@@ -328,8 +358,6 @@ class CoachQuestionEmitter(FrameProcessor):
 
         if isinstance(frame, LLMFullResponseStartFrame):
             self._state.bot_buf = []
-            # This response answers whatever turn was captured most recently.
-            self._state.response_turn_seq = self._state.user_turn_seq
 
         if isinstance(frame, LLMTextFrame) and frame.text:
             self._state.bot_buf.append(frame.text)
@@ -450,23 +478,21 @@ async def grade_candidate_answer(
     # already captured the real turn, so that is the source of truth; the tool
     # arguments are only a fallback for when nothing was captured.
     #
-    # Only when the capture still belongs to *this* call, though. The tool sets
-    # cancel_on_interruption=False, so a call issued for one turn can execute
-    # after the candidate has spoken again and overwritten last_user_answer —
-    # grading the wrong turn. user_turn_seq advances on every captured turn and
-    # response_turn_seq is snapshotted when the response carrying this call
-    # began, so an inequality means a newer turn has landed and the supplied
-    # argument (produced from the right turn) is the better record.
-    capture_matches_call = assist is not None and assist.user_turn_seq == assist.response_turn_seq
+    # It has to be *this* call's transcript, though. The tool sets
+    # cancel_on_interruption=False, so a call issued for one turn can run after
+    # the candidate has spoken again — and shared state read at that point
+    # describes the newer turn. The snapshot was frozen when the LLM announced
+    # this call, keyed by its tool_call_id, so it cannot be rebound afterwards.
+    snapshot = assist.take_call_snapshot(params.tool_call_id) if assist else None
     supplied_answer = (answer or "").strip()
-    captured_answer = (
-        (moss.last_user_answer or "").strip() if moss and capture_matches_call else ""
-    )
+    captured_answer = (snapshot.answer or "").strip() if snapshot else ""
     answer_text = captured_answer or supplied_answer
     if captured_answer and supplied_answer and supplied_answer != captured_answer:
         logger.info("Grading the captured transcript rather than the model-supplied answer.")
-    elif not capture_matches_call and supplied_answer:
-        logger.info("Transcript moved on since this tool call; grading its supplied answer.")
+    elif snapshot is None and supplied_answer:
+        # No snapshot: fall back to the arguments, which are themselves bound to
+        # this invocation, rather than to shared state that may have moved on.
+        logger.info("No turn snapshot for this call; grading its supplied answer.")
     if not answer_text:
         await params.result_callback(
             {
@@ -479,14 +505,13 @@ async def grade_candidate_answer(
 
     # Same ordering for the question: assist.last_question is what the coach was
     # recorded as actually asking, so it outranks the model's restatement.
-    captured_question = (
-        (assist.last_question or "").strip() if assist and capture_matches_call else ""
-    )
+    captured_question = (snapshot.question or "").strip() if snapshot else ""
     question_text = (
         captured_question or (question or "").strip() or f"General {track_label} answer"
     )
-    rubric_id = moss.last_rubric_id if moss else None
-    rubric_text = moss.last_rubric_text if moss else None
+    # From the same snapshot, so the rubric matches the graded turn.
+    rubric_id = snapshot.rubric_id if snapshot else (moss.last_rubric_id if moss else None)
+    rubric_text = snapshot.rubric_text if snapshot else (moss.last_rubric_text if moss else None)
     turn_id = assist.begin_grading() if assist else 0
 
     await _queue_rtvi(
@@ -857,6 +882,21 @@ async def _run_interview_bot(
             index_name=index_name,
             assist_state=assist_state,
         )
+
+        # Bind each tool call to the turn it was issued for, while that turn is
+        # still current. Fires when the LLM announces its calls, before the
+        # runner executes them — so a call that later runs after the candidate
+        # has spoken again still grades the right transcript.
+        @llm.event_handler("on_function_calls_started")
+        async def on_function_calls_started(service: Any, function_calls: Any) -> None:
+            snapshot = CallSnapshot(
+                answer=moss_injector.last_user_answer,
+                question=assist_state.last_question,
+                rubric_id=moss_injector.last_rubric_id,
+                rubric_text=moss_injector.last_rubric_text,
+            )
+            for call in function_calls:
+                assist_state.record_call_snapshot(call.tool_call_id, snapshot)
 
         context = LLMContext(
             messages=[{"role": "system", "content": system_prompt}],
