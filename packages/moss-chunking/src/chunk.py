@@ -79,6 +79,10 @@ class Chunk:
         clashes = RESERVED_KEYS & self.extra.keys()
         if clashes:
             raise ValueError(f"extra may not override reserved keys: {sorted(clashes)}")
+        # `frozen=True` freezes the field, not the dict behind it. Without a copy
+        # the caller keeps a live handle on validated state and can add a
+        # reserved key after the check has already passed.
+        object.__setattr__(self, "extra", dict(self.extra))
 
     def to_document(self, source: str) -> DocumentInfo:
         """Render this chunk as a Moss `DocumentInfo`.
@@ -86,16 +90,22 @@ class Chunk:
         Every metadata value is stringified because Moss types metadata as
         `Dict[str, str]`. An int left in there would fail at the SDK boundary,
         which is a worse place to discover it than here.
+
+        `extra` is merged *first* so the contract's own keys always win. The
+        constructor already rejects a clashing `extra`, so this only matters if
+        one was introduced afterwards — but the whole point of the contract is
+        that these five keys mean the same thing on every chunk, and a render
+        step is the last place that can still guarantee it.
         """
         return DocumentInfo(
             id=chunk_id(source, self.index),
             text=self.text,
             metadata={
+                **self.extra,
                 "source": source,
                 "chunk_index": str(self.index),
                 "locator_type": self.locator_type,
                 "locator_start": str(self.locator_start),
                 "locator_end": str(self.locator_end),
-                **self.extra,
             },
         )

@@ -8,12 +8,14 @@ the position metadata is decorative — you can address a chunk but not find it.
 from __future__ import annotations
 
 import pytest
+from moss import DocumentInfo
 from moss_chunking import (
     CharSplitter,
     ParagraphSplitter,
     RecursiveSplitter,
     SentenceSplitter,
     chunk_document,
+    prepend_context,
     prepend_source_context,
 )
 
@@ -161,6 +163,41 @@ def test_recursive_splitter_hard_cuts_unseparated_text():
     assert "".join(c.text for c in chunks) == text
 
 
+def test_recursive_splitter_keeps_the_punctuation_it_splits_on():
+    """A separator's non-whitespace part is content, not a delimiter.
+
+    Splitting on `". "` used to consume the period along with the space, so
+    "abc. def." came back as "abc" + "def." — the chunk text no longer said what
+    the source said. The roundtrip invariant did not catch it: offsets stayed
+    self-consistent, they just stopped covering the text between them.
+    """
+    text = "abc. def."
+    chunks = list(RecursiveSplitter(max_chars=4).split(text))
+    assert [c.text for c in chunks] == ["abc.", "def."]
+    assert "".join(c.text for c in chunks) == text.replace(" ", "")
+
+
+def test_no_strategy_loses_non_whitespace_characters():
+    """The gap between two adjacent chunks may only ever be whitespace."""
+    text = "one. two. three. four. five. six."
+    for splitter in (RecursiveSplitter(max_chars=10), RecursiveSplitter(max_chars=6)):
+        chunks = list(splitter.split(text))
+        for earlier, later in zip(chunks, chunks[1:], strict=False):
+            assert not text[earlier.locator_end : later.locator_start].strip()
+
+
+def test_whitespace_separators_are_still_consumed():
+    """The fix must not start emitting the blank line between paragraphs."""
+    chunks = list(RecursiveSplitter(max_chars=10).split("alpha\n\nbeta"))
+    assert all(not c.text.startswith(("\n", " ")) for c in chunks)
+    assert all(not c.text.endswith(("\n", " ")) for c in chunks)
+
+
+def test_custom_separator_without_trailing_whitespace_is_preserved():
+    chunks = list(RecursiveSplitter(max_chars=3, separators=(";",)).split("ab;cd;ef"))
+    assert "".join(c.text for c in chunks) == "ab;cd;ef"
+
+
 def test_recursive_splitter_prefers_paragraph_boundaries():
     text = "alpha beta.\n\ngamma delta."
     chunks = list(RecursiveSplitter(max_chars=12).split(text))
@@ -201,3 +238,23 @@ def test_prepend_context_changes_text_but_not_addressing():
     assert enriched.metadata == doc.metadata
     assert enriched.text.startswith("Filename: notes.md\nPath: /docs/notes.md\n\n")
     assert enriched.text.endswith(doc.text)
+
+
+def test_enrichment_drops_an_embedding_computed_from_the_old_text():
+    doc = chunk_document(PROSE, "notes.md", CharSplitter())[0]
+    stale = DocumentInfo(id=doc.id, text=doc.text, metadata=doc.metadata, embedding=[0.1, 0.2])
+    enriched = prepend_source_context(stale, filename="notes.md", path="/docs/notes.md")
+    assert enriched.text != stale.text
+    assert getattr(enriched, "embedding", None) is None
+
+
+def test_enrichment_carries_the_payload_through():
+    """Unlike the embedding, `payload` has nothing to do with the text."""
+    doc = DocumentInfo(id="a#chunk-0000", text="body", metadata={"source": "a"}, payload='{"p":1}')
+    enriched = prepend_source_context(doc, filename="a.md", path="/a.md")
+    assert enriched.payload == '{"p":1}'
+
+
+def test_enrichment_with_no_fields_is_a_no_op():
+    doc = chunk_document(PROSE, "notes.md", CharSplitter())[0]
+    assert prepend_context(doc, {}) is doc

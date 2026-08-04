@@ -57,6 +57,22 @@ def _trim(text: str, spans: Iterable[Span]) -> list[Span]:
     return trimmed
 
 
+def _separator_pattern(separator: str) -> re.Pattern[str]:
+    """Boundary regex for `separator` that keeps its non-whitespace part.
+
+    `_split_spans` discards whatever the boundary matches. That is right for
+    `"\\n\\n"` or `" "` — whitespace between chunks is not content. It is wrong
+    for `". "`, where the period belongs to the sentence it ends and only the
+    space separates. So a separator's non-whitespace head goes into a lookbehind
+    (fixed width, since it is a literal) and only its trailing whitespace is
+    consumed, putting the cut after the punctuation rather than through it.
+    """
+    kept = separator.rstrip()
+    if not kept:
+        return re.compile(re.escape(separator))
+    return re.compile(f"(?<={re.escape(kept)}){re.escape(separator[len(kept) :])}")
+
+
 def _split_spans(text: str, boundary: re.Pattern[str]) -> list[Span]:
     """Spans of `text` between matches of `boundary`, whitespace trimmed."""
     spans: list[Span] = []
@@ -247,7 +263,7 @@ class RecursiveSplitter:
             return [(base + start, base + end) for start, end in hard]
 
         head, tail = separators[0], separators[1:]
-        pieces = _split_spans(text, re.compile(re.escape(head)))
+        pieces = _split_spans(text, _separator_pattern(head))
         if len(pieces) <= 1:
             # This separator bought us nothing; try the next one.
             return self._recurse(text, base, tail)

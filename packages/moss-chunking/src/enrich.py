@@ -24,6 +24,17 @@ def prepend_context(doc: DocumentInfo, fields: Mapping[str, str]) -> DocumentInf
 
     The ID and metadata are untouched, so an enriched chunk is still addressable
     exactly as the contract says it is.
+
+    Any embedding is dropped. It was computed from the text this function just
+    rewrote, so carrying it over would pair a vector with content it does not
+    describe — and the mismatch is invisible, quietly skewing the dense half of
+    every hybrid query. Dropping it forces a recompute downstream, which is the
+    safe direction to fail; the alternative is a rule that enrichment must
+    happen before embedding, which nothing can enforce.
+
+    `payload` is carried through. Unlike the embedding it has nothing to do with
+    the text, so rebuilding the document without it would be silent data loss
+    rather than a decision.
     """
     if not fields:
         return doc
@@ -32,7 +43,8 @@ def prepend_context(doc: DocumentInfo, fields: Mapping[str, str]) -> DocumentInf
         id=doc.id,
         text=f"{header}\n\n{doc.text}",
         metadata=doc.metadata,
-        embedding=getattr(doc, "embedding", None),
+        embedding=None,
+        payload=getattr(doc, "payload", None),
     )
 
 

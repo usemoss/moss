@@ -125,7 +125,10 @@ from moss_chunking import prepend_source_context
 doc = prepend_source_context(doc, filename="notes.md", path="/docs/notes.md")
 ```
 
-ID and metadata are untouched, so an enriched chunk stays addressable.
+ID and metadata are untouched, so an enriched chunk stays addressable. Any
+embedding is dropped: it was computed from the text this rewrites, and a vector
+that no longer describes its chunk skews the dense half of every hybrid query
+without ever announcing itself. Enrich first, embed after.
 
 ## Tests
 

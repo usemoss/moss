@@ -49,6 +49,31 @@ def test_extra_may_not_shadow_reserved_keys():
         Chunk("body", 0, "char", 0, 4, extra={"source": "elsewhere.md"})
 
 
+def test_reserved_keys_win_even_if_extra_is_mutated_after_construction():
+    """The check at construction is not the last line of defence.
+
+    `frozen=True` freezes the field, not the dict behind it, so a reserved key
+    can still be written into `extra` after validation has passed. Rendering
+    merges `extra` first, so the contract's own keys overwrite it either way.
+    """
+    chunk = Chunk("body", 0, "char", 0, 4, extra={"extension": "md"})
+    chunk.extra["source"] = "elsewhere.md"
+    chunk.extra["chunk_index"] = "99"
+
+    doc = chunk.to_document("notes.md")
+    assert doc.metadata["source"] == "notes.md"
+    assert doc.metadata["chunk_index"] == "0"
+    assert doc.metadata["extension"] == "md"
+
+
+def test_extra_is_copied_so_the_caller_cannot_mutate_validated_state():
+    supplied = {"extension": "md"}
+    chunk = Chunk("body", 0, "char", 0, 4, extra=supplied)
+    supplied["source"] = "elsewhere.md"
+    assert "source" not in chunk.extra
+    assert chunk.to_document("notes.md").metadata["source"] == "notes.md"
+
+
 def test_unknown_locator_type_is_rejected():
     with pytest.raises(ValueError, match="locator_type"):
         Chunk("body", 0, "byte", 0, 4)  # type: ignore[arg-type]
