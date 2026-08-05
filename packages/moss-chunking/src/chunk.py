@@ -92,6 +92,14 @@ class Chunk:
     def __post_init__(self) -> None:
         if self.index < 0:
             raise ValueError(f"index must be >= 0, got {self.index}")
+        # Same bound `chunk_id` enforces, checked here too so an unsortable chunk
+        # is rejected where its index was set rather than later, mid-render.
+        if self.index > MAX_CHUNK_INDEX:
+            raise ValueError(
+                f"index must be <= {MAX_CHUNK_INDEX}, got {self.index}: past that "
+                "the zero-padding is no longer fixed width and IDs stop sorting "
+                "in cut order"
+            )
         if self.locator_type not in LOCATOR_TYPES:
             raise ValueError(
                 f"locator_type must be one of {LOCATOR_TYPES}, got {self.locator_type!r}"

@@ -129,6 +129,13 @@ def test_a_chunk_in_a_set_stays_findable():
     assert Chunk("body", 0, "char", 0, 4, extra={"k": "v"}) in members
 
 
+def test_chunk_rejects_an_unsortable_index_at_construction():
+    """Rejected where the index is set, not later inside `to_document`."""
+    with pytest.raises(ValueError, match="sorting in cut order|<="):
+        Chunk("body", MAX_CHUNK_INDEX + 1, "char", 0, 4)
+    assert Chunk("body", MAX_CHUNK_INDEX, "char", 0, 4).index == MAX_CHUNK_INDEX
+
+
 def test_chunk_id_rejects_a_non_string_source():
     """`chunk_id(123, 0)` would otherwise emit a non-string `source`."""
     with pytest.raises(TypeError, match="source must be a str"):
