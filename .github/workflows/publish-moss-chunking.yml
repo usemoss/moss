@@ -139,9 +139,7 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          # --skip-existing so a rerun after a partial upload can still reach the
-          # tag step instead of failing on files PyPI already has.
-          twine upload --skip-existing packages/moss-chunking/dist/*
+          twine upload packages/moss-chunking/dist/*
 
       - name: Tag release
         run: |

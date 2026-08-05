@@ -11,6 +11,7 @@ import pytest
 from moss import DocumentInfo
 from moss_chunking import (
     CharSplitter,
+    Chunk,
     ParagraphSplitter,
     RecursiveSplitter,
     SentenceSplitter,
@@ -89,6 +90,20 @@ def test_char_splitter_covers_the_whole_document():
     chunks = list(CharSplitter(chunk_chars=40, overlap=5).split(PROSE))
     assert chunks[0].locator_start == 0
     assert chunks[-1].locator_end == len(PROSE)
+
+
+def test_padded_input_does_not_emit_the_same_span_twice():
+    """Windows advance along raw text, but chunks are the trimmed span inside.
+
+    Two consecutive windows over padded text can trim to the same span, which
+    would index identical content twice under two different chunk IDs.
+    """
+    text = "     abcde     fghij"
+    chunks = list(CharSplitter(chunk_chars=10, overlap=5).split(text))
+    spans = [(c.locator_start, c.locator_end) for c in chunks]
+    assert len(spans) == len(set(spans))
+    assert [c.text for c in chunks] == ["abcde", "fghij"]
+    assert [c.index for c in chunks] == [0, 1]
 
 
 def test_overlap_at_or_above_chunk_size_is_rejected():
@@ -243,6 +258,19 @@ def test_chunk_document_merges_source_level_extra_metadata():
     )
     assert all(d.metadata["extension"] == "md" for d in docs)
     assert all(d.metadata["source"] == "notes.md" for d in docs)
+
+
+def test_a_chunks_own_metadata_beats_source_level_extra():
+    """`extra` is document-wide; the splitter knows the per-chunk truth."""
+
+    class Paged:
+        def split(self, text: str):
+            yield Chunk(text[:4], 0, "page", 1, 1, extra={"page": 1})
+            yield Chunk(text[4:8], 1, "page", 2, 2, extra={"page": 2})
+
+    docs = chunk_document("aaaabbbb", "paper.pdf", Paged(), extra={"page": 0, "ext": "pdf"})
+    assert [d.metadata["page"] for d in docs] == ["1", "2"]
+    assert all(d.metadata["ext"] == "pdf" for d in docs)
 
 
 def test_chunk_document_rejects_extra_that_shadows_the_contract():

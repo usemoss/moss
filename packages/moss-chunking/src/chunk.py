@@ -18,7 +18,9 @@ every chunk carries a locator whose unit is declared rather than assumed.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Literal, get_args
 
 from moss import DocumentInfo
@@ -50,6 +52,8 @@ def chunk_id(source: str, index: int) -> str:
     breaks the sort. A document that cuts into more than 10,000 chunks wants a
     coarser strategy or a per-section `source`, not a silently unsortable ID.
     """
+    if not isinstance(source, str):
+        raise TypeError(f"source must be a str, got {type(source).__name__}")
     if not source:
         raise ValueError("source must be a non-empty string")
     if index < 0:
@@ -78,11 +82,12 @@ class Chunk:
     #: Values are stringified at render, so the natural thing to pass — `{"page":
     #: 3}`, `{"words": 12}` — is accepted rather than failing at the SDK boundary.
     #:
-    #: Excluded from the hash: `frozen=True` has the dataclass advertise
-    #: hashability, and a dict field would make `hash(chunk)` raise instead.
-    #: Chunks still compare on `extra`; two that differ only there collide, which
-    #: is a legal hash, unlike a `Chunk` that cannot go in a set at all.
-    extra: dict[str, object] = field(default_factory=dict, hash=False)
+    #: Pass a plain dict; it is replaced with a read-only view on a copy. It has
+    #: to be immutable, not merely copied: `extra` counts towards equality, so a
+    #: mutable one lets a chunk already sitting in a set change what it equals
+    #: while its hash stays put, and the set stops being able to find it.
+    #: `hash=False` because a mapping cannot itself be hashed.
+    extra: Mapping[str, object] = field(default_factory=dict, hash=False)
 
     def __post_init__(self) -> None:
         if self.index < 0:
@@ -100,10 +105,10 @@ class Chunk:
         clashes = RESERVED_KEYS & self.extra.keys()
         if clashes:
             raise ValueError(f"extra may not override reserved keys: {sorted(clashes)}")
-        # `frozen=True` freezes the field, not the dict behind it. Without a copy
-        # the caller keeps a live handle on validated state and can add a
-        # reserved key after the check has already passed.
-        object.__setattr__(self, "extra", dict(self.extra))
+        # `frozen=True` freezes the field, not the dict behind it. Copy so the
+        # caller's handle cannot add a reserved key after the check has passed,
+        # and wrap it read-only so nothing can reach through `chunk.extra` either.
+        object.__setattr__(self, "extra", MappingProxyType(dict(self.extra)))
 
     def to_document(self, source: str) -> DocumentInfo:
         """Render this chunk as a Moss `DocumentInfo`.

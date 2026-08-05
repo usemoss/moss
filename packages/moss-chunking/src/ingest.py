@@ -14,11 +14,16 @@ async def ingest(
     index_name: str,
     model_id: str | None = None,
 ) -> MutationResult | None:
-    """Copy every chunk into a fresh Moss index.
+    """Create a Moss index holding exactly these chunks.
 
-    Deliberately without the connector template's `auto_id` option: random UUIDs
-    would defeat the contract's stable IDs, and re-indexing an unchanged document
-    would append duplicates instead of replacing what is already there.
+    This is the create path only: it builds a fresh index every time, so it is
+    not what you reach for to refresh one document inside an existing one — that
+    is `MossClient.add_docs`, and it is where the contract's stable IDs earn
+    their keep, because re-chunking an unchanged document reproduces the same
+    IDs and replaces those chunks rather than appending a second copy.
+
+    Deliberately without the connector template's `auto_id` option, for the same
+    reason: random UUIDs would make every chunk look new on the way back in.
     """
     docs = list(documents)
     if not docs:

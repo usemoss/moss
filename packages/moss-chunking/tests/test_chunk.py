@@ -74,21 +74,19 @@ def test_extra_may_not_shadow_reserved_keys():
         Chunk("body", 0, "char", 0, 4, extra={"source": "elsewhere.md"})
 
 
-def test_reserved_keys_win_even_if_extra_is_mutated_after_construction():
-    """The check at construction is not the last line of defence.
+def test_reserved_keys_win_at_render_even_if_validation_is_bypassed():
+    """Belt and suspenders: the constructor check is not the last defence.
 
-    `frozen=True` freezes the field, not the dict behind it, so a reserved key
-    can still be written into `extra` after validation has passed. Rendering
-    merges `extra` first, so the contract's own keys overwrite it either way.
+    Nothing should be able to get a reserved key into `extra` — the constructor
+    rejects one and the stored mapping is read-only. Forced past both, rendering
+    still merges `extra` first so the contract's own keys overwrite it.
     """
     chunk = Chunk("body", 0, "char", 0, 4, extra={"extension": "md"})
-    chunk.extra["source"] = "elsewhere.md"
-    chunk.extra["chunk_index"] = "99"
+    object.__setattr__(chunk, "extra", {"source": "elsewhere.md", "chunk_index": "99"})
 
     doc = chunk.to_document("notes.md")
     assert doc.metadata["source"] == "notes.md"
     assert doc.metadata["chunk_index"] == "0"
-    assert doc.metadata["extension"] == "md"
 
 
 def test_extra_is_copied_so_the_caller_cannot_mutate_validated_state():
@@ -109,6 +107,32 @@ def test_a_frozen_chunk_is_actually_hashable():
 def test_chunks_still_compare_on_extra():
     """Excluding `extra` from the hash must not exclude it from equality."""
     assert Chunk("b", 0, "char", 0, 1, extra={"a": "1"}) != Chunk("b", 0, "char", 0, 1)
+
+
+def test_extra_cannot_be_mutated_through_the_chunk():
+    """`extra` counts towards equality, so it must not be able to change.
+
+    A mutable one lets a chunk already in a set change what it equals while its
+    hash stays put — the set can then no longer find its own member.
+    """
+    chunk = Chunk("body", 0, "char", 0, 4, extra={"extension": "md"})
+    with pytest.raises(TypeError):
+        chunk.extra["extension"] = "txt"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        chunk.extra["source"] = "elsewhere.md"  # type: ignore[index]
+
+
+def test_a_chunk_in_a_set_stays_findable():
+    chunk = Chunk("body", 0, "char", 0, 4, extra={"k": "v"})
+    members = {chunk}
+    assert chunk in members
+    assert Chunk("body", 0, "char", 0, 4, extra={"k": "v"}) in members
+
+
+def test_chunk_id_rejects_a_non_string_source():
+    """`chunk_id(123, 0)` would otherwise emit a non-string `source`."""
+    with pytest.raises(TypeError, match="source must be a str"):
+        chunk_id(123, 0)  # type: ignore[arg-type]
 
 
 def test_unknown_locator_type_is_rejected():

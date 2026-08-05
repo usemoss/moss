@@ -117,9 +117,17 @@ class CharSplitter:
         length = len(text)
         start = 0
         index = 0
+        # Windows advance along the raw text, but what gets emitted is the
+        # trimmed span inside them. On padded input two consecutive windows can
+        # trim down to the same span, so track where the last chunk ended and
+        # skip anything that adds no new content — otherwise the same text is
+        # indexed twice under two IDs.
+        last_end = -1
         while start < length:
             end = min(start + self.chunk_chars, length)
             for piece_start, piece_end in _trim(text, [(start, end)]):
+                if piece_end <= last_end:
+                    continue
                 yield Chunk(
                     text=text[piece_start:piece_end],
                     index=index,
@@ -128,6 +136,7 @@ class CharSplitter:
                     locator_end=piece_end,
                 )
                 index += 1
+                last_end = piece_end
             if end >= length:
                 break
             start = max(end - self.overlap, start + 1)
@@ -302,10 +311,15 @@ def chunk_document(
 
     `extra` is merged into every chunk's metadata — the place for source-level
     facts like `extension` or `modified_at` that the splitter cannot know.
+
+    Where the two collide the chunk's own value wins. `extra` is by definition
+    the same for every chunk, so letting it overwrite would mean a document-wide
+    constant silently replacing the page or section number that only the
+    splitter was in a position to know.
     """
     documents: list[DocumentInfo] = []
     for chunk in strategy.split(text):
         if extra:
-            chunk = replace(chunk, extra={**chunk.extra, **extra})
+            chunk = replace(chunk, extra={**extra, **chunk.extra})
         documents.append(chunk.to_document(source))
     return documents
