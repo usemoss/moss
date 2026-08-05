@@ -32,19 +32,24 @@ def prepend_context(doc: DocumentInfo, fields: Mapping[str, str]) -> DocumentInf
     safe direction to fail; the alternative is a rule that enrichment must
     happen before embedding, which nothing can enforce.
 
-    `payload` is carried through. Unlike the embedding it has nothing to do with
-    the text, so rebuilding the document without it would be silent data loss
-    rather than a decision.
+    `payload` is carried through where the installed SDK has it. Unlike the
+    embedding it has nothing to do with the text, so rebuilding the document
+    without it would be silent data loss rather than a decision. It is passed
+    conditionally because `moss`'s runtime `DocumentInfo` accepts it while the
+    shipped `__init__.pyi` stub does not yet declare it — this keeps the package
+    correct against both, and degrades to dropping it only on a build that has
+    no such field to lose.
     """
     if not fields:
         return doc
     header = "\n".join(f"{key}: {value}" for key, value in fields.items())
+    carried = {"payload": doc.payload} if hasattr(doc, "payload") else {}
     return DocumentInfo(
         id=doc.id,
         text=f"{header}\n\n{doc.text}",
         metadata=doc.metadata,
         embedding=None,
-        payload=getattr(doc, "payload", None),
+        **carried,
     )
 
 

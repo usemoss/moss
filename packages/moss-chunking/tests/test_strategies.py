@@ -7,6 +7,8 @@ the position metadata is decorative — you can address a chunk but not find it.
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 from moss import DocumentInfo
 from moss_chunking import (
@@ -296,7 +298,13 @@ def test_enrichment_drops_an_embedding_computed_from_the_old_text():
 
 
 def test_enrichment_carries_the_payload_through():
-    """Unlike the embedding, `payload` has nothing to do with the text."""
+    """Unlike the embedding, `payload` has nothing to do with the text.
+
+    Skipped rather than failed on an SDK build without the field, so the package
+    does not pin itself to one runtime shape of `DocumentInfo`.
+    """
+    if "payload" not in inspect.signature(DocumentInfo).parameters:
+        pytest.skip("installed moss DocumentInfo has no payload field")
     doc = DocumentInfo(id="a#chunk-0000", text="body", metadata={"source": "a"}, payload='{"p":1}')
     enriched = prepend_source_context(doc, filename="a.md", path="/a.md")
     assert enriched.payload == '{"p":1}'
