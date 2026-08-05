@@ -83,6 +83,15 @@ async def refresh_source(
     anything is deleted, since the whole reconciliation is arithmetic on
     `len(documents)` and the wrong list would delete live chunks.
 
+    **Not atomic, and one source at a time.** Two refreshes of the same source
+    running concurrently can interleave — a short cut deletes the tail, a long
+    cut adds it back, and the short cut's add lands last, leaving chunks from a
+    document that no longer exists. Serialize refreshes per source; the index is
+    the shared resource and nothing client-side can make probe/delete/add one
+    operation. What the ordering above does guarantee is that the wreckage is
+    ordinary stale tail, contiguous above the surviving cut, so the next refresh
+    of that source clears it.
+
     Passing no documents deletes every chunk for `source`, which is how a deleted
     file is removed from the index.
 

@@ -37,18 +37,38 @@ RESERVED_KEYS = frozenset({"source", "chunk_index", "locator_type", "locator_sta
 MAX_CHUNK_INDEX = 9999
 
 
-def _require_index(index: int) -> None:
-    """Reject anything that is not a plain in-range int.
+def _require_whole_number(name: str, value: int) -> None:
+    """Reject anything that is not a plain non-negative int.
 
     `bool` is excluded explicitly because it subclasses `int`, so `True` would
-    otherwise format as a perfectly valid `chunk-0001`. A float gets caught here
-    rather than at the `:04d` format, which fails with `Unknown format code 'd'`
-    a long way from whatever set the index.
+    otherwise pass as the number 1 — a locator of `True` rendering as `"True"`,
+    an index of `True` formatting as a perfectly valid `chunk-0001`. A float is
+    caught here rather than at the `:04d` format, which fails with `Unknown
+    format code 'd'` a long way from whatever set the value.
     """
-    if not isinstance(index, int) or isinstance(index, bool):
-        raise TypeError(f"index must be an int, got {type(index).__name__}")
-    if index < 0:
-        raise ValueError(f"index must be >= 0, got {index}")
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise TypeError(f"{name} must be an int, got {type(value).__name__}")
+    if value < 0:
+        raise ValueError(f"{name} must be >= 0, got {value}")
+
+
+def _require_string_keys(extra: dict[str, object]) -> None:
+    """Reject non-string keys in `extra`.
+
+    Values are coerced at render because `{"page": 3}` is the natural thing to
+    write and `"3"` is unambiguously what was meant. Keys are not symmetric with
+    that: `str(1)` and `"1"` are the same metadata key, so coercing would let one
+    entry silently overwrite another. A non-string key also cannot collide with a
+    reserved one, so it would slip past that check and fail at the SDK boundary.
+    """
+    non_string = sorted(repr(key) for key in extra if not isinstance(key, str))
+    if non_string:
+        raise TypeError(f"extra keys must be str, got {', '.join(non_string)}")
+
+
+def _require_index(index: int) -> None:
+    """Reject an index that could not render a sortable ID."""
+    _require_whole_number("index", index)
     if index > MAX_CHUNK_INDEX:
         raise ValueError(
             f"index must be <= {MAX_CHUNK_INDEX}, got {index}: past that the "
@@ -112,20 +132,17 @@ class Chunk:
             raise ValueError(
                 f"locator_type must be one of {LOCATOR_TYPES}, got {self.locator_type!r}"
             )
-        if self.locator_start < 0:
-            raise ValueError(f"locator_start must be >= 0, got {self.locator_start}")
+        # Locators are positions, so they get the same treatment as the index: a
+        # float or a bool here renders as `"1.5"` or `"True"` in metadata that is
+        # supposed to hold a real offset, and nothing downstream can tell the
+        # difference between that and a position the splitter meant.
+        _require_whole_number("locator_start", self.locator_start)
+        _require_whole_number("locator_end", self.locator_end)
         if self.locator_end < self.locator_start:
             raise ValueError(
                 f"locator_end ({self.locator_end}) must be >= locator_start ({self.locator_start})"
             )
-        # Values are coerced at render because `{"page": 3}` is the natural thing
-        # to pass and `"3"` is unambiguously what was meant. Keys are rejected
-        # instead: `str(1)` and `"1"` are the same metadata key, so coercing them
-        # would let one entry silently overwrite another, and a non-string key
-        # cannot collide with a reserved one and so slips past the check below.
-        non_string = sorted(repr(key) for key in self.extra if not isinstance(key, str))
-        if non_string:
-            raise TypeError(f"extra keys must be str, got {', '.join(non_string)}")
+        _require_string_keys(self.extra)
         clashes = RESERVED_KEYS & self.extra.keys()
         if clashes:
             raise ValueError(f"extra may not override reserved keys: {sorted(clashes)}")
@@ -141,8 +158,12 @@ class Chunk:
 
         Every metadata value is stringified because Moss types metadata as
         `Dict[str, str]`. An int left in there would fail at the SDK boundary,
-        which is a worse place to discover it than here. Keys are already known
-        to be strings — the constructor rejects any that are not.
+        which is a worse place to discover it than here.
+
+        Keys are re-checked rather than trusted. `extra` stays a mutable dict —
+        that is what keeps a chunk picklable and copyable — so `chunk.extra[1] =
+        "one"` after construction is possible, and the constructor's verdict is
+        only ever a statement about the moment it ran.
 
         `extra` is merged *first* so the contract's own keys always win. The
         constructor already rejects a clashing `extra`, so this only matters if
@@ -150,6 +171,7 @@ class Chunk:
         that these five keys mean the same thing on every chunk, and a render
         step is the last place that can still guarantee it.
         """
+        _require_string_keys(self.extra)
         return DocumentInfo(
             id=chunk_id(source, self.index),
             text=self.text,

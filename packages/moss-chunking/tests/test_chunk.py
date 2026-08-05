@@ -104,6 +104,20 @@ def test_reserved_keys_win_at_render_even_if_validation_is_bypassed():
     assert doc.metadata["chunk_index"] == "0"
 
 
+def test_a_key_added_after_construction_is_still_caught_at_render():
+    """`extra` stays mutable, so the constructor's verdict has a shelf life.
+
+    Keeping it a plain dict is what makes a chunk picklable and copyable; the
+    cost is that validation has to be re-run where the metadata is actually
+    built, rather than trusted from construction time.
+    """
+    chunk = Chunk("body", 0, "char", 0, 4)
+    chunk.extra[1] = "one"
+
+    with pytest.raises(TypeError, match="extra keys must be str"):
+        chunk.to_document("notes.md")
+
+
 def test_extra_is_copied_so_the_caller_cannot_mutate_validated_state():
     supplied = {"extension": "md"}
     chunk = Chunk("body", 0, "char", 0, 4, extra=supplied)
@@ -168,6 +182,20 @@ def test_chunk_id_rejects_a_non_string_source():
 def test_unknown_locator_type_is_rejected():
     with pytest.raises(ValueError, match="locator_type"):
         Chunk("body", 0, "byte", 0, 4)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("bad", [1.5, True, False, "0", None])
+@pytest.mark.parametrize("field", ["locator_start", "locator_end"])
+def test_a_non_integer_locator_is_rejected(field, bad):
+    """A locator is a position, so it gets the same treatment as the index.
+
+    Left alone, `locator_start=1.5` renders as the metadata string `"1.5"` and
+    `True` renders as `"True"` — neither distinguishable downstream from an
+    offset the splitter meant.
+    """
+    kwargs = {"locator_start": 0, "locator_end": 4, field: bad}
+    with pytest.raises(TypeError, match=f"{field} must be an int"):
+        Chunk("body", 0, "char", **kwargs)
 
 
 def test_backwards_locator_is_rejected():
