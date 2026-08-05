@@ -39,6 +39,25 @@ RESERVED_KEYS = frozenset({"source", "chunk_index", "locator_type", "locator_sta
 MAX_CHUNK_INDEX = 9999
 
 
+def _require_index(index: int) -> None:
+    """Reject anything that is not a plain in-range int.
+
+    `bool` is excluded explicitly because it subclasses `int`, so `True` would
+    otherwise format as a perfectly valid `chunk-0001`. A float gets caught here
+    rather than at the `:04d` format, which fails with `Unknown format code 'd'`
+    a long way from whatever set the index.
+    """
+    if not isinstance(index, int) or isinstance(index, bool):
+        raise TypeError(f"index must be an int, got {type(index).__name__}")
+    if index < 0:
+        raise ValueError(f"index must be >= 0, got {index}")
+    if index > MAX_CHUNK_INDEX:
+        raise ValueError(
+            f"index must be <= {MAX_CHUNK_INDEX}, got {index}: past that the "
+            "zero-padding is no longer fixed width and IDs stop sorting in cut order"
+        )
+
+
 def chunk_id(source: str, index: int) -> str:
     """Build a chunk's stable ID.
 
@@ -56,13 +75,7 @@ def chunk_id(source: str, index: int) -> str:
         raise TypeError(f"source must be a str, got {type(source).__name__}")
     if not source:
         raise ValueError("source must be a non-empty string")
-    if index < 0:
-        raise ValueError(f"index must be >= 0, got {index}")
-    if index > MAX_CHUNK_INDEX:
-        raise ValueError(
-            f"index must be <= {MAX_CHUNK_INDEX}, got {index}: past that the "
-            "zero-padding is no longer fixed width and IDs stop sorting in cut order"
-        )
+    _require_index(index)
     return f"{source}#chunk-{index:04d}"
 
 
@@ -90,16 +103,9 @@ class Chunk:
     extra: Mapping[str, object] = field(default_factory=dict, hash=False)
 
     def __post_init__(self) -> None:
-        if self.index < 0:
-            raise ValueError(f"index must be >= 0, got {self.index}")
-        # Same bound `chunk_id` enforces, checked here too so an unsortable chunk
-        # is rejected where its index was set rather than later, mid-render.
-        if self.index > MAX_CHUNK_INDEX:
-            raise ValueError(
-                f"index must be <= {MAX_CHUNK_INDEX}, got {self.index}: past that "
-                "the zero-padding is no longer fixed width and IDs stop sorting "
-                "in cut order"
-            )
+        # The same check `chunk_id` runs, so a chunk that could never render a
+        # valid ID is rejected where its index was set rather than mid-render.
+        _require_index(self.index)
         if self.locator_type not in LOCATOR_TYPES:
             raise ValueError(
                 f"locator_type must be one of {LOCATOR_TYPES}, got {self.locator_type!r}"

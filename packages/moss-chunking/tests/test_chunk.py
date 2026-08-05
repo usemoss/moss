@@ -136,6 +136,15 @@ def test_chunk_rejects_an_unsortable_index_at_construction():
     assert Chunk("body", MAX_CHUNK_INDEX, "char", 0, 4).index == MAX_CHUNK_INDEX
 
 
+@pytest.mark.parametrize("bad", [1.5, True, False, "0", None])
+def test_a_non_integer_index_is_rejected(bad):
+    """`bool` subclasses `int`, so True would otherwise format as chunk-0001."""
+    with pytest.raises(TypeError, match="index must be an int"):
+        chunk_id("notes.md", bad)
+    with pytest.raises(TypeError, match="index must be an int"):
+        Chunk("body", bad, "char", 0, 4)
+
+
 def test_chunk_id_rejects_a_non_string_source():
     """`chunk_id(123, 0)` would otherwise emit a non-string `source`."""
     with pytest.raises(TypeError, match="source must be a str"):
