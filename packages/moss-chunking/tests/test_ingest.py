@@ -155,6 +155,30 @@ async def test_a_tail_longer_than_one_probe_window_is_still_cleared():
     assert len(deleted(client)) == 599
 
 
+async def test_documents_from_another_source_are_refused_before_anything_is_deleted():
+    """The wrong argument would otherwise be discovered destructively."""
+    client = FakeClient(existing=ids_for("notes.md", 5))
+    docs = [DocumentInfo(id=doc_id, text="fresh") for doc_id in ids_for("other.md", 2)]
+
+    with pytest.raises(ValueError, match="expected 'notes.md#chunk-0000'"):
+        await refresh_source(client, "idx", "notes.md", docs)
+
+    assert client.calls == []
+    assert client.existing == set(ids_for("notes.md", 5))
+
+
+async def test_a_gapped_document_list_is_refused():
+    """A filtered list would make `len(docs)` mean the wrong index."""
+    client = FakeClient(existing=ids_for("notes.md", 5))
+    kept = [chunk_id("notes.md", 0), chunk_id("notes.md", 2)]
+    docs = [DocumentInfo(id=doc_id, text="fresh") for doc_id in kept]
+
+    with pytest.raises(ValueError, match=r"documents\[1\]"):
+        await refresh_source(client, "idx", "notes.md", docs)
+
+    assert client.calls == []
+
+
 def test_the_client_surface_this_module_calls_actually_exists():
     """The fake client above cannot catch a method that the real one lacks.
 

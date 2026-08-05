@@ -78,6 +78,11 @@ async def refresh_source(
     the add's `MutationResult`, which the caller can wait on in turn — or `None`
     when there was nothing to add.
 
+    `documents` must be `source`'s entire cut, in order — `chunk_document`'s
+    output for that source and nothing else. A mismatched ID raises before
+    anything is deleted, since the whole reconciliation is arithmetic on
+    `len(documents)` and the wrong list would delete live chunks.
+
     Passing no documents deletes every chunk for `source`, which is how a deleted
     file is removed from the index.
 
@@ -85,6 +90,21 @@ async def refresh_source(
     replacing a chunk in place is the entire premise of the ID contract.
     """
     docs = list(documents)
+
+    # Everything below reads `len(docs)` as "the first index this source no
+    # longer uses", which is only true if these documents really are this
+    # source's whole cut. Handed another source's documents, or a filtered slice
+    # of this one's, that arithmetic would delete live chunks and then add
+    # documents that do not belong to `source` — a destructive way to discover a
+    # mistaken argument. `chunk_document` output passes this by construction.
+    for position, doc in enumerate(docs):
+        expected = chunk_id(source, position)
+        if doc.id != expected:
+            raise ValueError(
+                f"documents[{position}] has id {doc.id!r}, expected {expected!r}: "
+                f"refresh_source replaces everything under {source!r}, so it needs "
+                "that source's chunks, all of them, in cut order"
+            )
 
     stale: list[str] = []
     start = len(docs)
