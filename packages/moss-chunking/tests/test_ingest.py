@@ -155,6 +155,25 @@ async def test_a_tail_longer_than_one_probe_window_is_still_cleared():
     assert len(deleted(client)) == 599
 
 
+def test_the_client_surface_this_module_calls_actually_exists():
+    """The fake client above cannot catch a method that the real one lacks.
+
+    `wait_for_job` in particular is real on the declared floor (`moss==1.7.2`)
+    but missing from both the checked-in stub and the in-tree SDK source, which
+    is old enough to predate it — so reading either one suggests this module
+    calls something that isn't there. This asserts against the installed SDK,
+    which is the surface that decides.
+    """
+    from moss import MossClient
+
+    missing = [
+        name
+        for name in ("get_docs", "delete_docs", "add_docs", "wait_for_job")
+        if not hasattr(MossClient, name)
+    ]
+    assert not missing
+
+
 async def test_the_tail_is_deleted_from_the_top_down():
     """Descending order is what makes a half-finished refresh recoverable."""
     client = FakeClient(existing=ids_for("notes.md", 600))
