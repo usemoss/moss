@@ -46,6 +46,19 @@ await ingest(docs, project_id, project_key, "my-index")
 `docs` are ordinary `DocumentInfo`s — they go anywhere the SDK takes documents;
 `ingest` is just the connector template's one-call shortcut into a fresh index.
 
+To re-chunk one document inside an index that already exists, use
+`refresh_source` rather than `add_docs`:
+
+```python
+await refresh_source(client, "my-index", "notes.md", docs)
+```
+
+`add_docs` upserts, which replaces the chunks the new cut still produces — but a
+document that shrinks from 21 chunks to 6 leaves `#chunk-0006` through
+`#chunk-0020` in the index, still searchable, holding text the document no longer
+contains. `refresh_source` deletes that tail first. Passing no documents removes
+the source entirely, which is how a deleted file leaves the index.
+
 ## The contract
 
 Every chunk, from every strategy, carries:
@@ -59,8 +72,10 @@ Every chunk, from every strategy, carries:
 
 IDs are `{source}#chunk-{index:04d}` — zero-padded so they sort in cut order, and
 stable across runs so re-chunking an unchanged document replaces its chunks
-rather than duplicating them. Values are all strings, because Moss types metadata
-as `Dict[str, str]`.
+rather than duplicating them. Indices run `0, 1, 2, …`; `chunk_document` rejects a
+strategy that skips or repeats one, because a repeat renders the same ID twice and
+the second chunk silently overwrites the first. Values are all strings, because
+Moss types metadata as `Dict[str, str]`.
 
 The sort only holds while the padding is fixed width, so `chunk_id` rejects an
 index above `MAX_CHUNK_INDEX` (9999) rather than emitting `chunk-10000`, which

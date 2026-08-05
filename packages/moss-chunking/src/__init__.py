@@ -20,7 +20,7 @@ from .chunk import (
     chunk_id,
 )
 from .enrich import prepend_context, prepend_source_context
-from .ingest import ingest
+from .ingest import ingest, refresh_source
 from .strategies import (
     CharSplitter,
     ChunkingStrategy,
@@ -46,4 +46,5 @@ __all__ = [
     "ingest",
     "prepend_context",
     "prepend_source_context",
+    "refresh_source",
 ]
