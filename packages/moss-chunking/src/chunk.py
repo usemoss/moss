@@ -92,6 +92,8 @@ class Chunk:
     locator_end: int
     #: Values are stringified at render, so the natural thing to pass — `{"page":
     #: 3}`, `{"words": 12}` — is accepted rather than failing at the SDK boundary.
+    #: Keys must already be strings; see `__post_init__` for why they are not
+    #: coerced the same way.
     #:
     #: Copied on construction, so a caller's handle cannot reach back in.
     #:
@@ -116,6 +118,14 @@ class Chunk:
             raise ValueError(
                 f"locator_end ({self.locator_end}) must be >= locator_start ({self.locator_start})"
             )
+        # Values are coerced at render because `{"page": 3}` is the natural thing
+        # to pass and `"3"` is unambiguously what was meant. Keys are rejected
+        # instead: `str(1)` and `"1"` are the same metadata key, so coercing them
+        # would let one entry silently overwrite another, and a non-string key
+        # cannot collide with a reserved one and so slips past the check below.
+        non_string = sorted(repr(key) for key in self.extra if not isinstance(key, str))
+        if non_string:
+            raise TypeError(f"extra keys must be str, got {', '.join(non_string)}")
         clashes = RESERVED_KEYS & self.extra.keys()
         if clashes:
             raise ValueError(f"extra may not override reserved keys: {sorted(clashes)}")
@@ -131,7 +141,8 @@ class Chunk:
 
         Every metadata value is stringified because Moss types metadata as
         `Dict[str, str]`. An int left in there would fail at the SDK boundary,
-        which is a worse place to discover it than here.
+        which is a worse place to discover it than here. Keys are already known
+        to be strings — the constructor rejects any that are not.
 
         `extra` is merged *first* so the contract's own keys always win. The
         constructor already rejects a clashing `extra`, so this only matters if

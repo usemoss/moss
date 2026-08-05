@@ -316,9 +316,23 @@ def chunk_document(
     the same for every chunk, so letting it overwrite would mean a document-wide
     constant silently replacing the page or section number that only the
     splitter was in a position to know.
+
+    A strategy that does not number its chunks `0, 1, 2, …` is rejected here.
+    The index is what the ID is built from, so a repeat means two chunks render
+    the same ID and the second overwrites the first on ingest — silent data
+    loss, discovered later as a document with missing content. Renumbering them
+    would paper over that just as quietly, and would rewrite the addressing of a
+    splitter that meant something by its index, so the mismatch is raised
+    instead.
     """
     documents: list[DocumentInfo] = []
-    for chunk in strategy.split(text):
+    for position, chunk in enumerate(strategy.split(text)):
+        if chunk.index != position:
+            raise ValueError(
+                f"{type(strategy).__name__} yielded chunk.index={chunk.index} at "
+                f"position {position}: indices must run 0, 1, 2, … or chunk IDs "
+                "collide and stop sorting in cut order"
+            )
         if extra:
             chunk = replace(chunk, extra={**extra, **chunk.extra})
         documents.append(chunk.to_document(source))

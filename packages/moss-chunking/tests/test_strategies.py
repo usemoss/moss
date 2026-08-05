@@ -275,6 +275,23 @@ def test_a_chunks_own_metadata_beats_source_level_extra():
     assert all(d.metadata["ext"] == "pdf" for d in docs)
 
 
+@pytest.mark.parametrize("indices", [(0, 0), (0, 2), (1, 2)])
+def test_chunk_document_rejects_indices_that_are_not_sequential(indices):
+    """A repeat renders the same ID twice, and the second chunk wins on ingest.
+
+    That is silent data loss, so a strategy that does not number its chunks from
+    zero is caught at the render boundary rather than trusted.
+    """
+
+    class Misnumbering:
+        def split(self, text: str):
+            for index in indices:
+                yield Chunk(text[:4], index, "char", 0, 4)
+
+    with pytest.raises(ValueError, match="Misnumbering yielded chunk.index="):
+        chunk_document("aaaabbbb", "notes.md", Misnumbering())
+
+
 def test_chunk_document_rejects_extra_that_shadows_the_contract():
     with pytest.raises(ValueError, match="reserved"):
         chunk_document(PROSE, "notes.md", CharSplitter(), extra={"chunk_index": "9"})

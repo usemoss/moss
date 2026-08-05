@@ -73,6 +73,17 @@ def test_non_string_extra_values_are_stringified():
     assert all(isinstance(value, str) for value in metadata.values())
 
 
+def test_non_string_extra_keys_are_rejected():
+    """Keys are not coerced the way values are, and must fail in this package.
+
+    `str(1)` and `"1"` are the same metadata key, so coercing would let one
+    entry quietly overwrite another; left alone, a non-string key sails past the
+    reserved-key check and fails at the SDK boundary instead.
+    """
+    with pytest.raises(TypeError, match="extra keys must be str"):
+        Chunk("body", 0, "char", 0, 4, extra={1: "one"})
+
+
 def test_extra_may_not_shadow_reserved_keys():
     with pytest.raises(ValueError, match="reserved"):
         Chunk("body", 0, "char", 0, 4, extra={"source": "elsewhere.md"})
@@ -82,7 +93,7 @@ def test_reserved_keys_win_at_render_even_if_validation_is_bypassed():
     """Belt and suspenders: the constructor check is not the last defence.
 
     Nothing should be able to get a reserved key into `extra` — the constructor
-    rejects one and the stored mapping is read-only. Forced past both, rendering
+    rejects one and stores a copy the caller cannot reach. Forced past both, rendering
     still merges `extra` first so the contract's own keys overwrite it.
     """
     chunk = Chunk("body", 0, "char", 0, 4, extra={"extension": "md"})
