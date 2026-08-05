@@ -101,6 +101,10 @@ jobs:
   # Only runs once every build-test matrix leg has passed.
   publish:
     needs: [determine-version, build-test]
+    # This job holds PYPI_API_TOKEN and pushes a release tag. `workflow_dispatch`
+    # accepts any ref, so without this guard an unmerged branch could be
+    # published under the package name and tagged as a release.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write

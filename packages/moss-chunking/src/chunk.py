@@ -18,9 +18,7 @@ every chunk carries a locator whose unit is declared rather than assumed.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass, field
-from types import MappingProxyType
 from typing import Literal, get_args
 
 from moss import DocumentInfo
@@ -95,12 +93,14 @@ class Chunk:
     #: Values are stringified at render, so the natural thing to pass — `{"page":
     #: 3}`, `{"words": 12}` — is accepted rather than failing at the SDK boundary.
     #:
-    #: Pass a plain dict; it is replaced with a read-only view on a copy. It has
-    #: to be immutable, not merely copied: `extra` counts towards equality, so a
-    #: mutable one lets a chunk already sitting in a set change what it equals
-    #: while its hash stays put, and the set stops being able to find it.
-    #: `hash=False` because a mapping cannot itself be hashed.
-    extra: Mapping[str, object] = field(default_factory=dict, hash=False)
+    #: Copied on construction, so a caller's handle cannot reach back in.
+    #:
+    #: Excluded from equality and hashing: a chunk *is* its text and position,
+    #: and metadata about it does not change which cut of the document it is.
+    #: That is also what keeps it safe to leave mutable — nothing here can make a
+    #: chunk already sitting in a set change what it equals, whether by rebinding
+    #: a key or by mutating a list held as a value.
+    extra: dict[str, object] = field(default_factory=dict, compare=False)
 
     def __post_init__(self) -> None:
         # The same check `chunk_id` runs, so a chunk that could never render a
@@ -120,9 +120,11 @@ class Chunk:
         if clashes:
             raise ValueError(f"extra may not override reserved keys: {sorted(clashes)}")
         # `frozen=True` freezes the field, not the dict behind it. Copy so the
-        # caller's handle cannot add a reserved key after the check has passed,
-        # and wrap it read-only so nothing can reach through `chunk.extra` either.
-        object.__setattr__(self, "extra", MappingProxyType(dict(self.extra)))
+        # caller's handle cannot add a reserved key after the check has passed.
+        # A plain dict rather than a read-only view, because a `MappingProxyType`
+        # is not picklable and takes `deepcopy` and `dataclasses.asdict` down
+        # with it. Excluding `extra` from equality is what makes the copy enough.
+        object.__setattr__(self, "extra", dict(self.extra))
 
     def to_document(self, source: str) -> DocumentInfo:
         """Render this chunk as a Moss `DocumentInfo`.

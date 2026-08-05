@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import copy
+import dataclasses
+import pickle
+
 import pytest
 from moss_chunking import MAX_CHUNK_INDEX, Chunk, chunk_id
 
@@ -104,29 +108,28 @@ def test_a_frozen_chunk_is_actually_hashable():
     assert len({chunk, Chunk("body", 1, "char", 4, 8)}) == 2
 
 
-def test_chunks_still_compare_on_extra():
-    """Excluding `extra` from the hash must not exclude it from equality."""
-    assert Chunk("b", 0, "char", 0, 1, extra={"a": "1"}) != Chunk("b", 0, "char", 0, 1)
+def test_identity_is_text_and_position_not_metadata():
+    """`extra` describes a chunk; it does not decide which chunk it is."""
+    assert Chunk("b", 0, "char", 0, 1, extra={"a": "1"}) == Chunk("b", 0, "char", 0, 1)
+    assert Chunk("b", 0, "char", 0, 1) != Chunk("b", 1, "char", 0, 1)
 
 
-def test_extra_cannot_be_mutated_through_the_chunk():
-    """`extra` counts towards equality, so it must not be able to change.
-
-    A mutable one lets a chunk already in a set change what it equals while its
-    hash stays put — the set can then no longer find its own member.
-    """
-    chunk = Chunk("body", 0, "char", 0, 4, extra={"extension": "md"})
-    with pytest.raises(TypeError):
-        chunk.extra["extension"] = "txt"  # type: ignore[index]
-    with pytest.raises(TypeError):
-        chunk.extra["source"] = "elsewhere.md"  # type: ignore[index]
-
-
-def test_a_chunk_in_a_set_stays_findable():
-    chunk = Chunk("body", 0, "char", 0, 4, extra={"k": "v"})
+def test_a_chunk_in_a_set_stays_findable_however_extra_changes():
+    """Equality cannot drift out from under a set, by rebinding or mutation."""
+    chunk = Chunk("body", 0, "char", 0, 4, extra={"tags": ["a"]})
     members = {chunk}
+
+    chunk.extra["tags"].append("b")  # type: ignore[attr-defined]
+    chunk.extra["added"] = "later"
     assert chunk in members
-    assert Chunk("body", 0, "char", 0, 4, extra={"k": "v"}) in members
+
+
+def test_a_chunk_survives_pickle_deepcopy_and_asdict():
+    """The obvious dataclass paths must keep working."""
+    chunk = Chunk("body", 0, "char", 0, 4, extra={"page": 3})
+    assert pickle.loads(pickle.dumps(chunk)) == chunk
+    assert copy.deepcopy(chunk) == chunk
+    assert dataclasses.asdict(chunk)["extra"] == {"page": 3}
 
 
 def test_chunk_rejects_an_unsortable_index_at_construction():
