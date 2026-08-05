@@ -19,24 +19,53 @@ from moss_chunking import CharSplitter, chunk_document, chunk_id, refresh_source
 PROSE = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi"
 
 
-class FakeClient:
-    """Enough of `MossClient` for the refresh path, recording what it was asked."""
+class FakeResult:
+    """`MutationResult` is a native type; only its `job_id` is used here."""
 
-    def __init__(self, existing: list[str] | None = None) -> None:
+    def __init__(self, job_id: str) -> None:
+        self.job_id = job_id
+
+
+class FakeClient:
+    """Enough of `MossClient` for the refresh path, recording what it was asked.
+
+    `fail_delete_after` fails the nth deletion the way the SDK does — after the
+    job has been accepted, when it is waited on — which is the case that decides
+    whether a half-finished refresh can be recovered by the next one.
+    """
+
+    def __init__(
+        self,
+        existing: list[str] | None = None,
+        fail_delete_after: int | None = None,
+        shuffled: bool = False,
+    ) -> None:
         self.existing = set(existing or [])
         self.calls: list[tuple[str, object]] = []
+        self.fail_delete_after = fail_delete_after
+        self.shuffled = shuffled
+        self.deletions = 0
 
     async def get_docs(self, name, options=None):
         self.calls.append(("get_docs", list(options.doc_ids)))
-        return [
-            DocumentInfo(id=doc_id, text="stale")
-            for doc_id in options.doc_ids
-            if doc_id in self.existing
-        ]
+        found = [doc_id for doc_id in options.doc_ids if doc_id in self.existing]
+        if self.shuffled:
+            found.reverse()
+        return [DocumentInfo(id=doc_id, text="stale") for doc_id in found]
 
     async def delete_docs(self, name, doc_ids):
         self.calls.append(("delete_docs", list(doc_ids)))
+        self.deletions += 1
+        if self.fail_delete_after is not None and self.deletions > self.fail_delete_after:
+            # Accepted, but the job will fail; the documents stay put.
+            return FakeResult(f"delete-{self.deletions}-doomed")
         self.existing -= set(doc_ids)
+        return FakeResult(f"delete-{self.deletions}")
+
+    async def wait_for_job(self, job_id, **kwargs):
+        self.calls.append(("wait_for_job", job_id))
+        if job_id.endswith("doomed"):
+            raise RuntimeError(f"job {job_id} failed")
         return None
 
     async def add_docs(self, name, docs, options=None):
@@ -124,6 +153,76 @@ async def test_a_tail_longer_than_one_probe_window_is_still_cleared():
 
     assert client.existing == set(ids_for("notes.md", 1))
     assert len(deleted(client)) == 599
+
+
+async def test_the_tail_is_deleted_from_the_top_down():
+    """Descending order is what makes a half-finished refresh recoverable."""
+    client = FakeClient(existing=ids_for("notes.md", 600))
+    docs = [DocumentInfo(id=doc_id, text="fresh") for doc_id in ids_for("notes.md", 1)]
+
+    await refresh_source(client, "idx", "notes.md", docs)
+
+    batches = [arg for kind, arg in client.calls if kind == "delete_docs"]
+    assert len(batches) > 1
+    assert [batch[0] for batch in batches] == sorted((b[0] for b in batches), reverse=True)
+
+
+async def test_every_deletion_is_waited_on():
+    """`delete_docs` returns when the job is accepted, not when it has run."""
+    client = FakeClient(existing=ids_for("notes.md", 600))
+    docs = [DocumentInfo(id=doc_id, text="fresh") for doc_id in ids_for("notes.md", 1)]
+
+    await refresh_source(client, "idx", "notes.md", docs)
+
+    kinds = [kind for kind, _ in client.calls]
+    for position, kind in enumerate(kinds):
+        if kind == "delete_docs":
+            assert kinds[position + 1] == "wait_for_job"
+
+
+async def test_a_failed_deletion_is_raised_rather_than_reported_as_a_refresh():
+    """Returning normally here would claim a replacement that did not happen."""
+    client = FakeClient(existing=ids_for("notes.md", 9), fail_delete_after=0)
+    docs = [DocumentInfo(id=doc_id, text="fresh") for doc_id in ids_for("notes.md", 2)]
+
+    with pytest.raises(RuntimeError, match="failed"):
+        await refresh_source(client, "idx", "notes.md", docs)
+
+    assert not any(kind == "add_docs" for kind, _ in client.calls)
+
+
+async def test_a_refresh_after_a_failed_deletion_finishes_the_job():
+    """The regression the delete order exists for.
+
+    600 chunks re-cut to 1, with the deletion failing partway. Whatever survives
+    has to stay reachable from a probe that starts at the new chunk count — if
+    the surviving run had a hole punched under it, the retry would stop at the
+    hole and strand everything above it forever.
+    """
+    existing = ids_for("notes.md", 600)
+    docs = [DocumentInfo(id=doc_id, text="fresh") for doc_id in ids_for("notes.md", 1)]
+
+    failing = FakeClient(existing=existing, fail_delete_after=1)
+    with pytest.raises(RuntimeError):
+        await refresh_source(failing, "idx", "notes.md", docs)
+    assert len(failing.existing) > 1  # the refresh really did leave work behind
+
+    retry = FakeClient(existing=sorted(failing.existing))
+    await refresh_source(retry, "idx", "notes.md", docs)
+
+    assert retry.existing == set(ids_for("notes.md", 1))
+
+
+async def test_unordered_lookup_results_do_not_break_the_delete_order():
+    """`get_docs` promises no order; the zero-padded IDs are sorted before use."""
+    client = FakeClient(existing=ids_for("notes.md", 600), shuffled=True)
+    docs = [DocumentInfo(id=doc_id, text="fresh") for doc_id in ids_for("notes.md", 1)]
+
+    await refresh_source(client, "idx", "notes.md", docs)
+
+    batches = [arg for kind, arg in client.calls if kind == "delete_docs"]
+    assert [batch[0] for batch in batches] == sorted((b[0] for b in batches), reverse=True)
+    assert client.existing == set(ids_for("notes.md", 1))
 
 
 @pytest.mark.parametrize("cut", [40, 12])

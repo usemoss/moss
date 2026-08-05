@@ -65,6 +65,19 @@ async def refresh_source(
     chunk count, and looking up one window of candidate IDs past the end is
     enough to find it or prove it is not there.
 
+    That contiguity is the one assumption here, so it is also maintained here:
+    deletions run highest ID first and each one is waited on, which keeps what
+    survives a failure an unbroken run that the next refresh will find. A source
+    whose IDs were punched full of holes by something other than this package is
+    outside the guarantee — reconciling that would mean scanning the whole
+    `MAX_CHUNK_INDEX` space on every refresh, tens of round trips per document,
+    to defend against a writer that is not honouring the contract anyway.
+
+    Raises whatever `wait_for_job` raises if a deletion fails, rather than
+    returning a result that implies a replacement which did not happen. Returns
+    the add's `MutationResult`, which the caller can wait on in turn — or `None`
+    when there was nothing to add.
+
     Passing no documents deletes every chunk for `source`, which is how a deleted
     file is removed from the index.
 
@@ -86,12 +99,30 @@ async def refresh_source(
         stale.extend(doc.id for doc in found)
         start += len(window)
 
-    if stale:
-        # Batched, because the stale run can be thousands of IDs long and a
-        # single request carrying all of them is a request that can fail all of
-        # them.
-        for offset in range(0, len(stale), _PROBE_WINDOW):
-            await client.delete_docs(index_name, stale[offset : offset + _PROBE_WINDOW])
+    # `get_docs` does not promise an order, and the deletion below depends on
+    # one. Sorting the IDs is sorting by index, which is what the zero-padding
+    # in `chunk_id` is for.
+    stale.sort()
+
+    # Batched, because the stale run can be thousands of IDs long and one
+    # request carrying all of them is one request that can fail all of them.
+    #
+    # Highest IDs first, which is what makes a failed batch recoverable. The
+    # survivors of a partial delete are then still one unbroken run from
+    # `len(docs)` upward — the shape the probe above relies on — so the next
+    # refresh finds them and finishes the job. Deleting lowest-first would punch
+    # a hole underneath them instead: the next probe would read the emptied low
+    # window as proof that nothing was left and stop, stranding every ID above
+    # it in the index, searchable, with no run that will ever reach them.
+    for end in range(len(stale), 0, -_PROBE_WINDOW):
+        batch = stale[max(end - _PROBE_WINDOW, 0) : end]
+        deletion = await client.delete_docs(index_name, batch)
+        # `delete_docs` returns when the job is accepted, not when it has run,
+        # so an unwaited deletion that fails afterwards is invisible: this
+        # function would return successfully with the stale chunks still
+        # searchable. The add below is handed back to the caller, who can wait
+        # on it; nobody outside this function ever sees these job IDs.
+        await client.wait_for_job(deletion.job_id)
 
     if not docs:
         return None
