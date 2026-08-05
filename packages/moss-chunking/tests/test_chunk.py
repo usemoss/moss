@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from moss_chunking import Chunk, chunk_id
+from moss_chunking import MAX_CHUNK_INDEX, Chunk, chunk_id
 
 
 def test_chunk_id_is_zero_padded_so_it_sorts_in_cut_order():
@@ -16,6 +16,17 @@ def test_chunk_id_is_zero_padded_so_it_sorts_in_cut_order():
 def test_chunk_id_rejects_empty_source():
     with pytest.raises(ValueError, match="non-empty"):
         chunk_id("", 0)
+
+
+def test_chunk_id_sorts_in_cut_order_across_the_whole_supported_range():
+    ids = [chunk_id("notes.md", i) for i in (0, 1, 9, 10, 99, 100, 999, 1000, MAX_CHUNK_INDEX)]
+    assert ids == sorted(ids)
+
+
+def test_chunk_id_rejects_an_index_the_padding_cannot_hold():
+    """Past 9999 the width stops being fixed and chunk-10000 sorts before -9999."""
+    with pytest.raises(ValueError, match="sorting in cut order|<="):
+        chunk_id("notes.md", MAX_CHUNK_INDEX + 1)
 
 
 def test_chunk_id_rejects_negative_index():
@@ -37,11 +48,25 @@ def test_to_document_stringifies_every_metadata_value():
     assert all(isinstance(value, str) for value in doc.metadata.values())
 
 
-def test_extra_metadata_is_merged_and_stringified():
+def test_extra_metadata_is_merged():
     chunk = Chunk("body", 0, "page", 4, 4, extra={"page_label": "iv", "words": "12"})
     doc = chunk.to_document("paper.pdf")
     assert doc.metadata["page_label"] == "iv"
     assert doc.metadata["locator_type"] == "page"
+
+
+def test_non_string_extra_values_are_stringified():
+    """`{"page": 3}` is the natural thing to write, so accept and coerce it.
+
+    Moss types metadata as `Dict[str, str]`; an int left in there fails at the
+    SDK boundary, which is a worse place to find out than here.
+    """
+    chunk = Chunk("body", 0, "page", 4, 4, extra={"page": 3, "words": 12, "ok": True})
+    metadata = chunk.to_document("paper.pdf").metadata
+    assert metadata["page"] == "3"
+    assert metadata["words"] == "12"
+    assert metadata["ok"] == "True"
+    assert all(isinstance(value, str) for value in metadata.values())
 
 
 def test_extra_may_not_shadow_reserved_keys():
@@ -72,6 +97,18 @@ def test_extra_is_copied_so_the_caller_cannot_mutate_validated_state():
     supplied["source"] = "elsewhere.md"
     assert "source" not in chunk.extra
     assert chunk.to_document("notes.md").metadata["source"] == "notes.md"
+
+
+def test_a_frozen_chunk_is_actually_hashable():
+    """`frozen=True` advertises hashability; a dict field would break it."""
+    chunk = Chunk("body", 0, "char", 0, 4, extra={"extension": "md"})
+    assert hash(chunk) == hash(Chunk("body", 0, "char", 0, 4, extra={"other": "x"}))
+    assert len({chunk, Chunk("body", 1, "char", 4, 8)}) == 2
+
+
+def test_chunks_still_compare_on_extra():
+    """Excluding `extra` from the hash must not exclude it from equality."""
+    assert Chunk("b", 0, "char", 0, 1, extra={"a": "1"}) != Chunk("b", 0, "char", 0, 1)
 
 
 def test_unknown_locator_type_is_rejected():

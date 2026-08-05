@@ -11,7 +11,14 @@ the package.
     await ingest(docs, project_id, project_key, "my-index")
 """
 
-from .chunk import LOCATOR_TYPES, RESERVED_KEYS, Chunk, LocatorType, chunk_id
+from .chunk import (
+    LOCATOR_TYPES,
+    MAX_CHUNK_INDEX,
+    RESERVED_KEYS,
+    Chunk,
+    LocatorType,
+    chunk_id,
+)
 from .enrich import prepend_context, prepend_source_context
 from .ingest import ingest
 from .strategies import (
@@ -25,6 +32,7 @@ from .strategies import (
 
 __all__ = [
     "LOCATOR_TYPES",
+    "MAX_CHUNK_INDEX",
     "RESERVED_KEYS",
     "CharSplitter",
     "Chunk",

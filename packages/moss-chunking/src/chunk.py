@@ -31,6 +31,11 @@ LOCATOR_TYPES: tuple[str, ...] = get_args(LocatorType)
 #: Metadata keys the contract owns. `Chunk.extra` may not shadow them.
 RESERVED_KEYS = frozenset({"source", "chunk_index", "locator_type", "locator_start", "locator_end"})
 
+#: Highest index the ID format can hold. Four digits is pikachu's width, kept for
+#: parity; past it the padding stops being fixed-width and `chunk-10000` sorts
+#: before `chunk-9999`, which is the one promise the format makes.
+MAX_CHUNK_INDEX = 9999
+
 
 def chunk_id(source: str, index: int) -> str:
     """Build a chunk's stable ID.
@@ -40,11 +45,20 @@ def chunk_id(source: str, index: int) -> str:
     original — a file path, a URL, a document name — and must be stable across
     runs: re-chunking an unchanged document has to reproduce the same IDs, or
     every chunk gets re-added instead of replaced.
+
+    Rejects indices above `MAX_CHUNK_INDEX` rather than emitting an ID that
+    breaks the sort. A document that cuts into more than 10,000 chunks wants a
+    coarser strategy or a per-section `source`, not a silently unsortable ID.
     """
     if not source:
         raise ValueError("source must be a non-empty string")
     if index < 0:
         raise ValueError(f"index must be >= 0, got {index}")
+    if index > MAX_CHUNK_INDEX:
+        raise ValueError(
+            f"index must be <= {MAX_CHUNK_INDEX}, got {index}: past that the "
+            "zero-padding is no longer fixed width and IDs stop sorting in cut order"
+        )
     return f"{source}#chunk-{index:04d}"
 
 
@@ -61,7 +75,14 @@ class Chunk:
     locator_type: LocatorType
     locator_start: int
     locator_end: int
-    extra: dict[str, str] = field(default_factory=dict)
+    #: Values are stringified at render, so the natural thing to pass — `{"page":
+    #: 3}`, `{"words": 12}` — is accepted rather than failing at the SDK boundary.
+    #:
+    #: Excluded from the hash: `frozen=True` has the dataclass advertise
+    #: hashability, and a dict field would make `hash(chunk)` raise instead.
+    #: Chunks still compare on `extra`; two that differ only there collide, which
+    #: is a legal hash, unlike a `Chunk` that cannot go in a set at all.
+    extra: dict[str, object] = field(default_factory=dict, hash=False)
 
     def __post_init__(self) -> None:
         if self.index < 0:
@@ -101,7 +122,7 @@ class Chunk:
             id=chunk_id(source, self.index),
             text=self.text,
             metadata={
-                **self.extra,
+                **{key: str(value) for key, value in self.extra.items()},
                 "source": source,
                 "chunk_index": str(self.index),
                 "locator_type": self.locator_type,

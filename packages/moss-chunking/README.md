@@ -62,6 +62,11 @@ stable across runs so re-chunking an unchanged document replaces its chunks
 rather than duplicating them. Values are all strings, because Moss types metadata
 as `Dict[str, str]`.
 
+The sort only holds while the padding is fixed width, so `chunk_id` rejects an
+index above `MAX_CHUNK_INDEX` (9999) rather than emitting `chunk-10000`, which
+sorts before `chunk-9999`. A document that cuts into more than 10,000 chunks
+wants a coarser strategy or a per-section `source`.
+
 That stability is only worth something if you keep it on the way in, which is why
 `ingest` drops the one option the connector template it mirrors does offer:
 `auto_id`. Random UUIDs defeat the contract — re-indexing an unchanged document
@@ -75,11 +80,14 @@ assuming one. That's the one real design call in the package.
 Pass source-level facts a splitter can't know via `extra`:
 
 ```python
-chunk_document(text, "notes.md", CharSplitter(), extra={"extension": "md"})
+chunk_document(text, "notes.md", CharSplitter(), extra={"extension": "md", "page": 3})
 ```
 
-`extra` cannot shadow the reserved keys above — that's an error, not a silent
-overwrite.
+Values are stringified on the way out, so passing an `int` is fine — Moss types
+metadata as `Dict[str, str]`, and coercing here beats failing at the SDK
+boundary. `extra` cannot shadow the reserved keys above: that's an error, not a
+silent overwrite, and the reserved keys win at render even if one is added to
+`extra` afterwards.
 
 ## Strategies
 
@@ -96,6 +104,11 @@ than cut. `RecursiveSplitter` is the one to reach for when the ceiling must hold
 Write your own by implementing `split(text) -> Iterable[Chunk]`:
 
 ```python
+from collections.abc import Iterator
+
+from moss_chunking import Chunk
+
+
 class MyStrategy:
     def split(self, text: str) -> Iterator[Chunk]:
         yield Chunk(text=..., index=..., locator_type="line", locator_start=..., locator_end=...)

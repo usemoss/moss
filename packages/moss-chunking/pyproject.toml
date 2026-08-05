@@ -16,10 +16,15 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Text Processing :: Linguistic",
 ]
+# Most packages here declare `moss>=1.1.1`, but that floor cannot resolve: every
+# moss release before 1.7.2 pins an `inferedge-moss-core` that is no longer on
+# PyPI. 1.7.2 is the earliest version that actually installs, and the earliest
+# whose `DocumentInfo` is verified to accept `payload`.
 dependencies = [
-    "moss>=1.1.1",
+    "moss>=1.7.2",
 ]
 
 [project.optional-dependencies]

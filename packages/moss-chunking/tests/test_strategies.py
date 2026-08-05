@@ -35,15 +35,17 @@ ALL_STRATEGIES = [
 ]
 
 
-def roundtrips(text: str, chunks) -> bool:
-    return all(text[c.locator_start : c.locator_end] == c.text for c in chunks)
+def assert_roundtrips(text: str, chunks) -> None:
+    """Assert per chunk, so a failure names the offending one and its offsets."""
+    for chunk in chunks:
+        assert text[chunk.locator_start : chunk.locator_end] == chunk.text
 
 
 @pytest.mark.parametrize("strategy", ALL_STRATEGIES, ids=lambda s: type(s).__name__)
 def test_offsets_slice_back_to_the_chunk_text(strategy):
     chunks = list(strategy.split(PROSE))
     assert chunks
-    assert roundtrips(PROSE, chunks)
+    assert_roundtrips(PROSE, chunks)
 
 
 @pytest.mark.parametrize("strategy", ALL_STRATEGIES, ids=lambda s: type(s).__name__)
@@ -118,8 +120,17 @@ def test_sentence_longer_than_the_budget_is_still_emitted():
 def test_sentence_splitter_handles_closing_quotes():
     text = 'He said "it works." Then he left. She agreed.'
     chunks = list(SentenceSplitter(max_words=4, overlap_sentences=0).split(text))
-    assert roundtrips(text, chunks)
+    assert_roundtrips(text, chunks)
     assert chunks[0].text.startswith("He said")
+
+
+def test_splitting_terminates_for_any_overlap():
+    """The `group_start + 1` floor, not the clamp, is what guarantees progress."""
+    splitter = SentenceSplitter(max_words=3)
+    splitter.overlap_sentences = 999  # defeat the clamp, keep the loop
+    chunks = list(splitter.split("One. Two. Three. Four. Five. Six."))
+    assert chunks
+    assert [c.index for c in chunks] == list(range(len(chunks)))
 
 
 def test_overlap_is_clamped_so_progress_is_guaranteed():
@@ -146,6 +157,14 @@ def test_paragraphs_are_packed_together_when_they_fit():
 def test_paragraphs_are_split_apart_when_they_do_not_fit():
     text = "one.\n\ntwo.\n\nthree."
     assert len(list(ParagraphSplitter(max_chars=6).split(text))) == 3
+
+
+def test_crlf_blank_lines_are_paragraph_boundaries_too():
+    """A Windows-authored file must not collapse into one oversized chunk."""
+    text = "one.\r\n\r\ntwo.\r\n\r\nthree."
+    chunks = list(ParagraphSplitter(max_chars=6).split(text))
+    assert len(chunks) == 3
+    assert_roundtrips(text, chunks)
 
 
 # --- RecursiveSplitter -------------------------------------------------------

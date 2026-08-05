@@ -26,8 +26,10 @@ from .chunk import Chunk
 # width, which is what Python's `re` requires.
 _SENTENCE_BOUNDARY = re.compile(r"(?:(?<=[.!?][\"'”’)\]])|(?<=[.!?]))\s+")
 
-# A blank line, plus any whitespace padding around it.
-_PARAGRAPH_BOUNDARY = re.compile(r"\n[ \t]*\n\s*")
+# A blank line, plus any whitespace padding around it. CRLF is matched too, or
+# every paragraph in a Windows-authored file would run into the next one and
+# `ParagraphSplitter` would silently emit a single oversized chunk.
+_PARAGRAPH_BOUNDARY = re.compile(r"\r?\n[ \t]*\r?\n\s*")
 
 Span = tuple[int, int]
 
@@ -145,7 +147,9 @@ class SentenceSplitter:
         if overlap_sentences < 0:
             raise ValueError(f"overlap_sentences must be >= 0, got {overlap_sentences}")
         self.max_words = max_words
-        # Clamp, as llamaindex does, so a large overlap cannot stall progress.
+        # Clamped as llamaindex clamps it, to keep the parity this splitter is
+        # for. Not a safety net: progress is guaranteed by the `group_start + 1`
+        # floor in `split`, which holds for any overlap.
         self.overlap_sentences = min(overlap_sentences, max(1, max_words // 100))
 
     def split(self, text: str) -> Iterator[Chunk]:
@@ -292,7 +296,7 @@ def chunk_document(
     text: str,
     source: str,
     strategy: ChunkingStrategy,
-    extra: Mapping[str, str] | None = None,
+    extra: Mapping[str, object] | None = None,
 ) -> list[DocumentInfo]:
     """Run `strategy` over `text` and render the chunks under the contract.
 
