@@ -1,4 +1,5 @@
 import { MossClient, type DocumentInfo } from "@moss-dev/moss";
+import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
 
 config();
@@ -59,18 +60,24 @@ function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
 
   if (!value) {
-    throw new Error(`Missing ${name}. Add it to .env before running this example.`);
+    throw new Error(
+      `Missing ${name}. Add it to .env before running this example.`,
+    );
   }
 
   return value;
 }
 
-export async function runMetadataFilterExample(example: MetadataFilterExample): Promise<void> {
+export async function runMetadataFilterExample(
+  example: MetadataFilterExample,
+): Promise<void> {
   const projectId = requireEnv("MOSS_PROJECT_ID");
   const projectKey = requireEnv("MOSS_PROJECT_KEY");
-  const indexName = `metadata-filter-${example.operator.slice(1)}-${Date.now()}`;
+  const indexName = `metadata-filter-${example.operator.slice(1)}-${randomUUID()}`;
   const client = new MossClient(projectId, projectKey);
   let cleanupNeeded = false;
+  let operationError: unknown;
+  let operationFailed = false;
 
   try {
     console.log(`Moss metadata filter example: ${example.operator}`);
@@ -92,21 +99,44 @@ export async function runMetadataFilterExample(example: MetadataFilterExample): 
       filter: example.filter,
     });
 
-    const timing = results.timeTakenInMs === undefined ? "" : ` in ${results.timeTakenInMs}ms`;
+    const timing =
+      results.timeTakenInMs === undefined
+        ? ""
+        : ` in ${results.timeTakenInMs}ms`;
     console.log(`\nFound ${results.docs.length} result(s)${timing}:`);
     results.docs.forEach((doc, index) => {
-      const preview = doc.text.length > 80 ? `${doc.text.slice(0, 80)}...` : doc.text;
-      console.log(`${index + 1}. [${doc.id}] score=${doc.score.toFixed(3)} ${preview}`);
+      const preview =
+        doc.text.length > 80 ? `${doc.text.slice(0, 80)}...` : doc.text;
+      console.log(
+        `${index + 1}. [${doc.id}] score=${doc.score.toFixed(3)} ${preview}`,
+      );
       console.log(`   metadata=${JSON.stringify(doc.metadata ?? {})}`);
     });
-  } finally {
-    if (cleanupNeeded) {
-      console.log(`\nDeleting temporary index: ${indexName}`);
-      try {
-        await client.deleteIndex(indexName);
-      } catch (cleanupError) {
-        console.warn(`Failed to delete temporary index: ${indexName}`, cleanupError);
+  } catch (error) {
+    operationError = error;
+    operationFailed = true;
+  }
+
+  if (cleanupNeeded) {
+    console.log(`\nDeleting temporary index: ${indexName}`);
+    try {
+      const deleted = await client.deleteIndex(indexName);
+      if (!deleted) {
+        throw new Error(`Moss did not delete temporary index: ${indexName}`);
+      }
+    } catch (cleanupError) {
+      if (operationFailed) {
+        console.warn(
+          `Failed to delete temporary index: ${indexName}`,
+          cleanupError,
+        );
+      } else {
+        throw cleanupError;
       }
     }
+  }
+
+  if (operationFailed) {
+    throw operationError;
   }
 }
