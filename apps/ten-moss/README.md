@@ -37,8 +37,6 @@ flowchart LR
     class ctl,idx moss
 ```
 
-Everything on the retrieval path runs inside the agent process. There is no network hop between the transcript arriving and the grounded prompt reaching the LLM.
-
 ## What's in this directory
 
 This example ships the TEN app plus a small index builder; the run harness (playground, server, Taskfile, Dockerfile) comes from the TEN Framework, so `tenapp/` drops into any TEN checkout.
@@ -97,30 +95,9 @@ The Moss delta lives in `main_python`:
 | `extension.py` `on_cmd` | Tool: `query_context(arguments.query)` and return `{type: "llmresult", content: grounding}`. |
 | `tenapp/property.json` | `voice_assistant` (ambient, auto-start) and `voice_assistant_tools`. |
 
-Anatomy of a turn:
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant User
-    participant STT as Deepgram STT
-    participant Ctl as main_control
-    participant Moss as Moss session (in-process)
-    participant LLM as OpenAI LLM
-    participant TTS as ElevenLabs TTS
-
-    User->>STT: speech (via agora_rtc + streamid_adapter)
-    STT->>Ctl: asr_result (final)
-    Ctl->>Moss: query_context(text)
-    Moss-->>Ctl: grounding (single-digit ms)
-    Ctl->>LLM: context + [Current User Question] + text
-    LLM-->>TTS: streamed response
-    TTS-->>User: audio (via agora_rtc)
-```
-
 ## Measure the latency
 
-Every turn, the control extension logs the retrieval cost using the SDK's own `SearchResult.time_taken_ms` (surfaced by `ten-moss` as `last_time_taken_ms`), with the wall clock alongside for reference:
+Logs use the SDK `SearchResult.time_taken_ms` (`ten-moss.last_time_taken_ms`), plus wall clock:
 
 ```
 [retrieval-latency] backend=moss(in-process) time_taken_ms=2 (wall_clock=64ms)
@@ -134,7 +111,7 @@ In the playground transcript you see, per turn, what Moss retrieved plus the SDK
 <the assistant's spoken answer>
 ```
 
-The extension also emits a per-turn latency breakdown, both as a grep-able log line and as a note in the transcript, so you can see where each turn's time goes:
+Per-turn breakdown:
 
 ```
 [latency-breakdown] turn=3 moss_retrieval_ms=2 llm_ttft_ms=480 llm_total_ms=1150 turn_total_ms=1160
@@ -147,11 +124,7 @@ The extension also emits a per-turn latency breakdown, both as a grep-able log l
 | `llm_total_ms` | Full LLM generation for the turn. |
 | `turn_total_ms` | ASR-final to LLM-final (the whole control-side turn). |
 
-ASR timing appears in the Deepgram STT extension logs and TTS audio-out in the ElevenLabs TTS logs (both per turn in the worker log), so between those and the lines above you get the full component-by-component breakdown.
-
-### Benchmark against TEN's default retrieval
-
-TEN's shipped memory/RAG backends (memU, OceanBase PowerRAG, EverMemOS) are remote services that pay a network round trip every turn, whereas Moss retrieves in-process, so the same grounding is a local call of single-digit milliseconds.
+ASR timing is in the Deepgram logs; TTS audio-out is in the ElevenLabs logs.
 
 ## Configuration
 
@@ -178,7 +151,7 @@ No Agora, no Deepgram, no mic. Gold phrases are the 10 FAQs.
 python bench/run.py --echo-grounding
 ```
 
-`--echo-grounding` needs no LLM key. With `MOSS_*` set it reports `moss_retrieval_ms`. Without them it still prints the table from the local FAQ file. The tool arm always searches in that smoke (no LLM to decide). See `bench/README.md`.
+See `bench/README.md`.
 
 ## Provenance
 

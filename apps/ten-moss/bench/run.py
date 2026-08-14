@@ -1,13 +1,7 @@
-"""Offline gold-phrase bench: ambient vs tool vs no-Moss.
+"""Gold-phrase bench. python bench/run.py --echo-grounding
 
-    python bench/run.py --echo-grounding
-
-No mic, no Agora, no Deepgram, no LLM key.
-With MOSS_* set, ambient and tool call MossSessionManager.query_context.
-Without them, those arms look up the matching FAQ in data/knowledge.jsonl
-so the table still prints (moss_retrieval_ms is then n/a).
-
---echo-grounding has no chat model, so the tool arm always searches.
+No LLM key. Tool arm always searches (no model). Without MOSS_* the
+FAQ file is used and moss_retrieval_ms is n/a.
 """
 
 from __future__ import annotations
@@ -44,7 +38,6 @@ def contains_gold(text: str, gold: list[str]) -> bool:
 
 
 def lookup_faq(query: str, queries: list[dict], docs: list[dict]) -> str:
-    """Return the FAQ that belongs to this published query. No Moss needed."""
     by_id = {str(doc.get("id")): doc for doc in docs}
     for row in queries:
         if row.get("query") == query:
@@ -55,7 +48,6 @@ def lookup_faq(query: str, queries: list[dict], docs: list[dict]) -> str:
 
 
 async def query_moss(session, query: str) -> tuple[str, float | None, float | None]:
-    """Fail-open: empty context on error. Returns (text, sdk_ms, wall_ms)."""
     t0 = time.perf_counter()
     try:
         context = await session.query_context(query)

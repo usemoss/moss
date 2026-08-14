@@ -33,10 +33,6 @@ SEARCH_KNOWLEDGE_BASE = "search_knowledge_base"
 
 
 class MainControlExtension(AsyncExtension):
-    """
-    The entry point of the agent module.
-    Consumes semantic AgentEvents from the Agent class and drives the runtime behavior.
-    """
 
     def __init__(self, name: str):
         super().__init__(name)
@@ -51,9 +47,6 @@ class MainControlExtension(AsyncExtension):
         self.turn_id: int = 0
         self.session_id: str = "0"
 
-        # Per-turn latency breakdown (see _log_latency_breakdown). main_control
-        # orchestrates retrieval -> LLM -> TTS, so it can time those stages; ASR
-        # timing lives in the STT extension logs and TTS audio-out in the TTS logs.
         self._turn_t0: float | None = None
         self._retrieval_ms: float | None = None
         self._llm_sent_at: float | None = None
@@ -67,12 +60,9 @@ class MainControlExtension(AsyncExtension):
     async def on_init(self, ten_env: AsyncTenEnv):
         self.ten_env = ten_env
 
-        # Load config from runtime properties
         config_json, _ = await ten_env.get_property_to_json(None)
         self.config = MainControlConfig.model_validate_json(config_json)
 
-        # Open a Moss session for ambient, session-scoped grounding (best-effort:
-        # if the session can't open, the agent still runs, just without grounding).
         self.moss = None
         if self.config.enable_moss and self.config.moss_index_name:
             try:
@@ -87,7 +77,6 @@ class MainControlExtension(AsyncExtension):
 
         self.agent = Agent(ten_env)
 
-        # Now auto-register decorated methods
         for attr_name in dir(self):
             fn = getattr(self, attr_name)
             event_type = getattr(fn, "_agent_event_type", None)
@@ -97,7 +86,6 @@ class MainControlExtension(AsyncExtension):
         if self.config.moss_mode == "tool":
             await self._register_search_knowledge_base()
 
-    # === Register handlers with decorators ===
     @agent_event_handler(UserJoinedEvent)
     async def _on_user_joined(self, event: UserJoinedEvent):
         self._rtc_user_count += 1
@@ -118,8 +106,6 @@ class MainControlExtension(AsyncExtension):
     @agent_event_handler(ASRResultEvent)
     async def _on_asr_result(self, event: ASRResultEvent):
         self.session_id = event.metadata.get("session_id", "100")
-        # session_id is a string in the event schema; parse defensively so a
-        # non-numeric value can't crash the ASR handler and break the voice loop.
         try:
             stream_id = int(self.session_id)
         except (TypeError, ValueError):
@@ -130,13 +116,11 @@ class MainControlExtension(AsyncExtension):
             await self._interrupt()
         if event.final:
             self.turn_id += 1
-            self._turn_t0 = time.perf_counter()  # turn clock starts at ASR-final
+            self._turn_t0 = time.perf_counter()
             self._retrieval_ms = None
             self._last_grounding = ""
             self._last_sdk_ms = None
             llm_input = event.text
-            # Ambient searches here and prepends. Tool mode sends the raw
-            # transcript; the LLM calls search_knowledge_base if it needs facts.
             if self.moss is not None and self.config.moss_mode != "tool":
                 context = await self._query_moss(event.text)
                 if context:
@@ -150,7 +134,6 @@ class MainControlExtension(AsyncExtension):
 
     @agent_event_handler(LLMResponseEvent)
     async def _on_llm_response(self, event: LLMResponseEvent):
-        # First streamed token of this turn -> time-to-first-token.
         if (
             event.type == "message"
             and self._llm_first_at is None
@@ -196,7 +179,6 @@ class MainControlExtension(AsyncExtension):
     async def on_data(self, ten_env: AsyncTenEnv, data: Data):
         await self.agent.on_data(data)
 
-    # === helpers ===
     async def _register_search_knowledge_base(self) -> None:
         tool = LLMToolMetadata(
             name=SEARCH_KNOWLEDGE_BASE,
@@ -219,7 +201,6 @@ class MainControlExtension(AsyncExtension):
         )
 
     async def _on_tool_call(self, cmd: Cmd) -> None:
-        """search_knowledge_base: query_context, return empty on error."""
         try:
             raw, _ = cmd.get_property_to_json(None)
             payload = json.loads(raw) if raw else {}
@@ -256,7 +237,6 @@ class MainControlExtension(AsyncExtension):
         await self.ten_env.return_result(result)
 
     async def _query_moss(self, user_text: str) -> str:
-        """query_context + latency log. Never raise into the voice loop."""
         if self.moss is None:
             return ""
         try:
@@ -279,13 +259,6 @@ class MainControlExtension(AsyncExtension):
             return ""
 
     async def _log_latency_breakdown(self):
-        """Per-turn latency breakdown for onboarding/debugging.
-
-        Emits a grep-able log line ('[latency-breakdown]') and a reasoning note
-        in the transcript so users can see where each turn's time goes:
-        Moss retrieval, LLM time-to-first-token, and full LLM generation. (ASR
-        timing is in the STT extension logs; TTS audio-out in the TTS logs.)
-        """
         now = time.perf_counter()
 
         def _ms(v: float | None) -> str:
@@ -309,23 +282,18 @@ class MainControlExtension(AsyncExtension):
             f"⏱ turn {self.turn_id} · Moss {_ms(retrieval)} ms (time_taken_ms) · "
             f"LLM first token {_ms(ttft)} ms · LLM total {_ms(llm_total)} ms"
         )
-        # Own stream id (distinct from the answer's 100 and the retrieval note's).
         await self._send_transcript(
             "assistant", note, True, 710_000_000 + self.turn_id, data_type="reasoning"
         )
 
     async def _send_retrieval_note(self, grounding: str, time_taken_ms):
-        """Show what Moss retrieved this turn + the SDK's time_taken_ms, so users
-        see the retrieval *results* alongside the timing (the LLM answer follows
-        as its own transcript message)."""
         ms_txt = f"{time_taken_ms}" if time_taken_ms is not None else "n/a"
         body = (
             f"🔎 Moss · retrieved in {ms_txt} ms (SDK time_taken_ms)\n\n{grounding}"
             if grounding
             else f"🔎 Moss · retrieved in {ms_txt} ms (SDK time_taken_ms) — no match"
         )
-        # Own stream id so this note is a separate transcript item, not merged
-        # into (and replacing) the assistant answer bubble at stream_id 100.
+        # Distinct stream_id so this note is not merged into the answer bubble.
         await self._send_transcript(
             "assistant", body, True, 700_000_000 + self.turn_id, data_type="reasoning"
         )
@@ -338,9 +306,6 @@ class MainControlExtension(AsyncExtension):
         stream_id: int,
         data_type: Literal["text", "reasoning"] = "text",
     ):
-        """
-        Sends the transcript (ASR or LLM output) to the message collector.
-        """
         if data_type == "text":
             await _send_data(
                 self.ten_env,
@@ -381,9 +346,6 @@ class MainControlExtension(AsyncExtension):
         )
 
     async def _send_to_tts(self, text: str, is_final: bool):
-        """
-        Sends a sentence to the TTS system.
-        """
         request_id = f"tts-request-{self.turn_id}"
         await _send_data(
             self.ten_env,
@@ -401,9 +363,6 @@ class MainControlExtension(AsyncExtension):
         )
 
     async def _interrupt(self):
-        """
-        Interrupts ongoing LLM and TTS generation. Typically called when user speech is detected.
-        """
         self.sentence_fragment = ""
         await self.agent.flush_llm()
         await _send_data(

@@ -1,18 +1,9 @@
-"""
-Custom LLM endpoint with Moss grounding.
+"""OpenAI-compatible /chat/completions with Moss.
 
 Forked from Agora's custom-llm recipe (MIT):
 https://github.com/AgoraIO-Conversational-AI/recipe-agent-custom-llm/blob/main/server/src/llm.py
 
-Agora cloud POSTs here. Two modes, same index:
-
-  ambient  last user text -> query_context -> prepend -> upstream LLM
-  tool     advertise search_knowledge_base to the upstream LLM;
-           run Moss here if the model calls it (cap 2);
-           stream only the final spoken answer.
-
-SSE contract: each line is `data: {json}`, end with `data: [DONE]`.
-Non-mock requests need `Authorization: Bearer`.
+SSE must end with `data: [DONE]`. Non-mock requests need Authorization: Bearer.
 """
 
 from __future__ import annotations
@@ -125,7 +116,6 @@ def as_dict(msg: Any) -> dict[str, Any]:
 
 
 async def query_moss(session, user_text: str) -> str:
-    """Fail-open: empty string if Moss is missing or errors."""
     if session is None:
         return ""
     try:
@@ -261,7 +251,7 @@ async def tool_answer(messages: list, session, mock: bool) -> str:
 
 
 async def call_upstream(messages: list, tools: list | None = None, raw: bool = False):
-    """Non-streaming upstream call. We only stream the final spoken answer to Agora."""
+    # Upstream is non-streaming; only the final answer is sent to Agora as SSE.
     import httpx
 
     payload = [as_dict(m) for m in messages]
@@ -295,8 +285,7 @@ def create_app(moss_mode: str = "ambient") -> FastAPI:
     state: dict[str, Any] = {"session": None, "ready": False}
 
     async def get_session():
-        # Open on first use so this works both standalone and mounted
-        # under server.py (FastAPI does not always run a mount's lifespan).
+        # FastAPI does not always run a mounted app's lifespan.
         if not state["ready"]:
             state["session"] = await open_moss()
             state["ready"] = True
