@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -128,6 +129,13 @@ def test_server_mounts_share_factory(mock_env) -> None:
     assert ambient.status_code == 200 and "data: [DONE]" in ambient.text
     assert tool.status_code == 200 and "data: [DONE]" in tool.text
     assert "search_knowledge_base" not in tool.text
+
+
+def test_load_server_env_reads_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / ".env").write_text("CUSTOM_LLM_API_KEY=from-dotenv-file\n")
+    monkeypatch.delenv("CUSTOM_LLM_API_KEY", raising=False)
+    llm.load_server_env(tmp_path)
+    assert os.environ.get("CUSTOM_LLM_API_KEY") == "from-dotenv-file"
 
 
 def test_last_user_text_from_list_content() -> None:

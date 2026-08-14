@@ -26,8 +26,10 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -113,6 +115,13 @@ class ChatCompletionRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Small helpers
 # ---------------------------------------------------------------------------
+
+
+def load_server_env(server_dir: Path | None = None) -> None:
+    """Load server/.env then server/.env.local so a filled .env.example is enough."""
+    root = server_dir or Path(__file__).resolve().parent.parent
+    load_dotenv(root / ".env")
+    load_dotenv(root / ".env.local", override=True)
 
 
 def env_flag(name: str) -> bool:
@@ -380,6 +389,7 @@ async def call_upstream_raw(
 
 
 def create_app(moss_mode: str = "ambient") -> FastAPI:
+    load_server_env()
     mode = (moss_mode or "ambient").strip().lower()
     if mode not in {"ambient", "tool"}:
         mode = "ambient"

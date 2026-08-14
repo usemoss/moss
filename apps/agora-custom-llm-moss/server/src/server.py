@@ -14,7 +14,9 @@ import os
 
 from fastapi import FastAPI
 
-from llm import create_app
+from llm import create_app, load_server_env
+
+load_server_env()
 
 app = FastAPI(title="Moss custom-llm (ambient + tool)", version="1.0.0")
 app.mount("/llm", create_app("ambient"))
