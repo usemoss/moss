@@ -53,6 +53,9 @@
         },
         "enable_moss": {
           "type": "bool"
+        },
+        "moss_mode": {
+          "type": "string"
         }
       }
     }

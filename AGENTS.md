@@ -40,6 +40,7 @@ examples/
     moss-cognee-daytona/ — Claude Code + Cognee + Moss on Daytona (shared memory)
 apps/
   agora-moss/      — Agora Conversational AI voice agent (MCP server demo)
+  agora-custom-llm-moss/ — Agora custom-llm middleware: ambient prepend + in-process tool loop
   docker/          — Dockerized Python + JS SDK examples (ECS/K8s pattern)
   elevenlabs-moss/ — ElevenLabs voice agent with Moss knowledge base
   livekit-moss-vercel/ — LiveKit voice agent + React frontend on Vercel
@@ -111,12 +112,13 @@ asks for an experimental landing spot.
 | Directory | Integration | What it demonstrates |
 | --------- | ----------- | -------------------- |
 | `agora-moss/` | Agora Conversational AI | Moss as an MCP tool (`search_knowledge_base`) mounted on an Agora voice agent |
+| `agora-custom-llm-moss/` | Agora custom-llm | OpenAI-compatible `/chat/completions` with Moss ambient + tool modes; Agora never sees the tool |
 | `elevenlabs-moss/` | ElevenLabs | Knowledge-base-backed ElevenLabs Conversational AI bot with live Moss retrieval |
 | `livekit-moss-vercel/` | LiveKit + Vercel | LiveKit voice agent with React frontend deployed to Vercel; Moss powers RAG |
 | `pipecat-moss/pipecat-quickstart/` | Pipecat Cloud | Minimal Pipecat bot — local dev → Pipecat Cloud deployment |
 | `pipecat-moss/ollama-local/` | Pipecat + Ollama | Full-stack local voice AI: Ollama LLM + Moss RAG + Pipecat audio, one `docker compose up` |
 | `pipecat-moss/hume-ollama-local/` | Pipecat + Ollama + Hume | Same as above with Hume AI (Octave) expressive TTS |
-| `ten-moss/` | TEN Framework | Voice agent that grounds each turn in a Moss session (`MossSessionManager`); TEN `voice-assistant` example + the Moss delta |
+| `ten-moss/` | TEN Framework | Voice agent that grounds each turn in a Moss session (`MossSessionManager`); graphs `voice_assistant` (ambient, default) and `voice_assistant_tools` (in-process `search_knowledge_base`) |
 | `vapi-moss/` | VAPI | Webhook server connecting VAPI Custom Tool calls to Moss search; LLM-directed retrieval |
 
 ### Other Apps
@@ -273,4 +275,12 @@ The `.github/workflows/ci.yml` pipeline runs on push to `main` and on PRs:
 - `python-lint` — ruff on examples and apps
 - `python-sdk-test` — matrix over Python 3.10–3.14
 - `javascript-lint` — eslint
+- `agora-ten-samples-smoke` — TEN graph contract + `bench/run.py --echo-grounding` + custom-llm mock/doctor (no Agora/LLM keys)
 - Separate release workflows publish to PyPI / npm on tagged releases
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.

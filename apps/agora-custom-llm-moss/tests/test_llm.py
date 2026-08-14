@@ -1,0 +1,142 @@
+"""Mock/doctor tests for the custom-llm middleware. No Agora, no LLM keys."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+SRC = Path(__file__).resolve().parents[1] / "server" / "src"
+sys.path.insert(0, str(SRC))
+
+import llm  # noqa: E402
+
+PAYLOAD = {
+    "model": "mock",
+    "stream": True,
+    "messages": [{"role": "user", "content": "How long do refunds take?"}],
+}
+
+GROUNDING = (
+    "Relevant knowledge from Moss:\n\n"
+    "[1] Refunds are processed within 3-5 business days once the return is approved."
+)
+
+
+class FakeSession:
+    last_time_taken_ms = 3
+
+    async def query_context(self, text: str) -> str:
+        return GROUNDING
+
+
+class BoomSession:
+    last_time_taken_ms = None
+
+    async def query_context(self, text: str) -> str:
+        raise RuntimeError("timeout")
+
+
+@pytest.fixture
+def mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MOCK", "1")
+    monkeypatch.delenv("CUSTOM_LLM_API_KEY", raising=False)
+
+
+@pytest.fixture
+def moss_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _open():
+        return llm.MossHandle(FakeSession())
+
+    monkeypatch.setattr(llm, "open_moss", _open)
+
+
+@pytest.fixture
+def moss_boom(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _open():
+        return llm.MossHandle(BoomSession())
+
+    monkeypatch.setattr(llm, "open_moss", _open)
+
+
+def _collect_sse(response) -> str:
+    return response.text
+
+
+def test_mock_ambient_echoes_grounding(mock_env, moss_ok) -> None:
+    with TestClient(llm.create_app("ambient")) as client:
+        response = client.post("/chat/completions", json=PAYLOAD)
+    assert response.status_code == 200
+    body = _collect_sse(response)
+    assert "data: [DONE]" in body
+    assert "3-5" in body
+    assert "tool_calls" not in body
+
+
+def test_mock_tool_echoes_grounding_and_hides_tool(mock_env, moss_ok) -> None:
+    with TestClient(llm.create_app("tool")) as client:
+        response = client.post("/chat/completions", json=PAYLOAD)
+    assert response.status_code == 200
+    body = _collect_sse(response)
+    assert "data: [DONE]" in body
+    assert "3-5" in body
+    # Agora must only see the spoken answer, never the tool schema.
+    assert "search_knowledge_base" not in body
+
+
+def test_bearer_missing_rejected_when_not_mock(monkeypatch: pytest.MonkeyPatch, moss_ok) -> None:
+    monkeypatch.setenv("MOCK", "0")
+    monkeypatch.setenv("CUSTOM_LLM_API_KEY", "secret")
+    with TestClient(llm.create_app("ambient")) as client:
+        denied = client.post("/chat/completions", json=PAYLOAD)
+        assert denied.status_code == 401
+        ok = client.post(
+            "/chat/completions",
+            json=PAYLOAD,
+            headers={"Authorization": "Bearer secret"},
+        )
+        # Without MOCK the handler tries the upstream LLM; we only assert Bearer.
+        assert ok.status_code != 401
+
+
+def test_moss_error_fail_open_still_streams(mock_env, moss_boom) -> None:
+    with TestClient(llm.create_app("ambient")) as client:
+        response = client.post("/chat/completions", json=PAYLOAD)
+    assert response.status_code == 200
+    assert "data: [DONE]" in response.text
+
+
+def test_non_stream_rejected(mock_env, moss_ok) -> None:
+    with TestClient(llm.create_app("ambient")) as client:
+        response = client.post(
+            "/chat/completions",
+            json={**PAYLOAD, "stream": False},
+        )
+    assert response.status_code == 400
+
+
+def test_server_mounts_share_factory(mock_env) -> None:
+    import server as server_mod
+
+    with TestClient(server_mod.app) as client:
+        health = client.get("/health")
+        assert health.status_code == 200
+        ambient = client.post("/llm/chat/completions", json=PAYLOAD)
+        tool = client.post("/llm-tools/chat/completions", json=PAYLOAD)
+    assert ambient.status_code == 200 and "data: [DONE]" in ambient.text
+    assert tool.status_code == 200 and "data: [DONE]" in tool.text
+    assert "search_knowledge_base" not in tool.text
+
+
+def test_last_user_text_from_list_content() -> None:
+    msg = llm.UserMessage(role="user", content=[{"type": "text", "text": "hello"}])
+    assert llm.last_user_text([msg]) == "hello"
+
+
+def test_doctor_entrypoint(monkeypatch: pytest.MonkeyPatch, moss_ok, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setenv("MOCK", "1")
+    llm.run_doctor()
+    out = capsys.readouterr().out
+    assert "doctor: ok" in out

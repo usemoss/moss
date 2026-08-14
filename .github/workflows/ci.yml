@@ -179,3 +179,25 @@ jobs:
     - name: Run tests
       working-directory: packages/vitepress-plugin-moss
       run: pnpm test
+
+  agora-ten-samples-smoke:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install smoke deps
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio fastapi httpx pydantic python-dotenv
+    - name: TEN graph + bench unit tests
+      run: |
+        pytest apps/ten-moss/tests apps/ten-moss/bench/test_run.py -v
+    - name: custom-llm mock/doctor tests
+      run: |
+        pytest apps/agora-custom-llm-moss/tests -v
+    - name: Echo-grounding table (no LLM keys)
+      run: |
+        python apps/ten-moss/bench/run.py --echo-grounding

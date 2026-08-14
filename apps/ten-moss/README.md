@@ -1,6 +1,13 @@
 # Voice Assistant with Moss (TEN Framework)
 
-A real-time voice agent built on the [TEN Framework](https://github.com/ten-framework/ten-framework) that grounds every answer in a [Moss](https://moss.dev) session. On each final ASR transcript, the control extension queries Moss for session-scoped context (single-digit milliseconds, in-process) and injects it into the LLM prompt before the model responds, so answers reflect your knowledge base with no perceptible added latency.
+A real-time voice agent built on the [TEN Framework](https://github.com/ten-framework/ten-framework) that grounds answers in a [Moss](https://moss.dev) session. Two graphs, one `tenapp/`:
+
+| Graph | Playground | What happens on ASR-final |
+| --- | --- | --- |
+| `voice_assistant` (default, `auto_start: true`) | `?graph=voice_assistant` | ambient: `query_context` then prepend |
+| `voice_assistant_tools` | `?graph=voice_assistant_tools` | tool-call: raw transcript to the LLM; `main_control` self-registers `search_knowledge_base` and handles `tool_call` in-process |
+
+Both graphs use the same index and the same 10 FAQs in `data/knowledge.jsonl`. There is no extra extension and no hop to `apps/agora-moss` MCP.
 
 The integration is powered by the [`ten-moss`](https://pypi.org/project/ten-moss/) package (`MossSessionManager`) and lives entirely in the `main_python` control extension.
 
@@ -36,8 +43,9 @@ Everything on the retrieval path runs inside the agent process. There is no netw
 
 This example ships the TEN app plus a small index builder; the run harness (playground, server, Taskfile, Dockerfile) comes from the TEN Framework, so `tenapp/` drops into any TEN checkout.
 
-- `tenapp/`: the TEN app, i.e. the graph (`property.json`) and the `main_python` control extension that carries the Moss delta.
+- `tenapp/`: the TEN app, i.e. the two graphs in `property.json` and the `main_python` control extension that carries the Moss delta.
 - `create_index.py` + `data/knowledge.jsonl`: build the demo Moss index.
+- `bench/`: offline gold-phrase table (ambient / tool / no-Moss). No mic.
 - `.env.example`: every credential the agent needs.
 
 ## Prerequisites
@@ -73,19 +81,21 @@ This example ships the TEN app plus a small index builder; the run harness (play
 
    `main_python` depends on [`ten-moss`](https://pypi.org/project/ten-moss/) (listed in `main_python/requirements.txt`), so `task install` pulls it from PyPI automatically. `task install` also pre-downloads the `moss-minilm` embedding model (when the `MOSS_*` env vars are set) so the first agent session does not have to.
 
-3. **Run with TEN's tooling** from that example directory (`task install && task run`, per the TEN docs), with the `MOSS_*` vars from step 1 plus the provider keys from Prerequisites (Agora, Deepgram, OpenAI, ElevenLabs). Open the TEN playground at http://localhost:3000, select the **`voice_assistant`** graph (a `predefined_graph` in `tenapp/property.json`, or open `?graph=voice_assistant`), and ask something covered by `data/knowledge.jsonl`, for example *"how long do refunds take?"*, to hear grounded answers.
+3. **Run with TEN's tooling** from that example directory (`task install && task run`, per the TEN docs), with the `MOSS_*` vars from step 1 plus the provider keys from Prerequisites (Agora, Deepgram, OpenAI, ElevenLabs). Open the TEN playground at http://localhost:3000. The default graph is **`voice_assistant`** (ambient). Switch with `?graph=voice_assistant` or `?graph=voice_assistant_tools`. Ask something covered by `data/knowledge.jsonl`, for example *"how long do refunds take?"*.
 
    **Apple Silicon note:** TEN's `ten_agent_build` dev image is amd64-only. On colima, start the VM with Rosetta (`colima start --vz-rosetta`); under plain qemu emulation the Go toolchain segfaults during `task install`. Docker Desktop and OrbStack enable Rosetta by default.
 
 ## Under the hood
 
-The difference from the stock TEN voice assistant is small and lives in three places in `main_python`:
+The difference from the stock TEN voice assistant is small and lives in `main_python`:
 
 | Location | Change |
 | --- | --- |
-| `config.py` | `MainControlConfig` inherits `MossSessionConfig` (the `moss_*` properties). |
-| `extension.py` (`on_init`) | Opens the Moss session via `MossSessionManager.from_config(...).open()`, best-effort. |
-| `extension.py` (`_on_asr_result`) | Calls `query_context(text)` and prepends the grounding to the user's turn. |
+| `config.py` | `MainControlConfig` inherits `MossSessionConfig` (the `moss_*` properties) plus `moss_mode`. |
+| `extension.py` (`on_init`) | Opens the Moss session via `MossSessionManager.from_config(...).open()`, best-effort. In tool mode, registers `search_knowledge_base`. |
+| `extension.py` (`_on_asr_result`) | Ambient: `query_context(text)` and prepend. Tool: send the raw transcript (no prepend). |
+| `extension.py` (`on_cmd` / `_on_tool_call`) | Tool graph only: run `query_context(arguments.query)` and return `{type: "llmresult", content: grounding}`. |
+| `tenapp/property.json` | `voice_assistant` (ambient, auto-start) and `voice_assistant_tools` (`moss_mode=tool`). |
 
 Anatomy of a turn:
 
@@ -158,6 +168,19 @@ Moss is configured on the `main_control` node in `tenapp/property.json` (env-sub
 | `moss_context_header` | `Relevant knowledge from Moss:` | Header prepended to the injected grounding. |
 | `moss_max_context_chars` | `2000` | Cap on the injected grounding block; `0` means unlimited. |
 | `enable_moss` | `true` | Set to `false` to run the plain voice assistant with no grounding. |
+| `moss_mode` | `ambient` | `ambient` prepends on ASR-final. `tool` registers `search_knowledge_base` and does not prepend. |
+
+## Offline bench
+
+No Agora, no Deepgram, no mic. Gold phrases are the 10 FAQs.
+
+```bash
+python bench/run.py --echo-grounding
+```
+
+`--echo-grounding` needs no cloud LLM key. With `MOSS_*` set it reports `moss_retrieval_ms` from the SDK; without them it still prints the table from a local corpus lookup. See `bench/README.md`.
+
+The tool arm of that smoke **always** calls the tool (there is no LLM to decide). That is documented stub behavior, not a live model.
 
 ## Provenance
 
@@ -167,4 +190,4 @@ Three small patches were applied on top of the vendored baseline: `agent/decorat
 
 ## Testing status
 
-The `ten-moss` package is covered by offline unit tests (`packages/ten-moss/tests/`). This end-to-end app is **not** run in CI; it requires the TEN toolchain plus paid Agora, Deepgram, OpenAI, and ElevenLabs credentials, so it is validated manually via the steps above.
+The `ten-moss` package is covered by offline unit tests (`packages/ten-moss/tests/`). Graph contract tests and `bench/run.py --echo-grounding` run in CI without Agora/Deepgram/LLM keys. The live voice loop is **not** in CI; it needs the TEN toolchain plus paid Agora, Deepgram, OpenAI, and ElevenLabs credentials.

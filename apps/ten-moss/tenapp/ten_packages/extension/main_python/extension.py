@@ -7,7 +7,9 @@ from ten_runtime import (
     AsyncExtension,
     AsyncTenEnv,
     Cmd,
+    CmdResult,
     Data,
+    StatusCode,
 )
 
 from .agent.agent import Agent
@@ -19,11 +21,19 @@ from .agent.events import (
     UserLeftEvent,
 )
 from .helper import _send_cmd, _send_data, parse_sentences
-from .config import MainControlConfig  # assume extracted from your base model
+from .config import (
+    MOSS_MODE_TOOL,
+    MainControlConfig,
+    moss_mode_prepends_on_asr,
+)
 
 from ten_moss import MossSessionManager
+from ten_ai_base.const import CMD_PROPERTY_RESULT
+from ten_ai_base.types import LLMToolMetadata, LLMToolMetadataParameter
 
 import uuid
+
+SEARCH_KNOWLEDGE_BASE = "search_knowledge_base"
 
 
 class MainControlExtension(AsyncExtension):
@@ -88,6 +98,11 @@ class MainControlExtension(AsyncExtension):
             if event_type:
                 self.agent.on(event_type, fn)
 
+        # Tool graph only: advertise search_knowledge_base to the LLM and
+        # handle tool_call on this extension (no new TEN extension, no MCP hop).
+        if self.config.moss_mode == MOSS_MODE_TOOL and self.moss is not None:
+            await self._register_search_knowledge_base()
+
     # === Register handlers with decorators ===
     @agent_event_handler(UserJoinedEvent)
     async def _on_user_joined(self, event: UserJoinedEvent):
@@ -126,31 +141,10 @@ class MainControlExtension(AsyncExtension):
             self._last_grounding = ""
             self._last_sdk_ms = None
             llm_input = event.text
-            if self.moss is not None:
-                # query_context is designed not to raise, but guard anyway so a
-                # grounding failure can never drop the user's turn.
-                try:
-                    t0 = time.perf_counter()
-                    context = await self.moss.query_context(event.text)
-                    took_ms = (time.perf_counter() - t0) * 1000.0
-                    # The SDK reports the engine retrieval time on the result
-                    # object (SearchResult.time_taken_ms), surfaced by ten-moss as
-                    # `last_time_taken_ms`. Prefer it; fall back to wall-clock.
-                    sdk_ms = getattr(self.moss, "last_time_taken_ms", None)
-                    self._retrieval_ms = float(sdk_ms) if sdk_ms is not None else took_ms
-                    self._last_grounding = context
-                    self._last_sdk_ms = sdk_ms
-                    backend = "moss(in-process)"
-                    # Shared tag so this lines up 1:1 with the instrumented memU
-                    # example — grep '[retrieval-latency]' in both agents' logs.
-                    self.ten_env.log_info(
-                        f"[retrieval-latency] backend={backend} time_taken_ms={sdk_ms} (wall_clock={took_ms:.0f}ms)"
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    context = ""
-                    self.ten_env.log_error(
-                        f"[MainControlExtension] Moss grounding failed: {exc}"
-                    )
+            if self.moss is not None and moss_mode_prepends_on_asr(
+                self.config.moss_mode
+            ):
+                context = await self._query_moss(event.text)
                 if context:
                     llm_input = f"{context}\n\n[Current User Question]\n{event.text}"
             # Mark the LLM dispatch time so we can measure time-to-first-token.
@@ -158,7 +152,11 @@ class MainControlExtension(AsyncExtension):
             self._llm_first_at = None
             await self.agent.queue_llm_input(llm_input)
         await self._send_transcript("user", event.text, event.final, stream_id)
-        if event.final and self.moss is not None:
+        if (
+            event.final
+            and self.moss is not None
+            and moss_mode_prepends_on_asr(self.config.moss_mode)
+        ):
             # After the user's turn is shown, surface what Moss retrieved + the SDK time.
             await self._send_retrieval_note(self._last_grounding, self._last_sdk_ms)
 
@@ -202,12 +200,98 @@ class MainControlExtension(AsyncExtension):
         await self.agent.stop()
 
     async def on_cmd(self, ten_env: AsyncTenEnv, cmd: Cmd):
+        if cmd.get_name() == "tool_call":
+            await self._on_tool_call(cmd)
+            return
         await self.agent.on_cmd(cmd)
 
     async def on_data(self, ten_env: AsyncTenEnv, data: Data):
         await self.agent.on_data(data)
 
     # === helpers ===
+    async def _register_search_knowledge_base(self) -> None:
+        tool = LLMToolMetadata(
+            name=SEARCH_KNOWLEDGE_BASE,
+            description=(
+                "Search the knowledge base for facts that answer the user's "
+                "question. Pass a focused natural-language query."
+            ),
+            parameters=[
+                LLMToolMetadataParameter(
+                    name="query",
+                    type="string",
+                    description="The user's question or a focused search query.",
+                    required=True,
+                ),
+            ],
+        )
+        # Source is this graph node so llm_exec routes tool_call back here.
+        await self.agent.register_llm_tool(tool, "main_control")
+        self.ten_env.log_info(
+            "[MainControlExtension] registered tool search_knowledge_base"
+        )
+
+    async def _on_tool_call(self, cmd: Cmd) -> None:
+        """Run search_knowledge_base in-process. Fail open: empty content."""
+        try:
+            raw, _ = cmd.get_property_to_json(None)
+            payload = json.loads(raw) if raw else {}
+        except Exception as exc:  # noqa: BLE001
+            self.ten_env.log_error(
+                f"[MainControlExtension] tool_call payload unreadable: {exc}"
+            )
+            payload = {}
+        name = payload.get("name") or ""
+        arguments = payload.get("arguments") or payload.get("args") or {}
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except json.JSONDecodeError:
+                arguments = {"query": arguments}
+        query = ""
+        if isinstance(arguments, dict):
+            query = str(arguments.get("query") or "")
+
+        grounding = ""
+        if name == SEARCH_KNOWLEDGE_BASE:
+            grounding = await self._query_moss(query)
+            await self._send_retrieval_note(self._last_grounding, self._last_sdk_ms)
+        else:
+            self.ten_env.log_error(
+                f"[MainControlExtension] unknown tool_call name={name!r}"
+            )
+
+        result = CmdResult.create(StatusCode.OK, cmd)
+        result.set_property_from_json(
+            CMD_PROPERTY_RESULT,
+            json.dumps({"type": "llmresult", "content": grounding or ""}),
+        )
+        await self.ten_env.return_result(result)
+
+    async def _query_moss(self, user_text: str) -> str:
+        """query_context wrapper: log retrieval-latency, never raise."""
+        if self.moss is None:
+            return ""
+        try:
+            t0 = time.perf_counter()
+            context = await self.moss.query_context(user_text)
+            took_ms = (time.perf_counter() - t0) * 1000.0
+            # SearchResult.time_taken_ms, surfaced by ten-moss as last_time_taken_ms.
+            sdk_ms = getattr(self.moss, "last_time_taken_ms", None)
+            self._retrieval_ms = float(sdk_ms) if sdk_ms is not None else took_ms
+            self._last_grounding = context
+            self._last_sdk_ms = sdk_ms
+            self.ten_env.log_info(
+                f"[retrieval-latency] backend=moss(in-process) "
+                f"time_taken_ms={sdk_ms} (wall_clock={took_ms:.0f}ms)"
+            )
+            return context
+        except Exception as exc:  # noqa: BLE001
+            self.ten_env.log_error(
+                f"[MainControlExtension] Moss grounding failed: {exc}"
+            )
+            return ""
+
     async def _log_latency_breakdown(self):
         """Per-turn latency breakdown for onboarding/debugging.
 

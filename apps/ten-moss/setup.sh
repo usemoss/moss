@@ -53,5 +53,6 @@ Next, from that directory (inside TEN's dev container, or with TEN tooling
 installed locally):
   task install && task run
 
-Then open http://localhost:3000 and select the voice_assistant graph.
+Then open http://localhost:3000. Default graph is voice_assistant (ambient).
+Tool-call graph: http://localhost:3000?graph=voice_assistant_tools
 EOF
