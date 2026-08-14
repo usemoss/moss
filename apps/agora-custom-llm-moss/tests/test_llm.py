@@ -118,7 +118,7 @@ def test_non_stream_rejected(mock_env, moss_ok) -> None:
     assert response.status_code == 400
 
 
-def test_server_mounts_share_factory(mock_env) -> None:
+def test_server_mounts_open_moss_on_first_request(mock_env, moss_ok) -> None:
     import server as server_mod
 
     with TestClient(server_mod.app) as client:
@@ -126,8 +126,8 @@ def test_server_mounts_share_factory(mock_env) -> None:
         assert health.status_code == 200
         ambient = client.post("/llm/chat/completions", json=PAYLOAD)
         tool = client.post("/llm-tools/chat/completions", json=PAYLOAD)
-    assert ambient.status_code == 200 and "data: [DONE]" in ambient.text
-    assert tool.status_code == 200 and "data: [DONE]" in tool.text
+    assert ambient.status_code == 200 and "3-5" in ambient.text
+    assert tool.status_code == 200 and "3-5" in tool.text
     assert "search_knowledge_base" not in tool.text
 
 

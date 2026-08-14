@@ -94,7 +94,7 @@ class MainControlExtension(AsyncExtension):
             if event_type:
                 self.agent.on(event_type, fn)
 
-        if self.config.moss_mode == "tool" and self.moss is not None:
+        if self.config.moss_mode == "tool":
             await self._register_search_knowledge_base()
 
     # === Register handlers with decorators ===

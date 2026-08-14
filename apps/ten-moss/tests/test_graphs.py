@@ -50,6 +50,7 @@ def test_ambient_prepend_and_tool_handler_are_visible() -> None:
     assert "query_context" in src
     assert "[Current User Question]" in src
     assert 'self.config.moss_mode != "tool"' in src
+    assert 'if self.config.moss_mode == "tool":' in src
     assert "search_knowledge_base" in src
     assert 'cmd.get_name() == "tool_call"' in src
     assert 'moss_mode: Literal["ambient", "tool"] = "ambient"' in (

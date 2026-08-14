@@ -292,11 +292,19 @@ def create_app(moss_mode: str = "ambient") -> FastAPI:
     load_server_env()
     mode = moss_mode if moss_mode in {"ambient", "tool"} else "ambient"
     mock = os.getenv("MOCK", "").strip().lower() in {"1", "true", "yes", "on"}
-    state: dict[str, Any] = {"session": None}
+    state: dict[str, Any] = {"session": None, "ready": False}
+
+    async def get_session():
+        # Open on first use so this works both standalone and mounted
+        # under server.py (FastAPI does not always run a mount's lifespan).
+        if not state["ready"]:
+            state["session"] = await open_moss()
+            state["ready"] = True
+        return state["session"]
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
-        state["session"] = await open_moss()
+        await get_session()
         yield
 
     app = FastAPI(title=f"Moss custom-llm ({mode})", version="1.0.0", lifespan=lifespan)
@@ -316,7 +324,7 @@ def create_app(moss_mode: str = "ambient") -> FastAPI:
         require_bearer(authorization, mock=mock)
         if not request.stream:
             raise HTTPException(status_code=400, detail="Only streaming mode is supported. Set stream=true.")
-        session = state["session"]
+        session = await get_session()
         if mode == "tool":
             text = await tool_answer(request.messages, session, mock=mock)
         else:
