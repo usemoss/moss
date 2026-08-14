@@ -49,15 +49,9 @@ def test_ambient_prepend_and_tool_handler_are_visible() -> None:
     src = (EXTENSION / "extension.py").read_text()
     assert "query_context" in src
     assert "[Current User Question]" in src
-    assert "moss_mode_prepends_on_asr" in src
+    assert 'self.config.moss_mode != "tool"' in src
     assert "search_knowledge_base" in src
     assert 'cmd.get_name() == "tool_call"' in src
-    # Ambient prepend must stay gated on moss_mode, not deleted.
-    assert "moss_mode_prepends_on_asr" in (EXTENSION / "config.py").read_text()
-
-
-def test_config_helper_skips_prepend_in_tool_mode() -> None:
-    src = (EXTENSION / "config.py").read_text()
-    assert "def moss_mode_prepends_on_asr" in src
-    assert "return moss_mode != MOSS_MODE_TOOL" in src
-    assert 'moss_mode: Literal["ambient", "tool"] = MOSS_MODE_AMBIENT' in src
+    assert 'moss_mode: Literal["ambient", "tool"] = "ambient"' in (
+        EXTENSION / "config.py"
+    ).read_text()

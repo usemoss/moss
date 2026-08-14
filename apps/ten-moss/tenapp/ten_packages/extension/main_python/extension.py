@@ -21,11 +21,7 @@ from .agent.events import (
     UserLeftEvent,
 )
 from .helper import _send_cmd, _send_data, parse_sentences
-from .config import (
-    MOSS_MODE_TOOL,
-    MainControlConfig,
-    moss_mode_prepends_on_asr,
-)
+from .config import MainControlConfig
 
 from ten_moss import MossSessionManager
 from ten_ai_base.const import CMD_PROPERTY_RESULT
@@ -98,9 +94,7 @@ class MainControlExtension(AsyncExtension):
             if event_type:
                 self.agent.on(event_type, fn)
 
-        # Tool graph only: advertise search_knowledge_base to the LLM and
-        # handle tool_call on this extension (no new TEN extension, no MCP hop).
-        if self.config.moss_mode == MOSS_MODE_TOOL and self.moss is not None:
+        if self.config.moss_mode == "tool" and self.moss is not None:
             await self._register_search_knowledge_base()
 
     # === Register handlers with decorators ===
@@ -141,23 +135,17 @@ class MainControlExtension(AsyncExtension):
             self._last_grounding = ""
             self._last_sdk_ms = None
             llm_input = event.text
-            if self.moss is not None and moss_mode_prepends_on_asr(
-                self.config.moss_mode
-            ):
+            # Ambient searches here and prepends. Tool mode sends the raw
+            # transcript; the LLM calls search_knowledge_base if it needs facts.
+            if self.moss is not None and self.config.moss_mode != "tool":
                 context = await self._query_moss(event.text)
                 if context:
                     llm_input = f"{context}\n\n[Current User Question]\n{event.text}"
-            # Mark the LLM dispatch time so we can measure time-to-first-token.
             self._llm_sent_at = time.perf_counter()
             self._llm_first_at = None
             await self.agent.queue_llm_input(llm_input)
         await self._send_transcript("user", event.text, event.final, stream_id)
-        if (
-            event.final
-            and self.moss is not None
-            and moss_mode_prepends_on_asr(self.config.moss_mode)
-        ):
-            # After the user's turn is shown, surface what Moss retrieved + the SDK time.
+        if event.final and self.moss is not None and self.config.moss_mode != "tool":
             await self._send_retrieval_note(self._last_grounding, self._last_sdk_ms)
 
     @agent_event_handler(LLMResponseEvent)
@@ -225,14 +213,13 @@ class MainControlExtension(AsyncExtension):
                 ),
             ],
         )
-        # Source is this graph node so llm_exec routes tool_call back here.
         await self.agent.register_llm_tool(tool, "main_control")
         self.ten_env.log_info(
             "[MainControlExtension] registered tool search_knowledge_base"
         )
 
     async def _on_tool_call(self, cmd: Cmd) -> None:
-        """Run search_knowledge_base in-process. Fail open: empty content."""
+        """search_knowledge_base: query_context, return empty on error."""
         try:
             raw, _ = cmd.get_property_to_json(None)
             payload = json.loads(raw) if raw else {}
@@ -269,14 +256,13 @@ class MainControlExtension(AsyncExtension):
         await self.ten_env.return_result(result)
 
     async def _query_moss(self, user_text: str) -> str:
-        """query_context wrapper: log retrieval-latency, never raise."""
+        """query_context + latency log. Never raise into the voice loop."""
         if self.moss is None:
             return ""
         try:
             t0 = time.perf_counter()
             context = await self.moss.query_context(user_text)
             took_ms = (time.perf_counter() - t0) * 1000.0
-            # SearchResult.time_taken_ms, surfaced by ten-moss as last_time_taken_ms.
             sdk_ms = getattr(self.moss, "last_time_taken_ms", None)
             self._retrieval_ms = float(sdk_ms) if sdk_ms is not None else took_ms
             self._last_grounding = context

@@ -87,15 +87,15 @@ This example ships the TEN app plus a small index builder; the run harness (play
 
 ## Under the hood
 
-The difference from the stock TEN voice assistant is small and lives in `main_python`:
+The Moss delta lives in `main_python`:
 
-| Location | Change |
+| Location | What it does |
 | --- | --- |
-| `config.py` | `MainControlConfig` inherits `MossSessionConfig` (the `moss_*` properties) plus `moss_mode`. |
-| `extension.py` (`on_init`) | Opens the Moss session via `MossSessionManager.from_config(...).open()`, best-effort. In tool mode, registers `search_knowledge_base`. |
-| `extension.py` (`_on_asr_result`) | Ambient: `query_context(text)` and prepend. Tool: send the raw transcript (no prepend). |
-| `extension.py` (`on_cmd` / `_on_tool_call`) | Tool graph only: run `query_context(arguments.query)` and return `{type: "llmresult", content: grounding}`. |
-| `tenapp/property.json` | `voice_assistant` (ambient, auto-start) and `voice_assistant_tools` (`moss_mode=tool`). |
+| `config.py` | `moss_mode`: `ambient` (default) or `tool`. |
+| `extension.py` `on_init` | Open `MossSessionManager`. In tool mode, register `search_knowledge_base`. |
+| `extension.py` `_on_asr_result` | Ambient: `query_context` then prepend. Tool: send the raw transcript. |
+| `extension.py` `on_cmd` | Tool: `query_context(arguments.query)` and return `{type: "llmresult", content: grounding}`. |
+| `tenapp/property.json` | `voice_assistant` (ambient, auto-start) and `voice_assistant_tools`. |
 
 Anatomy of a turn:
 
@@ -178,9 +178,7 @@ No Agora, no Deepgram, no mic. Gold phrases are the 10 FAQs.
 python bench/run.py --echo-grounding
 ```
 
-`--echo-grounding` needs no cloud LLM key. With `MOSS_*` set it reports `moss_retrieval_ms` from the SDK; without them it still prints the table from a local corpus lookup. See `bench/README.md`.
-
-The tool arm of that smoke **always** calls the tool (there is no LLM to decide). That is documented stub behavior, not a live model.
+`--echo-grounding` needs no LLM key. With `MOSS_*` set it reports `moss_retrieval_ms`. Without them it still prints the table from the local FAQ file. The tool arm always searches in that smoke (no LLM to decide). See `bench/README.md`.
 
 ## Provenance
 

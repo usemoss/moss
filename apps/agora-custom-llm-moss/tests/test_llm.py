@@ -49,7 +49,7 @@ def mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def moss_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _open():
-        return llm.MossHandle(FakeSession())
+        return FakeSession()
 
     monkeypatch.setattr(llm, "open_moss", _open)
 
@@ -57,7 +57,7 @@ def moss_ok(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def moss_boom(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _open():
-        return llm.MossHandle(BoomSession())
+        return BoomSession()
 
     monkeypatch.setattr(llm, "open_moss", _open)
 
