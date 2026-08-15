@@ -194,3 +194,23 @@ def test_doctor_unset_key_survives_dotenv_reload(
     out = capsys.readouterr().out
     assert "rejected any token while CUSTOM_LLM_API_KEY is unset" in out
     assert "doctor: ok" in out
+
+
+def test_doctor_restores_preset_env(
+    monkeypatch: pytest.MonkeyPatch, moss_ok
+) -> None:
+    monkeypatch.setenv("MOCK", "preset")
+    monkeypatch.setenv("CUSTOM_LLM_API_KEY", "preset-key")
+    llm.run_doctor()
+    assert os.environ["MOCK"] == "preset"
+    assert os.environ["CUSTOM_LLM_API_KEY"] == "preset-key"
+
+
+def test_doctor_restores_absent_env(
+    monkeypatch: pytest.MonkeyPatch, moss_ok
+) -> None:
+    monkeypatch.delenv("MOCK", raising=False)
+    monkeypatch.delenv("CUSTOM_LLM_API_KEY", raising=False)
+    llm.run_doctor()
+    assert "MOCK" not in os.environ
+    assert "CUSTOM_LLM_API_KEY" not in os.environ

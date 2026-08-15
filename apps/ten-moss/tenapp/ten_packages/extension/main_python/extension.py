@@ -247,7 +247,7 @@ class MainControlExtension(AsyncExtension):
             else:
                 self._moss_tool_calls += 1
                 grounding = await self._query_moss(query)
-                await self._send_retrieval_note(self._last_grounding, self._last_sdk_ms)
+                await self._send_retrieval_note(grounding, self._last_sdk_ms)
         else:
             self.ten_env.log_error(
                 f"[MainControlExtension] unknown tool_call name={name!r}"
@@ -261,6 +261,10 @@ class MainControlExtension(AsyncExtension):
         await self.ten_env.return_result(result)
 
     async def _query_moss(self, user_text: str) -> str:
+        # Reset per-query state up front so a failed search never replays the
+        # previous hit's grounding/latency in the retrieval note.
+        self._last_grounding = ""
+        self._last_sdk_ms = None
         if self.moss is None:
             return ""
         try:

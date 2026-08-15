@@ -346,26 +346,40 @@ app = create_app(os.getenv("MOSS_MODE", "ambient"))
 def run_doctor() -> None:
     from fastapi.testclient import TestClient
 
-    os.environ["MOCK"] = "1"
-    payload = {
-        "model": "mock",
-        "stream": True,
-        "messages": [{"role": "user", "content": "How long do refunds take?"}],
-    }
-    for mode in ("ambient", "tool"):
-        with TestClient(create_app(mode)) as client:
-            ok = client.post("/chat/completions", json=payload)
-        if ok.status_code != 200 or "data: [DONE]" not in ok.text:
-            raise SystemExit(f"doctor {mode} failed: {ok.status_code} {ok.text}")
-        print(f"doctor {mode}: ok")
-    os.environ["MOCK"] = "0"
-    with TestClient(create_app("ambient")) as client:
-        denied = client.post("/chat/completions", json=payload)
-    if denied.status_code != 401:
-        raise SystemExit(f"doctor bearer: expected 401, got {denied.status_code}")
-    print("doctor bearer: rejected missing Authorization")
-    saved_key = os.environ.pop("CUSTOM_LLM_API_KEY", None)
+    # run_doctor runs in-process from the test suite, so snapshot every env var
+    # it flips and restore the originals on the way out (None means "was absent").
+    saved_mock = os.environ.get("MOCK")
+    saved_key = os.environ.get("CUSTOM_LLM_API_KEY")
+
+    def _restore(name: str, value: str | None) -> None:
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
+
     try:
+        os.environ["MOCK"] = "1"
+        payload = {
+            "model": "mock",
+            "stream": True,
+            "messages": [{"role": "user", "content": "How long do refunds take?"}],
+        }
+        for mode in ("ambient", "tool"):
+            with TestClient(create_app(mode)) as client:
+                ok = client.post("/chat/completions", json=payload)
+            if ok.status_code != 200 or "data: [DONE]" not in ok.text:
+                raise SystemExit(f"doctor {mode} failed: {ok.status_code} {ok.text}")
+            print(f"doctor {mode}: ok")
+        os.environ["MOCK"] = "0"
+        with TestClient(create_app("ambient")) as client:
+            denied = client.post("/chat/completions", json=payload)
+        if denied.status_code != 401:
+            raise SystemExit(f"doctor bearer: expected 401, got {denied.status_code}")
+        print("doctor bearer: rejected missing Authorization")
+        # Temporarily remove the key so the next request runs against an unset
+        # key; create_app reloads .env, so pop again after building the app. The
+        # outer finally owns the real restore.
+        os.environ.pop("CUSTOM_LLM_API_KEY", None)
         test_app = create_app("ambient")
         os.environ.pop("CUSTOM_LLM_API_KEY", None)
         with TestClient(test_app) as client:
@@ -378,13 +392,11 @@ def run_doctor() -> None:
             raise SystemExit(
                 f"doctor bearer: unset key should reject any token, got {any_token.status_code}"
             )
+        print("doctor bearer: rejected any token while CUSTOM_LLM_API_KEY is unset")
+        print("doctor: ok")
     finally:
-        if saved_key is None:
-            os.environ.pop("CUSTOM_LLM_API_KEY", None)
-        else:
-            os.environ["CUSTOM_LLM_API_KEY"] = saved_key
-    print("doctor bearer: rejected any token while CUSTOM_LLM_API_KEY is unset")
-    print("doctor: ok")
+        _restore("MOCK", saved_mock)
+        _restore("CUSTOM_LLM_API_KEY", saved_key)
 
 
 if __name__ == "__main__":
