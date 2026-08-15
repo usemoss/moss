@@ -68,10 +68,11 @@ class MainControlExtension(AsyncExtension):
             payload = json.loads(config_json) if config_json else {}
         except json.JSONDecodeError:
             payload = {}
-        if payload.get("moss_mode") not in (None, "", "ambient", "tool"):
-            ten_env.log_error(
-                f"[MainControlExtension] unknown moss_mode={payload.get('moss_mode')!r}; using ambient"
-            )
+        if payload.get("moss_mode") not in ("ambient", "tool"):
+            if payload.get("moss_mode") not in (None, ""):
+                ten_env.log_error(
+                    f"[MainControlExtension] unknown moss_mode={payload.get('moss_mode')!r}; using ambient"
+                )
             payload["moss_mode"] = "ambient"
         self.config = MainControlConfig.model_validate(payload)
 

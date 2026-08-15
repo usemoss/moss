@@ -54,7 +54,7 @@ def test_ambient_prepend_and_tool_handler_are_visible() -> None:
     assert "search_knowledge_base" in src
     assert 'cmd.get_name() == "tool_call"' in src
     assert "MAX_MOSS_TOOL_CALLS = 2" in src
-    assert 'unknown moss_mode=' in src
+    assert 'if payload.get("moss_mode") not in ("ambient", "tool")' in src
     assert 'payload["moss_mode"] = "ambient"' in src
     assert 'moss_mode: Literal["ambient", "tool"] = "ambient"' in (
         EXTENSION / "config.py"
