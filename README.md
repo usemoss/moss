@@ -161,6 +161,7 @@ apps/
 ├── livekit-moss-vercel/     # LiveKit voice agent on Vercel
 ├── agora-moss/              # Agora Conversational AI MCP server with Moss retrieval
 ├── agora-custom-llm-moss/   # Agora custom-llm middleware (ambient + in-process tool loop)
+├── ten-moss/                # TEN voice agent (ambient default + tool-call graph)
 ├── moss-llamaindex/         # LlamaIndex RAG backend + frontend
 ├── moss-bun/                # Bun runtime example
 └── docker/                  # Dockerized examples (ECS/K8s pattern)
@@ -239,8 +240,8 @@ Full API reference: [docs.moss.dev](https://docs.moss.dev).
 | [LiveKit](https://github.com/livekit/livekit) | Available | [`apps/livekit-moss-vercel/`](apps/livekit-moss-vercel/) |
 | [Vapi](https://vapi.ai) | Available | [`apps/vapi-moss/`](apps/vapi-moss/) |
 | [ElevenLabs](https://elevenlabs.io) | Available | [`apps/elevenlabs-moss/`](apps/elevenlabs-moss/) |
-| [Agora](https://www.agora.io/) | Available | [`apps/agora-moss/`](apps/agora-moss/) (MCP) and [`apps/agora-custom-llm-moss/`](apps/agora-custom-llm-moss/) (custom-llm) |
-| [TEN Framework](https://github.com/ten-framework/ten-framework) | Available | [`apps/ten-moss/`](apps/ten-moss/) |
+| [Agora](https://www.agora.io/) | Available | [`apps/agora-moss/`](apps/agora-moss/) (MCP) and [`apps/agora-custom-llm-moss/`](apps/agora-custom-llm-moss/) (custom-llm: ambient + tool-call) |
+| [TEN Framework](https://github.com/ten-framework/ten-framework) | Available | [`apps/ten-moss/`](apps/ten-moss/) (ambient + tool-call) |
 | [Strands Agents](https://github.com/strands-agents/sdk-python) | Available | [`packages/strands-agents-moss/`](packages/strands-agents-moss/) |
 | [Langflow](https://github.com/langflow-ai/langflow) | Available | [`examples/cookbook/langflow/`](examples/cookbook/langflow/) |
 | [Next.js](https://nextjs.org) | Available | [`apps/next-js/`](apps/next-js/) |
