@@ -26,7 +26,9 @@ def test_queries_cover_ten_faqs() -> None:
     assert len(rows) == 10
     assert [r["id"] for r in rows] == [f"kb-{i}" for i in range(1, 11)]
     assert rows[0]["query"] == "How long do refunds take?"
-    assert "3-5" in rows[0]["gold"]
+    assert "Refunds are processed" in rows[0]["gold"]
+    assert "Standard shipping" in rows[3]["gold"]
+    assert rows[0]["gold"] != rows[3]["gold"]
     assert "Visa" in rows[5]["gold"]
 
 
@@ -40,7 +42,7 @@ async def test_three_arms_with_echo() -> None:
     queries = load_queries()
     docs = [{"id": "kb-1", "text": "Refunds are processed within 3-5 business days."}]
     query = "How long do refunds take?"
-    gold = ["3-5"]
+    gold = ["Refunds are processed"]
     ambient = await run_one("ambient", query, gold, "kb-1", None, queries, docs)
     tool = await run_one("tool", query, gold, "kb-1", None, queries, docs)
     none = await run_one("no-moss", query, gold, "kb-1", None, queries, docs)
@@ -63,8 +65,36 @@ async def test_query_moss_fail_open() -> None:
 
 
 @pytest.mark.asyncio
+async def test_hit_requires_gold_phrase_not_doc_id() -> None:
+    class IdOnly:
+        last_time_taken_ms = 1
+
+        async def query_context(self, text: str) -> str:
+            return "kb-1"
+
+    row = await run_one(
+        "ambient",
+        "How long do refunds take?",
+        ["Refunds are processed"],
+        "kb-1",
+        IdOnly(),
+        [],
+        [],
+    )
+    assert row["hit"] is False
+    assert row["faithful"] is False
+
+
+@pytest.fixture
+def offline_moss(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("run.load_dotenv", lambda *_a, **_k: False)
+    for key in ("MOSS_PROJECT_ID", "MOSS_PROJECT_KEY", "MOSS_INDEX_NAME", "MOSS_MODEL_ID"):
+        monkeypatch.delenv(key, raising=False)
+
+
+@pytest.mark.asyncio
 async def test_run_echo_grounding_prints_table(
-    capsys: pytest.CaptureFixture[str], tmp_path: Path
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, offline_moss
 ) -> None:
     rows = await run_bench(json_out=tmp_path / "out.json")
     assert len(rows) == 30

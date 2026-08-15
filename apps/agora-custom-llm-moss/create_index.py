@@ -39,7 +39,8 @@ async def main() -> None:
     index_name = os.environ["MOSS_INDEX_NAME"]
     docs = load_documents()
     print(f"Creating index '{index_name}' with {len(docs)} documents...")
-    await client.create_index(name=index_name, docs=docs, model_id="moss-minilm")
+    model_id = os.getenv("MOSS_MODEL_ID", "moss-minilm")
+    await client.create_index(name=index_name, docs=docs, model_id=model_id)
     print("Done.")
 
 

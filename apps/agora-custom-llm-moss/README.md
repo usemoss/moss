@@ -41,7 +41,7 @@ python server/src/server.py                      # /llm ambient, /llm-tools tool
 ## Run with a real index
 
 ```bash
-cp server/.env.example server/.env   # fill MOSS_* (and UPSTREAM_LLM_* if not mocking)
+cp server/.env.example server/.env   # fill MOSS_* and a unique CUSTOM_LLM_API_KEY
 python create_index.py
 python server/src/server.py
 ngrok http 8000
@@ -49,7 +49,7 @@ ngrok http 8000
 # tool URL:     https://<tunnel>/llm-tools/chat/completions
 ```
 
-Send `Authorization: Bearer $CUSTOM_LLM_API_KEY`. If Moss is unset or errors, the handler returns empty context and still streams.
+Set `CUSTOM_LLM_API_KEY` to a unique value before exposing the URL. If it is empty, every request is rejected, including any Bearer token. Send `Authorization: Bearer $CUSTOM_LLM_API_KEY`. If Moss is unset or errors, the handler returns empty context and still streams.
 
 Offline table: `python apps/ten-moss/bench/run.py --echo-grounding`
 

@@ -14,10 +14,12 @@ Three arms per query:
 
 ```bash
 # from apps/ten-moss
-export MOSS_PROJECT_ID=... MOSS_PROJECT_KEY=... MOSS_INDEX_NAME=ten-moss-demo
+# run.py loads ../.env before reading MOSS_*
 python create_index.py
 python bench/run.py --echo-grounding
 ```
+
+`hit` is a gold phrase in the retrieved text, not a matching `doc_id`. Refunds and shipping use distinct gold phrases.
 
 No Moss keys? The script still prints the table by pairing each query with its FAQ. `moss_retrieval_ms` is then `n/a`.
 

@@ -30,6 +30,7 @@ from ten_ai_base.types import LLMToolMetadata, LLMToolMetadataParameter
 import uuid
 
 SEARCH_KNOWLEDGE_BASE = "search_knowledge_base"
+MAX_MOSS_TOOL_CALLS = 2
 
 
 class MainControlExtension(AsyncExtension):
@@ -53,6 +54,8 @@ class MainControlExtension(AsyncExtension):
         self._llm_first_at: float | None = None
         self._last_grounding: str = ""
         self._last_sdk_ms = None
+        self._last_user_text: str = ""
+        self._moss_tool_calls: int = 0
 
     def _current_metadata(self) -> dict:
         return {"session_id": self.session_id, "turn_id": self.turn_id}
@@ -61,7 +64,16 @@ class MainControlExtension(AsyncExtension):
         self.ten_env = ten_env
 
         config_json, _ = await ten_env.get_property_to_json(None)
-        self.config = MainControlConfig.model_validate_json(config_json)
+        try:
+            payload = json.loads(config_json) if config_json else {}
+        except json.JSONDecodeError:
+            payload = {}
+        if payload.get("moss_mode") not in (None, "", "ambient", "tool"):
+            ten_env.log_error(
+                f"[MainControlExtension] unknown moss_mode={payload.get('moss_mode')!r}; using ambient"
+            )
+            payload["moss_mode"] = "ambient"
+        self.config = MainControlConfig.model_validate(payload)
 
         self.moss = None
         if self.config.enable_moss and self.config.moss_index_name:
@@ -120,6 +132,8 @@ class MainControlExtension(AsyncExtension):
             self._retrieval_ms = None
             self._last_grounding = ""
             self._last_sdk_ms = None
+            self._last_user_text = event.text
+            self._moss_tool_calls = 0
             llm_input = event.text
             if self.moss is not None and self.config.moss_mode != "tool":
                 context = await self._query_moss(event.text)
@@ -215,14 +229,23 @@ class MainControlExtension(AsyncExtension):
             try:
                 arguments = json.loads(arguments)
             except json.JSONDecodeError:
-                arguments = {"query": arguments}
+                arguments = {}
         query = ""
         if isinstance(arguments, dict):
             query = str(arguments.get("query") or "")
+        if not query:
+            query = self._last_user_text
 
         grounding = ""
         if name == SEARCH_KNOWLEDGE_BASE:
-            grounding = await self._query_moss(query)
+            if self._moss_tool_calls >= MAX_MOSS_TOOL_CALLS:
+                self.ten_env.log_info(
+                    f"[MainControlExtension] search_knowledge_base cap "
+                    f"({MAX_MOSS_TOOL_CALLS}) reached this turn"
+                )
+            else:
+                self._moss_tool_calls += 1
+                grounding = await self._query_moss(query)
             await self._send_retrieval_note(self._last_grounding, self._last_sdk_ms)
         else:
             self.ten_env.log_error(

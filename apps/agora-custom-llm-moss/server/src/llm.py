@@ -9,6 +9,7 @@ SSE must end with `data: [DONE]`. Non-mock requests need Authorization: Bearer.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import logging
 import os
@@ -170,8 +171,20 @@ def require_bearer(authorization: Optional[str], mock: bool) -> None:
         raise HTTPException(status_code=401, detail="Authorization: Bearer required")
     token = authorization.split(" ", 1)[1].strip()
     expected = os.getenv("CUSTOM_LLM_API_KEY", "").strip()
-    if expected and token != expected:
+    if not expected:
+        raise HTTPException(status_code=401, detail="CUSTOM_LLM_API_KEY is not set")
+    if token != expected:
         raise HTTPException(status_code=401, detail="invalid bearer token")
+
+
+def search_query(raw_args, fallback: str) -> str:
+    try:
+        args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+    except json.JSONDecodeError:
+        args = {}
+    if not isinstance(args, dict):
+        args = {}
+    return str(args.get("query") or fallback or "")
 
 
 def sse_chunk(chunk_id: str, model: str, delta: dict, finish_reason=None) -> str:
@@ -231,11 +244,7 @@ async def tool_answer(messages: list, session, mock: bool) -> str:
         for call in tool_calls:
             fn = call.get("function") or {}
             raw_args = fn.get("arguments") or "{}"
-            try:
-                args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
-            except json.JSONDecodeError:
-                args = {"query": raw_args}
-            query = str((args or {}).get("query") or last_user_text(messages))
+            query = search_query(raw_args, last_user_text(messages))
             context = ""
             if fn.get("name") == SEARCH_KNOWLEDGE_BASE and moss_calls < MAX_MOSS_TOOL_CALLS:
                 context = await query_moss(session, query)
@@ -283,12 +292,15 @@ def create_app(moss_mode: str = "ambient") -> FastAPI:
     mode = moss_mode if moss_mode in {"ambient", "tool"} else "ambient"
     mock = os.getenv("MOCK", "").strip().lower() in {"1", "true", "yes", "on"}
     state: dict[str, Any] = {"session": None, "ready": False}
+    init_lock = asyncio.Lock()
 
     async def get_session():
         # FastAPI does not always run a mounted app's lifespan.
         if not state["ready"]:
-            state["session"] = await open_moss()
-            state["ready"] = True
+            async with init_lock:
+                if not state["ready"]:
+                    state["session"] = await open_moss()
+                    state["ready"] = True
         return state["session"]
 
     @asynccontextmanager
@@ -300,7 +312,7 @@ def create_app(moss_mode: str = "ambient") -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -352,6 +364,22 @@ def run_doctor() -> None:
     if denied.status_code != 401:
         raise SystemExit(f"doctor bearer: expected 401, got {denied.status_code}")
     print("doctor bearer: rejected missing Authorization")
+    saved_key = os.environ.pop("CUSTOM_LLM_API_KEY", None)
+    try:
+        with TestClient(create_app("ambient")) as client:
+            any_token = client.post(
+                "/chat/completions",
+                json=payload,
+                headers={"Authorization": "Bearer anything"},
+            )
+        if any_token.status_code != 401:
+            raise SystemExit(
+                f"doctor bearer: unset key should reject any token, got {any_token.status_code}"
+            )
+    finally:
+        if saved_key is not None:
+            os.environ["CUSTOM_LLM_API_KEY"] = saved_key
+    print("doctor bearer: rejected any token while CUSTOM_LLM_API_KEY is unset")
     print("doctor: ok")
 
 

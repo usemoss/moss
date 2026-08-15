@@ -41,13 +41,26 @@ class BoomSession:
 
 
 @pytest.fixture
-def mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("MOCK", "1")
-    monkeypatch.delenv("CUSTOM_LLM_API_KEY", raising=False)
+def hermetic_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(llm, "load_server_env", lambda *_a, **_k: None)
+    for key in (
+        "MOSS_PROJECT_ID",
+        "MOSS_PROJECT_KEY",
+        "MOSS_INDEX_NAME",
+        "CUSTOM_LLM_API_KEY",
+        "UPSTREAM_LLM_API_KEY",
+        "OPENAI_API_KEY",
+    ):
+        monkeypatch.delenv(key, raising=False)
 
 
 @pytest.fixture
-def moss_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+def mock_env(hermetic_env, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MOCK", "1")
+
+
+@pytest.fixture
+def moss_ok(hermetic_env, monkeypatch: pytest.MonkeyPatch) -> None:
     async def _open():
         return FakeSession()
 
@@ -55,7 +68,7 @@ def moss_ok(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def moss_boom(monkeypatch: pytest.MonkeyPatch) -> None:
+def moss_boom(hermetic_env, monkeypatch: pytest.MonkeyPatch) -> None:
     async def _open():
         return BoomSession()
 
@@ -100,6 +113,26 @@ def test_bearer_missing_rejected_when_not_mock(monkeypatch: pytest.MonkeyPatch, 
         )
         # Without MOCK the handler tries the upstream LLM; we only assert Bearer.
         assert ok.status_code != 401
+
+
+def test_unset_key_rejects_any_bearer(monkeypatch: pytest.MonkeyPatch, moss_ok) -> None:
+    monkeypatch.setenv("MOCK", "0")
+    with TestClient(llm.create_app("ambient")) as client:
+        denied = client.post(
+            "/chat/completions",
+            json=PAYLOAD,
+            headers={"Authorization": "Bearer anything-at-all"},
+        )
+    assert denied.status_code == 401
+
+
+def test_search_query_non_object_falls_back_to_user_text() -> None:
+    fallback = "How long do refunds take?"
+    assert llm.search_query('{"query": "refunds"}', fallback) == "refunds"
+    assert llm.search_query('["refunds"]', fallback) == fallback
+    assert llm.search_query("42", fallback) == fallback
+    assert llm.search_query("not-json", fallback) == fallback
+    assert llm.search_query('{"query": ""}', fallback) == fallback
 
 
 def test_moss_error_fail_open_still_streams(mock_env, moss_boom) -> None:

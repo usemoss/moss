@@ -15,6 +15,13 @@ import sys
 import time
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+
+    def load_dotenv(*_args, **_kwargs):
+        return False
+
 HERE = Path(__file__).resolve().parent
 QUERIES_PATH = HERE / "queries.jsonl"
 KNOWLEDGE_PATH = HERE.parent / "data" / "knowledge.jsonl"
@@ -59,6 +66,8 @@ async def query_moss(session, query: str) -> tuple[str, float | None, float | No
 
 
 async def open_moss():
+    load_dotenv(HERE.parent / ".env")
+    load_dotenv(HERE.parent / ".env.local", override=True)
     project_id = os.environ.get("MOSS_PROJECT_ID", "").strip()
     project_key = os.environ.get("MOSS_PROJECT_KEY", "").strip()
     index_name = os.environ.get("MOSS_INDEX_NAME", "").strip()
@@ -164,7 +173,7 @@ async def run_one(
             context = lookup_faq(query, queries, docs)
         answer = context
 
-    hit = contains_gold(context, gold) or (doc_id and doc_id in context)
+    hit = contains_gold(context, gold)
     faithful = contains_gold(answer, gold)
     return {
         "id": doc_id,
