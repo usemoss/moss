@@ -247,7 +247,7 @@ class MainControlExtension(AsyncExtension):
             else:
                 self._moss_tool_calls += 1
                 grounding = await self._query_moss(query)
-            await self._send_retrieval_note(self._last_grounding, self._last_sdk_ms)
+                await self._send_retrieval_note(self._last_grounding, self._last_sdk_ms)
         else:
             self.ten_env.log_error(
                 f"[MainControlExtension] unknown tool_call name={name!r}"

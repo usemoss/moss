@@ -181,3 +181,16 @@ def test_doctor_entrypoint(monkeypatch: pytest.MonkeyPatch, moss_ok, capsys: pyt
     llm.run_doctor()
     out = capsys.readouterr().out
     assert "doctor: ok" in out
+
+
+def test_doctor_unset_key_survives_dotenv_reload(
+    monkeypatch: pytest.MonkeyPatch, moss_ok, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def _load(_server_dir=None) -> None:
+        os.environ["CUSTOM_LLM_API_KEY"] = "anything"
+
+    monkeypatch.setattr(llm, "load_server_env", _load)
+    llm.run_doctor()
+    out = capsys.readouterr().out
+    assert "rejected any token while CUSTOM_LLM_API_KEY is unset" in out
+    assert "doctor: ok" in out

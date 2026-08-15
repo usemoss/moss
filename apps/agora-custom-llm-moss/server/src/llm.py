@@ -366,7 +366,9 @@ def run_doctor() -> None:
     print("doctor bearer: rejected missing Authorization")
     saved_key = os.environ.pop("CUSTOM_LLM_API_KEY", None)
     try:
-        with TestClient(create_app("ambient")) as client:
+        test_app = create_app("ambient")
+        os.environ.pop("CUSTOM_LLM_API_KEY", None)
+        with TestClient(test_app) as client:
             any_token = client.post(
                 "/chat/completions",
                 json=payload,
@@ -377,7 +379,9 @@ def run_doctor() -> None:
                 f"doctor bearer: unset key should reject any token, got {any_token.status_code}"
             )
     finally:
-        if saved_key is not None:
+        if saved_key is None:
+            os.environ.pop("CUSTOM_LLM_API_KEY", None)
+        else:
             os.environ["CUSTOM_LLM_API_KEY"] = saved_key
     print("doctor bearer: rejected any token while CUSTOM_LLM_API_KEY is unset")
     print("doctor: ok")
