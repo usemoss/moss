@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Moss Playground</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f0f13;--surface:#1a1a23;--surface2:#22222e;--border:#2e2e3a;--text:#e8e8ef;--text2:#8888a0;--primary:#6366f1;--primary-hover:#5558e6;--success:#22c55e;--error:#ef4444;--warning:#f59e0b;--radius:8px;--font:system-ui,-apple-system,sans-serif;--mono:'SF Mono','Fira Code','Cascadia Code',monospace}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh}
+.container{max-width:1200px;margin:0 auto;padding:24px}
+header{text-align:center;margin-bottom:32px}
+header h1{font-size:24px;font-weight:700;letter-spacing:-0.5px}
+header h1 span{color:var(--primary)}
+header p{color:var(--text2);font-size:13px;margin-top:4px}
+.grid{display:grid;grid-template-columns:320px 1fr;gap:24px}
+@media(max-width:768px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.panel-title{font-size:15px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px}
+select,input[type=text],input[type=password],input[type=number]{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;transition:border-color .15s}
+select:focus,input:focus{border-color:var(--primary)}
+select option{background:var(--surface2);color:var(--text)}
+input[type=number]{width:72px}
+input[type=range]{width:100%;accent-color:var(--primary);height:4px;cursor:pointer;background:transparent}
+.btn{padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s;font-family:var(--font)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:disabled{opacity:.4;cursor:not-allowed}
+.link-btn{background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font)}
+.link-btn:hover{color:var(--primary)}
+.spinner{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.controls{margin-bottom:16px}
+.control-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.control-row label{display:flex;align-items:center;gap:6px;margin:0;white-space:nowrap}
+.control-row .range-wrap{flex:1;display:flex;align-items:center;gap:8px}
+.control-row .range-wrap span{font-size:11px;color:var(--text2);white-space:nowrap}
+.alpha-value{font-family:var(--mono);font-size:12px;color:var(--text2);min-width:48px;text-align:right}
+.status-box{padding:10px 12px;border-radius:6px;font-size:12px;display:flex;align-items:center;gap:8px;margin-top:12px}
+.status-success{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent)}
+.status-error{background:color-mix(in srgb,var(--error) 15%,transparent);color:var(--error);border:1px solid color-mix(in srgb,var(--error) 30%,transparent)}
+.search-form{margin-bottom:12px}
+.search-group{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px;transition:border-color .15s}
+.search-group:focus-within{border-color:var(--primary)}
+.search-group input{flex:1;background:transparent;border:none;padding:10px 8px;color:var(--text);font-size:14px;outline:none}
+.search-group input::placeholder{color:var(--text2)}
+.search-group input:disabled{opacity:.5}
+.search-icon{padding:0 4px 0 10px;color:var(--text2);display:flex}
+.index-select{display:flex;gap:8px;margin-bottom:16px}
+.index-select select{flex:1}
+.index-info{font-size:12px;color:var(--text2);margin-bottom:12px;padding:8px 10px;background:var(--surface2);border-radius:6px;font-family:var(--mono);word-break:break-all;line-height:1.6;white-space:pre-wrap}
+.index-info strong{color:var(--text)}
+.results-summary{font-size:12px;color:var(--text2);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.result-item{padding:12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;transition:border-color .15s}
+.result-item:hover{border-color:var(--primary)}
+.result-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.result-score{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;font-family:var(--mono);background:color-mix(in srgb,var(--success) 20%,transparent);color:var(--success)}
+.result-score.low{background:color-mix(in srgb,var(--warning) 20%,transparent);color:var(--warning)}
+.result-id{font-size:11px;color:var(--text2);font-family:var(--mono)}
+.result-text{font-size:13px;color:var(--text);line-height:1.5;word-break:break-word}
+.empty-state{text-align:center;padding:48px 24px;color:var(--text2)}
+.empty-state svg{width:48px;height:48px;margin-bottom:12px;opacity:.3}
+.empty-state p{font-size:13px}
+.hidden{display:none!important}
+.result-timestamp{font-size:10px;color:var(--text2);opacity:.5}
+.result-metadata{margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
+.result-metadata summary{font-size:11px;color:var(--text2);cursor:pointer;user-select:none}
+.result-metadata pre{margin-top:6px;font-size:11px;color:var(--text2);background:var(--surface2);padding:8px;border-radius:6px;overflow-x:auto;font-family:var(--mono);line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.connect-panel{max-width:460px;margin:0 auto}
+.connect-panel .field{margin-bottom:14px}
+.connect-panel p.hint{font-size:12px;color:var(--text2);margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <header>
+    <h1>Moss <span>Playground</span></h1>
+    <p>Load an index and run searches entirely in your browser via <code>@moss-dev/moss-web</code> (WASM)</p>
+  </header>
+
+  <!-- Connection (manual fallback when the server has no credentials) -->
+  <div id="connect-panel" class="panel connect-panel">
+    <div class="panel-title">Connect to Moss</div>
+    <p class="hint">
+      The server did not provide credentials. Enter your Project ID and Project Key to connect
+      directly to the Moss cloud. They are kept in this browser tab only.
+    </p>
+    <form id="connect-form" autocomplete="off">
+      <div class="field">
+        <label for="pid-input">Project ID</label>
+        <input type="text" id="pid-input" placeholder="moss-project-id" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="pkey-input">Project Key</label>
+        <input type="password" id="pkey-input" placeholder="moss-project-key" autocomplete="off" />
+      </div>
+      <button type="submit" id="connect-btn" class="btn btn-primary" style="width:100%;justify-content:center">
+        Connect
+      </button>
+    </form>
+    <div id="connect-status" class="hidden"></div>
+  </div>
+
+  <div id="main-panel" class="hidden">
+    <div class="grid">
+      <!-- Left: Index Selection -->
+      <div>
+        <div class="panel">
+          <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Index</span>
+            <button class="link-btn" id="change-conn-btn" type="button">Change connection</button>
+          </div>
+          <div class="index-select">
+            <select id="index-select" aria-label="Select an index">
+              <option value="">Loading indexes...</option>
+            </select>
+          </div>
+          <div id="index-info" class="index-info hidden"></div>
+          <button class="btn btn-primary" id="load-btn" disabled style="width:100%;justify-content:center">
+            Load Index
+          </button>
+          <div id="load-status" class="hidden"></div>
+        </div>
+      </div>
+
+      <!-- Right: Search -->
+      <div>
+        <div class="panel">
+          <div class="panel-title">Search</div>
+          <div class="search-form">
+            <form id="search-form" autocomplete="off">
+              <div class="search-group">
+                <span class="search-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </span>
+                <input type="text" id="search-input" placeholder="Type to search..." disabled aria-label="Search query" />
+              </div>
+            </form>
+          </div>
+
+          <div class="controls">
+            <div class="control-row">
+              <label>Top K <input type="number" id="topk-input" min="1" max="50" value="5" disabled /></label>
+              <div class="range-wrap">
+                <span>Keyword</span>
+                <input type="range" id="alpha-slider" min="0" max="1" step="0.05" value="0.5" disabled aria-label="Keyword vs semantic balance" />
+                <span>Semantic</span>
+                <span class="alpha-value" id="alpha-display">&alpha; 0.50</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="results">
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <p>Load an index and type a query to search</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "@moss-dev/moss-web": "https://unpkg.com/@moss-dev/moss-web@1.0.0/dist/index.js",
+    "@moss-dev/moss-wasm": "https://unpkg.com/@moss-dev/moss-wasm@0.10.0/moss_wasm.js",
+    "onnxruntime-web": "https://unpkg.com/onnxruntime-web@1.21.0/dist/ort.bundle.min.mjs"
+  }
+}
+</script>
+
+<script type="module">
+const tokenFromHash = location.hash.replace(/^#/, '');
+const mossToken = tokenFromHash || sessionStorage.getItem('mossToken') || '';
+if (tokenFromHash) {
+  sessionStorage.setItem('mossToken', tokenFromHash);
+  history.replaceState(null, '', location.pathname + location.search);
+}
+
+let MossClient = null;
+let client = null;
+let indexes = [];
+let currentIndex = null;
+let requestId = 0;
+let searchTimeout = null;
+
+const $ = id => document.getElementById(id);
+const select = $('index-select');
+const loadBtn = $('load-btn');
+const loadStatus = $('load-status');
+const indexInfo = $('index-info');
+const searchInput = $('search-input');
+const topkInput = $('topk-input');
+const alphaSlider = $('alpha-slider');
+const alphaDisplay = $('alpha-display');
+const results = $('results');
+const searchForm = $('search-form');
+const connectPanel = $('connect-panel');
+const mainPanel = $('main-panel');
+const connectForm = $('connect-form');
+const pidInput = $('pid-input');
+const pkeyInput = $('pkey-input');
+const connectBtn = $('connect-btn');
+const connectStatus = $('connect-status');
+const changeConnBtn = $('change-conn-btn');
+
+function apiFetch(path, options = {}) {
+  const headers = { ...options.headers, 'X-Moss-Token': mossToken };
+  return fetch(path, { ...options, headers });
+}
+
+async function errorFromResponse(res, fallback) {
+  let message = fallback;
+  try {
+    const text = await res.text();
+    const parsed = text ? JSON.parse(text) : null;
+    if (parsed && typeof parsed.error === 'string' && parsed.error) {
+      message = parsed.error;
+    }
+  } catch (_) {}
+  return new Error(`${message} (HTTP ${res.status})`);
+}
+
+function showStatus(el, kind, text) {
+  el.classList.remove('hidden');
+  el.className = kind ? `status-box status-${kind}` : 'status-box';
+  el.textContent = text;
+}
+
+function hideStatus(el) {
+  el.classList.add('hidden');
+  el.textContent = '';
+}
+
+// Load the WASM SDK (dynamic import so a CDN failure can be reported).
+async function loadSdk() {
+  if (MossClient) return;
+  const mod = await import('@moss-dev/moss-web');
+  MossClient = mod.MossClient;
+}
+
+async function init() {
+  if (!mossToken) {
+    connectPanel.classList.remove('hidden');
+    showStatus(connectStatus, 'error',
+      'No token found in the URL. Re-open the playground from the address printed by `moss playground`.');
+    return;
+  }
+  let injected;
+  try {
+    const res = await apiFetch('/api/config');
+    if (!res.ok) throw await errorFromResponse(res, 'Failed to reach the playground server');
+    injected = await res.json();
+  } catch (e) {
+    connectPanel.classList.remove('hidden');
+    showStatus(connectStatus, 'error', e.message);
+    return;
+  }
+  if (injected && injected.projectId && injected.projectKey) {
+    await connect(injected.projectId, injected.projectKey);
+  } else {
+    connectPanel.classList.remove('hidden');
+  }
+}
+
+async function connect(pid, pkey) {
+  connectPanel.classList.remove('hidden');
+  mainPanel.classList.add('hidden');
+  showStatus(connectStatus, '',
+    'Loading the Moss WASM engine (first load downloads the embedding model)...');
+  connectBtn.disabled = true;
+  try {
+    await loadSdk();
+    client = await MossClient.create(pid, pkey);
+    connectPanel.classList.add('hidden');
+    mainPanel.classList.remove('hidden');
+    await refreshIndexList();
+  } catch (e) {
+    console.error('Connection failed:', e);
+    showStatus(connectStatus, 'error', `Connection failed: ${e.message}`);
+    connectBtn.disabled = false;
+  }
+}
+
+connectForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const pid = pidInput.value.trim();
+  const pkey = pkeyInput.value.trim();
+  if (!pid || !pkey) {
+    showStatus(connectStatus, 'error', 'Enter both Project ID and Project Key.');
+    return;
+  }
+  connect(pid, pkey);
+});
+
+changeConnBtn.addEventListener('click', () => {
+  mainPanel.classList.add('hidden');
+  connectPanel.classList.remove('hidden');
+  hideStatus(connectStatus);
+  connectBtn.disabled = false;
+});
+
+async function refreshIndexList() {
+  select.innerHTML = '<option value="">Loading...</option>';
+  let idxs;
+  try {
+    idxs = await client.listIndexes();
+  } catch (e) {
+    console.error('listIndexes failed:', e);
+    select.innerHTML = '<option value="">Error loading indexes</option>';
+    loadBtn.disabled = true;
+    const status = document.createElement('div');
+    status.className = 'status-box status-error';
+    status.textContent = `Failed to list indexes: ${e.message || e}`;
+    const existing = select.parentElement.querySelector('.status-error');
+    if (existing) existing.remove();
+    select.parentElement.appendChild(status);
+    return;
+  }
+  indexes = idxs || [];
+  select.innerHTML = '';
+  if (indexes.length === 0) {
+    select.innerHTML = '<option value="">No indexes found</option>';
+    loadBtn.disabled = true;
+    return;
+  }
+  indexes.forEach(idx => {
+    const opt = document.createElement('option');
+    opt.value = idx.name;
+    const status = idx.status === 'Ready' ? '' : ` (${idx.status})`;
+    opt.textContent = `${idx.name}${status} — ${idx.docCount || 0} docs`;
+    select.appendChild(opt);
+  });
+  select.value = '';
+  updateLoadBtn();
+}
+
+function updateLoadBtn() {
+  const name = select.value;
+  const isLoaded = name === currentIndex;
+  loadBtn.disabled = !name || isLoaded;
+  loadBtn.innerHTML = isLoaded ? '&#10003; Loaded' : 'Load Index';
+  loadBtn.className = isLoaded ? 'btn btn-success' : 'btn btn-primary';
+  searchInput.disabled = !isLoaded;
+  topkInput.disabled = !isLoaded;
+  alphaSlider.disabled = !isLoaded;
+  if (isLoaded) {
+    loadStatus.className = 'status-box status-success';
+    loadStatus.textContent = 'Index loaded into browser memory';
+    loadStatus.classList.remove('hidden');
+  } else {
+    loadStatus.classList.add('hidden');
+  }
+}
+
+function showIndexInfo(idx) {
+  if (!idx) {
+    indexInfo.classList.add('hidden');
+    return;
+  }
+  indexInfo.classList.remove('hidden');
+  indexInfo.innerHTML = '';
+  const rows = [
+    ['Name', idx.name],
+    ['Status', idx.status],
+    ['Documents', String(idx.docCount ?? 0)],
+    ['Model', idx.model?.id ?? 'unknown'],
+    ['Created', idx.createdAt ?? 'unknown'],
+  ];
+  for (const [label, value] of rows) {
+    const strong = document.createElement('strong');
+    strong.textContent = label + ':';
+    indexInfo.appendChild(strong);
+    indexInfo.appendChild(document.createTextNode(' ' + value + '\n'));
+  }
+}
+
+async function loadIndex() {
+  const name = select.value;
+  if (!name || !client) return;
+
+  loadBtn.disabled = true;
+  loadBtn.innerHTML = '<span class="spinner">&#9696;</span> Loading...';
+  loadStatus.classList.remove('hidden');
+  loadStatus.className = 'status-box';
+  loadStatus.textContent = 'Downloading index into the browser...';
+  select.disabled = true;
+
+  try {
+    await client.loadIndex(name);
+    currentIndex = name;
+    results.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = '<p>Type a query to search</p>';
+    results.appendChild(empty);
+    updateLoadBtn();
+    searchInput.focus();
+  } catch (e) {
+    console.error('loadIndex failed:', e);
+    updateLoadBtn();
+    loadStatus.classList.remove('hidden');
+    loadStatus.className = 'status-box status-error';
+    loadStatus.textContent = `Failed: ${e.message || e}`;
+  } finally {
+    select.disabled = false;
+  }
+}
+
+function renderResults(searchResults) {
+  results.innerHTML = '';
+
+  if (!searchResults || !searchResults.docs || searchResults.docs.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = '<p>No matching results. Try a different query.</p>';
+    results.appendChild(empty);
+    return;
+  }
+
+  const summary = document.createElement('div');
+  summary.className = 'results-summary';
+
+  const countSpan = document.createElement('span');
+  countSpan.textContent = `${searchResults.docs.length} result(s)`;
+  summary.appendChild(countSpan);
+
+  const timeMs = searchResults.timeTakenMs;
+  if (typeof timeMs === 'number' && Number.isFinite(timeMs)) {
+    const timeSpan = document.createElement('span');
+    timeSpan.textContent = `${timeMs} ms`;
+    summary.appendChild(timeSpan);
+  }
+
+  results.appendChild(summary);
+
+  searchResults.docs.forEach(doc => {
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    const score = doc.score || 0;
+    const scorePct = (score * 100).toFixed(0);
+    const scoreClass = score < 0.75 ? 'result-score low' : 'result-score';
+
+    const meta = document.createElement('div');
+    meta.className = 'result-meta';
+
+    const scoreSpan = document.createElement('span');
+    scoreSpan.className = scoreClass;
+    scoreSpan.textContent = `${scorePct}%`;
+    meta.appendChild(scoreSpan);
+
+    const idSpan = document.createElement('span');
+    idSpan.className = 'result-id';
+    idSpan.textContent = doc.id;
+    meta.appendChild(idSpan);
+
+    item.appendChild(meta);
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'result-text';
+    textDiv.textContent = doc.text;
+    item.appendChild(textDiv);
+
+    if (doc.metadata && typeof doc.metadata === 'object' && Object.keys(doc.metadata).length > 0) {
+      const details = document.createElement('details');
+      details.className = 'result-metadata';
+      const summary = document.createElement('summary');
+      summary.textContent = 'Metadata';
+      details.appendChild(summary);
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(doc.metadata, null, 2);
+      details.appendChild(pre);
+      item.appendChild(details);
+    }
+
+    results.appendChild(item);
+  });
+}
+
+function handleSearch(e) {
+  if (e) e.preventDefault();
+  if (!currentIndex || !client) return;
+
+  const query = searchInput.value.trim();
+  if (!query) {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    ++requestId;
+    results.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = '<p>Type a query to search</p>';
+    results.appendChild(empty);
+    return;
+  }
+
+  const rawTopK = topkInput.value.trim();
+  const parsedTopK = Math.round(Number(rawTopK));
+  const topK = rawTopK === '' || Number.isNaN(parsedTopK)
+    ? 5
+    : Math.min(50, Math.max(1, parsedTopK));
+  const parsedAlpha = parseFloat(alphaSlider.value);
+  const alpha = Number.isNaN(parsedAlpha) ? 0.5 : parsedAlpha;
+
+  if (searchTimeout) clearTimeout(searchTimeout);
+  const thisRequestId = ++requestId;
+  const idx = currentIndex;
+  searchTimeout = setTimeout(async () => {
+    const placeholder = results.querySelector('.empty-state');
+    if (placeholder) placeholder.innerHTML = '<p>Searching...</p>';
+
+    try {
+      const searchResults = await client.query(idx, query, { topK, alpha });
+      if (thisRequestId !== requestId) return;
+      renderResults(searchResults);
+    } catch (err) {
+      if (thisRequestId !== requestId) return;
+      console.error('Query failed:', err);
+      results.innerHTML = '';
+      const status = document.createElement('div');
+      status.className = 'status-box status-error';
+      status.textContent = `Query failed: ${err.message || err}`;
+      results.appendChild(status);
+    }
+  }, 150);
+}
+
+select.addEventListener('change', () => {
+  ++requestId;
+  if (searchTimeout) clearTimeout(searchTimeout);
+  results.innerHTML = '';
+  const empty = document.createElement('div');
+  empty.className = 'empty-state';
+  empty.innerHTML = '<p>Load this index and type a query to search</p>';
+  results.appendChild(empty);
+  updateLoadBtn();
+  const name = select.value;
+  const idx = indexes.find(i => i.name === name);
+  showIndexInfo(idx);
+});
+
+loadBtn.addEventListener('click', loadIndex);
+
+searchForm.addEventListener('submit', handleSearch);
+searchInput.addEventListener('input', handleSearch);
+
+topkInput.addEventListener('input', () => {
+  if (currentIndex && searchInput.value.trim()) handleSearch();
+});
+
+alphaSlider.addEventListener('input', () => {
+  const val = parseFloat(alphaSlider.value);
+  alphaDisplay.textContent = `\u03B1 ${Number.isNaN(val) ? '0.50' : val.toFixed(2)}`;
+  if (currentIndex && searchInput.value.trim()) handleSearch();
+});
+
+init();
+</script>
+</body>
+</html>
