@@ -7,13 +7,15 @@ import type { LocalMossSession } from "../src/moss/client";
 class FakeSession implements LocalMossSession {
   docs = new Map<string, DocumentInfo>();
   calls: string[] = [];
+  lastAddOptions: { upsert?: boolean } | undefined;
 
   get docCount(): number {
     return this.docs.size;
   }
 
-  async addDocs(docs: DocumentInfo[]): Promise<{ added: number; updated: number }> {
+  async addDocs(docs: DocumentInfo[], options?: { upsert?: boolean }): Promise<{ added: number; updated: number }> {
     this.calls.push(`add:${docs.length}`);
+    this.lastAddOptions = options;
     let added = 0;
     let updated = 0;
     for (const doc of docs) {
@@ -81,6 +83,7 @@ describe("VaultIndexer.rebuild", () => {
 
     expect(indexer.getStatus()).toEqual({ state: "ready", files: 2, chunks: 3 });
     expect(indexer.getPathChunkCounts()).toEqual({ "A.md": 1, "dir/B.md": 2 });
+    expect(session.lastAddOptions).toEqual({ upsert: true });
     expect([...session.docs.keys()].sort()).toEqual(["A.md#chunk-0", "dir/B.md#chunk-0", "dir/B.md#chunk-1"]);
   });
 
@@ -230,6 +233,48 @@ describe("VaultIndexer incremental", () => {
     expect(session.docs.has("D.md#chunk-0")).toBe(true);
     expect(session.docs.get("A.md#chunk-0")?.text).toContain("new");
     expect(indexer2.getPathChunkCounts()["A.md"]).toBe(2);
+  });
+
+  it("reconcile re-indexes a note whose mtime moved BACKWARD (git checkout/restore)", async () => {
+    const vault = makeVault({ "A.md": "# A\nnew-old-content" }, { "A.md": 2000 });
+    const session = new FakeSession();
+    const indexer = new VaultIndexer(vault, config);
+    indexer.attachSession(session);
+    await indexer.rebuild();
+
+    // Restored file: different content, OLDER mtime than recorded.
+    vault.files["A.md"] = "# A\nrestored";
+    vault.mtimes["A.md"] = 1500;
+    const indexer2 = new VaultIndexer(vault, config);
+    indexer2.attachSession(session);
+    indexer2.restoreFromMeta(indexer.getPathChunkCounts(), indexer.getPathMtimes());
+    const { upserted } = await indexer2.reconcile();
+    expect(upserted).toBe(1);
+    expect(session.docs.get("A.md#chunk-0")?.text).toContain("restored");
+  });
+
+  it("queues vault events that arrive during a rebuild and applies them after", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 30; i++) files[`n${i}.md`] = `# H${i}\nbody`;
+    const vault = makeVault(files);
+    const session = new FakeSession();
+    const indexer = new VaultIndexer(vault, config);
+    indexer.attachSession(session);
+    let injected = false;
+    indexer.onStatus((status) => {
+      if (!injected && status.state === "indexing" && status.processed === 5) {
+        injected = true;
+        // Simulate an edit + a new note landing mid-rebuild.
+        vault.files["n1.md"] = "# H1\nedited\n## More\nbody";
+        vault.files["fresh.md"] = "# Fresh";
+        void indexer.upsertPath("n1.md");
+        void indexer.upsertPath("fresh.md");
+      }
+    });
+    await indexer.rebuild();
+    // Drained after rebuild: the edit and the new note are both in the index.
+    expect(indexer.getPathChunkCounts()["n1.md"]).toBe(2);
+    expect(session.docs.has("fresh.md#chunk-0")).toBe(true);
   });
 
   it("reconcile is a no-op when nothing changed", async () => {

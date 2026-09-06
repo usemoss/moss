@@ -137,17 +137,25 @@ async function handle(method: WorkerMethod, args: unknown): Promise<unknown> {
   throw new Error(`Unknown Moss worker method: ${String(method)}`);
 }
 
-process.on("message", async (message: Request) => {
+// All requests run strictly in order: `SessionIndex` is mutable shared state,
+// and letting a saveToDisk overlap an addDocs (or an initialize close a
+// session mid-query) is a data race. Throughput matters less than a
+// consistent index.
+let queue: Promise<void> = Promise.resolve();
+
+process.on("message", (message: Request) => {
   if (!message || typeof message.id !== "number") {
     return;
   }
-  try {
-    const result = await handle(message.method, message.args);
-    send(message.id, { ok: true, result });
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    send(message.id, { ok: false, error });
-  }
+  queue = queue.then(async () => {
+    try {
+      const result = await handle(message.method, message.args);
+      send(message.id, { ok: true, result });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      send(message.id, { ok: false, error });
+    }
+  });
 });
 
 // Exit with the parent: when the IPC channel closes, there is nobody to talk to.

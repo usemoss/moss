@@ -128,12 +128,13 @@ describe("chunkNote", () => {
     const docs = chunkNote("Long.md", `# Big\n${paragraph}`, { maxCharsPerChunk: 500 });
     expect(docs.length).toBeGreaterThan(1);
     for (const doc of docs) {
-      // breadcrumb line + capped body
-      expect(doc.text.length).toBeLessThanOrEqual(500 + "Long > Big\n".length);
-      // Every piece of the paragraph keeps its source line (heading is line 1).
+      // Total text (breadcrumb + body) never exceeds the cap.
+      expect(doc.text.length).toBeLessThanOrEqual(500);
+      // Every piece keeps its source line (heading is line 1, paragraph line 2).
       expect(["1", "2"]).toContain(doc.metadata?.startLine);
-      expect(doc.metadata?.endLine).toBe("2");
+      expect(["1", "2"]).toContain(doc.metadata?.endLine);
     }
+    expect(docs.some((doc) => doc.metadata?.endLine === "2")).toBe(true);
   });
 });
 

@@ -33,7 +33,7 @@ function asString(value: unknown, fallback = ""): string {
 /** Map a raw Moss result document to a navigable hit. */
 export function mapHit(doc: QueryResultDocumentInfo): SearchHit {
   const metadata = (doc.metadata ?? {}) as Record<string, unknown>;
-  const filePath = asString(metadata.filePath, doc.id.split("#")[0] ?? doc.id);
+  const filePath = asString(metadata.filePath, doc.id.split("#")[0] || doc.id);
   const headingPath = asString(metadata.headingPath);
   const rawText = doc.text ?? "";
   // The chunker prefixes the breadcrumb as the first line; strip it for display.
@@ -55,21 +55,25 @@ export function mapHit(doc: QueryResultDocumentInfo): SearchHit {
 }
 
 /**
- * Collapse multiple chunks from the same note into the best-scoring one when
- * `perNote` is true, preserving rank order.
+ * Collapse multiple chunks from the same note into its best-scoring one when
+ * `perNote` is true. Rank order of first appearance is preserved; if a later
+ * chunk of an already-seen note scores higher (unsorted input), it replaces
+ * that note's entry in place.
  */
 export function dedupeByNote(hits: SearchHit[], perNote: boolean): SearchHit[] {
   if (!perNote) {
     return hits;
   }
-  const seen = new Set<string>();
+  const bestByNote = new Map<string, number>();
   const out: SearchHit[] = [];
   for (const hit of hits) {
-    if (seen.has(hit.filePath)) {
-      continue;
+    const index = bestByNote.get(hit.filePath);
+    if (index === undefined) {
+      bestByNote.set(hit.filePath, out.length);
+      out.push(hit);
+    } else if (hit.score > out[index].score) {
+      out[index] = hit;
     }
-    seen.add(hit.filePath);
-    out.push(hit);
   }
   return out;
 }

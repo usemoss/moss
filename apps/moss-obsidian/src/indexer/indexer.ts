@@ -43,6 +43,8 @@ export class VaultIndexer {
   private indexing = false;
   private cancelRequested = false;
   private watchingEnabled = false;
+  /** Vault events that arrived while a rebuild was running; drained after it. */
+  private pendingEventPaths = new Set<string>();
   private onPersist: (() => void) | undefined;
 
   constructor(
@@ -88,9 +90,15 @@ export class VaultIndexer {
     this.session = session;
   }
 
+  /** Drop the session reference, e.g. after a worker crash. The in-memory
+   * index died with the worker, so the status must not stay "ready". */
   detachSession(): void {
     this.session = undefined;
     this.watchingEnabled = false;
+    this.pendingEventPaths.clear();
+    if (this.status.state === "ready" || this.status.state === "indexing") {
+      this.setStatus({ state: "error", message: "Moss worker stopped. Run “Moss: Restart Moss worker”." });
+    }
   }
 
   cancel(): void {
@@ -145,7 +153,9 @@ export class VaultIndexer {
       const known = this.pathChunkCounts.has(rel);
       const recorded = this.pathMtimes.get(rel);
       const current = this.vault.mtime(rel);
-      if (!known || recorded === undefined || (current !== undefined && current > recorded)) {
+      // Any mtime difference counts: git checkouts and sync tools can hand
+      // back changed files with OLDER timestamps.
+      if (!known || recorded === undefined || (current !== undefined && current !== recorded)) {
         await this.upsertPath(rel);
         upserted += 1;
       }
@@ -245,17 +255,47 @@ export class VaultIndexer {
       this.setStatus({ state: "ready", files: this.pathChunkCounts.size, chunks: totalChunks });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      // The session now holds an unknown subset; letting file events keep
+      // writing into it (and persisting) would enshrine the partial state.
+      this.watchingEnabled = false;
       this.setStatus({ state: "error", message });
       throw err;
     } finally {
       this.indexing = false;
       this.cancelRequested = false;
+      await this.drainPendingEvents();
+    }
+  }
+
+  /** Apply vault events that arrived while a rebuild was in flight. */
+  private async drainPendingEvents(): Promise<void> {
+    if (!this.pendingEventPaths.size) {
+      return;
+    }
+    const paths = [...this.pendingEventPaths];
+    this.pendingEventPaths.clear();
+    if (!this.session || !this.watchingEnabled) {
+      return;
+    }
+    for (const rel of paths) {
+      try {
+        await this.upsertPath(rel);
+      } catch (err) {
+        // Best effort; the note will be caught by the next event or reconcile.
+        void err;
+      }
     }
   }
 
   /** Incremental: (re)index one note after create/modify. */
   async upsertPath(relativePath: string): Promise<void> {
-    if (!this.session || !this.watchingEnabled || this.indexing) {
+    if (this.indexing) {
+      // Don't drop the event: the rebuild scans a snapshot, so a note edited
+      // after the scan passed it would otherwise stay stale until re-touched.
+      this.pendingEventPaths.add(relativePath);
+      return;
+    }
+    if (!this.session || !this.watchingEnabled) {
       return;
     }
     if (!this.shouldIndex(relativePath)) {
@@ -298,7 +338,12 @@ export class VaultIndexer {
 
   /** Incremental: drop a note's chunks after delete. */
   async removePath(relativePath: string): Promise<void> {
-    if (!this.session || !this.watchingEnabled || this.indexing) {
+    if (this.indexing) {
+      // upsertPath handles a missing file by removing its chunks.
+      this.pendingEventPaths.add(relativePath);
+      return;
+    }
+    if (!this.session || !this.watchingEnabled) {
       return;
     }
     const count = this.pathChunkCounts.get(relativePath) ?? 0;

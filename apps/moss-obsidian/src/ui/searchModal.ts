@@ -84,6 +84,7 @@ export class MossSearchModal extends SuggestModal<SearchHit> {
     const trimmed = query.trim();
     this.latestQuery = trimmed;
     this.emptyStateText = "No matches yet.";
+    this.updateStatus();
     if (trimmed.length < 2) {
       this.lastHits = [];
       return [];
@@ -101,8 +102,12 @@ export class MossSearchModal extends SuggestModal<SearchHit> {
       return hits;
     } catch (err) {
       console.error("[moss] search failed", err);
-      this.emptyStateText = `Search failed: ${err instanceof Error ? err.message : String(err)}`;
-      return [];
+      // Only surface the failure if it belongs to the query still on screen.
+      if (trimmed === this.latestQuery) {
+        this.emptyStateText = `Search failed: ${err instanceof Error ? err.message : String(err)}`;
+        return [];
+      }
+      return this.lastHits;
     }
   }
 

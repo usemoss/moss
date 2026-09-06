@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting, type App } from "obsidian";
+import { Notice, PluginSettingTab, Setting, type App } from "obsidian";
 import type { MossModelId } from "./moss/client";
 import type MossSearchPlugin from "./main";
 
@@ -19,6 +19,8 @@ export interface MossSearchSettings {
   nodePath: string;
   /** Chunk size in characters. */
   maxCharsPerChunk: number;
+  /** Random per-vault id (generated on first load); names the cloud index. */
+  vaultId: string;
 }
 
 export const DEFAULT_SETTINGS: MossSearchSettings = {
@@ -32,6 +34,7 @@ export const DEFAULT_SETTINGS: MossSearchSettings = {
   cloudSync: false,
   nodePath: "",
   maxCharsPerChunk: 1600,
+  vaultId: "",
 };
 
 export class MossSettingTab extends PluginSettingTab {
@@ -56,8 +59,10 @@ export class MossSettingTab extends PluginSettingTab {
           .setPlaceholder("proj_…")
           .setValue(this.plugin.settings.projectId)
           .onChange(async (value) => {
+            const changed = value.trim() !== this.plugin.settings.projectId;
             this.plugin.settings.projectId = value.trim();
             await this.plugin.saveSettings();
+            if (changed) this.plugin.noteSessionSettingsChanged();
           }),
       );
 
@@ -71,8 +76,10 @@ export class MossSettingTab extends PluginSettingTab {
           .setPlaceholder("••••••••")
           .setValue(this.plugin.settings.projectKey)
           .onChange(async (value) => {
+            const changed = value.trim() !== this.plugin.settings.projectKey;
             this.plugin.settings.projectKey = value.trim();
             await this.plugin.saveSettings();
+            if (changed) this.plugin.noteSessionSettingsChanged();
           });
       });
 
@@ -85,8 +92,11 @@ export class MossSettingTab extends PluginSettingTab {
           .addOption("moss-mediumlm", "moss-mediumlm")
           .setValue(this.plugin.settings.model)
           .onChange(async (value) => {
-            this.plugin.settings.model = value === "moss-mediumlm" ? "moss-mediumlm" : "moss-minilm";
+            const next = value === "moss-mediumlm" ? "moss-mediumlm" : "moss-minilm";
+            const changed = next !== this.plugin.settings.model;
+            this.plugin.settings.model = next;
             await this.plugin.saveSettings();
+            if (changed) this.plugin.noteSessionSettingsChanged();
           }),
       );
 
@@ -110,9 +120,15 @@ export class MossSettingTab extends PluginSettingTab {
       .addText((text) =>
         text.setValue(String(this.plugin.settings.maxCharsPerChunk)).onChange(async (value) => {
           const n = Number.parseInt(value, 10);
-          if (Number.isFinite(n) && n >= 200 && n <= 8000) {
+          if (!Number.isFinite(n) || n < 200 || n > 8000) {
+            new Notice("Moss: chunk size must be between 200 and 8000 characters.");
+            text.setValue(String(this.plugin.settings.maxCharsPerChunk));
+            return;
+          }
+          if (n !== this.plugin.settings.maxCharsPerChunk) {
             this.plugin.settings.maxCharsPerChunk = n;
             await this.plugin.saveSettings();
+            new Notice("Moss: chunk size changed — run “Moss: Rebuild index” to apply.");
           }
         }),
       );
@@ -182,8 +198,12 @@ export class MossSettingTab extends PluginSettingTab {
           .setPlaceholder("/opt/homebrew/bin/node")
           .setValue(this.plugin.settings.nodePath)
           .onChange(async (value) => {
+            const changed = value.trim() !== this.plugin.settings.nodePath;
             this.plugin.settings.nodePath = value.trim();
             await this.plugin.saveSettings();
+            if (changed) {
+              new Notice("Moss: Node path changed — run “Moss: Restart Moss worker” to apply.");
+            }
           }),
       );
 

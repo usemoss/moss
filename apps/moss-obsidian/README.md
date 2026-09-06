@@ -65,7 +65,7 @@ This builds `main.js` / `mossWorker.js` and copies them, `manifest.json`, `style
 
 ## How it works
 
-```
+```text
 Obsidian renderer (main.js)                     worker process (mossWorker.js)
 ┌─────────────────────────────┐  IPC (child)   ┌──────────────────────────────┐
 │ VaultIndexer                │ ─────────────▶ │ @moss-dev/moss  SessionIndex │
@@ -75,7 +75,7 @@ Obsidian renderer (main.js)                     worker process (mossWorker.js)
 └─────────────────────────────┘                └──────────────────────────────┘
 ```
 
-- Session name is `obsidian-<sha256(vault name)[:12]>` — derived from the vault's name, not its absolute path, so the same synced vault maps to the same cloud index on every device.
+- Session name is `obsidian-<sha256(vaultId)[:12]>`, where `vaultId` is a random UUID generated once and stored in the plugin's `data.json` — so two vaults that share a display name never collide on one cloud index, and a vault synced with its `.obsidian` folder keeps one identity across devices.
 - Chunk ids are `<path>#chunk-<n>`, with metadata `filePath`, `title`, `headingPath`, `heading`, `startLine`, `endLine`. Incremental updates upsert the first `n` ids and delete any surplus.
 - The cache lives at `.obsidian/plugins/moss-search/cache/` (`meta.json` — file → chunk counts and mtimes — plus the Moss session files). On startup the plugin restores from it and reconciles against the vault's current mtimes. Delete it and run **Rebuild index** to start over.
 

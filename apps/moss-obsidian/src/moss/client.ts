@@ -50,6 +50,8 @@ export class MossSessionManager {
   private session: WorkerBackedSession | undefined;
   private ready = false;
   private nextId = 1;
+  /** Serializes initialize/dispose so bootstrap can't race a manual rebuild or restart. */
+  private lifecycle: Promise<unknown> = Promise.resolve();
   private pending = new Map<number, { resolve: (value: unknown) => void; reject: (err: Error) => void }>();
 
   constructor(
@@ -82,7 +84,21 @@ export class MossSessionManager {
     return this.session;
   }
 
-  async initialize(credentials: MossCredentials, name: string, modelId: MossModelId): Promise<LocalMossSession> {
+  initialize(credentials: MossCredentials, name: string, modelId: MossModelId): Promise<LocalMossSession> {
+    const run = this.lifecycle.then(() => this.doInitialize(credentials, name, modelId));
+    this.lifecycle = run.catch(() => undefined);
+    return run;
+  }
+
+  private async doInitialize(
+    credentials: MossCredentials,
+    name: string,
+    modelId: MossModelId,
+  ): Promise<LocalMossSession> {
+    // A caller may have raced us here and already opened the same session.
+    if (this.ready && this.session && this.matchesInit(credentials, name, modelId)) {
+      return this.session;
+    }
     this.ready = false;
     this.session = undefined;
     this.initParams = undefined;
@@ -103,7 +119,13 @@ export class MossSessionManager {
    * Stop the worker. Detaches listeners first so the dying process cannot
    * clobber a replacement started right after (restart / re-initialize).
    */
-  async dispose(): Promise<void> {
+  dispose(): Promise<void> {
+    const run = this.lifecycle.then(() => this.doDispose());
+    this.lifecycle = run.catch(() => undefined);
+    return run;
+  }
+
+  private async doDispose(): Promise<void> {
     this.ready = false;
     this.session = undefined;
     this.initParams = undefined;

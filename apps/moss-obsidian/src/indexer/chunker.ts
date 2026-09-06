@@ -80,9 +80,15 @@ function splitIntoSections(lines: string[], firstBodyLine: number, title: string
     const fence = line.match(FENCE_RE);
     if (fence) {
       const run = fence[1];
+      const rest = line.slice(fence[0].length);
+      // CommonMark: a backtick-fence opener's info string may not contain
+      // backticks (such a line is inline code, not a fence).
+      const validOpener = run[0] === "~" || !rest.includes("`");
       if (!fenceMarker) {
-        fenceMarker = run;
-      } else if (run[0] === fenceMarker[0] && run.length >= fenceMarker.length && !line.slice(fence[0].length).trim()) {
+        if (validOpener) {
+          fenceMarker = run;
+        }
+      } else if (run[0] === fenceMarker[0] && run.length >= fenceMarker.length && !rest.trim()) {
         fenceMarker = "";
       }
       current.lines.push(line);
@@ -207,7 +213,10 @@ export function chunkNote(
   content: string,
   options: ChunkOptions = {},
 ): DocumentInfo[] {
-  const maxChars = options.maxCharsPerChunk ?? DEFAULT_MAX_CHARS_PER_CHUNK;
+  // Clamp: a zero/negative/NaN cap (corrupt settings) must never stall the
+  // window loop, and the breadcrumb prefix must fit inside the cap too.
+  const rawMax = options.maxCharsPerChunk ?? DEFAULT_MAX_CHARS_PER_CHUNK;
+  const maxChars = Number.isFinite(rawMax) ? Math.max(200, Math.floor(rawMax)) : DEFAULT_MAX_CHARS_PER_CHUNK;
   const overlap = options.overlapLines ?? DEFAULT_OVERLAP_LINES;
 
   const normalized = content.replace(/\r\n/g, "\n");
@@ -235,8 +244,10 @@ export function chunkNote(
     const body = section.lines.slice(first, last);
     const bodyStart = section.startLine + first;
     const breadcrumb = section.headingPath.join(" > ");
+    // Reserve room for the breadcrumb line so text never exceeds maxChars.
+    const bodyBudget = Math.max(100, maxChars - breadcrumb.length - 1);
 
-    for (const win of windows(body, maxChars, overlap)) {
+    for (const win of windows(body, bodyBudget, overlap)) {
       const text = win.text;
       if (!text.trim()) {
         continue;

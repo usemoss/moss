@@ -22,7 +22,7 @@ If you sync or commit your `.obsidian` folder, exclude `plugins/moss-search/data
 ## Data sent to Moss Cloud
 
 1. **Authentication** — the project ID and key are sent to Moss to validate the session when the plugin starts.
-2. **Cloud sync (opt-in)** — when enabled, the note text of every indexed section, its metadata (path, headings, line numbers) and the locally computed embeddings are uploaded via `pushIndex()` to the index `obsidian-<hash>` in your Moss project — after the initial build **and again, in full, shortly after any note edit** (the upload replaces the cloud index). On another device with the same credentials, the same vault name and no local cache, the plugin restores from that index.
+2. **Cloud sync (opt-in)** — when enabled, the note text of every indexed section, its metadata (path, headings, line numbers) and the locally computed embeddings are uploaded via `pushIndex()` to the index `obsidian-<hash>` in your Moss project — after the initial build **and again, in full, shortly after any note edit** (the upload replaces the cloud index). On another device with the same credentials, the same synced plugin `data.json` (which carries the vault's generated id) and no local cache, the plugin restores from that index.
 
 Moss does not re-embed documents server-side during `pushIndex`; embeddings are computed on your machine.
 

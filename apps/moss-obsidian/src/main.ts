@@ -3,7 +3,7 @@ import { FileSystemAdapter, Notice, Plugin, TFile, type TAbstractFile } from "ob
 import { VaultIndexer, type IndexStatus, type VaultReader } from "./indexer/indexer";
 import { isMarkdownPath, parseExcludedFolders } from "./indexer/excludes";
 import { MossSessionManager, type LocalMossSession } from "./moss/client";
-import { IndexCache, pathChunkCountsFromDocs, vaultSessionName } from "./moss/persistence";
+import { generateVaultId, IndexCache, pathChunkCountsFromDocs, vaultSessionName } from "./moss/persistence";
 import { dedupeByNote, mapHit, type SearchHit } from "./search/search";
 import { DEFAULT_SETTINGS, MossSettingTab, type MossSearchSettings } from "./settings";
 import { MossSearchModal } from "./ui/searchModal";
@@ -22,6 +22,8 @@ export default class MossSearchPlugin extends Plugin {
   private persistTimer: ReturnType<typeof setTimeout> | undefined;
   private cloudPushTimer: ReturnType<typeof setTimeout> | undefined;
   private fileTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Per-path chain so rapid edits index in order, never older-over-newer. */
+  private fileOps = new Map<string, Promise<void>>();
   private bootstrapped = false;
   private bootstrapping: Promise<void> | undefined;
 
@@ -99,10 +101,24 @@ export default class MossSearchPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const stored = (await this.loadData()) as Partial<MossSearchSettings> | null;
     this.settings = { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
+    if (!this.settings.vaultId) {
+      // Generated once and stored in data.json: gives this vault a cloud
+      // identity that display-name collisions can't break, and that follows
+      // the vault when its .obsidian folder is synced across devices.
+      this.settings.vaultId = generateVaultId();
+      await this.saveSettings();
+    }
   }
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+  }
+
+  /** Called by the settings tab when project ID/key or model changed. */
+  noteSessionSettingsChanged(): void {
+    if (this.sessionManager.getSession() && !this.sessionMatchesSettings()) {
+      new Notice("Moss: connection settings changed — run “Moss: Rebuild index” to reopen the session.");
+    }
   }
 
   // ── public actions (commands / settings) ─────────────────────────────
@@ -163,6 +179,11 @@ export default class MossSearchPlugin extends Plugin {
       if (interactive) new Notice("Moss: build an index before syncing.");
       return;
     }
+    if (!this.sessionMatchesSettings()) {
+      this.log("Skipping cloud sync: session was opened with different settings; rebuild first.");
+      if (interactive) new Notice("Moss: settings changed since this index was built — run “Rebuild index” first.");
+      return;
+    }
     try {
       const result = await session.pushIndex();
       this.log(`Pushed ${result.docCount} docs to cloud index ${result.indexName} (${result.status})`);
@@ -179,6 +200,10 @@ export default class MossSearchPlugin extends Plugin {
   }
 
   async restartWorker(): Promise<void> {
+    if (this.indexer.isIndexing()) {
+      new Notice("Moss is indexing — cancel it before restarting the worker.");
+      return;
+    }
     await this.sessionManager.dispose();
     this.indexer.detachSession();
     this.bootstrapped = false;
@@ -205,9 +230,7 @@ export default class MossSearchPlugin extends Plugin {
   }
 
   private sessionName(): string {
-    // Vault NAME, not absolute path: the same synced vault gets the same
-    // cloud index name on every device.
-    return vaultSessionName(this.app.vault.getName());
+    return vaultSessionName(this.settings.vaultId);
   }
 
   private log(message: string): void {
@@ -258,7 +281,10 @@ export default class MossSearchPlugin extends Plugin {
 
       const meta = await this.cache.readMeta();
       if (meta && meta.sessionName === this.sessionName()) {
-        if (meta.model && meta.model !== this.settings.model) {
+        if (meta.maxCharsPerChunk !== undefined && meta.maxCharsPerChunk !== this.settings.maxCharsPerChunk) {
+          this.log("Cache was built with a different chunk size — ignoring cache.");
+          new Notice("Moss: chunk size changed. Run “Moss: Rebuild index”.");
+        } else if (meta.model && meta.model !== this.settings.model) {
           // Vectors from another model in this session would be garbage:
           // treat the cache as absent and ask for a rebuild.
           this.log(`Cache was built with ${meta.model}, settings say ${this.settings.model} — ignoring cache.`);
@@ -362,7 +388,16 @@ export default class MossSearchPlugin extends Plugin {
       relativePath,
       setTimeout(() => {
         this.fileTimers.delete(relativePath);
-        void fn().catch((err) => this.log(`incremental index failed for ${relativePath}: ${String(err)}`));
+        const previous = this.fileOps.get(relativePath) ?? Promise.resolve();
+        const run = previous
+          .then(() => fn())
+          .catch((err) => this.log(`incremental index failed for ${relativePath}: ${String(err)}`))
+          .finally(() => {
+            if (this.fileOps.get(relativePath) === run) {
+              this.fileOps.delete(relativePath);
+            }
+          });
+        this.fileOps.set(relativePath, run);
       }, FILE_EVENT_DEBOUNCE_MS),
     );
   }
@@ -375,14 +410,37 @@ export default class MossSearchPlugin extends Plugin {
 
     if (this.settings.cloudSync) {
       if (this.cloudPushTimer) clearTimeout(this.cloudPushTimer);
-      this.cloudPushTimer = setTimeout(() => void this.syncToCloud(false), CLOUD_PUSH_DEBOUNCE_MS);
+      this.cloudPushTimer = setTimeout(() => {
+        // Re-check at fire time: the user may have turned sync off meanwhile.
+        if (this.settings.cloudSync) {
+          void this.syncToCloud(false);
+        }
+      }, CLOUD_PUSH_DEBOUNCE_MS);
     }
+  }
+
+  private sessionMatchesSettings(): boolean {
+    return this.sessionManager.matchesInit(
+      { projectId: this.settings.projectId, projectKey: this.settings.projectKey },
+      this.sessionName(),
+      this.settings.model,
+    );
   }
 
   private async persistNow(): Promise<void> {
     const session = this.sessionManager.getSession();
     const status = this.indexer.getStatus();
+    if (status.state === "unindexed") {
+      // The index emptied out (last note deleted or excluded): a stale cache
+      // must not resurrect the old contents on next launch.
+      await this.cache.clear();
+      return;
+    }
     if (!session || status.state !== "ready") {
+      return;
+    }
+    if (!this.sessionMatchesSettings()) {
+      this.log("Skipping persist: session was opened with different settings.");
       return;
     }
     await this.cache.ensureDir();
@@ -396,6 +454,7 @@ export default class MossSearchPlugin extends Plugin {
       chunks: status.chunks,
       pathChunkCounts: this.indexer.getPathChunkCounts(),
       pathMtimes: this.indexer.getPathMtimes(),
+      maxCharsPerChunk: this.settings.maxCharsPerChunk,
       savedAt: new Date().toISOString(),
       cloudPushedAt: previous?.cloudPushedAt,
     });

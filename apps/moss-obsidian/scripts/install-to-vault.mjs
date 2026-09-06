@@ -29,17 +29,26 @@ if (!existsSync(path.join(vault, ".obsidian"))) {
 const manifest = JSON.parse(readFileSync(path.join(root, "manifest.json"), "utf8"));
 const dest = path.join(vault, ".obsidian", "plugins", manifest.id);
 
-execSync("npm run build", { cwd: root, stdio: "inherit" });
-
-mkdirSync(dest, { recursive: true });
-for (const file of ["main.js", "mossWorker.js", "manifest.json", "styles.css"]) {
-  cpSync(path.join(root, file), path.join(dest, file));
-}
-
+// Validate everything BEFORE touching the vault, so a failed precondition
+// can't leave a half-installed plugin behind.
 const depSrc = path.join(root, "node_modules", "@moss-dev");
 if (!existsSync(depSrc)) {
   console.error("node_modules/@moss-dev missing — run `npm install` first.");
   process.exit(1);
+}
+
+execSync("npm run build", { cwd: root, stdio: "inherit" });
+
+for (const file of ["main.js", "mossWorker.js", "manifest.json", "styles.css"]) {
+  if (!existsSync(path.join(root, file))) {
+    console.error(`Build output missing: ${file}`);
+    process.exit(1);
+  }
+}
+
+mkdirSync(dest, { recursive: true });
+for (const file of ["main.js", "mossWorker.js", "manifest.json", "styles.css"]) {
+  cpSync(path.join(root, file), path.join(dest, file));
 }
 cpSync(depSrc, path.join(dest, "node_modules", "@moss-dev"), { recursive: true });
 
