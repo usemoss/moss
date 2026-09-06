@@ -363,6 +363,33 @@ export class VaultIndexer {
     await this.upsertPath(newPath);
   }
 
+  /** Indexed note paths that live under `folderPath`. */
+  private indexedPathsUnder(folderPath: string): string[] {
+    const prefix = `${folderPath.replace(/\/+$/, "")}/`;
+    return [...this.pathChunkCounts.keys()].filter((p) => p.startsWith(prefix));
+  }
+
+  /**
+   * A folder moved. Obsidian fires one rename event for the folder, not one
+   * per note inside it, so every indexed note under the old prefix has to be
+   * re-keyed here or its chunk ids keep pointing at paths that no longer exist.
+   */
+  async renameFolder(oldPath: string, newPath: string): Promise<void> {
+    const oldPrefix = `${oldPath.replace(/\/+$/, "")}/`;
+    const newPrefix = `${newPath.replace(/\/+$/, "")}/`;
+    for (const stale of this.indexedPathsUnder(oldPath)) {
+      await this.removePath(stale);
+      await this.upsertPath(`${newPrefix}${stale.slice(oldPrefix.length)}`);
+    }
+  }
+
+  /** A folder was deleted: drop every indexed note that lived under it. */
+  async removeFolder(folderPath: string): Promise<void> {
+    for (const stale of this.indexedPathsUnder(folderPath)) {
+      await this.removePath(stale);
+    }
+  }
+
   dispose(): void {
     this.listeners.clear();
     this.pathChunkCounts.clear();

@@ -303,9 +303,22 @@ function newestNvmNode(versionsDir: string): string | undefined {
   return undefined;
 }
 
-const MIN_NODE_MAJOR = 20;
+// `@moss-dev/moss` declares engines.node ">=20.4"; anything older can fail to
+// load the SDK, so the probe has to compare minor versions too.
+const MIN_NODE = [20, 4] as const;
 
-/** True when `filePath` runs and reports Node >= MIN_NODE_MAJOR. */
+export function isNodeVersionSupported(version: string): boolean {
+  const [major, minor] = version.trim().split(".").map((part) => Number.parseInt(part, 10));
+  if (!Number.isFinite(major)) {
+    return false;
+  }
+  if (major !== MIN_NODE[0]) {
+    return major > MIN_NODE[0];
+  }
+  return Number.isFinite(minor) && minor >= MIN_NODE[1];
+}
+
+/** True when `filePath` runs and reports a Node the Moss SDK supports. */
 function isUsableNode(filePath: string): boolean {
   try {
     if (!fs.existsSync(filePath)) {
@@ -317,17 +330,17 @@ function isUsableNode(filePath: string): boolean {
       windowsHide: true,
       env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
     });
-    const major = Number.parseInt((result.stdout ?? "").trim().split(".")[0] ?? "", 10);
-    return Number.isFinite(major) && major >= MIN_NODE_MAJOR;
+    return isNodeVersionSupported(result.stdout ?? "");
   } catch {
     return false;
   }
 }
 
 /**
- * Pick a Node binary for the worker. A standalone Node 20+ is preferred
- * (each candidate is probed for its version — an old distro `node` is
- * skipped); as a last resort we run Obsidian's own Electron binary with
+ * Pick a Node binary for the worker. A standalone Node 20.4+ (the SDK's
+ * declared engine) is preferred — each candidate is probed for its version,
+ * so an older distro `node` earlier in PATH is skipped rather than selected.
+ * As a last resort we run Obsidian's own Electron binary with
  * `ELECTRON_RUN_AS_NODE=1`, which behaves as plain Node.
  */
 export function findNodeBinary(
@@ -352,10 +365,13 @@ export function findNodeBinary(
     if (isUsableNode(candidate)) {
       return { execPath: candidate, usingElectron: false };
     }
-    log(`Skipping ${candidate}: not a Node ${MIN_NODE_MAJOR}+ binary`);
+    log(`Skipping ${candidate}: not a Node ${MIN_NODE[0]}.${MIN_NODE[1]}+ binary`);
   }
 
-  log("No standalone Node 20+ binary found; using Obsidian's Electron runtime as Node (set Node path in settings to override)");
+  log(
+    `No standalone Node ${MIN_NODE[0]}.${MIN_NODE[1]}+ binary found; using Obsidian's Electron runtime as Node ` +
+      "(set Node path in settings to override)",
+  );
   return { execPath: process.execPath, usingElectron: true };
 }
 

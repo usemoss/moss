@@ -277,6 +277,62 @@ describe("VaultIndexer incremental", () => {
     expect(session.docs.has("fresh.md#chunk-0")).toBe(true);
   });
 
+  it("renameFolder re-keys every indexed note under the folder", async () => {
+    const vault = makeVault({
+      "Projects/A.md": "# A\nbody",
+      "Projects/sub/B.md": "# B\nbody",
+      "Other.md": "# O",
+    });
+    const session = new FakeSession();
+    const indexer = new VaultIndexer(vault, config);
+    indexer.attachSession(session);
+    await indexer.rebuild();
+
+    // Obsidian renames the folder; note paths move with it.
+    vault.files["Archive/A.md"] = vault.files["Projects/A.md"];
+    vault.files["Archive/sub/B.md"] = vault.files["Projects/sub/B.md"];
+    delete vault.files["Projects/A.md"];
+    delete vault.files["Projects/sub/B.md"];
+
+    await indexer.renameFolder("Projects", "Archive");
+
+    expect(Object.keys(indexer.getPathChunkCounts()).sort()).toEqual([
+      "Archive/A.md",
+      "Archive/sub/B.md",
+      "Other.md",
+    ]);
+    expect([...session.docs.keys()].some((k) => k.startsWith("Projects/"))).toBe(false);
+    expect(session.docs.has("Archive/sub/B.md#chunk-0")).toBe(true);
+  });
+
+  it("removeFolder drops every indexed note under the folder", async () => {
+    const vault = makeVault({ "Projects/A.md": "# A", "Projects/sub/B.md": "# B", "Other.md": "# O" });
+    const session = new FakeSession();
+    const indexer = new VaultIndexer(vault, config);
+    indexer.attachSession(session);
+    await indexer.rebuild();
+
+    delete vault.files["Projects/A.md"];
+    delete vault.files["Projects/sub/B.md"];
+    await indexer.removeFolder("Projects");
+
+    expect(Object.keys(indexer.getPathChunkCounts())).toEqual(["Other.md"]);
+    expect([...session.docs.keys()]).toEqual(["Other.md#chunk-0"]);
+  });
+
+  it("folder operations don't touch a sibling with a shared name prefix", async () => {
+    const vault = makeVault({ "Notes/A.md": "# A", "NotesArchive/B.md": "# B" });
+    const session = new FakeSession();
+    const indexer = new VaultIndexer(vault, config);
+    indexer.attachSession(session);
+    await indexer.rebuild();
+
+    delete vault.files["Notes/A.md"];
+    await indexer.removeFolder("Notes");
+
+    expect(Object.keys(indexer.getPathChunkCounts())).toEqual(["NotesArchive/B.md"]);
+  });
+
   it("reconcile is a no-op when nothing changed", async () => {
     const vault = makeVault({ "A.md": "# A" }, { "A.md": 1000 });
     const session = new FakeSession();

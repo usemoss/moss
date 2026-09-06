@@ -1,5 +1,5 @@
 import * as path from "path";
-import { FileSystemAdapter, Notice, Plugin, TFile, type TAbstractFile } from "obsidian";
+import { FileSystemAdapter, Notice, Plugin, TFile, TFolder, type TAbstractFile } from "obsidian";
 import { VaultIndexer, type IndexStatus, type VaultReader } from "./indexer/indexer";
 import { isMarkdownPath, parseExcludedFolders } from "./indexer/excludes";
 import { MossSessionManager, type LocalMossSession } from "./moss/client";
@@ -369,6 +369,12 @@ export default class MossSearchPlugin extends Plugin {
       this.app.vault.on("delete", (file) => {
         if (file instanceof TFile) {
           void this.indexer.removePath(file.path).catch((err) => this.log(`delete failed: ${String(err)}`));
+        } else if (file instanceof TFolder) {
+          // Obsidian reports the folder only — its notes get no events of
+          // their own, so drop them here or they linger in the index.
+          void this.indexer
+            .removeFolder(file.path)
+            .catch((err) => this.log(`folder delete failed: ${String(err)}`));
         }
       }),
     );
@@ -376,6 +382,10 @@ export default class MossSearchPlugin extends Plugin {
       this.app.vault.on("rename", (file, oldPath) => {
         if (file instanceof TFile) {
           void this.indexer.renamePath(oldPath, file.path).catch((err) => this.log(`rename failed: ${String(err)}`));
+        } else if (file instanceof TFolder) {
+          void this.indexer
+            .renameFolder(oldPath, file.path)
+            .catch((err) => this.log(`folder rename failed: ${String(err)}`));
         }
       }),
     );
