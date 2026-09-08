@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from moss import MossClient
+from moss import MossClient, QueryOptions
 
 
 @pytest.fixture
@@ -549,6 +549,68 @@ class TestQueryCloudFallback:
             url = call_args[0][0]
             assert "/query" in url
             assert "/manage" not in url
+
+    @pytest.mark.asyncio
+    async def test_cloud_fallback_defaults_top_k_to_five(self, unloaded_client):
+        """Cloud fallback must use the same default top_k as local queries."""
+        mock_response = MagicMock()
+        mock_response.is_success = True
+        mock_response.json.return_value = {"docs": [], "query": "q"}
+
+        with patch("moss.client.moss_client.httpx.AsyncClient") as mock_httpx:
+            mock_client_instance = AsyncMock()
+            mock_client_instance.post = AsyncMock(return_value=mock_response)
+            mock_httpx.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_httpx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            await unloaded_client.query("idx", "q")
+
+            body = mock_client_instance.post.call_args.kwargs["json"]
+            assert body["topK"] == MossClient.DEFAULT_TOP_K
+            assert body["topK"] == 5
+
+    @pytest.mark.asyncio
+    async def test_cloud_fallback_defaults_top_k_when_options_top_k_is_none(
+        self, unloaded_client
+    ):
+        """QueryOptions() leaves top_k unset; must not fall through to the old `or 10` default."""
+        mock_response = MagicMock()
+        mock_response.is_success = True
+        mock_response.json.return_value = {"docs": [], "query": "q"}
+
+        with patch("moss.client.moss_client.httpx.AsyncClient") as mock_httpx:
+            mock_client_instance = AsyncMock()
+            mock_client_instance.post = AsyncMock(return_value=mock_response)
+            mock_httpx.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_httpx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            await unloaded_client.query("idx", "q", QueryOptions())
+
+            body = mock_client_instance.post.call_args.kwargs["json"]
+            assert body["topK"] == MossClient.DEFAULT_TOP_K
+
+    @pytest.mark.asyncio
+    async def test_cloud_fallback_respects_explicit_top_k(self, unloaded_client):
+        mock_response = MagicMock()
+        mock_response.is_success = True
+        mock_response.json.return_value = {"docs": [], "query": "q"}
+
+        with patch("moss.client.moss_client.httpx.AsyncClient") as mock_httpx:
+            mock_client_instance = AsyncMock()
+            mock_client_instance.post = AsyncMock(return_value=mock_response)
+            mock_httpx.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client_instance
+            )
+            mock_httpx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            await unloaded_client.query("idx", "q", QueryOptions(top_k=10))
+
+            body = mock_client_instance.post.call_args.kwargs["json"]
+            assert body["topK"] == 10
 
     @pytest.mark.asyncio
     async def test_uses_local_when_index_loaded(self, client):

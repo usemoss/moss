@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Cloud query fallback now uses the same default `top_k=5` as local queries (and the TypeScript SDK). Previously `query()` without `load_index()` silently requested 10 results, so local vs cloud result counts diverged.
+
 ## [1.0.0] - 2026-03-29
 
 First stable release of the `moss` Python SDK (previously published as `inferedge-moss`).
