@@ -9,6 +9,7 @@ import typer
 from .. import output
 
 PROG_NAME = "moss"
+_UNAVAILABLE = "Shell completion is unavailable in this Typer installation."
 
 
 class Shell(str, Enum):
@@ -43,18 +44,15 @@ def completions_command(
         from typer.main import get_completion_script  # type: ignore[attr-defined]
     except Exception:  # pragma: no cover
         try:
-            from typer._completion_shared import get_completion_script  # type: ignore
-        except Exception:  # pragma: no cover - depends on Typer installation
-            output.print_error(
-                "Shell completion is unavailable in this Typer installation.",
-                json_mode,
-            )
-            raise typer.Exit(1)
-        output.print_error(
-            "Shell completion is unavailable in this Typer installation.",
-            json_mode,
-        )
-        raise typer.Exit(1)
+            from typer.completion import get_completion_script  # type: ignore
+        except Exception:  # pragma: no cover
+            try:
+                from typer._completion_shared import (  # type: ignore
+                    get_completion_script,
+                )
+            except Exception:  # pragma: no cover
+                output.print_error(_UNAVAILABLE, json_mode)
+                raise typer.Exit(1)
 
     complete_var = "_{}_COMPLETE".format(PROG_NAME.replace("-", "_").upper())
     script = get_completion_script(
