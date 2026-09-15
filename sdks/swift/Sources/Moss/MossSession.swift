@@ -1,6 +1,23 @@
 import Foundation
 import MossC
 
+public final class MossSessionEmbedding: @unchecked Sendable {
+    fileprivate let handle: OpaquePointer
+    private let freeEmbedding: MossSessionBoundEmbeddingFreeFunction
+
+    fileprivate init(
+        handle: OpaquePointer,
+        freeEmbedding: @escaping MossSessionBoundEmbeddingFreeFunction
+    ) {
+        self.handle = handle
+        self.freeEmbedding = freeEmbedding
+    }
+
+    deinit {
+        freeEmbedding(handle)
+    }
+}
+
 /// On-device session handle for a single index. Returned by
 /// `MossClient.session(_:modelId:)`. All embedding runs locally with
 /// the bundled litelm model; queries don't hit the network.
@@ -28,6 +45,25 @@ public final class MossSession: @unchecked Sendable {
     /// strong, transferable pointer and we take exclusive ownership.
     init(takingOwnershipOf raw: OpaquePointer) {
         self.handle = raw
+    }
+
+    public static var supportsIdentityBoundTextInference: Bool {
+        MossIdentityBoundSessionAPI.shared != nil
+    }
+
+    public static var supportsProvenanceSafeSessionCreation: Bool {
+        MossIdentityBoundSessionAPI.supportsProvenanceSafeSessionCreation
+    }
+
+    static func requireIdentityBoundTextInference(
+        supported: Bool = supportsIdentityBoundTextInference
+    ) throws {
+        guard supported else {
+            throw MossError(
+                code: -5,
+                message: "This Moss native runtime cannot bind inference to exact model provenance and suppress creation-time cloud auto-load"
+            )
+        }
     }
 
     deinit { close() }
@@ -83,7 +119,13 @@ public final class MossSession: @unchecked Sendable {
         _ docs: [DocumentInfo],
         upsert: Bool = true
     ) async throws -> (added: Int, updated: Int) {
-        try await Task.detached { [self] () throws -> (Int, Int) in
+        guard MossIdentityBoundSessionAPI.shared != nil else {
+            throw MossError(
+                code: -5,
+                message: "This Moss native runtime cannot safely open provenance-sensitive sessions"
+            )
+        }
+        return try await Task.detached { [self] () throws -> (Int, Int) in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try Self.withNativeDocs(docs) { docBuf, count in
@@ -169,7 +211,13 @@ public final class MossSession: @unchecked Sendable {
                         try withOptionalCString(group?.orderField) { orderC in
                             var outDocs: UnsafeMutablePointer<MossDocumentInfo>?
                             var outCount: UInt = 0
-                            let r = moss_session_get_docs(
+                            guard let api = MossIdentityBoundSessionAPI.shared else {
+                                throw MossError(
+                                    code: -5,
+                                    message: "This Moss native runtime cannot safely open provenance-sensitive sessions"
+                                )
+                            }
+                            let r = api.getDocs(
                                 h, idsPtr, idCount, filterC, sortC,
                                 options.ascending, parentC, orderC,
                                 &outDocs, &outCount
@@ -200,8 +248,11 @@ public final class MossSession: @unchecked Sendable {
     ///    separately (pair with `query(_:embedding:options:)`).
     /// 2. Querying the same input across multiple indexes without
     ///    paying the embedding cost N times.
+    ///
+    @available(*, deprecated, message: "Raw embeddings do not carry model identity; use embedBound(_:)")
     public func embed(_ text: String) async throws -> [Float] {
-        try await Task.detached { [self] () throws -> [Float] in
+        try Self.requireIdentityBoundTextInference()
+        return try await Task.detached { [self] () throws -> [Float] in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try text.withCString { ctext in
@@ -217,11 +268,39 @@ public final class MossSession: @unchecked Sendable {
         }.value
     }
 
+    public func embedBound(_ text: String) async throws -> MossSessionEmbedding {
+        try Self.requireIdentityBoundTextInference()
+        return try await Task.detached { [self] () throws -> MossSessionEmbedding in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            guard let api = MossIdentityBoundSessionAPI.shared else {
+                throw MossError(code: -5, message: "Identity-bound inference is unavailable")
+            }
+            return try text.withCString { ctext in
+                var embedding: OpaquePointer?
+                try MossClient.throwIfErr(api.embed(h, ctext, &embedding))
+                guard let embedding else { throw MossClient.lastError(code: -7) }
+                return MossSessionEmbedding(
+                    handle: embedding,
+                    freeEmbedding: api.freeEmbedding
+                )
+            }
+        }.value
+    }
+
     public func query(
         _ q: String,
         options: QueryOptions = QueryOptions()
     ) async throws -> SearchResult {
-        try await query(q, embedding: nil, options: options)
+        try await query(q, embedding: nil, boundEmbedding: nil, options: options)
+    }
+
+    public func query(
+        _ q: String,
+        embedding: MossSessionEmbedding,
+        options: QueryOptions = QueryOptions()
+    ) async throws -> SearchResult {
+        try await query(q, embedding: nil, boundEmbedding: embedding, options: options)
     }
 
     /// Search variant that takes a pre-computed embedding (typically
@@ -229,15 +308,26 @@ public final class MossSession: @unchecked Sendable {
     /// pure dot-product scan + top-k. The `text` parameter is still
     /// passed through to telemetry / SearchResult.query so the
     /// caller-visible result stays consistent with `query(_:)`.
+    @available(*, deprecated, message: "Raw embeddings do not carry model identity; use MossSessionEmbedding")
     public func query(
         _ q: String,
         embedding: [Float]?,
         options: QueryOptions = QueryOptions()
     ) async throws -> SearchResult {
+        try await query(q, embedding: embedding, boundEmbedding: nil, options: options)
+    }
+
+    private func query(
+        _ q: String,
+        embedding: [Float]?,
+        boundEmbedding: MossSessionEmbedding?,
+        options: QueryOptions
+    ) async throws -> SearchResult {
         let opts = options
         guard opts.topK >= 0 else {
             throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
         }
+        try Self.requireIdentityBoundTextInference()
         return try await Task.detached { [self] () throws -> SearchResult in
             let h = try borrowHandle()
             defer { returnHandle() }
@@ -259,27 +349,123 @@ public final class MossSession: @unchecked Sendable {
                             // pointer for the C call via withUnsafeBufferPointer.
                             let result: UnsafeMutablePointer<MossSearchResult>? = try {
                                 var resultLocal: UnsafeMutablePointer<MossSearchResult>?
-                                // `MossResult` is emitted as both enum + typedef
-                                // (ambiguous in Swift); treat the wire value as Int32.
-                                let invoke: (UnsafePointer<Float>?, Int) -> Int32 = { embPtr, embLen in
-                                    var nativeOpts = MossQueryOptions(
-                                        top_k: UInt(opts.topK),
-                                        alpha: opts.alpha,
-                                        filter_json: filter,
-                                        embedding: embPtr,
-                                        embedding_dim: UInt(embLen)
+                                var nativeOpts = MossQueryOptions(
+                                    top_k: UInt(opts.topK),
+                                    alpha: opts.alpha,
+                                    filter_json: filter,
+                                    embedding: nil,
+                                    embedding_dim: 0
+                                )
+                                let r: Int32
+                                guard let api = MossIdentityBoundSessionAPI.shared else {
+                                    throw MossError(
+                                        code: -5,
+                                        message: "This Moss native runtime cannot safely open provenance-sensitive sessions"
                                     )
-                                    return moss_session_query(
-                                        h, cq, &nativeOpts, parentC, orderC, &resultLocal)
                                 }
-                                let r: Int32 = if let emb = embedding {
-                                    emb.withUnsafeBufferPointer { bp in invoke(bp.baseAddress, bp.count) }
+                                if let boundEmbedding {
+                                    r = api.queryBound(
+                                        h, cq, boundEmbedding.handle, &nativeOpts,
+                                        parentC, orderC, &resultLocal
+                                    )
+                                } else if let emb = embedding {
+                                    r = emb.withUnsafeBufferPointer { bp in
+                                        nativeOpts.embedding = bp.baseAddress
+                                        nativeOpts.embedding_dim = UInt(bp.count)
+                                        return api.query(
+                                            h, cq, &nativeOpts, parentC, orderC, &resultLocal
+                                        )
+                                    }
                                 } else {
-                                    invoke(nil, 0)
+                                    var boundEmbedding: OpaquePointer?
+                                    let embedResult = api.embed(h, cq, &boundEmbedding)
+                                    try MossClient.throwIfErr(embedResult)
+                                    guard let boundEmbedding else {
+                                        throw MossClient.lastError(code: -7)
+                                    }
+                                    defer { api.freeEmbedding(boundEmbedding) }
+                                    r = api.queryBound(
+                                        h, cq, boundEmbedding, &nativeOpts,
+                                        parentC, orderC, &resultLocal
+                                    )
                                 }
                                 try MossClient.throwIfErr(r)
                                 return resultLocal
                             }()
+                            guard let result else { throw MossClient.lastError(code: -7) }
+                            defer { moss_free_search_result(result) }
+                            return MossClient.parseSearchResult(result.pointee)
+                        }
+                    }
+                }
+            }
+        }.value
+    }
+
+    func queryWithModelIdentity(
+        _ q: String,
+        embedding: [Float],
+        modelId: String,
+        modelArtifactVersion: String,
+        manifestSha256: String,
+        options: QueryOptions = QueryOptions()
+    ) async throws -> SearchResult {
+        let opts = options
+        guard opts.topK >= 0 else {
+            throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
+        }
+        try Self.requireIdentityBoundTextInference()
+        return try await Task.detached { [self] () throws -> SearchResult in
+            let h = try borrowHandle()
+            defer { returnHandle() }
+            var filterJson = opts.filterJson
+            if let filter = opts.filter {
+                guard let encoded = filter.encoded() else {
+                    throw MossError(code: -2, message: "could not encode metadata filter")
+                }
+                filterJson = encoded
+            }
+            let group = opts.groupByParent
+            return try q.withCString { queryCString in
+                try withOptionalCString(filterJson) { filterCString in
+                    try withOptionalCString(group?.parentField) { parentCString in
+                        try withOptionalCString(group?.orderField) { orderCString in
+                            guard let api = MossIdentityBoundSessionAPI.shared else {
+                                throw MossError(
+                                    code: -5,
+                                    message: "This Moss native runtime cannot safely open provenance-sensitive sessions"
+                                )
+                            }
+                            var result: UnsafeMutablePointer<MossSearchResult>?
+                            var nativeOptions = MossQueryOptions(
+                                top_k: UInt(opts.topK),
+                                alpha: opts.alpha,
+                                filter_json: filterCString,
+                                embedding: nil,
+                                embedding_dim: 0
+                            )
+                            let callResult = embedding.withUnsafeBufferPointer { buffer in
+                                nativeOptions.embedding = buffer.baseAddress
+                                nativeOptions.embedding_dim = UInt(buffer.count)
+                                return modelId.withCString { modelCString in
+                                    modelArtifactVersion.withCString { versionCString in
+                                        manifestSha256.withCString { digestCString in
+                                            api.queryWithModelIdentity(
+                                                h,
+                                                queryCString,
+                                                &nativeOptions,
+                                                modelCString,
+                                                versionCString,
+                                                digestCString,
+                                                parentCString,
+                                                orderCString,
+                                                &result
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            try MossClient.throwIfErr(callResult)
                             guard let result else { throw MossClient.lastError(code: -7) }
                             defer { moss_free_search_result(result) }
                             return MossClient.parseSearchResult(result.pointee)
@@ -487,15 +673,15 @@ public final class MossSession: @unchecked Sendable {
                 payloadPtr = pp
             }
 
-            native.append(MossDocumentInfo(
-                id: idPtr,
-                text: textPtr,
-                metadata: metaPtr,
-                metadata_count: metaCount,
-                embedding: embPtr,
-                embedding_dim: embLen,
-                payload: payloadPtr
-            ))
+            var nativeDoc = MossDocumentInfo()
+            nativeDoc.id = idPtr
+            nativeDoc.text = textPtr
+            nativeDoc.metadata = metaPtr
+            nativeDoc.metadata_count = metaCount
+            nativeDoc.embedding = embPtr
+            nativeDoc.embedding_dim = embLen
+            nativeDoc.payload = payloadPtr
+            native.append(nativeDoc)
         }
 
         return try native.withUnsafeBufferPointer { buf in
