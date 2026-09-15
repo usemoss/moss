@@ -4,19 +4,19 @@ import asyncio
 import logging
 import os
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 from moss_core import (
     CLOUD_API_MANAGE_URL,
-    ManageClient,
     DocumentInfo,
     GetDocumentsOptions,
     IndexInfo,
     IndexManager,
+    JobStatusResponse,
+    ManageClient,
     MutationOptions,
     MutationResult,
-    JobStatusResponse,
     QueryOptions,
     QueryResultDocumentInfo,
     SearchResult,
@@ -79,8 +79,8 @@ class MossClient:
     async def create_index(
         self,
         name: str,
-        docs: List[DocumentInfo],
-        model_id: Optional[str] = None,
+        docs: list[DocumentInfo],
+        model_id: str | None = None,
     ) -> MutationResult:
         """Create a new index and populate it with documents."""
         resolved_model_id = self._resolve_model_id(docs, model_id)
@@ -94,8 +94,8 @@ class MossClient:
     async def add_docs(
         self,
         name: str,
-        docs: List[DocumentInfo],
-        options: Optional[MutationOptions] = None,
+        docs: list[DocumentInfo],
+        options: MutationOptions | None = None,
     ) -> MutationResult:
         """Add or update documents in an index."""
         return await asyncio.to_thread(
@@ -108,7 +108,7 @@ class MossClient:
     async def delete_docs(
         self,
         name: str,
-        doc_ids: List[str],
+        doc_ids: list[str],
     ) -> MutationResult:
         """Delete documents from an index by their IDs."""
         return await asyncio.to_thread(
@@ -127,7 +127,7 @@ class MossClient:
         """Get information about a specific index."""
         return await asyncio.to_thread(self._manage.get_index, name)
 
-    async def list_indexes(self) -> List[IndexInfo]:
+    async def list_indexes(self) -> list[IndexInfo]:
         """List all indexes with their information."""
         return await asyncio.to_thread(self._manage.list_indexes)
 
@@ -138,8 +138,8 @@ class MossClient:
     async def get_docs(
         self,
         name: str,
-        options: Optional[GetDocumentsOptions] = None,
-    ) -> List[DocumentInfo]:
+        options: GetDocumentsOptions | None = None,
+    ) -> list[DocumentInfo]:
         """Retrieve documents from an index."""
         return await asyncio.to_thread(self._manage.get_docs, name, options)
 
@@ -180,7 +180,7 @@ class MossClient:
         self,
         name: str,
         query: str,
-        options: Optional[QueryOptions] = None,
+        options: QueryOptions | None = None,
     ) -> SearchResult:
         """
         Perform a semantic similarity search.
@@ -214,7 +214,7 @@ class MossClient:
         self,
         name: str,
         query: str,
-        options: Optional[QueryOptions],
+        options: QueryOptions | None,
     ) -> SearchResult:
         top_k = getattr(options, "top_k", None)
         if top_k is None:
@@ -257,13 +257,13 @@ class MossClient:
         self,
         name: str,
         query: str,
-        options: Optional[QueryOptions],
+        options: QueryOptions | None,
     ) -> SearchResult:
         """Fallback: query via the cloud API when the index is not loaded locally."""
         top_k = getattr(options, "top_k", None) or 10
         query_embedding = getattr(options, "embedding", None)
 
-        request_body: Dict[str, Any] = {
+        request_body: dict[str, Any] = {
             "query": query,
             "indexName": name,
             "projectId": self._project_id,
@@ -281,10 +281,10 @@ class MossClient:
                     json=request_body,
                 )
                 if not response.is_success:
-                    raise Exception(f"HTTP error! status: {response.status_code}")
+                    raise RuntimeError(f"HTTP error! status: {response.status_code}")
                 data = response.json()
         except httpx.RequestError as error:
-            raise Exception(f"Cloud query request failed: {str(error)}")
+            raise RuntimeError(f"Cloud query request failed: {error!s}") from error
 
         return self._dict_to_search_result(data)
 
@@ -308,8 +308,8 @@ class MossClient:
 
     def _resolve_model_id(
         self,
-        docs: List[DocumentInfo],
-        model_id: Optional[str],
+        docs: list[DocumentInfo],
+        model_id: str | None,
     ) -> str:
         if model_id is not None:
             return model_id

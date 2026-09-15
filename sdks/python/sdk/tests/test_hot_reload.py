@@ -5,12 +5,12 @@ import warnings
 
 import pytest
 import pytest_asyncio
-
 from moss import (
     DocumentInfo,
     MossClient,
     QueryOptions,
 )
+
 from tests.constants import (
     TEST_DOCUMENTS,
     TEST_MODEL_ID,
@@ -288,7 +288,7 @@ class TestHotReloadE2E:
             """Should fail to load a non-existent index."""
             non_existent_index_name = "non-existent-index-for-test"
 
-            with pytest.raises(Exception):
+            with pytest.raises(RuntimeError):
                 await moss_client.load_index(non_existent_index_name)
 
         @pytest.mark.asyncio
@@ -296,7 +296,7 @@ class TestHotReloadE2E:
             """Should fail to query a non-existent index."""
             non_existent_index_name = "non-existent-index-for-test"
 
-            with pytest.raises(Exception):
+            with pytest.raises(RuntimeError):
                 await moss_client.query(
                     non_existent_index_name,
                     "test query",

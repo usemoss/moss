@@ -1,7 +1,6 @@
-from __future__ import annotations
 
-from typing import ClassVar, Dict, List, Optional, Sequence
-
+from collections.abc import Sequence
+from typing import ClassVar
 
 class MossClient:
     """Semantic search client for vector similarity operations."""
@@ -13,36 +12,36 @@ class MossClient:
     async def create_index(
         self,
         name: str,
-        docs: List[DocumentInfo],
-        model_id: Optional[str] = ...,
+        docs: list[DocumentInfo],
+        model_id: str | None = ...,
     ) -> MutationResult: ...
 
     async def add_docs(
         self,
         name: str,
-        docs: List[DocumentInfo],
-        options: Optional[MutationOptions] = None,
+        docs: list[DocumentInfo],
+        options: MutationOptions | None = None,
     ) -> MutationResult: ...
 
     async def delete_docs(
         self,
         name: str,
-        doc_ids: List[str],
+        doc_ids: list[str],
     ) -> MutationResult: ...
 
     async def get_job_status(self, job_id: str) -> JobStatusResponse: ...
 
     async def get_index(self, name: str) -> IndexInfo: ...
 
-    async def list_indexes(self) -> List[IndexInfo]: ...
+    async def list_indexes(self) -> list[IndexInfo]: ...
 
     async def delete_index(self, name: str) -> bool: ...
 
     async def get_docs(
         self,
         name: str,
-        options: Optional[GetDocumentsOptions] = None,
-    ) -> List[DocumentInfo]: ...
+        options: GetDocumentsOptions | None = None,
+    ) -> list[DocumentInfo]: ...
 
     async def load_index(
         self,
@@ -57,7 +56,7 @@ class MossClient:
         self,
         name: str,
         query: str,
-        options: Optional[QueryOptions] = None,
+        options: QueryOptions | None = None,
     ) -> SearchResult: ...
 
 
@@ -72,17 +71,17 @@ class MutationResult:
 class MutationOptions:
     """Options for add_docs (e.g. upsert behavior)."""
 
-    upsert: Optional[bool]
+    upsert: bool | None
 
-    def __init__(self, upsert: Optional[bool] = None) -> None: ...
+    def __init__(self, upsert: bool | None = None) -> None: ...
 
 
 class GetDocumentsOptions:
     """Options for get_docs (e.g. filter by document IDs)."""
 
-    doc_ids: Optional[List[str]]
+    doc_ids: list[str] | None
 
-    def __init__(self, doc_ids: Optional[List[str]] = None) -> None: ...
+    def __init__(self, doc_ids: list[str] | None = None) -> None: ...
 
 
 class JobStatus:
@@ -116,7 +115,7 @@ class JobProgress:
     job_id: str
     status: JobStatus
     progress: float
-    current_phase: Optional[JobPhase]
+    current_phase: JobPhase | None
 
 
 class JobStatusResponse:
@@ -125,11 +124,11 @@ class JobStatusResponse:
     job_id: str
     status: JobStatus
     progress: float
-    current_phase: Optional[JobPhase]
-    error: Optional[str]
+    current_phase: JobPhase | None
+    error: str | None
     created_at: str
     updated_at: str
-    completed_at: Optional[str]
+    completed_at: str | None
 
 
 class ModelRef:
@@ -141,13 +140,13 @@ class ModelRef:
 class QueryResultDocumentInfo:
     id: str
     text: str
-    metadata: Optional[Dict[str, str]]
+    metadata: dict[str, str] | None
     score: float
     def __init__(
         self,
         id: str,
         text: str,
-        metadata: Optional[Dict[str, str]] = ...,
+        metadata: dict[str, str] | None = ...,
         score: float = ...,
     ) -> None: ...
 
@@ -155,28 +154,28 @@ class QueryResultDocumentInfo:
 class DocumentInfo:
     id: str
     text: str
-    metadata: Optional[Dict[str, str]]
-    embedding: Optional[Sequence[float]]
+    metadata: dict[str, str] | None
+    embedding: Sequence[float] | None
     def __init__(
         self,
         id: str,
         text: str,
-        metadata: Optional[Dict[str, str]] = ...,
-        embedding: Optional[Sequence[float]] = ...,
+        metadata: dict[str, str] | None = ...,
+        embedding: Sequence[float] | None = ...,
     ) -> None: ...
 
 
 class QueryOptions:
-    embedding: Optional[Sequence[float]]
-    top_k: Optional[int]
-    alpha: Optional[float]
-    filter: Optional[dict]
+    embedding: Sequence[float] | None
+    top_k: int | None
+    alpha: float | None
+    filter: dict | None
     def __init__(
         self,
-        embedding: Optional[Sequence[float]] = ...,
-        top_k: Optional[int] = ...,
-        alpha: Optional[float] = ...,
-        filter: Optional[dict] = ...,
+        embedding: Sequence[float] | None = ...,
+        top_k: int | None = ...,
+        alpha: float | None = ...,
+        filter: dict | None = ...,
     ) -> None: ...
 
 
@@ -203,16 +202,16 @@ class IndexInfo:
 
 
 class SearchResult:
-    docs: List[QueryResultDocumentInfo]
+    docs: list[QueryResultDocumentInfo]
     query: str
-    index_name: Optional[str]
-    time_taken_ms: Optional[int]
+    index_name: str | None
+    time_taken_ms: int | None
     def __init__(
         self,
-        docs: List[QueryResultDocumentInfo],
+        docs: list[QueryResultDocumentInfo],
         query: str,
-        index_name: Optional[str] = None,
-        time_taken_ms: Optional[int] = None,
+        index_name: str | None = None,
+        time_taken_ms: int | None = None,
     ) -> None: ...
 
 
@@ -224,25 +223,25 @@ class IndexStatus:
     def __init__(self, value: str) -> None: ...
 
 
-IndexStatusValues: Dict[str, str]
+IndexStatusValues: dict[str, str]
 
 __version__: str
 
 __all__ = [
-    "MossClient",
     "DocumentInfo",
     "GetDocumentsOptions",
     "IndexInfo",
-    "SearchResult",
-    "QueryResultDocumentInfo",
-    "ModelRef",
     "IndexStatus",
     "IndexStatusValues",
-    "QueryOptions",
-    "MutationResult",
-    "MutationOptions",
-    "JobStatus",
     "JobPhase",
     "JobProgress",
+    "JobStatus",
     "JobStatusResponse",
+    "ModelRef",
+    "MossClient",
+    "MutationOptions",
+    "MutationResult",
+    "QueryOptions",
+    "QueryResultDocumentInfo",
+    "SearchResult",
 ]

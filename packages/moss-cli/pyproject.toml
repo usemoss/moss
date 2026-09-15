@@ -26,7 +26,8 @@ classifiers = [
 ]
 dependencies = [
     "moss>=1.1.1",
-    "typer>=0.9.0",
+    # 0.12.4 is the first release that accepts `X | None` parameter annotations.
+    "typer>=0.12.4",
     "rich>=13.0.0",
 ]
 

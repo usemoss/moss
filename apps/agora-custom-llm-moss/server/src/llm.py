@@ -17,7 +17,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
@@ -54,36 +54,36 @@ class TextContent(BaseModel):
 
 class SystemMessage(BaseModel):
     role: str = "system"
-    content: Union[str, List[str]]
+    content: str | list[str]
 
 
 class UserMessage(BaseModel):
     role: str = "user"
-    content: Union[str, List[Union[TextContent, Dict]]]
+    content: str | list[TextContent | dict]
 
 
 class AssistantMessage(BaseModel):
     role: str = "assistant"
-    content: Union[str, List[TextContent], None] = None
-    tool_calls: Optional[List[Dict]] = None
+    content: str | list[TextContent] | None = None
+    tool_calls: list[dict] | None = None
 
 
 class ToolMessage(BaseModel):
     role: str = "tool"
-    content: Union[str, List[str]]
+    content: str | list[str]
     tool_call_id: str
 
 
 class ChatCompletionRequest(BaseModel):
-    model: Optional[str] = None
-    messages: List[Union[SystemMessage, UserMessage, AssistantMessage, ToolMessage]]
+    model: str | None = None
+    messages: list[SystemMessage | UserMessage | AssistantMessage | ToolMessage]
     stream: bool = True
-    stream_options: Optional[Dict] = None
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
-    tools: Optional[List[Dict]] = None
-    tool_choice: Optional[Union[str, Dict]] = None
-    response_format: Optional[Dict] = None
+    stream_options: dict | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+    tools: list[dict] | None = None
+    tool_choice: str | dict | None = None
+    response_format: dict | None = None
 
 
 def load_server_env(server_dir: Path | None = None) -> None:
@@ -164,7 +164,7 @@ async def open_moss():
     return session
 
 
-def require_bearer(authorization: Optional[str], mock: bool) -> None:
+def require_bearer(authorization: str | None, mock: bool) -> None:
     if mock:
         return
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -320,7 +320,7 @@ def create_app(moss_mode: str = "ambient") -> FastAPI:
     @app.post("/chat/completions")
     async def chat_completions(
         request: ChatCompletionRequest,
-        authorization: Optional[str] = Header(None, alias="Authorization"),
+        authorization: str | None = Header(None, alias="Authorization"),
     ):
         require_bearer(authorization, mock=mock)
         if not request.stream:

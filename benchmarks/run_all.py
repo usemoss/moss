@@ -34,7 +34,7 @@ def main():
 
     print("=" * 70)
     print("  Benchmark Suite")
-    print(f"  Date: {datetime.now():%Y-%m-%d %H:%M:%S}")
+    print(f"  Date: {datetime.now().astimezone():%Y-%m-%d %H:%M:%S}")
     print(f"  Running: {', '.join(targets)}")
     print("=" * 70)
 

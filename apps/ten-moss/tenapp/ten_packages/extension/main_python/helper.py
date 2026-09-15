@@ -5,14 +5,14 @@
 #
 
 import json
-from typing import Any, AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
+
 from ten_runtime import AsyncTenEnv, Cmd, CmdResult, Data, Loc, TenError
 
 
 def is_punctuation(char):
-    if char in [",", "，", ".", "。", "?", "？", "!", "！"]:
-        return True
-    return False
+    return char in [",", "，", ".", "。", "?", "？", "!", "！"]
 
 
 def parse_sentences(sentence_fragment, content):
@@ -33,7 +33,7 @@ def parse_sentences(sentence_fragment, content):
 
 async def _send_cmd(
     ten_env: AsyncTenEnv, cmd_name: str, dest: str, payload: Any = None
-) -> tuple[Optional[CmdResult], Optional[TenError]]:
+) -> tuple[CmdResult | None, TenError | None]:
     """
     Convenient method to send a command with a payload within app/graph w/o need to create a connection.
     Note: extension using this approach will contain logics that are meaningful for this graph only,
@@ -52,7 +52,7 @@ async def _send_cmd(
 
 async def _send_cmd_ex(
     ten_env: AsyncTenEnv, cmd_name: str, dest: str, payload: Any = None
-) -> AsyncGenerator[tuple[Optional[CmdResult], Optional[TenError]], None]:
+) -> AsyncGenerator[tuple[CmdResult | None, TenError | None], None]:
     """Convenient method to send a command with a payload within app/graph w/o need to create a connection.
     Note: extension using this approach will contain logics that are meaningful for this graph only,
     as it will assume the target extension already exists in the graph.
@@ -73,7 +73,7 @@ async def _send_cmd_ex(
 
 async def _send_data(
     ten_env: AsyncTenEnv, data_name: str, dest: str, payload: Any = None
-) -> Optional[TenError]:
+) -> TenError | None:
     """Convenient method to send data with a payload within app/graph w/o need to create a connection.
     Note: extension using this approach will contain logics that are meaningful for this graph only,
     as it will assume the target extension already exists in the graph.

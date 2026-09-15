@@ -7,7 +7,6 @@ This example demonstrates querying with metadata filters on a locally loaded ind
 import asyncio
 import os
 from datetime import datetime
-from typing import List
 
 from dotenv import load_dotenv
 from moss import DocumentInfo, MossClient, QueryOptions
@@ -30,7 +29,7 @@ async def metadata_filtering_sample() -> None:
 
     client = MossClient(project_id, project_key)
 
-    documents: List[DocumentInfo] = [
+    documents: list[DocumentInfo] = [
         DocumentInfo(
             id="doc1",
             text="Running shoes with breathable mesh for daily training.",
@@ -66,7 +65,7 @@ async def metadata_filtering_sample() -> None:
         ),
     ]
 
-    index_name = f"metadata-filter-sample-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    index_name = f"metadata-filter-sample-{datetime.now().astimezone().strftime('%Y%m%d-%H%M%S')}"
 
     try:
         print("\n1. Creating index...")

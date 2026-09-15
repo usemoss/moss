@@ -6,7 +6,10 @@
 import asyncio
 import json
 import traceback
-from typing import Awaitable, Callable, Literal, Optional
+import uuid
+from collections.abc import Awaitable, Callable
+from typing import Literal, Optional
+
 from ten_ai_base.const import CMD_PROPERTY_RESULT
 from ten_ai_base.helper import AsyncQueue
 from ten_ai_base.struct import (
@@ -24,9 +27,9 @@ from ten_ai_base.struct import (
     parse_llm_response,
 )
 from ten_ai_base.types import LLMToolMetadata, LLMToolResult
-from ..helper import _send_cmd, _send_cmd_ex
 from ten_runtime import AsyncTenEnv, Loc, StatusCode
-import uuid
+
+from ..helper import _send_cmd, _send_cmd_ex
 
 
 class LLMExec:
@@ -39,16 +42,10 @@ class LLMExec:
         self.ten_env = ten_env
         self.input_queue = AsyncQueue()
         self.stopped = False
-        self.on_response: Optional[
-            Callable[[AsyncTenEnv, str, str, bool], Awaitable[None]]
-        ] = None
-        self.on_reasoning_response: Optional[
-            Callable[[AsyncTenEnv, str, str, bool], Awaitable[None]]
-        ] = None
-        self.on_tool_call: Optional[
-            Callable[[AsyncTenEnv, LLMToolMetadata], Awaitable[None]]
-        ] = None
-        self.current_task: Optional[asyncio.Task] = None
+        self.on_response: Callable[[AsyncTenEnv, str, str, bool], Awaitable[None]] | None = None
+        self.on_reasoning_response: Callable[[AsyncTenEnv, str, str, bool], Awaitable[None]] | None = None
+        self.on_tool_call: Callable[[AsyncTenEnv, LLMToolMetadata], Awaitable[None]] | None = None
+        self.current_task: asyncio.Task | None = None
         self.loop = asyncio.get_event_loop()
         self.loop.create_task(self._process_input_queue())
         self.available_tools: list[LLMToolMetadata] = []
@@ -57,7 +54,7 @@ class LLMExec:
             asyncio.Lock()
         )  # Lock to ensure thread-safe access
         self.contexts: list[LLMMessage] = []
-        self.current_request_id: Optional[str] = None
+        self.current_request_id: str | None = None
         self.current_text = None
 
     async def queue_input(self, item: str) -> None:
@@ -169,14 +166,17 @@ class LLMExec:
         await self._queue_context(ten_env, new_message)
 
         async for cmd_result, _ in response:
-            if cmd_result and cmd_result.is_final() is False:
-                if cmd_result.get_status_code() == StatusCode.OK:
-                    response_json, _ = cmd_result.get_property_to_json(None)
-                    ten_env.log_info(
-                        f"_send_to_llm: response_json {response_json}"
-                    )
-                    completion = parse_llm_response(response_json)
-                    await self._handle_llm_response(completion)
+            if (
+                cmd_result
+                and cmd_result.is_final() is False
+                and cmd_result.get_status_code() == StatusCode.OK
+            ):
+                response_json, _ = cmd_result.get_property_to_json(None)
+                ten_env.log_info(
+                    f"_send_to_llm: response_json {response_json}"
+                )
+                completion = parse_llm_response(response_json)
+                await self._handle_llm_response(completion)
 
     async def _handle_llm_response(self, llm_output: LLMResponse | None):
         self.ten_env.log_info(f"_handle_llm_response: {llm_output}")

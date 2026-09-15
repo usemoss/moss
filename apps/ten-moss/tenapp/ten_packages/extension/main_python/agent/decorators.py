@@ -10,7 +10,7 @@ def agent_event_handler(event_type: type[AgentEvent]):
     """
 
     def wrapper(func):
-        setattr(func, "_agent_event_type", event_type)
+        func._agent_event_type = event_type
         return func
 
     return wrapper

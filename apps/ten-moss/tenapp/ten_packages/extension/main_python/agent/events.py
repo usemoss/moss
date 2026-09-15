@@ -1,7 +1,7 @@
-from pydantic import BaseModel
-from typing import Literal, Union, Dict, Any
-from ten_ai_base.types import LLMToolMetadata
+from typing import Any, Literal
 
+from pydantic import BaseModel
+from ten_ai_base.types import LLMToolMetadata
 
 # ==== Base Event ====
 
@@ -49,7 +49,7 @@ class ASRResultEvent(AgentEventBase):
     name: Literal["asr_result"] = "asr_result"
     text: str
     final: bool
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class LLMResponseEvent(AgentEventBase):
@@ -64,10 +64,10 @@ class LLMResponseEvent(AgentEventBase):
 
 # ==== Unified Event Union ====
 
-AgentEvent = Union[
-    UserJoinedEvent,
-    UserLeftEvent,
-    ToolRegisterEvent,
-    ASRResultEvent,
-    LLMResponseEvent,
-]
+AgentEvent = (
+    UserJoinedEvent
+    | UserLeftEvent
+    | ToolRegisterEvent
+    | ASRResultEvent
+    | LLMResponseEvent
+)

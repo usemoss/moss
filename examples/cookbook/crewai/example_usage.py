@@ -5,7 +5,6 @@ import os
 from crewai import LLM, Agent, Crew, Task
 from dotenv import load_dotenv
 from moss import DocumentInfo, MossClient
-
 from moss_crewai import MossSearchTool
 
 load_dotenv()
@@ -41,11 +40,15 @@ INDEXES = {
 }
 
 
+def _load_json(path: str):
+    with open(path) as f:
+        return json.load(f)
+
+
 async def setup_indexes():
     """Create travel indexes from Moss-formatted data."""
     for index_name, config in INDEXES.items():
-        with open(os.path.join(DATA_DIR, config["file"])) as f:
-            raw = json.load(f)
+        raw = await asyncio.to_thread(_load_json, os.path.join(DATA_DIR, config["file"]))
 
         docs = [
             DocumentInfo(id=item["id"], text=item["text"], metadata=item.get("metadata", {}))

@@ -20,8 +20,8 @@ import warnings
 
 import pytest
 import pytest_asyncio
-
 from moss import DocumentInfo, MossClient, QueryOptions
+
 from tests.constants import (
     TEST_DOCUMENTS,
     TEST_MODEL_ID,

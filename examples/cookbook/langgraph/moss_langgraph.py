@@ -98,10 +98,12 @@ def build_moss_graph(
                 ("system", SYSTEM_PROMPT),
                 (
                     "human",
-                    "Question:\n"
-                    f"{state['query']}\n\n"
-                    "Retrieved Moss context:\n"
-                    f"{state.get('retrieval_context', 'No retrieval context available.')}",
+                    (
+                        "Question:\n"
+                        f"{state['query']}\n\n"
+                        "Retrieved Moss context:\n"
+                        f"{state.get('retrieval_context', 'No retrieval context available.')}"
+                    ),
                 ),
             ]
         )

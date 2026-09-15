@@ -1,11 +1,16 @@
-from typing import Any, List, Optional
-from pydantic import Field, PrivateAttr
-from langchain_core.retrievers import BaseRetriever
-from langchain_core.callbacks import CallbackManagerForRetrieverRun, AsyncCallbackManagerForRetrieverRun
+import asyncio
+from typing import Any
+
+from langchain_core.callbacks import (
+    AsyncCallbackManagerForRetrieverRun,
+    CallbackManagerForRetrieverRun,
+)
 from langchain_core.documents import Document
+from langchain_core.retrievers import BaseRetriever
 from langchain_core.tools import Tool
 from moss import MossClient, QueryOptions
-import asyncio
+from pydantic import Field, PrivateAttr
+
 
 class MossRetriever(BaseRetriever):
     """Moss semantic search retriever."""
@@ -30,7 +35,7 @@ class MossRetriever(BaseRetriever):
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Synchronous retrieval. 
         Note: This will fail if called from a running event loop (like a Jupyter notebook).
         In such cases, use `ainvoke` instead.
@@ -43,11 +48,11 @@ class MossRetriever(BaseRetriever):
                     "MossRetriever.invoke() cannot be called from a running event loop (e.g., in a Jupyter notebook). "
                     "Please use 'await MossRetriever.ainvoke()' instead."
                 ) from e
-            raise e
+            raise
 
     async def _aget_relevant_documents(
-        self, query: str, *, run_manager: Optional[AsyncCallbackManagerForRetrieverRun] = None
-    ) -> List[Document]:
+        self, query: str, *, run_manager: AsyncCallbackManagerForRetrieverRun | None = None
+    ) -> list[Document]:
         """Asynchronous retrieval from Moss."""
         await self._ensure_loaded()
         
