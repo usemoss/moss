@@ -12,6 +12,7 @@ from .commands.doc import doc_app
 from .commands.index import index_app
 from .commands.init_cmd import init_command
 from .commands.job import job_app
+from .commands.playground import playground_command
 from .commands.profile import profile_app
 from .commands.search import query_command
 from .commands.sync import sync_command
@@ -39,6 +40,7 @@ app.command(name="version")(version_command)
 app.command(name="validate")(validate_command)
 app.command(name="sync")(sync_command)
 app.command(name="completions")(completions_command)
+app.command(name="playground")(playground_command)
 
 
 @app.callback()
