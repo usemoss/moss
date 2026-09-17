@@ -22,6 +22,8 @@ dev = [
     "opencv-python>=4.11.0.86",
     "python-dotenv>=1.2.1",
     "ruff>=0.1.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23.0",
 ]
 
 [tool.ruff]
@@ -46,6 +48,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "examples/*.py" = ["E501"]
 "src/pipecat_moss/moss_index_processor.py" = ["E501"]
+"tests/**/*.py" = ["D101", "D102", "D103", "D107"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
