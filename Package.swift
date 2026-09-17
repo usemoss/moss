@@ -1,4 +1,29 @@
 // swift-tools-version: 5.9
+//
+// Moss iOS SDK — Swift Package Manager manifest.
+//
+// The `Moss` library wraps the precompiled `MossC` xcframework hosted as a
+// GitHub Release asset on this repo. Xcode downloads the binary on first
+// resolve, verifies the SHA-256 checksum below, and links it into the
+// consuming target.
+//
+// To consume from another package or app:
+//
+//     dependencies: [
+//         .package(url: "https://github.com/usemoss/moss", from: "0.4.0"),
+//     ],
+//     targets: [
+//         .target(name: "YourTarget", dependencies: [
+//             .product(name: "Moss", package: "moss"),
+//         ]),
+//     ]
+//
+// Or, in Xcode: File ▸ Add Package Dependencies ▸ https://github.com/usemoss/moss
+//
+// The Swift wrapper sources live under `sdks/swift/Sources/Moss/`. The
+// xcframework binary is not committed to this repo — it ships as a release
+// asset. Bump both the URL tag segment and the checksum together on every
+// new tag.
 import PackageDescription
 
 let package = Package(
@@ -10,18 +35,12 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "MossC",
-            url: "https://github.com/usemoss/moss/releases/download/v0.6.3/Moss.xcframework.zip",
-            checksum: "b9d8ea7b6f4c3f6ed0f5f0a44684915f69e3339d1655fb97627662faf73b4a11"
-        ),
-        .target(
-            name: "MossRuntimeBridge",
-            dependencies: ["MossC"],
-            path: "sdks/swift/Sources/MossRuntimeBridge",
-            publicHeadersPath: "include"
+            url: "https://github.com/usemoss/moss/releases/download/v0.6.2/Moss.xcframework.zip",
+            checksum: "db6bffcd27fec51ad275e27777f2037746a173c5c3e05f1b8d67981229b9e7d1"
         ),
         .target(
             name: "Moss",
-            dependencies: ["MossC", "MossRuntimeBridge"],
+            dependencies: ["MossC"],
             path: "sdks/swift/Sources/Moss"
         ),
     ]

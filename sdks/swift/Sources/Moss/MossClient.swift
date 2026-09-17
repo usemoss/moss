@@ -1,6 +1,5 @@
 import Foundation
 import MossC
-import MossRuntimeBridge
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -250,7 +249,6 @@ public final class MossClient: @unchecked Sendable {
     // ── Operations ───────────────────────────────────────────────────
 
     public func loadIndex(_ name: String, options: LoadIndexOptions = LoadIndexOptions()) async throws {
-        try await requireIdentityBoundInferenceIfFoundation(name)
         let opts = options
         try await Task.detached { [self] in
             let h = try borrowHandle()
@@ -282,135 +280,40 @@ public final class MossClient: @unchecked Sendable {
         }.value
     }
 
-    /// True when the linked native runtime exposes the multi-index C API.
-    /// An xcframework built before that API returns `false` and every
-    /// multi-index call fails closed with `MossError(code: -7)`.
-    public static var multiIndexAPIAvailable: Bool {
-        moss_runtime_bridge_multi_index_available() != 0
-    }
-
-    /// Best-effort bulk load. `options` applies to every name; indexes that
-    /// load are retained even when others fail, and per-name errors come back
-    /// in `LoadIndexesResult.failed`.
-    public func loadIndexes(
-        _ names: [String],
-        options: LoadIndexOptions = LoadIndexOptions()
-    ) async throws -> LoadIndexesResult {
-        try Self.requireMultiIndexAPI()
-        let opts = options
-        return try await Task.detached { [self] () throws -> LoadIndexesResult in
-            let h = try borrowHandle()
-            defer { returnHandle() }
-            return try withCStringArray(names) { ptrs in
-                try withOptionalCString(opts.cachePath) { cachePath in
-                    var nativeOpts = MossLoadIndexOptions(
-                        auto_refresh: opts.autoRefresh,
-                        polling_interval_secs: opts.pollingIntervalSeconds,
-                        cache_path: cachePath
-                    )
-                    var raw: UnsafeMutableRawPointer?
-                    let r = moss_runtime_bridge_client_load_indexes(
-                        UnsafeMutableRawPointer(h),
-                        ptrs,
-                        UInt(names.count),
-                        &nativeOpts,
-                        &raw
-                    )
-                    defer {
-                        if let raw { moss_runtime_bridge_free_load_indexes_result(raw) }
-                    }
-                    try Self.throwIfErr(r)
-                    guard let raw else { throw Self.lastError(code: -7) }
-                    return Self.parseLoadIndexesResult(raw)
-                }
-            }
-        }.value
-    }
-
-    /// Bulk unload. Names that are not loaded are ignored.
-    public func unloadIndexes(_ names: [String]) async throws {
-        try Self.requireMultiIndexAPI()
-        try await Task.detached { [self] in
-            let h = try borrowHandle()
-            defer { returnHandle() }
-            try withCStringArray(names) { ptrs in
-                let r = moss_runtime_bridge_client_unload_indexes(
-                    UnsafeMutableRawPointer(h),
-                    ptrs,
-                    UInt(names.count)
-                )
-                try Self.throwIfErr(r)
-            }
-        }.value
-    }
-
-    /// Search across several loaded indexes that share one embedding model.
-    /// `options.topK` is the global cap over the merged result (10 when
-    /// unset), and every returned `QueryResult` carries the `indexName` it
-    /// came from.
-    ///
-    /// `options.alpha` keeps its single-index meaning: 1.0 embedding-only,
-    /// 0.0 keyword-only (no embedding is computed), anything between fuses
-    /// the two with reciprocal rank fusion.
-    public func queryMultiIndex(
-        _ names: [String],
-        _ query: String,
-        options: QueryOptions = QueryOptions()
-    ) async throws -> SearchResult {
-        guard !names.isEmpty else {
-            throw MossError(code: -2, message: "names must contain at least one index name")
-        }
-        try Self.requireMultiIndexAPI()
-        try MossSession.requireIdentityBoundTextInference()
-        let opts = options
-        let filterJson = try Self.resolveFilterJson(opts)
-        return try await Task.detached { [self] () throws -> SearchResult in
-            let h = try borrowHandle()
-            defer { returnHandle() }
-            return try withCStringArray(names) { ptrs in
-                try query.withCString { q in
-                    try withOptionalCString(filterJson) { filter in
-                        var nativeOpts = Self.nativeQueryOptions(opts, topK: opts.explicitTopK ?? 10, filter: filter)
-                        var raw: UnsafeMutableRawPointer?
-                        let r = moss_runtime_bridge_client_query_multi_index(
-                            UnsafeMutableRawPointer(h),
-                            ptrs,
-                            UInt(names.count),
-                            q,
-                            &nativeOpts,
-                            &raw
-                        )
-                        defer {
-                            if let raw {
-                                moss_free_search_result(raw.assumingMemoryBound(to: MossSearchResult.self))
-                            }
-                        }
-                        try Self.throwIfErr(r)
-                        guard let raw else { throw Self.lastError(code: -7) }
-                        return Self.parseSearchResult(
-                            raw.assumingMemoryBound(to: MossSearchResult.self).pointee
-                        )
-                    }
-                }
-            }
-        }.value
-    }
-
     public func query(
         _ indexName: String,
         _ query: String,
         options: QueryOptions = QueryOptions()
     ) async throws -> SearchResult {
-        try MossSession.requireIdentityBoundTextInference()
         let opts = options
-        let filterJson = try Self.resolveFilterJson(opts)
+        // Validate topK eagerly so the caller gets a descriptive error
+        // instead of `UInt(opts.topK)` trapping on negatives.
+        guard opts.topK >= 0 else {
+            throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
+        }
+        // Typed filter takes precedence over the legacy JSON string; surface an
+        // encode failure rather than silently dropping the filter. (Parent
+        // grouping is a session-only feature and is ignored here.)
+        var filterJson = opts.filterJson
+        if let f = opts.filter {
+            guard let encoded = f.encoded() else {
+                throw MossError(code: -2, message: "could not encode metadata filter")
+            }
+            filterJson = encoded
+        }
         return try await Task.detached { [self] () throws -> SearchResult in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try indexName.withCString { iname in
                 try query.withCString { q in
                     try withOptionalCString(filterJson) { filter in
-                        var nativeOpts = Self.nativeQueryOptions(opts, topK: opts.topK, filter: filter)
+                        var nativeOpts = MossQueryOptions(
+                            top_k: UInt(opts.topK),
+                            alpha: opts.alpha,
+                            filter_json: filter,
+                            embedding: nil,
+                            embedding_dim: 0
+                        )
                         var result: UnsafeMutablePointer<MossSearchResult>?
                         let r = moss_client_query(h, iname, q, &nativeOpts, &result)
                         try Self.throwIfErr(r)
@@ -472,8 +375,7 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func refreshIndex(_ name: String) async throws -> RefreshResult {
-        try await requireIdentityBoundInferenceIfFoundation(name)
-        return try await Task.detached { [self] () throws -> RefreshResult in
+        try await Task.detached { [self] () throws -> RefreshResult in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try name.withCString { cname in
@@ -643,25 +545,23 @@ public final class MossClient: @unchecked Sendable {
         _ name: String,
         options: SessionOptions = SessionOptions()
     ) async throws -> MossSession {
-        try Self.requireSafeSessionRuntime(options: options)
         let opts = options
         return try await Task.detached { [self] () throws -> MossSession in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try name.withCString { cname in
                 try withOptionalCString(opts.modelId) { cmodel in
-                    var raw: UnsafeMutableRawPointer?
-                    let r = moss_runtime_bridge_client_session_v2(
-                        UnsafeMutableRawPointer(h),
-                        cname,
-                        cmodel,
-                        opts.vectorQuantization.rawValue,
-                        opts.autoLoadOnInit ? 0 : 1,
-                        &raw
+                    var nativeOpts = MossSessionOptions(
+                        model_id: cmodel,
+                        vector_quantization: opts.vectorQuantization.rawValue,
+                        // C ABI field is uint8_t: 1 = skip auto-load, 0 = keep it.
+                        skip_auto_load_on_init: opts.autoLoadOnInit ? 0 : 1
                     )
+                    var raw: OpaquePointer?
+                    let r = moss_client_session(h, cname, &nativeOpts, &raw)
                     try Self.throwIfErr(r)
                     guard let raw else { throw Self.lastError(code: -7) }
-                    return MossSession(takingOwnershipOf: OpaquePointer(raw))
+                    return MossSession(takingOwnershipOf: raw)
                 }
             }
         }.value
@@ -674,79 +574,6 @@ public final class MossClient: @unchecked Sendable {
     }
 
     // ── Internals ────────────────────────────────────────────────────
-
-    static func requireSafeSessionRuntime(
-        options: SessionOptions,
-        supported: Bool = MossIdentityBoundSessionAPI.supportsProvenanceSafeSessionCreation,
-        identityBoundAPIAvailable: Bool = MossIdentityBoundSessionAPI.shared != nil
-    ) throws {
-        guard identityBoundAPIAvailable else {
-            throw MossError(
-                code: -5,
-                message: "This Moss native runtime cannot safely open sessions because its identity-bound inference API is incomplete"
-            )
-        }
-        if options.modelId == "custom" && !options.autoLoadOnInit { return }
-        guard supported else {
-            throw MossError(
-                code: -5,
-                message: "This Moss native runtime cannot safely open the requested session because it cannot prove creation-time cloud auto-load suppression"
-            )
-        }
-    }
-
-    /// Validate a client query's options and resolve the filter JSON the
-    /// native call should use. `topK` is checked eagerly so the caller gets a
-    /// descriptive error instead of `UInt(opts.topK)` trapping on negatives.
-    /// The typed filter takes precedence over the legacy JSON string; an
-    /// encode failure is surfaced rather than silently dropping the filter.
-    /// (Parent grouping is a session-only feature and is ignored here.)
-    private static func resolveFilterJson(_ opts: QueryOptions) throws -> String? {
-        guard opts.topK >= 0 else {
-            throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
-        }
-        guard let f = opts.filter else { return opts.filterJson }
-        guard let encoded = f.encoded() else {
-            throw MossError(code: -2, message: "could not encode metadata filter")
-        }
-        return encoded
-    }
-
-    /// Build the native options for a client query. `filter` is the pointer
-    /// produced by `withOptionalCString(resolveFilterJson(opts))`; client
-    /// queries never take the explicit-embedding path.
-    private static func nativeQueryOptions(
-        _ opts: QueryOptions,
-        topK: Int,
-        filter: UnsafePointer<CChar>?
-    ) -> MossQueryOptions {
-        MossQueryOptions(
-            top_k: UInt(topK),
-            alpha: opts.alpha,
-            filter_json: filter,
-            embedding: nil,
-            embedding_dim: 0
-        )
-    }
-
-    private static func requireMultiIndexAPI() throws {
-        guard multiIndexAPIAvailable else {
-            throw MossError(
-                code: -7,
-                message: "The linked Moss runtime does not provide the multi-index API (moss_client_query_multi_index); update Moss.xcframework"
-            )
-        }
-    }
-
-    private func requireIdentityBoundInferenceIfFoundation(
-        _ indexName: String
-    ) async throws {
-        guard !MossSession.supportsIdentityBoundTextInference else { return }
-        let info = try await getIndex(indexName)
-        if info.model.id != "custom" {
-            try MossSession.requireIdentityBoundTextInference(supported: false)
-        }
-    }
 
     /// Reserve the native handle for the duration of a single operation.
     /// Increments `inFlight` so a concurrent `close()` blocks until the
@@ -834,17 +661,14 @@ public final class MossClient: @unchecked Sendable {
         docs.reserveCapacity(count)
         if let buf = r.docs {
             for i in 0..<count {
-                let docPtr = buf.advanced(by: i)
-                let d = docPtr.pointee
-                let indexName = moss_runtime_bridge_query_result_doc_index_name(docPtr)
+                let d = buf.advanced(by: i).pointee
                 docs.append(
                     QueryResult(
                         id: cstr(d.id),
                         score: d.score,
                         text: cstr(d.text),
                         metadata: parseMetadata(d.metadata, count: d.metadata_count),
-                        payload: d.payload.map { String(cString: $0) },
-                        indexName: indexName.map { String(cString: $0) }
+                        payload: d.payload.map { String(cString: $0) }
                     )
                 )
             }
@@ -854,29 +678,6 @@ public final class MossClient: @unchecked Sendable {
             query: cstr(r.query),
             timeMs: r.time_taken_ms
         )
-    }
-
-    /// Read a bridge-owned `MossLoadIndexesResult` through the `void *`
-    /// accessors. The caller still owns `raw` and must free it.
-    static func parseLoadIndexesResult(_ raw: UnsafeMutableRawPointer) -> LoadIndexesResult {
-        let loadedCount = Int(moss_runtime_bridge_load_indexes_loaded_count(raw))
-        var loaded: [String] = []
-        loaded.reserveCapacity(loadedCount)
-        for i in 0..<loadedCount {
-            guard let name = moss_runtime_bridge_load_indexes_loaded_at(raw, UInt(i)) else { continue }
-            loaded.append(String(cString: name))
-        }
-
-        let failedCount = Int(moss_runtime_bridge_load_indexes_failed_count(raw))
-        var failed: [String: String] = [:]
-        failed.reserveCapacity(failedCount)
-        for i in 0..<failedCount {
-            guard let name = moss_runtime_bridge_load_indexes_failed_name_at(raw, UInt(i)) else { continue }
-            let reason = moss_runtime_bridge_load_indexes_failed_error_at(raw, UInt(i))
-            failed[String(cString: name)] = reason.map { String(cString: $0) } ?? "unknown error"
-        }
-
-        return LoadIndexesResult(loaded: loaded, failed: failed)
     }
 
     /// Decode a `MossMetadataEntry *` array into a `[String: String]`.

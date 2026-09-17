@@ -11,21 +11,16 @@ public struct QueryResult: Sendable {
     /// Verbatim structured payload stored at index time (e.g. JSON), returned
     /// unchanged. `nil` when the document has none. Not embedded or searched.
     public let payload: String?
-    /// Index this document came from. Set by `MossClient.queryMultiIndex`;
-    /// `nil` for single-index queries.
-    public let indexName: String?
 
     public init(
         id: String, score: Float, text: String,
-        metadata: [String: String]? = nil, payload: String? = nil,
-        indexName: String? = nil
+        metadata: [String: String]? = nil, payload: String? = nil
     ) {
         self.id = id
         self.score = score
         self.text = text
         self.metadata = metadata
         self.payload = payload
-        self.indexName = indexName
     }
 
     /// Decode `payload` as a `Decodable` type. Returns `nil` when there is no payload.
@@ -41,26 +36,8 @@ public struct SearchResult: Sendable {
     public let timeMs: UInt64
 }
 
-/// Outcome of `MossClient.loadIndexes`. Best-effort: indexes that loaded are
-/// retained even when others fail.
-public struct LoadIndexesResult: Sendable {
-    /// Names that are now loaded.
-    public let loaded: [String]
-    /// Name to error message for the indexes that could not be loaded.
-    public let failed: [String: String]
-
-    public init(loaded: [String], failed: [String: String]) {
-        self.loaded = loaded
-        self.failed = failed
-    }
-}
-
 public struct QueryOptions: Sendable {
-    public var topK: Int {
-        get { explicitTopK ?? 5 }
-        set { explicitTopK = newValue }
-    }
-    private(set) var explicitTopK: Int?
+    public var topK: Int
     /// Hybrid weight between dense (1.0) and sparse (0.0) scores.
     public var alpha: Float
     /// Typed metadata filter (preferred). Serialized internally; when set it
@@ -73,10 +50,10 @@ public struct QueryOptions: Sendable {
     public var groupByParent: ParentGrouping?
 
     public init(
-        topK: Int? = nil, alpha: Float = 0.8, filter: Filter? = nil,
+        topK: Int = 5, alpha: Float = 0.8, filter: Filter? = nil,
         filterJson: String? = nil, groupByParent: ParentGrouping? = nil
     ) {
-        self.explicitTopK = topK
+        self.topK = topK
         self.alpha = alpha
         self.filter = filter
         self.filterJson = filterJson
@@ -200,21 +177,15 @@ public struct SessionOptions: Sendable {
     /// When `true` (the default), `MossClient.session(_:)` auto-loads the named
     /// index from the cloud at creation time (resolve + download + hydrate)
     /// before returning. Set `false` for a local-only session: creation returns
-    /// immediately and you populate it yourself - e.g. restore from the on-disk
+    /// immediately and you populate it yourself — e.g. restore from the on-disk
     /// cache first and only hit the cloud on a miss:
     ///
     /// ```swift
-    /// let session = try await client.session(
-    ///     name,
-    ///     options: SessionOptions(modelId: "custom", autoLoadOnInit: false)
-    /// )
+    /// let session = try await client.session(name, options: SessionOptions(autoLoadOnInit: false))
     /// if try await session.loadFromDisk(cachePath: cachePath) > 0 { return session }
     /// _ = try await session.loadIndex(name, options: LoadIndexOptions())
     /// try await session.save(toCachePath: cachePath)
     /// ```
-    ///
-    /// Runtimes without provenance-safe creation support permit this mode only
-    /// with `modelId: "custom"`; foundation/default model sessions fail closed.
     ///
     /// - Warning: with `false`, the session starts empty until you load it.
     ///   `addDocs` only mutates the in-memory session, but calling `pushIndex()`
