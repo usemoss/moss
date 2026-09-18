@@ -9,14 +9,14 @@ from typing import Any, Dict, List, Optional
 import httpx
 from moss_core import (
     CLOUD_API_MANAGE_URL,
-    ManageClient,
     DocumentInfo,
     GetDocumentsOptions,
     IndexInfo,
     IndexManager,
+    JobStatusResponse,
+    ManageClient,
     MutationOptions,
     MutationResult,
-    JobStatusResponse,
     QueryOptions,
     QueryResultDocumentInfo,
     SearchResult,
@@ -61,6 +61,8 @@ class MossClient:
     """
 
     DEFAULT_MODEL_ID = "moss-minilm"
+    DEFAULT_TOP_K = 5
+    DEFAULT_ALPHA = 0.8
 
     def __init__(self, project_id: str, project_key: str) -> None:
         self._project_id = project_id
@@ -188,6 +190,9 @@ class MossClient:
         If the index is loaded locally (via load_index), queries run in-memory.
         Otherwise, falls back to the cloud query API.
 
+        Default ``top_k`` is 5 on both the local and cloud paths so result
+        cardinality stays consistent whether or not ``load_index()`` was called.
+
         Args:
             options: Query options (top_k, alpha, embedding, filter). Example filter:
                 QueryOptions(filter={"$and": [
@@ -218,10 +223,10 @@ class MossClient:
     ) -> SearchResult:
         top_k = getattr(options, "top_k", None)
         if top_k is None:
-            top_k = 5
+            top_k = self.DEFAULT_TOP_K
         alpha = getattr(options, "alpha", None)
         if alpha is None:
-            alpha = 0.8
+            alpha = self.DEFAULT_ALPHA
         query_embedding = getattr(options, "embedding", None)
         filter = getattr(options, "filter", None)
 
@@ -260,7 +265,9 @@ class MossClient:
         options: Optional[QueryOptions],
     ) -> SearchResult:
         """Fallback: query via the cloud API when the index is not loaded locally."""
-        top_k = getattr(options, "top_k", None) or 10
+        top_k = getattr(options, "top_k", None)
+        if top_k is None:
+            top_k = self.DEFAULT_TOP_K
         query_embedding = getattr(options, "embedding", None)
 
         request_body: Dict[str, Any] = {
