@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from moss import MossClient
 
 
@@ -24,7 +23,7 @@ def raw_mocks():
 
 class TestConstructor:
     def test_manage_client_created_with_manage_url(self, raw_mocks):
-        mock_manage_cls, mock_mgr_cls = raw_mocks
+        mock_manage_cls, _ = raw_mocks
         MossClient("pid", "pkey")
 
         mock_manage_cls.assert_called_once()
@@ -34,7 +33,7 @@ class TestConstructor:
         assert "/v1/manage" in args[2]
 
     def test_index_manager_created_with_manage_url(self, raw_mocks):
-        mock_manage_cls, mock_mgr_cls = raw_mocks
+        _, mock_mgr_cls = raw_mocks
         MossClient("pid", "pkey")
 
         mock_mgr_cls.assert_called_once()

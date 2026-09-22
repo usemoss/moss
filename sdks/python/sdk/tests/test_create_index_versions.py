@@ -8,25 +8,25 @@ import random
 import string
 import time
 from dataclasses import dataclass
-from importlib.metadata import PackageNotFoundError, version as pkg_version
-from typing import List, Optional
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
 
 import pytest
-
 from moss import DocumentInfo, MossClient
 
 from .constants import TEST_MODEL_ID, TEST_PROJECT_ID, TEST_PROJECT_KEY
+
 
 # Define the structure to hold benchmark results
 @dataclass
 class BenchResult:
     doc_count: int
-    time_ms: Optional[float]
+    time_ms: float | None
     success: bool
     error: str = ""
 
 # Generate dummy documents with random deterministic text of fixed length 200
-def _gen_docs(n: int, seed: int = 1337) -> List[DocumentInfo]:
+def _gen_docs(n: int, seed: int = 1337) -> list[DocumentInfo]:
     """Generate n dummy documents."""
     rng = random.Random(seed)
     alphabet = string.ascii_letters + "     "

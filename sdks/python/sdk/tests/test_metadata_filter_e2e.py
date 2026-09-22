@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import pytest
 import pytest_asyncio
-
 from moss import DocumentInfo, MossClient, QueryOptions
+
 from tests.constants import (
     TEST_MODEL_ID,
     TEST_PROJECT_ID,

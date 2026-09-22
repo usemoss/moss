@@ -54,7 +54,7 @@ class BenchmarkResult:
     def _percentile(self, p: float) -> float:
         if not self.latencies_ms:
             return 0.0
-        idx = max(int(math.ceil(p * self.count)) - 1, 0)
+        idx = max(math.ceil(p * self.count) - 1, 0)
         return self.latencies_ms[idx]
 
     def summary(self) -> str:

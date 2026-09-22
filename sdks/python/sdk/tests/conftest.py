@@ -6,13 +6,11 @@ Loads environment variables before any tests are collected.
 import os
 import warnings
 from pathlib import Path
-
 from unittest.mock import MagicMock, patch
-
-from moss import MossClient
 
 import pytest
 from dotenv import load_dotenv
+from moss import MossClient
 
 # Load .env from project root.
 project_env_path = Path(__file__).parent.parent / ".env"
@@ -38,9 +36,7 @@ def _has_real_cloud_creds() -> bool:
     project_key = os.getenv("MOSS_TEST_PROJECT_KEY", "")
     if not project_id or not project_key:
         return False
-    if project_id == "test-project-id" or project_key == "test-project-key":
-        return False
-    return True
+    return not (project_id == "test-project-id" or project_key == "test-project-key")
 
 
 def pytest_configure(config):

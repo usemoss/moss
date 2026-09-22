@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import importlib
 import os
-from pathlib import Path
 import sys
 import types
 import unittest
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
@@ -187,9 +187,11 @@ class TestSearchMoss(unittest.IsolatedAsyncioTestCase):
 
 class TestEnvironmentValidation(unittest.TestCase):
     def test_missing_env_vars_are_reported_together(self):
-        with patch.dict(os.environ, {}, clear=True):
-            with self.assertRaisesRegex(RuntimeError, "MOSS_PROJECT_ID"):
-                example._require_env_vars()
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            self.assertRaisesRegex(RuntimeError, "MOSS_PROJECT_ID"),
+        ):
+            example._require_env_vars()
 
         try:
             with patch.dict(os.environ, {}, clear=True):

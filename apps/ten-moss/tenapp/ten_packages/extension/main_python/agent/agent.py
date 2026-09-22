@@ -1,10 +1,13 @@
 import asyncio
 import json
-from typing import Awaitable, Callable, Optional
-from .llm_exec import LLMExec
-from ten_runtime import AsyncTenEnv, Cmd, CmdResult, Data, StatusCode
+from collections.abc import Awaitable, Callable
+from typing import Optional
+
 from ten_ai_base.types import LLMToolMetadata
+from ten_runtime import AsyncTenEnv, Cmd, CmdResult, Data, StatusCode
+
 from .events import *
+from .llm_exec import LLMExec
 
 
 class Agent:
@@ -22,9 +25,9 @@ class Agent:
         self._llm_queue: asyncio.Queue[LLMResponseEvent] = asyncio.Queue()
 
         # Current consumer tasks
-        self._asr_consumer: Optional[asyncio.Task] = None
-        self._llm_consumer: Optional[asyncio.Task] = None
-        self._llm_active_task: Optional[asyncio.Task] = (
+        self._asr_consumer: asyncio.Task | None = None
+        self._llm_consumer: asyncio.Task | None = None
+        self._llm_active_task: asyncio.Task | None = (
             None  # currently running handler
         )
 
@@ -44,7 +47,7 @@ class Agent:
     def on(
         self,
         event_type: AgentEvent,
-        handler: Callable[[AgentEvent], Awaitable] = None,
+        handler: Callable[[AgentEvent], Awaitable] | None = None,
     ):
         """
         Register a callback for a given event type.

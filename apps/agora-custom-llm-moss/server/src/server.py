@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 
 from fastapi import FastAPI
-
 from llm import create_app, load_server_env
 
 load_server_env()

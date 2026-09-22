@@ -40,7 +40,6 @@ import os
 import re
 import sys
 import tempfile
-import time
 from pathlib import Path
 
 import httpx
@@ -145,10 +144,10 @@ def record_fixed(seconds: int = 5) -> Path:
         print(f"ERROR: microphone unavailable: {e}", file=sys.stderr)
         sys.exit(1)
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    sf.write(tmp.name, audio, SAMPLE_RATE, subtype="PCM_16")
-    tmp.close()
-    return Path(tmp.name)
+    fd, wav_path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    sf.write(wav_path, audio, SAMPLE_RATE, subtype="PCM_16")
+    return Path(wav_path)
 
 
 # -- Recording: VAD (voice activity detection) --------------------------------
@@ -225,10 +224,10 @@ def record_vad() -> Path:
     audio_bytes = b"".join(frames_recorded)
     audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    sf.write(tmp.name, audio_array, SAMPLE_RATE, subtype="PCM_16")
-    tmp.close()
-    return Path(tmp.name)
+    fd, wav_path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    sf.write(wav_path, audio_array, SAMPLE_RATE, subtype="PCM_16")
+    return Path(wav_path)
 
 
 # -- Speech to text (Sarvam STT) ----------------------------------------------
@@ -350,9 +349,8 @@ def speak(answer: str) -> None:
 
     wav_bytes = base64.b64decode(audios[0])
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    tmp.write(wav_bytes)
-    tmp.close()
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp.write(wav_bytes)
 
     try:
         import simpleaudio as sa
@@ -458,11 +456,11 @@ async def live_loop(
         except httpx.HTTPStatusError as e:
             print(f"\nAPI error {e.response.status_code}: {e.response.text[:200]}")
             print("Retrying next turn ...")
-            time.sleep(1)
+            await asyncio.sleep(1)
         except Exception as e:
             print(f"\nERROR: {e}")
             print("Retrying next turn ...")
-            time.sleep(1)
+            await asyncio.sleep(1)
 
 
 # -- Entry --------------------------------------------------------------------

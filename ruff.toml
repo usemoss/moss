@@ -1,0 +1,40 @@
+# Repo-wide ruff settings for directories without their own ruff config
+# (packages that define [tool.ruff] in pyproject.toml, or their own ruff.toml,
+# keep using it).
+target-version = "py310"
+# Notebooks are not linted in CI (see `--extend-exclude` in ci.yml).
+extend-exclude = ["*.ipynb"]
+
+[lint]
+# Imports placed after executable setup (e.g. load_dotenv) must be marked with
+# `# noqa: E402` so the ordering is deliberate and reviewed.
+extend-select = ["E402"]
+extend-ignore = [
+    # Examples, voice agents, and E2E test cleanup deliberately catch broad
+    # exceptions so a failed retrieval or teardown never crashes the demo/run.
+    "BLE001", # blind-except
+    "S110",   # try-except-pass
+    # `logger.error(..., exc_info=True)` is equivalent to `logger.exception`.
+    "G201",   # logging-exc-info
+    # Validation of user input / loaded data raises ValueError by design.
+    "TRY004", # type-check-without-type-error
+    # Langflow and smolagents components declare `inputs`/`outputs` as
+    # class-level lists/dicts as part of their public API.
+    "RUF012", # mutable-class-default
+]
+
+[lint.per-file-ignores]
+# These tests import sibling modules after `sys.path.insert(...)`. Ruff already
+# exempts imports that follow sys.path edits, so an inline `# noqa: E402` would
+# be reported as unused (RUF100); the ignore documents the intent here instead.
+"examples/voice-agents/airline-pnr/evals/test_call_summary.py" = ["E402"]
+"examples/voice-agents/candidate-screening/evals/test_scorecards.py" = ["E402"]
+"examples/cookbook/langgraph/test_integration.py" = ["E402"]
+
+[lint.flake8-bugbear]
+# Declarative CLI/HTTP parameter defaults, not shared mutable state.
+extend-immutable-calls = [
+    "fastapi.File",
+    "typer.Argument",
+    "typer.Option",
+]

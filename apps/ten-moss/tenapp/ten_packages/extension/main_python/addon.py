@@ -5,8 +5,8 @@
 #
 from ten_runtime import (
     Addon,
-    register_addon_as_extension,
     TenEnv,
+    register_addon_as_extension,
 )
 
 

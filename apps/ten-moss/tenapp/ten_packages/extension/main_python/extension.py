@@ -1,8 +1,11 @@
 import json
 import time
+import uuid
 from typing import Literal
 
-from .agent.decorators import agent_event_handler
+from ten_ai_base.const import CMD_PROPERTY_RESULT
+from ten_ai_base.types import LLMToolMetadata, LLMToolMetadataParameter
+from ten_moss import MossSessionManager
 from ten_runtime import (
     AsyncExtension,
     AsyncTenEnv,
@@ -13,6 +16,7 @@ from ten_runtime import (
 )
 
 from .agent.agent import Agent
+from .agent.decorators import agent_event_handler
 from .agent.events import (
     ASRResultEvent,
     LLMResponseEvent,
@@ -20,14 +24,8 @@ from .agent.events import (
     UserJoinedEvent,
     UserLeftEvent,
 )
-from .helper import _send_cmd, _send_data, parse_sentences
 from .config import MainControlConfig
-
-from ten_moss import MossSessionManager
-from ten_ai_base.const import CMD_PROPERTY_RESULT
-from ten_ai_base.types import LLMToolMetadata, LLMToolMetadataParameter
-
-import uuid
+from .helper import _send_cmd, _send_data, parse_sentences
 
 SEARCH_KNOWLEDGE_BASE = "search_knowledge_base"
 MAX_MOSS_TOOL_CALLS = 2
@@ -219,7 +217,7 @@ class MainControlExtension(AsyncExtension):
         try:
             raw, _ = cmd.get_property_to_json(None)
             payload = json.loads(raw) if raw else {}
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.ten_env.log_error(
                 f"[MainControlExtension] tool_call payload unreadable: {exc}"
             )
@@ -280,7 +278,7 @@ class MainControlExtension(AsyncExtension):
                 f"time_taken_ms={sdk_ms} (wall_clock={took_ms:.0f}ms)"
             )
             return context
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.ten_env.log_error(
                 f"[MainControlExtension] Moss grounding failed: {exc}"
             )
