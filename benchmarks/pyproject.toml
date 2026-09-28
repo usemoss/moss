@@ -1,0 +1,26 @@
+# Local (in-process) benchmarks; see LOCAL_BENCHMARKS.md. Exact pins: the versions behind benchmark-reference-results.md.
+# The cloud benchmarks (run_all.py) still use requirements.txt.
+[project]
+name = "moss-local-benchmarks"
+version = "0.1.0"
+requires-python = "==3.12.*"
+dependencies = [
+    "chromadb==1.5.9",
+    "fastembed==0.8.0",
+    "inferedge-moss-core==0.23.1",
+    "lancedb==0.38.0",
+    "moss==1.11.0",
+    "numpy==2.5.3",
+    "onnx==1.22.0",
+    "onnxruntime==1.30.0",
+    "pypdf==6.18.1",
+    "python-dotenv==1.2.3",
+    "qdrant-client==1.19.0",
+    "requests==2.34.2",
+    "tokenizers==0.23.2",
+]
+
+[tool.uv]
+package = false
+# Resolution cutoff that reproduces the measured environment exactly (uv.lock is committed).
+exclude-newer = "2026-09-14T00:00:00Z"

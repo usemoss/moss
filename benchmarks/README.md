@@ -4,6 +4,11 @@ Reproducible end-to-end latency benchmarks for semantic search.
 **All measurements include embedding generation time** — the full cost
 a developer actually pays per query.
 
+## Local benchmarks
+
+Everything in-process on one machine (Moss sessions vs ChromaDB, LanceDB and Qdrant local mode, on-device
+embeddings), including the Moss ingest-memory measurements: see [LOCAL_BENCHMARKS.md](LOCAL_BENCHMARKS.md).
+
 ## What's being measured
 
 Each benchmark times the complete query cycle:

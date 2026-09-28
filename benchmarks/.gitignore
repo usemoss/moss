@@ -1,3 +1,11 @@
 .env
 __pycache__/
 embedding_server/__pycache__/
+
+# Local benchmarks: model caches, run outputs, fetched PDFs
+.fastembed_cache/
+.chroma_cache/
+.lancedb/
+.moss-sessions/
+results/
+data/arxiv/
