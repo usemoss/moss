@@ -9,7 +9,7 @@ Moss Code Search is a VS Code extension published by Moss. This policy describes
 - **Your source code is indexed locally on your machine** by default.
 - **Optional cloud sync** uploads locally computed embeddings and chunk metadata to your Moss Cloud project when enabled.
 - **Moss API credentials** are stored in VS Code Secret Storage on your device.
-- The Moss SDK may emit **usage telemetry** unless disabled (see below).
+- The Moss SDK sends **usage telemetry** (see below).
 
 ## Data stored on your device
 
@@ -35,7 +35,7 @@ Moss does **not** re-embed your documents server-side during `pushIndex`; embedd
 
 The `@moss-dev/moss` SDK sends usage telemetry (for example during `session()` / `loadIndex()`). Each event carries a stable per-device id: a random UUID generated once and persisted locally, not a hardware identifier and not personal data. It is used to count active devices for your Moss project.
 
-Usage telemetry cannot be disabled. The `MOSS_DISABLE_TELEMETRY` environment variable was removed in `@moss-dev/moss` 1.8.0 and has no effect.
+Usage telemetry cannot be disabled.
 
 ## Data we do not collect
 
