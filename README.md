@@ -9,8 +9,8 @@
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![PyPI](https://img.shields.io/pypi/v/moss?color=deepgreen)](https://pypi.org/project/moss/)
 [![PyPI downloads](https://static.pepy.tech/personalized-badge/inferedge-moss-core?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi+downloads)](https://pepy.tech/project/inferedge-moss-core)
-[![npm](https://img.shields.io/npm/v/@moss-dev/moss?color=deepgreen)](https://www.npmjs.com/package/@moss-dev/moss)
-[![npm downloads](https://img.shields.io/npm/dt/@moss-dev/moss?label=npm+downloads&color=blue)](https://www.npmjs.com/package/@moss-dev/moss)
+[![npm](https://img.shields.io/npm/v/@moss-js/moss?color=deepgreen)](https://www.npmjs.com/package/@moss-js/moss)
+[![npm downloads](https://img.shields.io/npm/dt/@moss-js/moss?label=npm+downloads&color=blue)](https://www.npmjs.com/package/@moss-js/moss)
 [![Discord](https://img.shields.io/discord/1433962929526542346?logo=discord&logoColor=white&label=Discord&color=7B2FBE)](https://moss.link/discord)
 
 [Website](https://moss.dev) · [Docs](https://docs.moss.dev) · [Discord](https://moss.link/discord) · [Blog](https://moss.dev/blog)
@@ -60,11 +60,11 @@ for doc in results.docs:
 ### TypeScript
 
 ```bash
-npm install @moss-dev/moss
+npm install @moss-js/moss
 ```
 
 ```typescript
-import { MossClient } from "@moss-dev/moss";
+import { MossClient } from "@moss-js/moss";
 
 const client = new MossClient("your_project_id", "your_project_key");
 
@@ -263,7 +263,7 @@ Once an index is loaded, queries don't leave your process - that's where the sub
 
 ### Two ways to run the runtime
 
-- **Server-side** - `moss` (Python) and `@moss-dev/moss` (Node.js 20+) embed the runtime in your backend. Use this when your agent runs on a server.
+- **Server-side** - `moss` (Python) and `@moss-js/moss` (Node.js 20+) embed the runtime in your backend. Use this when your agent runs on a server.
 - **Browser** - `@moss-dev/moss-web` is a WebAssembly build that downloads the index and runs queries entirely client-side, no server required. Use this for static sites, browser extensions, and offline-first apps. See [`examples/javascript-web/`](examples/javascript-web/).
 
 Full Python SDK source code is available at [`sdks/python/`](sdks/python/).
