@@ -116,6 +116,7 @@ public final class MossSession: @unchecked Sendable {
         _ docs: [DocumentInfo],
         upsert: Bool = true
     ) async throws -> (added: Int, updated: Int) {
+        try MossClient.requireNoNul(docIds: docs.map(\.id))
         guard MossIdentityBoundSessionAPI.shared != nil else {
             throw MossError(
                 code: -5,
@@ -140,7 +141,8 @@ public final class MossSession: @unchecked Sendable {
     /// missing ids are silently ignored.
     @discardableResult
     public func deleteDocs(_ docIds: [String]) async throws -> Int {
-        try await Task.detached { [self] () throws -> Int in
+        try MossClient.requireNoNul(docIds: docIds)
+        return try await Task.detached { [self] () throws -> Int in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try withCStringArray(docIds) { ptrs in
@@ -156,6 +158,7 @@ public final class MossSession: @unchecked Sendable {
     /// by exact id and/or a metadata predicate, optionally sorted and collapsed
     /// by parent unit. See [GetDocsOptions].
     public func getDocs(options: GetDocsOptions) async throws -> [DocumentInfo] {
+        try MossClient.requireNoNul(docIds: options.ids ?? [])
         let opts = options
         return try await Task.detached { [self] () throws -> [DocumentInfo] in
             let h = try borrowHandle()
@@ -486,6 +489,7 @@ public final class MossSession: @unchecked Sendable {
         _ indexName: String,
         options: LoadIndexOptions = LoadIndexOptions()
     ) async throws -> Int {
+        try MossClient.requireNoNul(inIndexNames: [indexName])
         let opts = options
         return try await Task.detached { [self] () throws -> Int in
             let h = try borrowHandle()

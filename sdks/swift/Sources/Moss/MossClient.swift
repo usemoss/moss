@@ -250,6 +250,7 @@ public final class MossClient: @unchecked Sendable {
     // ── Operations ───────────────────────────────────────────────────
 
     public func loadIndex(_ name: String, options: LoadIndexOptions = LoadIndexOptions()) async throws {
+        try Self.requireNoNul(inIndexNames: [name])
         try await requireIdentityBoundInferenceIfFoundation(name)
         let opts = options
         try await Task.detached { [self] in
@@ -272,6 +273,7 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func unloadIndex(_ name: String) async throws {
+        try Self.requireNoNul(inIndexNames: [name])
         try await Task.detached { [self] in
             let h = try borrowHandle()
             defer { returnHandle() }
@@ -297,6 +299,7 @@ public final class MossClient: @unchecked Sendable {
         options: LoadIndexOptions = LoadIndexOptions()
     ) async throws -> LoadIndexesResult {
         try Self.requireMultiIndexAPI()
+        try Self.requireNoNul(inIndexNames: names)
         let opts = options
         return try await Task.detached { [self] () throws -> LoadIndexesResult in
             let h = try borrowHandle()
@@ -330,6 +333,7 @@ public final class MossClient: @unchecked Sendable {
     /// Bulk unload. Names that are not loaded are ignored.
     public func unloadIndexes(_ names: [String]) async throws {
         try Self.requireMultiIndexAPI()
+        try Self.requireNoNul(inIndexNames: names)
         try await Task.detached { [self] in
             let h = try borrowHandle()
             defer { returnHandle() }
@@ -361,6 +365,7 @@ public final class MossClient: @unchecked Sendable {
             throw MossError(code: -2, message: "names must contain at least one index name")
         }
         try Self.requireMultiIndexAPI()
+        try Self.requireNoNul(inIndexNames: names)
         try MossSession.requireIdentityBoundTextInference()
         let opts = options
         let filterJson = try Self.resolveFilterJson(opts)
@@ -401,6 +406,7 @@ public final class MossClient: @unchecked Sendable {
         _ query: String,
         options: QueryOptions = QueryOptions()
     ) async throws -> SearchResult {
+        try Self.requireNoNul(inIndexNames: [indexName])
         try MossSession.requireIdentityBoundTextInference()
         let opts = options
         let filterJson = try Self.resolveFilterJson(opts)
@@ -424,7 +430,8 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func deleteIndex(_ name: String) async throws -> Bool {
-        try await Task.detached { [self] () throws -> Bool in
+        try Self.requireNoNul(inIndexNames: [name])
+        return try await Task.detached { [self] () throws -> Bool in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try name.withCString { (cname: UnsafePointer<CChar>) throws -> Bool in
@@ -437,7 +444,8 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func getIndex(_ name: String) async throws -> IndexInfo {
-        try await Task.detached { [self] () throws -> IndexInfo in
+        try Self.requireNoNul(inIndexNames: [name])
+        return try await Task.detached { [self] () throws -> IndexInfo in
             let h = try borrowHandle()
             defer { returnHandle() }
             return try name.withCString { cname in
@@ -472,6 +480,7 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func refreshIndex(_ name: String) async throws -> RefreshResult {
+        try Self.requireNoNul(inIndexNames: [name])
         try await requireIdentityBoundInferenceIfFoundation(name)
         return try await Task.detached { [self] () throws -> RefreshResult in
             let h = try borrowHandle()
@@ -523,6 +532,7 @@ public final class MossClient: @unchecked Sendable {
         docs: [DocumentInfo],
         modelId: String? = nil
     ) async throws -> MutationResult {
+        try Self.requireNoNul(inIndexNames: [name])
         let docsJson = try Self.encodeJson(docs)
         return try await Task.detached { [self] () throws -> MutationResult in
             let h = try borrowHandle()
@@ -547,6 +557,7 @@ public final class MossClient: @unchecked Sendable {
         docs: [DocumentInfo],
         upsert: Bool = true
     ) async throws -> MutationResult {
+        try Self.requireNoNul(inIndexNames: [name])
         let docsJson = try Self.encodeJson(docs)
         return try await Task.detached { [self] () throws -> MutationResult in
             let h = try borrowHandle()
@@ -565,6 +576,7 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func getDocs(_ name: String, docIds: [String]? = nil) async throws -> [DocumentInfo] {
+        try Self.requireNoNul(inIndexNames: [name])
         let idsJson: String? = try docIds.map { try Self.encodeJson($0) }
         return try await Task.detached { [self] () throws -> [DocumentInfo] in
             let h = try borrowHandle()
@@ -604,7 +616,8 @@ public final class MossClient: @unchecked Sendable {
     }
 
     public func deleteDocs(_ name: String, docIds: [String]) async throws -> MutationResult {
-        try await Task.detached { [self] () throws -> MutationResult in
+        try Self.requireNoNul(inIndexNames: [name], docIds: docIds)
+        return try await Task.detached { [self] () throws -> MutationResult in
             let h = try borrowHandle()
             defer { returnHandle() }
             // Build a const-char-pointer array; the C function takes
@@ -644,6 +657,7 @@ public final class MossClient: @unchecked Sendable {
         _ name: String,
         options: SessionOptions = SessionOptions()
     ) async throws -> MossSession {
+        try Self.requireNoNul(inIndexNames: [name])
         try Self.requireSafeSessionRuntime()
         let opts = options
         return try await Task.detached { [self] () throws -> MossSession in
@@ -675,6 +689,18 @@ public final class MossClient: @unchecked Sendable {
     }
 
     // ── Internals ────────────────────────────────────────────────────
+
+    /// Throws for a name or document id holding U+0000. libmoss reads each
+    /// string up to its first NUL, so the rest would be dropped and the call
+    /// would reach a different index or document than the one the caller named.
+    static func requireNoNul(inIndexNames names: [String] = [], docIds: [String] = []) throws {
+        if names.contains(where: { $0.utf8.contains(0) }) {
+            throw MossError(code: -2, message: "index names must not contain U+0000")
+        }
+        if docIds.contains(where: { $0.utf8.contains(0) }) {
+            throw MossError(code: -2, message: "document ids must not contain U+0000")
+        }
+    }
 
     static func requireSafeSessionRuntime(
         identityBoundAPIAvailable: Bool = MossIdentityBoundSessionAPI.shared != nil
