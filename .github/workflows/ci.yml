@@ -127,7 +127,7 @@ jobs:
       working-directory: apps/next-js
       run: npm test
 
-  vercel-sdk-test:
+  vercel-sdk-matrix:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -157,6 +157,13 @@ jobs:
     - name: Run tests
       working-directory: packages/vercel-sdk
       run: npm test
+
+  vercel-sdk-test:
+    needs: vercel-sdk-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - run: test "${{ needs.vercel-sdk-matrix.result }}" = success
 
   vitepress-plugin-test:
     runs-on: ubuntu-latest
