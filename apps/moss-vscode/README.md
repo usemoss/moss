@@ -71,4 +71,4 @@ Native modules (`@moss-dev/moss`, `@moss-dev/moss-core`) are bundled into the `.
 
 ## Privacy
 
-See [PRIVACY.md](./PRIVACY.md) for what data stays local, what syncs to Moss Cloud, and how to opt out of SDK telemetry (`MOSS_DISABLE_TELEMETRY=1`).
+See [PRIVACY.md](./PRIVACY.md) for what data stays local, what syncs to Moss Cloud, and what usage telemetry the SDK sends.

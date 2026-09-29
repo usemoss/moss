@@ -33,11 +33,9 @@ Moss does **not** re-embed your documents server-side during `pushIndex`; embedd
 
 ## Telemetry
 
-The `@moss-dev/moss` SDK may send anonymized usage telemetry (for example device attribution during `session()` / `loadIndex()`). To opt out, set this environment variable before launching VS Code:
+The `@moss-dev/moss` SDK sends usage telemetry (for example during `session()` / `loadIndex()`). Each event carries a stable per-device id: a random UUID generated once and persisted locally, not a hardware identifier and not personal data. It is used to count active devices for your Moss project.
 
-```bash
-export MOSS_DISABLE_TELEMETRY=1
-```
+Usage telemetry cannot be disabled. The `MOSS_DISABLE_TELEMETRY` environment variable was removed in `@moss-dev/moss` 1.8.0 and has no effect.
 
 ## Data we do not collect
 
