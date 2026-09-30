@@ -1,6 +1,6 @@
 # Moss Code Search — Privacy Policy
 
-Last updated: July 10, 2026
+Last updated: September 30, 2026
 
 Moss Code Search is a VS Code extension published by Moss. This policy describes what data the extension processes and where it goes.
 
