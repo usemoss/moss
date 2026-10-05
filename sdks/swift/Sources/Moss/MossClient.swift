@@ -62,7 +62,7 @@ public final class MossClient: @unchecked Sendable {
             }
         }
         try Self.throwIfErr(r)
-        guard let raw else { throw Self.lastError(code: -7) }
+        guard let raw else { throw Self.missingResult() }
         self.handle = raw
         self.authUserData = nil
     }
@@ -104,7 +104,7 @@ public final class MossClient: @unchecked Sendable {
         }
         guard let raw else {
             Unmanaged<AuthenticatorBox>.fromOpaque(userData).release()
-            throw Self.lastError(code: -7)
+            throw Self.missingResult()
         }
         self.handle = raw
         self.authUserData = userData
@@ -112,12 +112,13 @@ public final class MossClient: @unchecked Sendable {
 
     deinit { close() }
 
-    /// Free the underlying native handle and any authenticator box.
+    /// Send the final usage telemetry, then free the underlying native handle
+    /// and any authenticator box.
     ///
     /// Idempotent. Safe to call concurrently with in-flight operations:
-    /// the call blocks until every borrowed handle is returned, then
-    /// frees. After `close()` returns, every further operation throws
-    /// `MossError(-1, "MossClient already closed")`.
+    /// the call blocks until every borrowed handle is returned, then until
+    /// the telemetry is delivered or 2 seconds pass, then frees. After `close()`
+    /// returns, every further operation throws `MossError(-1, "MossClient already closed")`.
     public func close() {
         stateCond.lock()
         if closed {
@@ -170,13 +171,17 @@ public final class MossClient: @unchecked Sendable {
         cacheDirLock.lock(); defer { cacheDirLock.unlock() }
         if cacheDirConfigured { return }
         guard let cacheRoot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
-            throw MossError(code: -7, message: "could not locate <Library/Caches> for model cache")
+            throw MossError(code: MossError.internalError, message: "could not locate <Library/Caches> for model cache")
         }
         let dir = cacheRoot.appendingPathComponent("moss-models", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         } catch {
-            throw MossError(code: -7, message: "could not create model cache directory at \(dir.path): \(error.localizedDescription)")
+            throw MossError(
+                code: MossError.internalError,
+                message: "could not create the model cache directory",
+                detail: error.localizedDescription
+            )
         }
         let r = dir.path.withCString { ptr in moss_set_model_cache_dir(ptr) }
         try throwIfErr(r)
@@ -286,7 +291,7 @@ public final class MossClient: @unchecked Sendable {
 
     /// True when the linked native runtime exposes the multi-index C API.
     /// An xcframework built before that API returns `false` and every
-    /// multi-index call fails closed with `MossError(code: -7)`.
+    /// multi-index call fails closed with `MossError(code: MossError.internalError)`.
     public static var multiIndexAPIAvailable: Bool {
         moss_runtime_bridge_multi_index_available() != 0
     }
@@ -323,7 +328,7 @@ public final class MossClient: @unchecked Sendable {
                         if let raw { moss_runtime_bridge_free_load_indexes_result(raw) }
                     }
                     try Self.throwIfErr(r)
-                    guard let raw else { throw Self.lastError(code: -7) }
+                    guard let raw else { throw Self.missingResult() }
                     return Self.parseLoadIndexesResult(raw)
                 }
             }
@@ -362,7 +367,7 @@ public final class MossClient: @unchecked Sendable {
         options: QueryOptions = QueryOptions()
     ) async throws -> SearchResult {
         guard !names.isEmpty else {
-            throw MossError(code: -2, message: "names must contain at least one index name")
+            throw MossError(code: MossError.invalidArgument, message: "names must contain at least one index name")
         }
         try Self.requireMultiIndexAPI()
         try Self.requireNoNul(inIndexNames: names)
@@ -391,7 +396,7 @@ public final class MossClient: @unchecked Sendable {
                             }
                         }
                         try Self.throwIfErr(r)
-                        guard let raw else { throw Self.lastError(code: -7) }
+                        guard let raw else { throw Self.missingResult() }
                         return Self.parseSearchResult(
                             raw.assumingMemoryBound(to: MossSearchResult.self).pointee
                         )
@@ -420,7 +425,7 @@ public final class MossClient: @unchecked Sendable {
                         var result: UnsafeMutablePointer<MossSearchResult>?
                         let r = moss_client_query(h, iname, q, &nativeOpts, &result)
                         try Self.throwIfErr(r)
-                        guard let result else { throw Self.lastError(code: -7) }
+                        guard let result else { throw Self.missingResult() }
                         defer { moss_free_search_result(result) }
                         return Self.parseSearchResult(result.pointee)
                     }
@@ -452,7 +457,7 @@ public final class MossClient: @unchecked Sendable {
                 var info: UnsafeMutablePointer<MossIndexInfo>?
                 let r = moss_client_get_index(h, cname, &info)
                 try Self.throwIfErr(r)
-                guard let info else { throw Self.lastError(code: -7) }
+                guard let info else { throw Self.missingResult() }
                 defer { moss_free_index_info(info) }
                 return Self.parseIndexInfo(info.pointee)
             }
@@ -489,7 +494,7 @@ public final class MossClient: @unchecked Sendable {
                 var result: UnsafeMutablePointer<MossRefreshResult>?
                 let r = moss_client_refresh_index(h, cname, &result)
                 try Self.throwIfErr(r)
-                guard let result else { throw Self.lastError(code: -7) }
+                guard let result else { throw Self.missingResult() }
                 defer { moss_free_refresh_result(result) }
                 let p = result.pointee
                 return RefreshResult(
@@ -510,7 +515,7 @@ public final class MossClient: @unchecked Sendable {
                 var result: UnsafeMutablePointer<MossJobStatusResponse>?
                 let r = moss_client_get_job_status(h, cjob, &result)
                 try Self.throwIfErr(r)
-                guard let result else { throw Self.lastError(code: -7) }
+                guard let result else { throw Self.missingResult() }
                 defer { moss_free_job_status_response(result) }
                 let p = result.pointee
                 return JobStatus(
@@ -532,7 +537,7 @@ public final class MossClient: @unchecked Sendable {
         docs: [DocumentInfo],
         modelId: String? = nil
     ) async throws -> MutationResult {
-        try Self.requireNoNul(inIndexNames: [name])
+        try Self.requireNoNul(inIndexNames: [name], docIds: docs.map(\.id))
         let docsJson = try Self.encodeJson(docs)
         return try await Task.detached { [self] () throws -> MutationResult in
             let h = try borrowHandle()
@@ -543,7 +548,7 @@ public final class MossClient: @unchecked Sendable {
                         var out: UnsafeMutablePointer<CChar>?
                         let r = moss_client_create_index_from_json(h, cname, cdocs, cmodel, &out)
                         try Self.throwIfErr(r)
-                        guard let out else { throw Self.lastError(code: -7) }
+                        guard let out else { throw Self.missingResult() }
                         defer { moss_free_string(out) }
                         return try Self.decodeMutationResult(String(cString: out))
                     }
@@ -557,7 +562,7 @@ public final class MossClient: @unchecked Sendable {
         docs: [DocumentInfo],
         upsert: Bool = true
     ) async throws -> MutationResult {
-        try Self.requireNoNul(inIndexNames: [name])
+        try Self.requireNoNul(inIndexNames: [name], docIds: docs.map(\.id))
         let docsJson = try Self.encodeJson(docs)
         return try await Task.detached { [self] () throws -> MutationResult in
             let h = try borrowHandle()
@@ -567,7 +572,7 @@ public final class MossClient: @unchecked Sendable {
                     var out: UnsafeMutablePointer<CChar>?
                     let r = moss_client_add_docs_from_json(h, cname, cdocs, upsert, &out)
                     try Self.throwIfErr(r)
-                    guard let out else { throw Self.lastError(code: -7) }
+                    guard let out else { throw Self.missingResult() }
                     defer { moss_free_string(out) }
                     return try Self.decodeMutationResult(String(cString: out))
                 }
@@ -586,7 +591,7 @@ public final class MossClient: @unchecked Sendable {
                     var out: UnsafeMutablePointer<CChar>?
                     let r = moss_client_get_docs_json(h, cname, cids, &out)
                     try Self.throwIfErr(r)
-                    guard let out else { throw Self.lastError(code: -7) }
+                    guard let out else { throw Self.missingResult() }
                     defer { moss_free_string(out) }
                     let str = String(cString: out)
                     let data = Data(str.utf8)
@@ -627,7 +632,7 @@ public final class MossClient: @unchecked Sendable {
                     var result: UnsafeMutablePointer<MossMutationResult>?
                     let r = moss_client_delete_docs(h, cname, ptrs, UInt(docIds.count), &result)
                     try Self.throwIfErr(r)
-                    guard let result else { throw Self.lastError(code: -7) }
+                    guard let result else { throw Self.missingResult() }
                     defer { moss_free_mutation_result(result) }
                     let p = result.pointee
                     return MutationResult(
@@ -675,7 +680,7 @@ public final class MossClient: @unchecked Sendable {
                         &raw
                     )
                     try Self.throwIfErr(r)
-                    guard let raw else { throw Self.lastError(code: -7) }
+                    guard let raw else { throw Self.missingResult() }
                     return MossSession(takingOwnershipOf: OpaquePointer(raw))
                 }
             }
@@ -690,15 +695,16 @@ public final class MossClient: @unchecked Sendable {
 
     // ── Internals ────────────────────────────────────────────────────
 
-    /// Throws for a name or document id holding U+0000. libmoss reads each
-    /// string up to its first NUL, so the rest would be dropped and the call
-    /// would reach a different index or document than the one the caller named.
+    /// Throws for a name or document id holding U+0000.
+    /// Names, and ids outside the JSON calls, reach libmoss as C strings
+    /// that end at the first NUL, so the call would name something else.
+    /// JSON ids are checked too, so every id this SDK stores can be deleted.
     static func requireNoNul(inIndexNames names: [String] = [], docIds: [String] = []) throws {
         if names.contains(where: { $0.utf8.contains(0) }) {
-            throw MossError(code: -2, message: "index names must not contain U+0000")
+            throw MossError(code: MossError.invalidArgument, message: "index names must not contain U+0000")
         }
         if docIds.contains(where: { $0.utf8.contains(0) }) {
-            throw MossError(code: -2, message: "document ids must not contain U+0000")
+            throw MossError(code: MossError.invalidArgument, message: "document ids must not contain U+0000")
         }
     }
 
@@ -716,11 +722,11 @@ public final class MossClient: @unchecked Sendable {
     /// (Parent grouping is a session-only feature and is ignored here.)
     private static func resolveFilterJson(_ opts: QueryOptions) throws -> String? {
         guard opts.topK >= 0 else {
-            throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
+            throw MossError(code: MossError.invalidArgument, message: "topK must be non-negative; got \(opts.topK)")
         }
         guard let f = opts.filter else { return opts.filterJson }
         guard let encoded = f.encoded() else {
-            throw MossError(code: -2, message: "could not encode metadata filter")
+            throw MossError(code: MossError.invalidArgument, message: "could not encode metadata filter")
         }
         return encoded
     }
@@ -745,7 +751,7 @@ public final class MossClient: @unchecked Sendable {
     private static func requireMultiIndexAPI() throws {
         guard multiIndexAPIAvailable else {
             throw MossError(
-                code: -7,
+                code: MossError.internalError,
                 message: "The linked Moss runtime does not provide the multi-index API (moss_client_query_multi_index); update Moss.xcframework"
             )
         }
@@ -769,7 +775,7 @@ public final class MossClient: @unchecked Sendable {
         stateCond.lock()
         defer { stateCond.unlock() }
         guard !closed, let h = handle else {
-            throw MossError(code: -1, message: "MossClient already closed")
+            throw MossError(code: MossError.nullPointer, message: "MossClient already closed")
         }
         inFlight += 1
         return h
@@ -799,7 +805,15 @@ public final class MossClient: @unchecked Sendable {
     static func lastError(code: Int32) -> MossError {
         let ptr = moss_last_error()
         let msg = ptr != nil ? String(cString: ptr!) : "moss native error code \(code)"
-        return MossError(code: code, message: msg)
+        let detailPtr = moss_runtime_bridge_last_error_detail()
+        let detail = detailPtr != nil ? String(cString: detailPtr!) : nil
+        return MossError(code: code, message: msg, detail: detail)
+    }
+
+    /// A call reported success but handed back no result. The last error
+    /// belongs to an earlier call, so it is not read here.
+    static func missingResult() -> MossError {
+        MossError(code: MossError.internalError, message: "libmoss returned no result.")
     }
 
     fileprivate static func parseIndexInfo(_ i: MossIndexInfo) -> IndexInfo {
@@ -821,7 +835,7 @@ public final class MossClient: @unchecked Sendable {
     static func encodeJson<T: Encodable>(_ value: T) throws -> String {
         let data = try JSONEncoder().encode(value)
         guard let s = String(data: data, encoding: .utf8) else {
-            throw MossError(code: -7, message: "encoded JSON was not valid UTF-8")
+            throw MossError(code: MossError.internalError, message: "encoded JSON was not valid UTF-8")
         }
         return s
     }
@@ -882,14 +896,20 @@ public final class MossClient: @unchecked Sendable {
 
         let failedCount = Int(moss_runtime_bridge_load_indexes_failed_count(raw))
         var failed: [String: String] = [:]
+        var failedCodes: [String: Int32] = [:]
         failed.reserveCapacity(failedCount)
         for i in 0..<failedCount {
             guard let name = moss_runtime_bridge_load_indexes_failed_name_at(raw, UInt(i)) else { continue }
+            let key = String(cString: name)
             let reason = moss_runtime_bridge_load_indexes_failed_error_at(raw, UInt(i))
-            failed[String(cString: name)] = reason.map { String(cString: $0) } ?? "unknown error"
+            failed[key] = reason.map { String(cString: $0) } ?? "unknown error"
+            let code = moss_runtime_bridge_load_indexes_failed_code_at(raw, UInt(i))
+            if code != 0 {
+                failedCodes[key] = code
+            }
         }
 
-        return LoadIndexesResult(loaded: loaded, failed: failed)
+        return LoadIndexesResult(loaded: loaded, failed: failed, failedCodes: failedCodes)
     }
 
     /// Decode a `MossMetadataEntry *` array into a `[String: String]`.

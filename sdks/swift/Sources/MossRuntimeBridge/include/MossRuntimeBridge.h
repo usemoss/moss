@@ -8,6 +8,10 @@ extern "C" {
 #endif
 
 uint64_t moss_runtime_bridge_session_capabilities(void);
+
+/* Core error text behind the last failed call, from a libmoss whose header has
+   MOSS_ERROR_DETAIL_API_VERSION >= 1. NULL when there is none. */
+const char *moss_runtime_bridge_last_error_detail(void);
 typedef void (*MossRuntimeBridgeFunction)(void);
 int32_t moss_runtime_bridge_client_session_v2(void *client,
                                               const char *name,
@@ -45,6 +49,9 @@ const char *moss_runtime_bridge_load_indexes_loaded_at(const void *result, uintp
 uintptr_t moss_runtime_bridge_load_indexes_failed_count(const void *result);
 const char *moss_runtime_bridge_load_indexes_failed_name_at(const void *result, uintptr_t i);
 const char *moss_runtime_bridge_load_indexes_failed_error_at(const void *result, uintptr_t i);
+/* The MossResult for failed[i], or 0 when the linked libmoss does not report
+   codes (MOSS_ERROR_DETAIL_API_VERSION < 1). */
+int32_t moss_runtime_bridge_load_indexes_failed_code_at(const void *result, uintptr_t i);
 void moss_runtime_bridge_free_load_indexes_result(void *result);
 const char *moss_runtime_bridge_query_result_doc_index_name(const void *doc);
 
