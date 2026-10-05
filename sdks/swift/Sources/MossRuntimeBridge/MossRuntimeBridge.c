@@ -10,6 +10,14 @@ uint64_t moss_runtime_bridge_session_capabilities(void) {
 #endif
 }
 
+const char *moss_runtime_bridge_last_error_detail(void) {
+#if defined(MOSS_ERROR_DETAIL_API_VERSION) && MOSS_ERROR_DETAIL_API_VERSION >= 1
+    return moss_last_error_detail();
+#else
+    return NULL;
+#endif
+}
+
 int32_t moss_runtime_bridge_client_session_v2(
     void *client,
     const char *name,
@@ -248,6 +256,20 @@ const char *moss_runtime_bridge_load_indexes_failed_error_at(const void *result,
     (void)result;
     (void)i;
     return NULL;
+#endif
+}
+
+int32_t moss_runtime_bridge_load_indexes_failed_code_at(const void *result, uintptr_t i) {
+#if defined(MOSS_ERROR_DETAIL_API_VERSION) && MOSS_ERROR_DETAIL_API_VERSION >= 1
+    const MossLoadIndexesResult *r = (const MossLoadIndexesResult *)result;
+    if (r == NULL || r->failed_codes == NULL || i >= r->failed_count) {
+        return 0;
+    }
+    return (int32_t)r->failed_codes[i];
+#else
+    (void)result;
+    (void)i;
+    return 0;
 #endif
 }
 

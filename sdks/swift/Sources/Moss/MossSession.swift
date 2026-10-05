@@ -57,7 +57,7 @@ public final class MossSession: @unchecked Sendable {
     ) throws {
         guard supported else {
             throw MossError(
-                code: -5,
+                code: MossError.modelUnavailable,
                 message: "This Moss native runtime does not expose the identity-bound session API; update Moss.xcframework"
             )
         }
@@ -65,8 +65,9 @@ public final class MossSession: @unchecked Sendable {
 
     deinit { close() }
 
-    /// Free the underlying native handle. Idempotent. Blocks until all
-    /// in-flight calls return so they never operate on a freed pointer.
+    /// Send the final usage telemetry, then free the underlying native handle.
+    /// Idempotent. Blocks until all in-flight calls return, so they never operate
+    /// on a freed pointer, then until the telemetry is delivered or 2 seconds pass.
     public func close() {
         stateCond.lock()
         if closed {
@@ -119,7 +120,7 @@ public final class MossSession: @unchecked Sendable {
         try MossClient.requireNoNul(docIds: docs.map(\.id))
         guard MossIdentityBoundSessionAPI.shared != nil else {
             throw MossError(
-                code: -5,
+                code: MossError.modelUnavailable,
                 message: "This Moss native runtime cannot safely open provenance-sensitive sessions"
             )
         }
@@ -196,7 +197,7 @@ public final class MossSession: @unchecked Sendable {
         var filterJson: String? = nil
         if let f = options.filter {
             guard let encoded = f.encoded() else {
-                throw MossError(code: -2, message: "could not encode metadata filter")
+                throw MossError(code: MossError.invalidArgument, message: "could not encode metadata filter")
             }
             filterJson = encoded
         }
@@ -213,7 +214,7 @@ public final class MossSession: @unchecked Sendable {
                             var outCount: UInt = 0
                             guard let api = MossIdentityBoundSessionAPI.shared else {
                                 throw MossError(
-                                    code: -5,
+                                    code: MossError.modelUnavailable,
                                     message: "This Moss native runtime cannot safely open provenance-sensitive sessions"
                                 )
                             }
@@ -274,12 +275,12 @@ public final class MossSession: @unchecked Sendable {
             let h = try borrowHandle()
             defer { returnHandle() }
             guard let api = MossIdentityBoundSessionAPI.shared else {
-                throw MossError(code: -5, message: "Identity-bound inference is unavailable")
+                throw MossError(code: MossError.modelUnavailable, message: "Identity-bound inference is unavailable")
             }
             return try text.withCString { ctext in
                 var embedding: OpaquePointer?
                 try MossClient.throwIfErr(api.embed(h, ctext, &embedding))
-                guard let embedding else { throw MossClient.lastError(code: -7) }
+                guard let embedding else { throw MossClient.missingResult() }
                 return MossSessionEmbedding(
                     handle: embedding,
                     freeEmbedding: api.freeEmbedding
@@ -325,7 +326,7 @@ public final class MossSession: @unchecked Sendable {
     ) async throws -> SearchResult {
         let opts = options
         guard opts.topK >= 0 else {
-            throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
+            throw MossError(code: MossError.invalidArgument, message: "topK must be non-negative; got \(opts.topK)")
         }
         try Self.requireIdentityBoundTextInference()
         return try await Task.detached { [self] () throws -> SearchResult in
@@ -336,7 +337,7 @@ public final class MossSession: @unchecked Sendable {
             var filterJson = opts.filterJson
             if let f = opts.filter {
                 guard let encoded = f.encoded() else {
-                    throw MossError(code: -2, message: "could not encode metadata filter")
+                    throw MossError(code: MossError.invalidArgument, message: "could not encode metadata filter")
                 }
                 filterJson = encoded
             }
@@ -359,7 +360,7 @@ public final class MossSession: @unchecked Sendable {
                                 let r: Int32
                                 guard let api = MossIdentityBoundSessionAPI.shared else {
                                     throw MossError(
-                                        code: -5,
+                                        code: MossError.modelUnavailable,
                                         message: "This Moss native runtime cannot safely open provenance-sensitive sessions"
                                     )
                                 }
@@ -384,7 +385,7 @@ public final class MossSession: @unchecked Sendable {
                                 try MossClient.throwIfErr(r)
                                 return resultLocal
                             }()
-                            guard let result else { throw MossClient.lastError(code: -7) }
+                            guard let result else { throw MossClient.missingResult() }
                             defer { moss_free_search_result(result) }
                             return MossClient.parseSearchResult(result.pointee)
                         }
@@ -404,7 +405,7 @@ public final class MossSession: @unchecked Sendable {
     ) async throws -> SearchResult {
         let opts = options
         guard opts.topK >= 0 else {
-            throw MossError(code: -2, message: "topK must be non-negative; got \(opts.topK)")
+            throw MossError(code: MossError.invalidArgument, message: "topK must be non-negative; got \(opts.topK)")
         }
         try Self.requireIdentityBoundTextInference()
         return try await Task.detached { [self] () throws -> SearchResult in
@@ -413,7 +414,7 @@ public final class MossSession: @unchecked Sendable {
             var filterJson = opts.filterJson
             if let filter = opts.filter {
                 guard let encoded = filter.encoded() else {
-                    throw MossError(code: -2, message: "could not encode metadata filter")
+                    throw MossError(code: MossError.invalidArgument, message: "could not encode metadata filter")
                 }
                 filterJson = encoded
             }
@@ -424,7 +425,7 @@ public final class MossSession: @unchecked Sendable {
                         try withOptionalCString(group?.orderField) { orderCString in
                             guard let api = MossIdentityBoundSessionAPI.shared else {
                                 throw MossError(
-                                    code: -5,
+                                    code: MossError.modelUnavailable,
                                     message: "This Moss native runtime cannot safely open provenance-sensitive sessions"
                                 )
                             }
@@ -458,7 +459,7 @@ public final class MossSession: @unchecked Sendable {
                                 }
                             }
                             try MossClient.throwIfErr(callResult)
-                            guard let result else { throw MossClient.lastError(code: -7) }
+                            guard let result else { throw MossClient.missingResult() }
                             defer { moss_free_search_result(result) }
                             return MossClient.parseSearchResult(result.pointee)
                         }
@@ -530,6 +531,10 @@ public final class MossSession: @unchecked Sendable {
     /// Restore a session from a previous `save(toCachePath:)` at
     /// `cachePath`. Returns the doc count restored.
     ///
+    /// The session adopts the model the snapshot records, except that a
+    /// session opened with `modelId: "custom"` and `autoLoadOnInit: false`
+    /// loads a foundation snapshot as `custom` until `loadIndex` succeeds in it.
+    ///
     /// Note: the session's *name* (passed to `client.session(_:)`) must
     /// match the one used at save time — it's part of the on-disk
     /// directory path.
@@ -556,7 +561,7 @@ public final class MossSession: @unchecked Sendable {
             var raw: UnsafeMutablePointer<MossPushIndexResult>?
             let r = moss_session_push_index(h, &raw)
             try MossClient.throwIfErr(r)
-            guard let raw else { throw MossClient.lastError(code: -7) }
+            guard let raw else { throw MossClient.missingResult() }
             defer { moss_free_push_index_result(raw) }
             let p = raw.pointee
             return PushIndexResult(
@@ -574,7 +579,7 @@ public final class MossSession: @unchecked Sendable {
         stateCond.lock()
         defer { stateCond.unlock() }
         guard !closed, let h = handle else {
-            throw MossError(code: -1, message: "MossSession already closed")
+            throw MossError(code: MossError.nullPointer, message: "MossSession already closed")
         }
         inFlight += 1
         return h

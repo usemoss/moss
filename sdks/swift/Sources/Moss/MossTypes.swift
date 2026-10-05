@@ -46,12 +46,16 @@ public struct SearchResult: Sendable {
 public struct LoadIndexesResult: Sendable {
     /// Names that are now loaded.
     public let loaded: [String]
-    /// Name to error message for the indexes that could not be loaded.
+    /// Name to fixed error message for the indexes that could not be loaded.
     public let failed: [String: String]
+    /// Name to `MossError` code for the indexes that could not be loaded.
+    /// Empty when the linked libmoss does not report codes.
+    public let failedCodes: [String: Int32]
 
-    public init(loaded: [String], failed: [String: String]) {
+    public init(loaded: [String], failed: [String: String], failedCodes: [String: Int32] = [:]) {
         self.loaded = loaded
         self.failed = failed
+        self.failedCodes = failedCodes
     }
 }
 
@@ -210,12 +214,18 @@ public struct SessionOptions: Sendable {
     /// ```swift
     /// let session = try await client.session(
     ///     name,
-    ///     options: SessionOptions(modelId: "custom", autoLoadOnInit: false)
+    ///     options: SessionOptions(modelId: "moss-minilm", autoLoadOnInit: false)
     /// )
     /// if try await session.loadFromDisk(cachePath: cachePath) > 0 { return session }
     /// _ = try await session.loadIndex(name, options: LoadIndexOptions())
     /// try await session.save(toCachePath: cachePath)
     /// ```
+    ///
+    /// Open the session with the index's foundation `modelId`. It checks the
+    /// credentials once when it opens, which needs the network, and `loadFromDisk`
+    /// then restores the saved model from disk with no download, so text queries work.
+    /// With `modelId: "custom"` that check is skipped, and a foundation snapshot loads
+    /// as `custom` until `loadIndex` succeeds, so use it only for explicit embeddings.
     ///
     /// - Warning: with `false`, the session starts empty until you load it.
     ///   `addDocs` only mutates the in-memory session, but calling `pushIndex()`
@@ -238,9 +248,11 @@ public struct SessionOptions: Sendable {
 public struct LoadIndexOptions: Sendable {
     /// Keep the loaded index in sync by polling the cloud in the background.
     public var autoRefresh: Bool
-    /// How often the auto-refresh poll runs, in seconds (only used when
-    /// `autoRefresh` is true). Defaults to 600 (10 minutes), and 0 uses that
-    /// default. The minimum is 1 second.
+    /// Seconds between auto-refresh polls. Defaults to 600 (10 minutes).
+    ///
+    /// The minimum is 1 second. `MossSession.loadIndex` reads 0 as 1 second.
+    /// `MossClient.loadIndex` and `loadIndexes` read 0 as 600 and cap it at one year.
+    /// Serving a cached index offline, they poll at this interval even with `autoRefresh` off.
     public var pollingIntervalSeconds: UInt64
     /// Optional sandbox path used to cache the index on disk so subsequent
     /// launches don't re-download. Applies to `MossClient.loadIndex`; sessions
@@ -352,7 +364,7 @@ public indirect enum Filter: Sendable {
 }
 
 /// Collapse sibling documents that share a parent identifier into one logical
-/// result. Siblings are assembled in `orderField` order (numeric-aware).
+/// result. Siblings are assembled in `orderField` order (numbers first, then text).
 public struct ParentGrouping: Sendable {
     public var parentField: String   // e.g. "unit_id"
     public var orderField: String    // e.g. "chunk_index"
@@ -370,7 +382,7 @@ public struct GetDocsOptions: Sendable {
     public var ids: [String]?
     /// Metadata predicate; documents matching it are returned.
     public var filter: Filter?
-    /// Metadata field to order results by (numeric-aware). Ignored when `ids`
+    /// Metadata field to order results by (numbers first, then text). Ignored when `ids`
     /// already fixes the order.
     public var sortBy: String?
     /// Sort direction for `sortBy`.
