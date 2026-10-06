@@ -13,7 +13,7 @@ public struct MossError: LocalizedError {
 
     public var errorDescription: String? { message }
 
-    /// A required pointer argument was NULL.
+    /// A required pointer argument was NULL, or the client or session is already closed.
     public static let nullPointer: Int32 = -1
     /// An argument was rejected.
     public static let invalidArgument: Int32 = -2
