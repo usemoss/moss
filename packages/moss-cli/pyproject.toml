@@ -50,6 +50,9 @@ where = ["src"]
 [tool.setuptools.package-dir]
 "" = "src"
 
+[tool.setuptools.package-data]
+moss_cli = ["playground/*.html"]
+
 [tool.black]
 line-length = 88
 target-version = ['py310']

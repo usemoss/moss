@@ -15,6 +15,7 @@ Moss CLI wraps the [Moss Python SDK](https://docs.moss.dev/) so you can build an
 - **Multiple output formats** — rich tables for humans, `--json` for scripts
 - **Job tracking** — poll background jobs with live progress display
 - **Pipe-friendly** — stdin/stdout support for composing with other tools
+- **Local Playground** — browser-based UI for interactive querying without any frontend code
 
 ## Installation
 
@@ -144,6 +145,43 @@ echo "what is AI" | moss query my-index
 # JSON output for scripting
 moss query my-index "query" --json | jq '.docs[0].text'
 ```
+
+### Playground
+
+Start a local web UI for interactive semantic search — no frontend code required.
+
+```bash
+# Start the playground (port 8765 when available, otherwise the next free port)
+moss playground
+
+# Use a specific port
+moss playground --port 9000
+
+# Use a specific credential profile
+moss playground --profile staging
+
+# Skip opening the browser automatically
+moss playground --no-open
+```
+
+When you run `moss playground`, it prints a URL that includes a per-run token in the
+`#<token>` fragment, e.g. `http://127.0.0.1:8765/#Abc123...`. Open that exact URL in
+your browser. With `--no-open`, copy the full URL printed by the command — including
+the `#<token>` fragment — since the token is required to fetch the project credentials
+from the server.
+
+The playground serves a single-page app that loads the Moss WASM SDK
+(`@moss-dev/moss-web`) from the unpkg CDN and runs index loading and semantic search
+entirely in the browser. You can:
+
+- Browse and load indexes
+- Run semantic search with configurable `topK` and `alpha`
+- View results with scores and metadata
+
+When credentials are available (via CLI flags, `MOSS_PROJECT_ID`/`MOSS_PROJECT_KEY`
+env vars, or a `--profile`), the server injects them through a token-protected
+`/api/config` endpoint and the app connects automatically. If no credentials are
+configured, the app shows a connection form where you can enter them in the browser.
 
 ### Job Tracking
 
