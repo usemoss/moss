@@ -26,11 +26,16 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install packaging
+        run: python -m pip install --quiet packaging==26.3
+
       - name: Read version from pyproject
         id: compute
         shell: python
         run: |
           import json, os, pathlib, re, sys, urllib.request
+
+          from packaging.version import Version
 
           text = pathlib.Path("packages/pipecat-moss/pyproject.toml").read_text(encoding="utf-8")
           match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
@@ -50,12 +55,10 @@ jobs:
           # The same version passes, so a rerun can finish a partial upload and the tag.
           with urllib.request.urlopen("https://pypi.org/pypi/pipecat-moss/json", timeout=30) as response:
               releases = json.load(response)["releases"]
-          ours = tuple(map(int, semver.groups()))
           for published, files in releases.items():
               if not files or all(file.get("yanked") for file in files):
                   continue
-              release = re.match(r"(\d+)\.(\d+)\.(\d+)", published)
-              if not release or tuple(map(int, release.groups())) > ours:
+              if Version(published) > Version(version):
                   print(f"{version} is older than {published} on PyPI", file=sys.stderr)
                   sys.exit(1)
 
