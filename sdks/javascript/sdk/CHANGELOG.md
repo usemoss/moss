@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-11-02
+
+### Changed
+
+- **Breaking change:** `MossInference.responses.create`, typed by the `Responses` interface, replaces `chat.completions.create`, in the shape of OpenAI's Responses API, and calls `/responses` under the base URL. It takes `input`, a string or a list of `ResponseInputItem`s (an `EasyInputMessage`, a `FunctionCallOutput` or an output item), and `instructions` in place of `messages`, plus typed `max_output_tokens`, `text`, `reasoning` and `metadata`. A function tool is flat (`FunctionTool`), and `tool_choice` names a function as `{ type: "function", name }`. Without `stream: true` it returns a `Response`, the `response` object of the stream's last event plus `output_text`, whose `output` holds `ResponseOutputMessage`, `ResponseFunctionToolCall`, `McpCall` and `ResponseReasoningItem` items. With it, it returns a `ResponseStream` of `ResponseStreamEvent`s, such as `response.output_text.delta`, that ends after `response.completed` or `response.incomplete`, and `finalResponse()` returns the whole response. The `output` items go back into `input` unchanged, followed by one `function_call_output` item per function call. Usage is a `ResponseUsage` with `input_tokens` and `output_tokens`. A `response.failed` or `error` event throws `InferenceError`, and once an `mcp_call` item has arrived every error has the `errorCode` `failed_after_tool_call`. `inference.responses.create` makes the same call on a client built from the environment.
+- Requires `@moss-js/moss-core` 0.37.0.
+- Every request the native core makes, such as model and index downloads, control-plane calls, authentication, uploads and telemetry, sends a `moss-sdk/<version>` User-Agent.
+
+### Removed
+
+- `chat.completions.create`, the `ChatCompletions` namespace, `ChatCompletionStream` and its `finalChatCompletion()`, `ToolStep` with `moss_tool_step` and `moss_tool_steps`, and the chat types: `ChatCompletion`, `ChatCompletionChoice`, `ChatCompletionChunk`, `ChatCompletionChunkChoice`, `ChatCompletionChunkDelta`, `ChatCompletionChunkToolCall`, `ChatCompletionContentPart`, `ChatCompletionCreateParams` with its `Base`, `Streaming` and `NonStreaming` forms, `ChatCompletionLogprobs`, `ChatCompletionMessage`, `ChatCompletionMessageParam`, `ChatCompletionMessageToolCall`, `ChatCompletionTokenLogprob`, `ChatCompletionTool` and `CompletionUsage`.
+
+### Fixed
+
+- On Linux, TLS no longer trusts emSign ECC Root CA - G3, which `webpki-roots` 1.0.10 drops after the private keys of eight eMudhra intermediate CAs were compromised. macOS and Windows use the system trust store.
+
 ## [1.21.0] - 2026-10-23
 
 ### Added

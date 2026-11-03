@@ -1,11 +1,5 @@
 import { InferenceError, codeText, transportError, type ResponseFields } from "./error";
-import type {
-  ChatCompletion,
-  ChatCompletionChunk,
-  ChatCompletionLogprobs,
-  ChatCompletionMessageToolCall,
-  ToolStep,
-} from "./types";
+import type { Response as MossResponse, ResponseStreamEvent } from "./types";
 
 /** The most UTF-16 code units in one line or in the data of one event. */
 const MAX_EVENT = 1 << 20;
@@ -117,25 +111,27 @@ async function* sseData(
 }
 
 /**
- * The streamed reply of `chat.completions.create` with `stream: true`.
+ * The streamed response of `responses.create` with `stream: true`.
  *
- * Iterate it once with `for await`. Leaving the loop early, or calling
- * `controller.abort()`, ends the loop quietly, closes the connection and stops the model.
- * An abort with any other reason, such as the `TimeoutError` of `AbortSignal.timeout()`, throws it.
- * A failure inside the stream throws an {@link InferenceError} after the chunks that came before it,
- * with `errorCode` `failed_after_tool_call` once a chunk carried a `moss_tool_step`.
+ * Iterate it once with `for await`. It ends after `response.completed` or `response.incomplete`.
+ * Leaving the loop early, or calling `controller.abort()`, ends the loop quietly,
+ * closes the connection and stops the model. An abort with any other reason,
+ * such as the `TimeoutError` of `AbortSignal.timeout()`, throws that reason.
+ * A failure inside the stream, such as `response.failed`, throws an {@link InferenceError}
+ * after the events before it, with `errorCode` `failed_after_tool_call` once an event carried an `mcp_call` item.
  */
-export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> {
+export class ResponseStream implements AsyncIterable<ResponseStreamEvent> {
   /** Aborts the request. */
   readonly controller: AbortController;
   /** The `X-Moss-Request-Id` of the response, undefined when it has none. */
   readonly requestId: string | undefined;
-  #chunks: AsyncIterator<ChatCompletionChunk> | undefined;
-  readonly #next: () => Promise<IteratorResult<ChatCompletionChunk>>;
-  readonly #join: Join;
-  /** What reading the chunks threw, which the completion throws again. */
+  #events: AsyncIterator<ResponseStreamEvent> | undefined;
+  readonly #next: () => Promise<IteratorResult<ResponseStreamEvent>>;
+  /** What reading the events threw, which the final response throws again. */
   #failure: { error: unknown } | undefined;
-  #final: Promise<ChatCompletion> | undefined;
+  /** The `response` of the last event, once it came. */
+  #response: MossResponse | undefined;
+  #final: Promise<MossResponse> | undefined;
 
   /** @internal */
   constructor(
@@ -144,23 +140,21 @@ export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> 
     idle: { arm(): void; clear(): void },
     onSettled: () => void,
     fields: { requestId?: string; errorCode?: "failed_after_tool_call" },
-    model: string,
   ) {
     this.controller = controller;
     this.requestId = fields.requestId;
-    this.#join = new Join(model);
-    const generator = chunks(response, controller, idle, onSettled, fields);
+    const generator = events(response, controller, idle, onSettled, fields);
     this.#next = async () => {
       try {
         const result = await generator.next();
-        if (!result.done) this.#join.add(result.value);
+        if (!result.done && isLast(result.value)) this.#response = result.value.response;
         return result;
       } catch (error) {
         this.#failure = { error };
         throw error;
       }
     };
-    this.#chunks = {
+    this.#events = {
       next: this.#next,
       return: (value?: unknown) => {
         controller.abort();
@@ -170,42 +164,50 @@ export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> 
     };
   }
 
-  /** Iterates the chunks once. Its `return()` closes the connection, even before the first chunk. */
-  [Symbol.asyncIterator](): AsyncIterator<ChatCompletionChunk> {
-    const iterator = this.#chunks;
-    if (!iterator) throw new Error("A ChatCompletionStream can be iterated only once.");
-    this.#chunks = undefined;
+  /** Iterates the events once. Its `return()` closes the connection, even before the first event. */
+  [Symbol.asyncIterator](): AsyncIterator<ResponseStreamEvent> {
+    const iterator = this.#events;
+    if (!iterator) throw new Error("A ResponseStream can be iterated only once.");
+    this.#events = undefined;
     return iterator;
   }
 
   /**
-   * The whole stream joined into one completion, as a call without `stream: true` returns.
+   * The `response` of the last event, as a call without `stream: true` returns.
    *
-   * Every call returns the same completion.
+   * Every call returns the same response.
    * Call it after the loop ends, or instead of one.
-   * It reads the chunks the loop has not read, then joins them with the ones it has.
-   * It rejects with what the loop throws, or with the signal's reason after an abort.
+   * It reads the events the loop has not read.
+   * It rejects with what the loop throws, or with the signal's reason
+   * after an abort that came before the last event.
    */
-  finalChatCompletion(): Promise<ChatCompletion> {
+  finalResponse(): Promise<MossResponse> {
     return (this.#final ??= this.#drain());
   }
 
-  async #drain(): Promise<ChatCompletion> {
+  async #drain(): Promise<MossResponse> {
     while (!(await this.#next()).done);
     if (this.#failure) throw this.#failure.error;
-    const { signal } = this.controller;
-    if (signal.aborted) throw signal.reason;
-    return Object.defineProperty(this.#join.build(), "requestId", { value: this.requestId });
+    if (this.#response) return this.#response;
+    throw this.controller.signal.reason;
   }
 }
 
-async function* chunks(
+/** True for a JSON object, not null or an array. */
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** True for the last event of a stream, which holds the whole response. */
+const isLast = (event: ResponseStreamEvent): event is { type: string; response: MossResponse } =>
+  ["response.completed", "response.incomplete"].includes(event.type) && isObject(event.response);
+
+async function* events(
   response: Response,
   controller: AbortController,
   idle: IdleTimer,
   onSettled: () => void,
   fields: ResponseFields,
-): AsyncGenerator<ChatCompletionChunk> {
+): AsyncGenerator<ResponseStreamEvent> {
   const notObject = "The gateway sent an event that is not a JSON object.";
   let done = false;
   try {
@@ -216,36 +218,47 @@ async function* chunks(
       });
     }
     for await (const data of sseData(response.body, idle, fields)) {
-      if (data === "[DONE]") {
-        done = true;
-        return;
-      }
-      let event: {
-        error?: { message?: unknown; type?: unknown; code?: unknown };
-      } & Partial<ChatCompletionChunk>;
+      if (data === "[DONE]") break;
+      let event: ResponseStreamEvent;
       try {
         event = JSON.parse(data);
       } catch (cause) {
         throw new InferenceError(notObject, { type: "server_error", cause, ...fields });
       }
-      if (typeof event !== "object" || event === null || Array.isArray(event)) {
+      if (!isObject(event)) {
         throw new InferenceError(notObject, { type: "server_error", ...fields });
       }
-      if (event.error) {
-        const { message, type, code } = event.error;
+      if (event.type === "response.failed" || event.type === "error") {
+        const failed = event.type === "response.failed";
+        const error: { message?: unknown; type?: unknown; code?: unknown } = failed
+          ? (event.response?.error ?? {})
+          : event;
         throw new InferenceError(
-          typeof message === "string" ? message : "The model failed during the stream.",
+          typeof error.message === "string" ? error.message : "The model failed during the stream.",
           {
-            type: typeof type === "string" ? type : "model_error",
-            errorCode: codeText(code),
+            type: failed && typeof error.type === "string" ? error.type : "model_error",
+            errorCode: codeText(error.code),
             ...fields,
           },
         );
       }
-      if (event.moss_tool_step) fields.errorCode = "failed_after_tool_call";
-      yield event as ChatCompletionChunk;
+      if (event.item?.type === "mcp_call") fields.errorCode = "failed_after_tool_call";
+      if (isObject(event.response)) {
+        const output = Array.isArray(event.response.output) ? event.response.output : [];
+        event.response.output_text = output
+          .flatMap((item) =>
+            item?.type === "message" && Array.isArray(item.content) ? item.content : [],
+          )
+          .filter((part) => part?.type === "output_text" && typeof part.text === "string")
+          .map((part) => part.text)
+          .join("");
+        Object.defineProperty(event.response, "requestId", { value: fields.requestId });
+      }
+      done = isLast(event);
+      yield event;
+      if (done) return;
     }
-    throw new InferenceError("The stream ended before [DONE].", {
+    throw new InferenceError("The stream ended before response.completed.", {
       type: "incomplete_stream",
       ...fields,
     });
@@ -257,7 +270,7 @@ async function* chunks(
       throw reason;
     }
     if (socketEnded(error)) {
-      throw new InferenceError("The connection closed before [DONE].", {
+      throw new InferenceError("The connection closed before response.completed.", {
         type: "incomplete_stream",
         cause: error,
         ...fields,
@@ -267,124 +280,5 @@ async function* chunks(
   } finally {
     if (!done) controller.abort();
     onSettled();
-  }
-}
-
-type ChoiceState = {
-  content: string | null;
-  logprobs: ChatCompletionLogprobs | null;
-  finishReason: string | null;
-  toolCalls: Map<number, ChatCompletionMessageToolCall>;
-  /** The slot of the latest tool call piece, or -1 before the first. */
-  last: number;
-};
-
-/** True for a JSON object, not null or an array. */
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-/**
- * Joins chunks as they pass into one completion, as a non-streaming call returns.
- *
- * It joins tool call pieces as the gateway does, keeping fields beyond OpenAI's.
- * A piece with no integer `index` joins the call that has its `id`, else the latest call.
- * A new `id` starts the next call instead, unless the latest call has no id yet and takes it.
- */
-class Join {
-  readonly choices = new Map<number, ChoiceState>();
-  readonly steps: ToolStep[] = [];
-  first: Partial<ChatCompletionChunk> | undefined;
-  usage: ChatCompletion["usage"] = null;
-
-  constructor(readonly model: string) {}
-
-  add(chunk: ChatCompletionChunk): void {
-    this.first ??= chunk;
-    if (chunk.usage) this.usage = chunk.usage;
-    if (chunk.moss_tool_step) this.steps.push(chunk.moss_tool_step);
-    for (const choice of Array.isArray(chunk.choices) ? chunk.choices : []) {
-      if (!isObject(choice)) continue;
-      const index = choice.index ?? 0;
-      let state = this.choices.get(index);
-      if (!state) {
-        state = {
-          content: null,
-          logprobs: null,
-          finishReason: null,
-          toolCalls: new Map(),
-          last: -1,
-        };
-        this.choices.set(index, state);
-      }
-      const delta = choice.delta ?? {};
-      if (delta.content) state.content = (state.content ?? "") + delta.content;
-      if (isObject(choice.logprobs)) {
-        state.logprobs ??= { content: null, refusal: null };
-        for (const key of ["content", "refusal"] as const) {
-          const tokens = choice.logprobs[key];
-          if (Array.isArray(tokens)) (state.logprobs[key] ??= []).push(...tokens);
-        }
-      }
-      const parts = Array.isArray(delta.tool_calls) ? delta.tool_calls : [];
-      for (const part of parts) {
-        if (!isObject(part)) continue;
-        let slot = part.index;
-        if (!Number.isInteger(slot)) {
-          const known = [...state.toolCalls].find(([, joined]) => part.id && joined.id === part.id);
-          const latest = state.toolCalls.get(state.last);
-          if (known) slot = known[0];
-          else if (latest && !(part.id && latest.id)) slot = state.last;
-          else slot = Math.max(-1, ...state.toolCalls.keys()) + 1;
-        }
-        state.last = slot;
-        const call: ChatCompletionMessageToolCall = state.toolCalls.get(slot) ?? {
-          id: "",
-          type: "function",
-          function: { name: "", arguments: "" },
-        };
-        if (part.id) call.id = part.id;
-        if (part.type) call.type = part.type;
-        if (part.function?.name) call.function.name = part.function.name;
-        if (typeof part.function?.arguments === "string")
-          call.function.arguments += part.function.arguments;
-        for (const [key, value] of Object.entries(part)) {
-          if (value == null || ["index", "id", "type", "function"].includes(key)) continue;
-          const merged =
-            isObject(value) && isObject(call[key]) ? { ...call[key], ...value } : value;
-          Object.defineProperty(call, key, {
-            value: merged,
-            enumerable: true,
-            writable: true,
-            configurable: true,
-          });
-        }
-        state.toolCalls.set(slot, call);
-      }
-      if (choice.finish_reason != null) state.finishReason = choice.finish_reason;
-    }
-  }
-
-  build(): ChatCompletion {
-    const byIndex = <T>(map: Map<number, T>) => [...map].sort(([a], [b]) => a - b);
-    return {
-      id: this.first?.id ?? "",
-      object: "chat.completion",
-      created: this.first?.created ?? 0,
-      model: this.first?.model ?? this.model,
-      choices: byIndex(this.choices).map(([index, state]) => ({
-        index,
-        message: {
-          role: "assistant",
-          content: state.content ?? (state.toolCalls.size > 0 ? null : ""),
-          ...(state.toolCalls.size > 0 && {
-            tool_calls: byIndex(state.toolCalls).map(([, call]) => call),
-          }),
-        },
-        logprobs: state.logprobs,
-        finish_reason: state.finishReason,
-      })),
-      usage: this.usage,
-      ...(this.steps.length > 0 && { moss_tool_steps: this.steps }),
-    };
   }
 }

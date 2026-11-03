@@ -294,30 +294,38 @@ such a snapshot as a custom-model session instead.
 
 ## Inference
 
-`Moss.Inference` is a client for OpenAI's chat completions call, answered by Moss inference
+`Moss.Inference` is a client for OpenAI's Responses API, answered by Moss inference
 at `https://inference.moss.dev/v1`. Moss searches your indexes, adds what it finds to the prompt
-and streams the model's reply. `params` is the OpenAI request body, so code written for
+and streams the model's response. `params` is the OpenAI request body, so code written for
 OpenAI only adds `:indexes`.
 
 ```elixir
-alias Moss.Inference.Chat.Completions
+alias Moss.Inference.Responses
 
 client = Moss.Inference.new("project-id", "project-key")
-messages = [%{role: "user", content: "Do you ship to Canada?"}]
 
-# Streamed: chunks arrive as the model writes them
-{:ok, stream} = Completions.create(client, %{messages: messages, stream: true}, indexes: ["faq"])
+# Streamed: events arrive as the model writes
+params = %{input: "Do you ship to Canada?", stream: true}
+{:ok, stream} = Responses.create(client, params, indexes: ["faq"])
 
-for chunk <- stream, choice <- chunk["choices"] do
-  IO.write(choice["delta"]["content"] || "")
+for %{"type" => "response.output_text.delta", "delta" => delta} <- stream do
+  IO.write(delta)
 end
 
-# Not streamed: one completion with the whole reply
-{:ok, completion} = Completions.create(client, %{messages: messages}, indexes: ["faq"])
-IO.puts(hd(completion["choices"])["message"]["content"])
+# Not streamed: the whole response
+params = %{instructions: "Answer in one sentence.", input: "Do you ship to Canada?"}
+{:ok, response} = Responses.create(client, params, indexes: ["faq"])
+IO.puts(response["output_text"])
 ```
 
 `model` defaults to `"moss"`, Moss's own model.
+`input` is a string, or the conversation so far as a list of items: input messages such as
+`%{role: "user", content: "Hi"}`, and the `"output"` items of earlier responses. Moss stores nothing,
+so send the whole conversation each time. `store` is ignored, and `previous_response_id`,
+`background`, `include` and OpenAI's built-in tools, such as `web_search`, are refused with
+`invalid_request_error` and the code `unsupported_parameter`. Other OpenAI parameters, such as
+`temperature`, `text: %{format: ...}` for structured output or `reasoning: %{effort: "low"}`,
+reach the gateway unchanged.
 `Moss.Inference.new/3` checks the credentials and options and raises `Moss.Inference.Error`
 for a bad one. It takes `:api_key`, `:timeout` (milliseconds for a whole call, default
 `:infinity`), `:idle_timeout` (milliseconds Moss may stay silent, default `120_000`) and
@@ -334,20 +342,22 @@ one that starts or ends with a space, is an error, and no key appears in an erro
 ```elixir
 # A vendor model, with your own OpenAI key for this call
 api_key = System.fetch_env!("OPENAI_API_KEY")
-params = %{model: "gpt-4o-mini", messages: messages}
-{:ok, completion} = Completions.create(client, params, api_key: api_key)
+params = %{model: "gpt-4o-mini", input: "Do you ship to Canada?"}
+{:ok, response} = Responses.create(client, params, api_key: api_key)
 ```
 
-Chunks and completions are maps with OpenAI's field names as string keys. `stream.request_id`
-and `completion["request_id"]` hold the reply's `X-Moss-Request-Id`, else `nil`.
+Events and responses are maps with OpenAI's field names as string keys. A stream ends after
+`response.completed`, or `response.incomplete` for a response cut by `max_output_tokens`, whose
+`"status"` is then `"incomplete"`, and that last event's `"response"` is the whole response.
+`stream.request_id` and `response["request_id"]` hold the reply's `X-Moss-Request-Id`, else `nil`.
 
-A failure before the reply starts returns `{:error, %Moss.Inference.Error{}}` with `status`,
+A failure before the response starts returns `{:error, %Moss.Inference.Error{}}` with `status`,
 `type` and `message`, plus the gateway's `code`, the reply's `request_id` and an error reply's
 `retry_after` in milliseconds, when they are known. A stream raises `Moss.Inference.Error` if
-the reply fails after it starts. Read a stream in the process that created it. Stopping early,
-for example with `Enum.take/2`, closes the connection and stops the model.
-`Moss.Inference.ChatCompletionStream.close/1` does the same from any process, and the stream
-then ends without an error.
+the response fails after it starts, as a `response.failed` or `error` event does. Read a stream in
+the process that created it. Stopping early, for example with `Enum.take/2`, closes the connection
+and stops the model. `Moss.Inference.ResponseStream.close/1` does the same from any process, and
+the stream then ends without an error.
 
 Calls reuse idle connections, from any process. A reply read to its end gives its connection
 back, and a stream that stops early or fails closes its own. A pooled connection found closed
@@ -355,36 +365,52 @@ is replaced before the call is written to it, and a stream that fails after it s
 retried. The pool keeps up to 100 idle connections, each for at most 4 seconds.
 
 To call another gateway, set `MOSS_INFERENCE_URL` to its base URL,
-such as `https://gateway.example.com/v1`. `Moss.Inference.new/3` reads it, and raises an error
-for a value that is not an `http` or `https` URL with a host and no user info, query or fragment.
+such as `https://gateway.example.com/v1`, and `/responses` goes after it. `Moss.Inference.new/3`
+reads it, and raises an error for a value that is not an `http` or `https` URL with a host and no
+user info, query or fragment.
 
 ### Tool calls
 
-`tools`, `tool_choice` and `parallel_tool_calls` go in `params` as in OpenAI's API. Your code runs
-the tools. A tool call keeps every field the model sent, such as Gemini's `extra_content`, so
-append the reply's message to `messages` as it is, with one `tool` message per call.
+`tools`, `tool_choice` and `parallel_tool_calls` go in `params` as in OpenAI's Responses API, where
+a function tool is flat. Your code runs the tools. Each call comes as a `"function_call"` item in the
+response's `"output"`. Put the output items back into `input` as they are, then one
+`"function_call_output"` item per call. An item keeps every field the model sent, such as Gemini's
+`extra_content`, so it goes back unchanged.
 
 ```elixir
-lookup = %{type: "function", function: %{name: "lookup_order", parameters: %{type: "object"}}}
-{:ok, completion} = Completions.create(client, %{messages: messages, tools: [lookup]})
-message = hd(completion["choices"])["message"]
+defmodule Orders do
+  alias Moss.Inference.Responses
 
-results =
-  for call <- message["tool_calls"] || [] do
-    %{role: "tool", tool_call_id: call["id"], content: lookup_order(call["function"]["arguments"])}
+  @lookup %{type: "function", name: "lookup_order", parameters: %{type: "object"}}
+
+  def answer(client, input) do
+    {:ok, response} = Responses.create(client, %{input: input, tools: [@lookup]})
+
+    results =
+      for %{"type" => "function_call"} = call <- response["output"] do
+        output = lookup_order(call["arguments"])
+        %{type: "function_call_output", call_id: call["call_id"], output: output}
+      end
+
+    if results == [],
+      do: response["output_text"],
+      else: answer(client, input ++ response["output"] ++ results)
   end
+end
 
-params = %{messages: messages ++ [message | results], tools: [lookup]}
-{:ok, completion} = Completions.create(client, params)
+Orders.answer(client, [%{role: "user", content: "Where is order A1?"}])
 ```
 
 ### MCP servers
 
-A `Moss.Inference.McpServer` in `tools` lets Moss call that server's tools itself. Before and
-after each call, the stream carries a chunk with `chunk["moss_tool_step"]`, and a reply without
-`stream` lists them all in `completion["moss_tool_steps"]`. A step's `"type"` is `"call"`, with
-`"arguments"`, or `"result"`, with `"is_error"`, `"duration_ms"` and `"output"`. A turn with
-tools can run for a few minutes. `inspect/2` leaves out `server_url` and `headers`.
+A `Moss.Inference.McpServer` in `tools` lets Moss call that server's tools itself. Each call comes
+as an `"mcp_call"` item, in `response.output_item.added` when it starts and
+`response.output_item.done` when it ends. It has the `"server_label"`, `"name"` and `"arguments"`
+of the call, and once it ended its `"status"`, `"output"` or `"error"`, and `"duration_ms"`.
+Without `stream`, the same items are in the response's `"output"`, in order. Sent back in `input`
+with the rest of `"output"`, they give the model the earlier tool results. A turn with tools can
+run for a few minutes.
+`inspect/2` leaves out `server_url` and `headers`.
 
 ```elixir
 crm = %Moss.Inference.McpServer{
@@ -393,14 +419,12 @@ crm = %Moss.Inference.McpServer{
   headers: %{"Authorization" => "Bearer " <> System.fetch_env!("CRM_TOKEN")}
 }
 
-{:ok, stream} = Completions.create(client, %{messages: messages, tools: [crm], stream: true})
+params = %{input: "Where is order A1?", tools: [crm], stream: true}
+{:ok, stream} = Responses.create(client, params)
 
-for %{"moss_tool_step" => step} <- stream do
-  IO.puts("#{step["type"]} #{step["server_label"]}.#{step["name"]}")
+for %{"type" => "response.output_item.done", "item" => %{"type" => "mcp_call"} = call} <- stream do
+  IO.puts("#{call["server_label"]}.#{call["name"]}: #{call["output"]}")
 end
-
-{:ok, completion} = Completions.create(client, %{messages: messages, tools: [crm]})
-completion["moss_tool_steps"]
 ```
 
 | `status` | `type` | `code` | When |
@@ -410,8 +434,8 @@ completion["moss_tool_steps"]
 | 400, 424 | `mcp_error` | `mcp_server_error` | The URL was refused, or the server failed to connect or list its tools |
 | 400 | `invalid_request_error` | `nil` | A bad `tools` entry, or a `server_label` or tool name used twice |
 
-After a tool step every failure has code `failed_after_tool_call`, and the SDK never retries:
-a tool may have changed data, as it may in a call you stop after a step, so never resend either blindly.
+After an `"mcp_call"` item every failure has code `failed_after_tool_call`, and the SDK never retries:
+a tool may have changed data, as it may in a call you stop after one, so never resend either blindly.
 
 ## Telemetry
 

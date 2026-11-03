@@ -1,6 +1,6 @@
 defmodule Moss.Inference.McpServer do
   @moduledoc """
-  An MCP server in the `tools` of a chat completion, whose tools Moss calls during the turn.
+  An MCP server in the `tools` of a response, whose tools Moss calls while it writes the response.
 
   It encodes as JSON to `{"type": "mcp", ...}` without its `nil` fields,
   and `inspect/2` leaves out `server_url` and `headers`, which may hold the server's credentials.
@@ -13,7 +13,7 @@ defmodule Moss.Inference.McpServer do
   @typedoc """
   An MCP server.
 
-    - `server_label` - its name in the steps: 1 to 32 letters, digits, `_` or `-`
+    - `server_label` - its name in the `mcp_call` items: 1 to 32 letters, digits, `_` or `-`
     - `server_url` - an `https` URL on port 443
     - `headers` - at most 16 headers Moss sends the server, such as its credentials
     - `allowed_tools` - names of the server's tools the model may call, else all of them

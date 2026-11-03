@@ -1,43 +1,38 @@
 // An `any` index signature, unlike `unknown`, also accepts values whose types are interfaces.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** One part of a message's content, such as text or an image. */
-export interface ChatCompletionContentPart {
-  type: string;
-  text?: string;
+/** A message of the conversation, such as `{ role: "user", content: "Hi" }`. */
+export interface EasyInputMessage {
+  type?: "message";
+  role: "user" | "assistant" | "system" | "developer";
+  /** Text, or a list of parts such as `{ type: "input_text", text }`. */
+  content: string | { type: string; [key: string]: any }[];
+  [key: string]: any;
+}
+
+/** The result of a {@link ResponseFunctionToolCall}, for the `input` of the next request. */
+export interface FunctionCallOutput {
+  type: "function_call_output";
+  /** The `call_id` of the call. */
+  call_id: string;
+  /** Text, or a list of parts such as `{ type: "input_text", text }`. */
+  output: string | { type: string; [key: string]: any }[];
   [key: string]: any;
 }
 
 /**
- * A tool call the model made, as the API returns it.
- * Fields the model adds, such as Gemini's `extra_content`, stay on the object.
+ * An item of `input`: a message, the result of a function call,
+ * or an item of an earlier response's `output`, sent back unchanged.
  */
-export interface ChatCompletionMessageToolCall {
-  id: string;
-  type: "function";
-  function: { name: string; arguments: string };
-  [key: string]: any;
-}
-
-/** One message of the conversation, in OpenAI's shape. */
-export interface ChatCompletionMessageParam {
-  role: "system" | "developer" | "user" | "assistant" | "tool" | "function";
-  content?: string | ChatCompletionContentPart[] | null;
-  name?: string;
-  tool_calls?: (ChatCompletionMessageToolCall | { type: string; [key: string]: any })[];
-  tool_call_id?: string;
-  [key: string]: any;
-}
+export type ResponseInputItem = EasyInputMessage | FunctionCallOutput | ResponseOutputItem;
 
 /** A function the model may call. Your code runs it and sends back the result. */
-export interface ChatCompletionTool {
+export interface FunctionTool {
   type: "function";
-  function: {
-    name: string;
-    description?: string;
-    parameters?: Record<string, unknown>;
-    strict?: boolean | null;
-  };
+  name: string;
+  description?: string | null;
+  parameters?: Record<string, unknown> | null;
+  strict?: boolean | null;
 }
 
 /** An MCP server the gateway calls for the model during the turn. */
@@ -57,38 +52,17 @@ export interface McpServer {
 }
 
 /**
- * One MCP tool call the gateway runs, streamed once before the call (`call`)
- * and once after it (`result`). Fields this type does not name stay on the object.
- */
-export interface ToolStep {
-  /** `call` before the tool runs, `result` after. */
-  type: "call" | "result";
-  /** The same on the `call` and the `result` of one tool call. */
-  id: string;
-  /** The label of the MCP server, as sent in `tools`. */
-  server_label: string;
-  /** The tool's name on its server. */
-  name: string;
-  /** The arguments as JSON text, on `call` only. */
-  arguments?: string;
-  /** True when the tool failed, on `result` only. */
-  is_error?: boolean;
-  /** How long the call took in milliseconds, on `result` only. */
-  duration_ms?: number;
-  /** The tool's result, cut when long, on `result` only. */
-  output?: string;
-  [key: string]: any;
-}
-
-/**
- * OpenAI's chat completion parameters plus the Moss options.
+ * OpenAI's Responses parameters plus the Moss options.
  * `indexes`, `retrieve` and `cache` travel as headers, the rest in the body
  * unchanged, including parameters this type does not name. The body always says `stream: true`.
  */
-export interface ChatCompletionCreateParamsBase {
+export interface ResponseCreateParamsBase {
   /** `moss` by default, Moss's own model. A vendor model such as `gpt-4o-mini` needs `apiKey`. */
   model?: string;
-  messages: ChatCompletionMessageParam[];
+  /** The text to answer, or the whole conversation so far, since Moss stores none. */
+  input: string | ResponseInputItem[];
+  /** The system message, before `input`. */
+  instructions?: string | null;
   stream?: boolean | null;
   /**
    * Moss indexes to search, every index when left out and none when empty.
@@ -99,38 +73,38 @@ export interface ChatCompletionCreateParamsBase {
   retrieve?: boolean;
   /** False always asks the model instead of the gateway's reply cache. */
   cache?: boolean;
+  /** Functions your code runs, MCP servers the gateway calls, or any other tool object. */
+  tools?: (FunctionTool | McpServer | { type: string; [key: string]: any })[];
+  /** Whether and which tool the model calls, such as `{ type: "function", name }`. */
+  tool_choice?: "none" | "auto" | "required" | { type: string; [key: string]: any };
+  /** False asks the model for at most one tool call per response. */
+  parallel_tool_calls?: boolean | null;
+  /** The most tokens the response can have. A longer one ends `incomplete`. */
+  max_output_tokens?: number | null;
   temperature?: number | null;
   top_p?: number | null;
-  max_tokens?: number | null;
-  max_completion_tokens?: number | null;
-  stop?: string | string[] | null;
-  seed?: number | null;
-  /** Functions your code runs, MCP servers the gateway calls, or any other tool object. */
-  tools?: (ChatCompletionTool | McpServer | { type: string; [key: string]: any })[];
-  /** Whether and which tool the model calls, such as `{ type: "function", function: { name } }`. */
-  tool_choice?: "none" | "auto" | "required" | { type: string; [key: string]: any };
-  /** False asks the model for at most one tool call per reply. */
-  parallel_tool_calls?: boolean | null;
-  response_format?: { type: string; [key: string]: any };
-  stream_options?: { include_usage?: boolean } | null;
+  /** Such as `{ format: { type: "json_schema", name, schema } }` for structured output. */
+  text?: { format?: { type: string; [key: string]: any }; [key: string]: any } | null;
+  /** Such as `{ effort: "low" }`. */
+  reasoning?: { effort?: string | null; [key: string]: any } | null;
+  metadata?: Record<string, string> | null;
   user?: string;
   /** Any other OpenAI parameter. */
   [param: string]: any;
 }
 
-/** Parameters that return a {@link ChatCompletionStream}. */
-export interface ChatCompletionCreateParamsStreaming extends ChatCompletionCreateParamsBase {
+/** Parameters that return a {@link ResponseStream}. */
+export interface ResponseCreateParamsStreaming extends ResponseCreateParamsBase {
   stream: true;
 }
 
-/** Parameters that return one aggregated {@link ChatCompletion}. */
-export interface ChatCompletionCreateParamsNonStreaming extends ChatCompletionCreateParamsBase {
+/** Parameters that return one {@link Response}. */
+export interface ResponseCreateParamsNonStreaming extends ResponseCreateParamsBase {
   stream?: false | null;
 }
 
-/** Parameters of `chat.completions.create`. */
-export type ChatCompletionCreateParams =
-  ChatCompletionCreateParamsStreaming | ChatCompletionCreateParamsNonStreaming;
+/** Parameters of `responses.create`. */
+export type ResponseCreateParams = ResponseCreateParamsStreaming | ResponseCreateParamsNonStreaming;
 
 /**
  * Settings of a `MossInference` client.
@@ -178,105 +152,129 @@ export interface InferenceRequestOptions {
   headers?: Record<string, string>;
 }
 
-/** Token counts for one call, with every field the gateway sent. */
-export interface CompletionUsage {
-  prompt_tokens: number;
-  completion_tokens: number;
+/** Token counts for one call, with every field the gateway sent, such as `moss`. */
+export interface ResponseUsage {
+  input_tokens: number;
+  input_tokens_details: { cached_tokens: number; [key: string]: any };
+  output_tokens: number;
+  output_tokens_details: { reasoning_tokens: number; [key: string]: any };
   total_tokens: number;
-  /** Such as `reasoning_tokens`. */
-  completion_tokens_details?: Record<string, any>;
-  /** Such as `cached_tokens`. */
-  prompt_tokens_details?: Record<string, any>;
   [key: string]: any;
 }
 
-/** The log probability of one token, with the likeliest tokens in its place when asked for. */
-export interface ChatCompletionTokenLogprob {
-  token: string;
-  logprob: number;
-  bytes: number[] | null;
-  top_logprobs: { token: string; logprob: number; bytes: number[] | null }[];
+/** The text of a message, with its annotations. */
+export interface ResponseOutputText {
+  type: "output_text";
+  text: string;
+  annotations: any[];
   [key: string]: any;
 }
 
-/** The log probabilities of a choice's tokens, for its text and for a refusal. */
-export interface ChatCompletionLogprobs {
-  content: ChatCompletionTokenLogprob[] | null;
-  refusal: ChatCompletionTokenLogprob[] | null;
-}
-
-/** A piece of a tool call inside a streamed delta, with any fields beyond OpenAI's. */
-export interface ChatCompletionChunkToolCall {
-  index: number;
-  id?: string;
-  type?: "function";
-  function?: { name?: string; arguments?: string };
-  [key: string]: any;
-}
-
-/** What one chunk adds to a choice. */
-export interface ChatCompletionChunkDelta {
-  role?: string;
-  content?: string | null;
-  tool_calls?: ChatCompletionChunkToolCall[];
-}
-
-/** One choice inside a streamed chunk. */
-export interface ChatCompletionChunkChoice {
-  index: number;
-  delta: ChatCompletionChunkDelta;
-  logprobs?: ChatCompletionLogprobs | null;
-  finish_reason: string | null;
-}
-
-/**
- * One streamed event, in OpenAI's shape.
- * Each chunk is the decoded JSON event,
- * so fields this type does not name are still on the object.
- * The last chunk may carry `usage` with an empty `choices` list.
- */
-export interface ChatCompletionChunk {
+/** A message of the model, an item of `output`. */
+export interface ResponseOutputMessage {
+  type: "message";
   id: string;
-  object: "chat.completion.chunk";
-  created: number;
-  model: string;
-  choices: ChatCompletionChunkChoice[];
-  usage?: CompletionUsage | null;
-  /** An MCP tool call the gateway runs, on a chunk whose one choice has an empty delta. */
-  moss_tool_step?: ToolStep;
-}
-
-/**
- * The reply the model built for one choice.
- * Push it onto `messages` unchanged, then one `tool` message per tool call.
- */
-export interface ChatCompletionMessage {
   role: "assistant";
-  /** All text joined. Without text, null when the model called tools and empty otherwise. */
-  content: string | null;
-  /** Present only when the model called tools. */
-  tool_calls?: ChatCompletionMessageToolCall[];
+  status: "in_progress" | "completed" | "incomplete";
+  content: ResponseOutputText[];
+  [key: string]: any;
 }
 
-/** One choice of an aggregated completion. */
-export interface ChatCompletionChoice {
-  index: number;
-  message: ChatCompletionMessage;
-  /** The tokens of every chunk joined in order, or null when no chunk had any. */
-  logprobs: ChatCompletionLogprobs | null;
-  finish_reason: string | null;
-}
-
-/** A whole reply, built from every chunk of the stream. */
-export interface ChatCompletion {
+/**
+ * A call of one of your function tools, an item of `output`.
+ * Fields the model adds, such as Gemini's `extra_content`, stay on the object,
+ * so it goes back into `input` unchanged, before its {@link FunctionCallOutput}.
+ */
+export interface ResponseFunctionToolCall {
+  type: "function_call";
   id: string;
-  object: "chat.completion";
-  created: number;
+  /** The id its {@link FunctionCallOutput} names. */
+  call_id: string;
+  name: string;
+  /** The arguments as JSON text. */
+  arguments: string;
+  status: "in_progress" | "completed" | "incomplete";
+  [key: string]: any;
+}
+
+/**
+ * A call that the gateway ran on one of your MCP servers, an item of `output`.
+ * Sent back in `input` with the rest of `output`, it gives the model the tool's earlier result.
+ */
+export interface McpCall {
+  type: "mcp_call";
+  id: string;
+  /** The label of the MCP server, as sent in `tools`. */
+  server_label: string;
+  /** The tool's name on its server. */
+  name: string;
+  /** The arguments as JSON text. */
+  arguments: string;
+  /** The tool's result, cut when long, once it succeeded. */
+  output?: string | null;
+  /** What failed, once the tool failed. */
+  error?: { type: string; [key: string]: any } | null;
+  status: "in_progress" | "completed" | "failed";
+  /** How long the call took in milliseconds, once it ended. */
+  duration_ms?: number;
+  [key: string]: any;
+}
+
+/** The reasoning of a reasoning model, an item of `output`, kept as the gateway sent it. */
+export interface ResponseReasoningItem {
+  type: "reasoning";
+  id: string;
+  [key: string]: any;
+}
+
+/** An item of `output`. An item of another type comes as the gateway sent it. */
+export type ResponseOutputItem =
+  ResponseOutputMessage | ResponseFunctionToolCall | McpCall | ResponseReasoningItem;
+
+/**
+ * A response, the JSON the gateway sent, plus `output_text`.
+ * `JSON.stringify` keeps `output_text` and leaves out `requestId`.
+ * A call without `stream: true`, and `finalResponse()`, return the one of the last event.
+ */
+export interface Response {
+  /** Such as `resp_...`. */
+  id: string;
+  object: "response";
+  /** In seconds since the epoch. */
+  created_at: number;
+  /** `incomplete` when `max_output_tokens` or a content filter cut the response. */
+  status: "completed" | "incomplete" | "failed" | "in_progress" | (string & {});
   model: string;
-  choices: ChatCompletionChoice[];
-  usage: CompletionUsage | null;
-  /** Every MCP tool step of the stream in order, present only when there is one. */
-  moss_tool_steps?: ToolStep[];
-  /** The `X-Moss-Request-Id` of the response. `JSON.stringify` leaves it out. */
+  output: ResponseOutputItem[];
+  /** The text of every `output_text` part of every message in `output`, joined. */
+  output_text: string;
+  usage: ResponseUsage | null;
+  error: { code: string; message: string; [key: string]: any } | null;
+  incomplete_details: { reason: "max_output_tokens" | "content_filter" | (string & {}) } | null;
+  instructions: string | null;
+  metadata: Record<string, string> | null;
+  /** The `X-Moss-Request-Id` of the HTTP response. */
   readonly requestId?: string;
+  /** The other request fields the gateway repeats, such as `temperature`. */
+  [key: string]: any;
+}
+
+/**
+ * One event of a streamed response, the JSON the gateway sent.
+ * Each type sets its own fields, such as `delta` on `response.output_text.delta`,
+ * `item` on `response.output_item.added` and `.done`, and `response` on
+ * `response.created`, `response.completed` and `response.incomplete`.
+ */
+export interface ResponseStreamEvent {
+  type: string;
+  sequence_number?: number;
+  response?: Response;
+  output_index?: number;
+  item_id?: string;
+  item?: ResponseOutputItem;
+  content_index?: number;
+  delta?: string;
+  text?: string;
+  arguments?: string;
+  [key: string]: any;
 }

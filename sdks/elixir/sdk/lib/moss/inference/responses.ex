@@ -1,20 +1,21 @@
-defmodule Moss.Inference.Chat.Completions do
+defmodule Moss.Inference.Responses do
   @moduledoc """
-  OpenAI's chat completions call, answered by Moss inference.
+  OpenAI's Responses call, answered by Moss inference.
 
   Moss searches the named indexes, adds what it finds to the prompt
-  and streams the model's reply. `params` is the OpenAI request body as a map,
+  and streams the model's response. `params` is the OpenAI request body as a map,
   so code written for OpenAI's API keeps working once it adds `:indexes`.
 
       client = Moss.Inference.new("project-id", "project-key")
-      messages = [%{role: "user", content: "Do you ship to Canada?"}]
 
-      {:ok, completion} =
-        Moss.Inference.Chat.Completions.create(client, %{messages: messages}, indexes: ["faq"])
+      {:ok, response} =
+        Moss.Inference.Responses.create(client, %{input: "Do you ship to Canada?"}, indexes: ["faq"])
+
+      response["output_text"]
   """
 
   alias Moss.Inference
-  alias Moss.Inference.{ChatCompletionStream, Error}
+  alias Moss.Inference.{Error, ResponseStream}
 
   @options [:indexes, :retrieve, :cache, :api_key, :timeout, :idle_timeout, :max_retries]
 
@@ -24,25 +25,34 @@ defmodule Moss.Inference.Chat.Completions do
   @typedoc """
   The OpenAI request body, with atom or string keys, sent as it is. Among them:
 
-    - `tools` - what the model may call: OpenAI function tools such as
-      `%{type: "function", function: %{name: "lookup", parameters: schema}}`,
+    - `input` - a string, or the conversation so far as a list of items: input messages
+      such as `%{role: "user", content: "Hi"}`, the `"output"` items of earlier responses
+      as they came, and a `%{type: "function_call_output", call_id: id, output: text}` per tool call
+    - `instructions` - a system message for this response
+    - `max_output_tokens` - the most tokens the response may hold
+    - `tools` - what the model may call: flat function tools such as
+      `%{type: "function", name: "lookup", parameters: schema}`,
       `Moss.Inference.McpServer` structs, or any other map
     - `tool_choice` - `"none"`, `"auto"`, `"required"`, or a map such as
-      `%{type: "function", function: %{name: "lookup"}}`
-    - `parallel_tool_calls` - `false` limits the model to one tool call per reply
+      `%{type: "function", name: "lookup"}`
+    - `parallel_tool_calls` - `false` limits the model to one tool call per response
+
+  Other keys, such as `temperature`, `text` or `reasoning`, reach the model unchanged.
   """
   @type params :: %{optional(atom() | String.t()) => term()}
 
   @doc """
-  Sends a chat completion request with the credentials of `client`.
+  Sends a Responses request with the credentials of `client`.
 
   `params` is the OpenAI body, with atom or string keys. Every key goes to
   Moss unchanged, except `stream`: with `stream: true` the call returns
-  `{:ok, %Moss.Inference.ChatCompletionStream{}}` once the reply starts, and
-  without it `{:ok, completion}`, a map with OpenAI's `chat.completion` shape and string keys.
-  Its tool calls keep every field the model sent, so its message goes back in `messages` as it is,
-  `"moss_tool_steps"` lists the MCP steps, when there are any, and `"request_id"` is the reply's
-  `X-Moss-Request-Id` header, else `nil`.
+  `{:ok, %Moss.Inference.ResponseStream{}}` once the response starts, and
+  without it `{:ok, response}`, the `"response"` map of the stream's last event,
+  with OpenAI's field names as string keys. Its `"output"` items keep every field the model sent,
+  so they go back in `input` as they are. `"output_text"` joins the text of its messages,
+  and `"request_id"` is the response's `X-Moss-Request-Id` header, else `nil`.
+  A response cut by `max_output_tokens` has `"status"` `"incomplete"` and `"incomplete_details"`.
+  Moss stores nothing, so send the whole conversation each time.
   Without `model`, the call sends `"model" => "moss"`, Moss's own model.
   `params` that hold an option below, or `apiKey`, as an atom or string key, return
   an `invalid_request_error` that names the option, so a provider key never goes in the body.
@@ -69,7 +79,7 @@ defmodule Moss.Inference.Chat.Completions do
     - `:max_retries` - how many times a failed call is sent again, else the client's
   """
   @spec create(Inference.t(), params(), keyword()) ::
-          {:ok, ChatCompletionStream.t() | map()} | {:error, Error.t()}
+          {:ok, ResponseStream.t() | map()} | {:error, Error.t()}
   def create(client, params, opts \\ []) do
     check_arguments!(client, params)
     Inference.check_options!(opts, @options)
@@ -89,7 +99,7 @@ defmodule Moss.Inference.Chat.Completions do
            Inference.check_retries(Keyword.get(opts, :max_retries, client.max_retries)),
          {:ok, json} <- encode(body),
          {:ok, stream} <-
-           ChatCompletionStream.open(client.endpoint, headers, json, timeout, idle, retries) do
+           ResponseStream.open(client.endpoint, headers, json, timeout, idle, retries) do
       if stream?, do: {:ok, stream}, else: collect(stream)
     end
   end
@@ -180,123 +190,27 @@ defmodule Moss.Inference.Chat.Completions do
 
   defp invalid(message), do: {:error, Error.invalid(message)}
 
+  # The stream ends after its last event, so the last one it gives holds the whole response.
   defp collect(stream) do
-    chunks = Enum.to_list(stream)
-    first = List.first(chunks, %{})
-    steps = for %{"moss_tool_step" => %{} = step} <- chunks, do: step
+    response =
+      case Enum.reduce(stream, nil, fn event, _last -> event end) do
+        %{"response" => %{} = response} -> response
+        _other -> %{}
+      end
 
-    completion = %{
-      "id" => first["id"],
-      "object" => "chat.completion",
-      "created" => first["created"],
-      "model" => first["model"],
-      "choices" => chunks |> maps("choices") |> by_index() |> Enum.map(&choice/1),
-      "usage" => chunks |> Enum.map(& &1["usage"]) |> Enum.reject(&is_nil/1) |> List.last(),
-      "request_id" => stream.request_id
-    }
-
-    {:ok, if(steps == [], do: completion, else: Map.put(completion, "moss_tool_steps", steps))}
+    {:ok,
+     Map.merge(response, %{"output_text" => text(response), "request_id" => stream.request_id})}
   rescue
     error in Error -> {:error, error}
   end
 
-  # A joined choice. Its message always has content, so it goes back in messages as it is.
-  defp choice({index, parts}) do
-    deltas = Enum.map(parts, &map(&1["delta"]))
-    content = deltas |> Enum.map(& &1["content"]) |> Enum.filter(&is_binary/1) |> Enum.join()
-
-    {tool_calls, _last} =
-      for %{"tool_calls" => pieces} <- deltas,
-          is_list(pieces),
-          %{} = piece <- pieces,
-          reduce: {%{}, nil} do
-        {calls, last} ->
-          slot = slot(piece, calls, last)
-          {merge_call(calls, piece, slot), slot}
-      end
-
-    tool_calls = tool_calls |> Enum.sort() |> Enum.map(&elem(&1, 1))
-
-    message = %{
-      "role" => Enum.find_value(deltas, "assistant", & &1["role"]),
-      "content" => if(content == "" and tool_calls != [], do: nil, else: content)
-    }
-
-    %{
-      "index" => index,
-      "message" =>
-        if(tool_calls == [], do: message, else: Map.put(message, "tool_calls", tool_calls)),
-      "logprobs" => parts |> Enum.map(& &1["logprobs"]) |> Enum.filter(&is_map/1) |> logprobs(),
-      "finish_reason" =>
-        parts |> Enum.map(& &1["finish_reason"]) |> Enum.reject(&is_nil/1) |> List.last()
-    }
+  # The text of every output_text part of every message, joined.
+  defp text(%{"output" => output}) when is_list(output) do
+    for %{"type" => "message", "content" => content} when is_list(content) <- output,
+        %{"type" => "output_text", "text" => text} when is_binary(text) <- content,
+        into: "",
+        do: text
   end
 
-  # The logprobs the chunks sent, each key's lists joined in order, and nil for a key none sent.
-  defp logprobs([]), do: nil
-
-  defp logprobs(sent) do
-    Map.new(~w(content refusal), fn key ->
-      lists = for %{^key => list} when is_list(list) <- sent, do: list
-      {key, if(lists == [], do: nil, else: Enum.concat(lists))}
-    end)
-  end
-
-  # A piece's integer index, else the call that has the piece's id, else the most recent call.
-  # The first piece, or a new id when the most recent call has an id, starts a call in the next free slot.
-  defp slot(%{"index" => index}, _calls, _last) when is_integer(index), do: index
-
-  defp slot(piece, calls, last) do
-    id = piece["id"]
-    id? = is_binary(id) and id != ""
-    owner = Enum.find_value(calls, fn {slot, call} -> if id? and call["id"] == id, do: slot end)
-    next = Enum.max(Map.keys(calls), fn -> -1 end) + 1
-
-    cond do
-      owner -> owner
-      last == nil or (id? and calls[last]["id"] != "") -> next
-      true -> last
-    end
-  end
-
-  # Folds a tool call piece into the call at `slot`. A new call has "" for id, name and arguments.
-  # A set id, type or name replaces, arguments append, and a map field merges into the last one.
-  defp merge_call(calls, piece, slot) do
-    empty = %{"id" => "", "type" => "function", "function" => %{"name" => "", "arguments" => ""}}
-    call = Map.get(calls, slot, empty)
-    function = map(piece["function"])
-    arguments = if is_binary(function["arguments"]), do: function["arguments"], else: ""
-
-    extras =
-      Map.reject(piece, fn {key, value} -> key in ~w(index id type function) or value == nil end)
-
-    call =
-      call
-      |> Map.merge(extras, fn _key, old, new ->
-        if is_map(old) and is_map(new), do: Map.merge(old, new), else: new
-      end)
-      |> put_set("id", piece["id"])
-      |> put_set("type", piece["type"])
-      |> update_in(["function"], &put_set(&1, "name", function["name"]))
-      |> update_in(["function", "arguments"], &(&1 <> arguments))
-
-    Map.put(calls, slot, call)
-  end
-
-  # Puts a value Python counts as true, as the gateway does: not null, false, 0, "", [] or {}.
-  defp put_set(map, _key, value) when value in [nil, false, "", [], %{}] or value == 0, do: map
-  defp put_set(map, key, value), do: Map.put(map, key, value)
-
-  defp by_index(items),
-    do: items |> Enum.group_by(&(&1["index"] || 0)) |> Enum.sort_by(&elem(&1, 0))
-
-  # The gateway's lists and objects, read as empty when they have another shape.
-  defp maps(parents, key) do
-    Enum.flat_map(parents, fn parent ->
-      if is_list(parent[key]), do: Enum.map(parent[key], &map/1), else: []
-    end)
-  end
-
-  defp map(value) when is_map(value), do: value
-  defp map(_value), do: %{}
+  defp text(_response), do: ""
 end

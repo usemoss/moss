@@ -1,19 +1,18 @@
 defmodule Moss.Inference do
   @moduledoc """
-  A client for Moss inference, which answers OpenAI's chat completions call.
+  A client for Moss inference, which answers OpenAI's Responses call.
 
-  Moss searches your indexes, adds what it finds to the prompt and streams the reply.
+  Moss searches your indexes, adds what it finds to the prompt and streams the response.
   A client holds the project credentials, the gateway URL, an optional provider key
   and default timeouts and retries. It is plain data, so build it once and pass it to any process.
   Calls from any process reuse idle connections.
 
       client = Moss.Inference.new("project-id", "project-key")
-      messages = [%{role: "user", content: "Do you ship to Canada?"}]
 
-      {:ok, completion} =
-        Moss.Inference.Chat.Completions.create(client, %{messages: messages}, indexes: ["faq"])
+      {:ok, response} =
+        Moss.Inference.Responses.create(client, %{input: "Do you ship to Canada?"}, indexes: ["faq"])
 
-  See `Moss.Inference.Chat.Completions.create/3` for the call itself.
+  See `Moss.Inference.Responses.create/3` for the call itself.
   """
 
   alias Moss.Inference.Error
@@ -103,14 +102,14 @@ defmodule Moss.Inference do
     end
   end
 
-  # The chat completions URL under a base URL, or @base_url when it is empty.
+  # The responses URL under a base URL, or @base_url when it is empty.
   defp endpoint(""), do: endpoint(@base_url)
 
   defp endpoint(base) do
     with {:ok, %URI{scheme: scheme, userinfo: nil, query: nil, fragment: nil} = uri}
          when scheme in ["http", "https"] <- URI.new(base),
          true <- uri.host not in [nil, ""] and uri.port in 1..65_535 do
-      {:ok, %{uri | path: String.replace_suffix(uri.path || "", "/", "") <> "/chat/completions"}}
+      {:ok, %{uri | path: String.replace_suffix(uri.path || "", "/", "") <> "/responses"}}
     else
       _invalid ->
         invalid(

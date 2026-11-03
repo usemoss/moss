@@ -1,8 +1,8 @@
-"""Chat completions grounded in your Moss indexes, in the shape of OpenAI's API.
+"""Responses grounded in your Moss indexes, in the shape of OpenAI's Responses API.
 
+Moss adds the facts it finds in your indexes to the prompt.
 `MossInference(project_id, project_key)` is a client with your credentials.
-Its `chat.completions.create` takes OpenAI's arguments plus `indexes` to search.
-Moss adds the facts it finds to the prompt and streams the reply as OpenAI chunks.
+Its `responses.create` takes OpenAI's arguments, plus the `indexes` to search.
 """
 
 import asyncio
@@ -108,195 +108,169 @@ class InferenceError(RuntimeError):
 
 
 @dataclass(frozen=True, kw_only=True)
-class CompletionTokensDetails:
-    """Token counts of the parts of a reply, such as its reasoning."""
-
-    accepted_prediction_tokens: int | None = None
-    audio_tokens: int | None = None
-    reasoning_tokens: int | None = None
-    rejected_prediction_tokens: int | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class PromptTokensDetails:
+class InputTokensDetails:
     """Token counts of the parts of a prompt, such as its cached tokens."""
 
-    audio_tokens: int | None = None
-    cached_tokens: int | None = None
+    cached_tokens: int = 0
 
 
 @dataclass(frozen=True, kw_only=True)
-class CompletionUsage:
-    """Token counts of a reply."""
+class OutputTokensDetails:
+    """Token counts of the parts of a reply, such as its reasoning."""
 
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
+    reasoning_tokens: int = 0
+
+
+@dataclass(frozen=True, kw_only=True)
+class ResponseUsage:
+    """Token counts of a response."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
     total_tokens: int = 0
-    completion_tokens_details: CompletionTokensDetails | None = None
-    prompt_tokens_details: PromptTokensDetails | None = None
+    input_tokens_details: InputTokensDetails | None = None
+    output_tokens_details: OutputTokensDetails | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
-class ChatCompletionTokenLogprob:
-    """A token of a reply with its log probability.
-    `top_logprobs` holds the likeliest tokens at its place, in the same type."""
+class ResponseOutputText:
+    """The text of a message."""
 
-    token: str | None = None
-    logprob: float | None = None
-    bytes: list[int] | None = None
-    top_logprobs: list["ChatCompletionTokenLogprob"] | None = None
+    type: str = "output_text"
+    text: str = ""
+    annotations: list[Any] = field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)
-class ChoiceLogprobs:
-    """The log probabilities of the tokens of a choice's text and refusal."""
+class ResponseOutputMessage:
+    """A message of the model, an item of `output`.
+    `raw` is the item as it came, which is what goes back into `input`."""
 
-    content: list[ChatCompletionTokenLogprob] | None = None
-    refusal: list[ChatCompletionTokenLogprob] | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class ChoiceDeltaToolCallFunction:
-    """A piece of a function call: its name first, then pieces of its JSON arguments."""
-
-    name: str | None = None
-    arguments: str | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class ChoiceDeltaToolCall:
-    """A piece of tool call `index` of a choice.
-    `raw` is the decoded piece, with the fields these types leave out.
-    Without an `index`, it joins the latest call, or starts one with a new `id`."""
-
-    index: int = 0
-    id: str | None = None
-    type: str | None = None
-    function: ChoiceDeltaToolCallFunction | None = None
+    id: str = ""
+    type: str = "message"
+    role: str = "assistant"
+    status: str | None = None
+    content: list[ResponseOutputText | dict[str, Any]] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
 
 
 @dataclass(frozen=True, kw_only=True)
-class ChoiceDelta:
-    """The new part of a choice's message."""
+class ResponseFunctionToolCall:
+    """A call of one of your function tools, an item of `output`.
 
-    role: str | None = None
-    content: str | None = None
-    tool_calls: list[ChoiceDeltaToolCall] | None = None
+    Run the function and send its result back as a `function_call_output` item
+    with the same `call_id`, after this call, in the `input` of the next request.
+    `raw` is the item as it came, with the fields these types leave out,
+    such as Gemini's `extra_content`. It is what goes back into `input`.
+    """
+
+    id: str = ""
+    type: str = "function_call"
+    call_id: str = ""
+    name: str = ""
+    arguments: str = ""
+    status: str | None = None
+    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
 
 
 @dataclass(frozen=True, kw_only=True)
-class ChunkChoice:
-    """One choice of a chunk."""
+class McpCall:
+    """A call that Moss ran on one of your MCP servers, an item of `output`.
 
-    index: int = 0
-    delta: ChoiceDelta = field(default_factory=ChoiceDelta)
-    finish_reason: str | None = None
-    logprobs: ChoiceLogprobs | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class ToolStep:
-    """One step of an MCP tool call that Moss runs during a reply.
-
-    `raw` is the decoded step, for the fields these types leave out.
-    A `call` step comes before the tool runs, and a `result` step after it.
+    `raw` is the item as it came, for the fields these types leave out.
+    Sent back in `input`, it gives the model the earlier tool result.
 
     Attributes:
-        type: `call` or `result`.
-        id: The ID that ties a call to its result.
+        id: The ID of the call.
         server_label: The `server_label` of the tool's server.
         name: The name of the tool.
-        arguments: The JSON arguments, on a `call` step.
-        is_error: Whether the tool failed, on a `result` step.
-        duration_ms: The milliseconds the tool took, on a `result` step.
-        output: The tool's output, on a `result` step.
+        arguments: The JSON arguments.
+        output: The tool's output, when it succeeded.
+        error: What failed, when the tool failed.
+        status: `in_progress`, `completed` or `failed`.
+        duration_ms: The milliseconds the tool took.
+    """
+
+    id: str = ""
+    type: str = "mcp_call"
+    server_label: str = ""
+    name: str = ""
+    arguments: str = ""
+    output: str | None = None
+    error: Any = None
+    status: str | None = None
+    duration_ms: float | None = None
+    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+
+
+ResponseOutputItem = (
+    ResponseOutputMessage | ResponseFunctionToolCall | McpCall | dict[str, Any]
+)
+"""An item of `output`. An item of another type stays the dict it came as."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class IncompleteDetails:
+    """Why a response is incomplete: `max_output_tokens` or `content_filter`."""
+
+    reason: str | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class Response:
+    """A whole response.
+
+    `output_text` joins the text of its messages. `raw` is the response as it came,
+    for the fields these types leave out, and `request_id` the `X-Moss-Request-Id`
+    of the HTTP response, when it had one. A response cut short is `incomplete`.
+    """
+
+    id: str = ""
+    object: str = "response"
+    created_at: float = 0
+    status: str | None = None
+    model: str = ""
+    instructions: str | None = None
+    output: list[ResponseOutputItem] = field(default_factory=list)
+    usage: ResponseUsage | None = None
+    incomplete_details: IncompleteDetails | None = None
+    metadata: dict[str, str] | None = None
+    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    request_id: str | None = field(default=None, repr=False, compare=False)
+
+    @property
+    def output_text(self) -> str:
+        """The text of the messages in `output`, joined."""
+        return "".join(
+            part.text
+            for item in self.output
+            if isinstance(item, ResponseOutputMessage)
+            for part in item.content
+            if isinstance(part, ResponseOutputText)
+        )
+
+
+@dataclass(frozen=True, kw_only=True)
+class ResponseStreamEvent:
+    """One event of a streamed response, such as `response.output_text.delta`.
+
+    Each type of event sets its own fields and leaves the others None, as OpenAI's do:
+    `delta` on a delta, `item` on `response.output_item.added` and `.done`, and
+    `response` on `response.created`, `response.completed` and `response.incomplete`.
+    `raw` is the decoded event, for the fields these types leave out.
     """
 
     type: str = ""
-    id: str = ""
-    server_label: str = ""
-    name: str = ""
+    sequence_number: int | None = None
+    response: Response | None = None
+    output_index: int | None = None
+    item_id: str | None = None
+    item: ResponseOutputItem | None = None
+    content_index: int | None = None
+    delta: str | None = None
+    text: str | None = None
     arguments: str | None = None
-    is_error: bool | None = None
-    duration_ms: float | None = None
-    output: str | None = None
     raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
-
-
-@dataclass(frozen=True, kw_only=True)
-class ChatCompletionChunk:
-    """One event of a streamed reply.
-
-    The last chunk can carry `usage` and no choices.
-    `raw` is the decoded event, for the fields these types leave out.
-    A chunk of an MCP tool call has an empty delta and its step in `tool_step`.
-    """
-
-    id: str = ""
-    object: str = "chat.completion.chunk"
-    created: int = 0
-    model: str = ""
-    choices: list[ChunkChoice] = field(default_factory=list)
-    usage: CompletionUsage | None = None
-    tool_step: ToolStep | None = None
-    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
-
-
-@dataclass(frozen=True, kw_only=True)
-class Function:
-    """The function a tool call names, with its JSON arguments."""
-
-    name: str
-    arguments: str
-
-
-@dataclass(frozen=True, kw_only=True)
-class ChatCompletionMessageToolCall:
-    """A tool call of a whole reply.
-    `raw` is the call joined from its pieces, with the fields these types leave out.
-    It is what goes back into `messages`, so a changed call needs a changed `raw`."""
-
-    id: str
-    type: str = "function"
-    function: Function
-    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
-
-
-@dataclass(frozen=True, kw_only=True)
-class ChatCompletionMessage:
-    """The message of a whole reply. It can go back into `messages` as is.
-    In a joined reply with no text, `content` is None with tool calls, else `""`."""
-
-    role: str = "assistant"
-    content: str | None = None
-    tool_calls: list[ChatCompletionMessageToolCall] | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class Choice:
-    """One choice of a whole reply."""
-
-    index: int = 0
-    message: ChatCompletionMessage
-    finish_reason: str | None = None
-    logprobs: ChoiceLogprobs | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class ChatCompletion:
-    """A whole reply, joined from the chunks of its stream.
-    `tool_steps` holds the steps of the MCP tool calls, in the order they came,
-    and `request_id` the `X-Moss-Request-Id` of the response, when it had one."""
-
-    id: str
-    object: str = "chat.completion"
-    created: int
-    model: str
-    choices: list[Choice]
-    usage: CompletionUsage | None = None
-    tool_steps: list[ToolStep] = field(default_factory=list)
-    request_id: str | None = field(default=None, repr=False, compare=False)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -323,22 +297,24 @@ class McpServer:
     transport: Literal["streamable_http", "sse"] | None = None
 
 
-ChatCompletionMessageParam = Mapping[str, Any] | ChatCompletionMessage
-"""A message of `messages`: an OpenAI message dict, or a `ChatCompletionMessage`."""
-
-ChatCompletionToolParam = Mapping[str, Any] | McpServer
-"""An entry of `tools`: an `McpServer`, or a tool dict such as a function tool."""
-
-ChatCompletionToolChoiceOptionParam = (
-    Literal["none", "auto", "required"] | Mapping[str, Any]
+ResponseInputItemParam = (
+    Mapping[str, Any] | ResponseOutputMessage | ResponseFunctionToolCall | McpCall
 )
+"""An item of `input`: an OpenAI input item dict, or an `output` item of a response."""
+
+ToolParam = Mapping[str, Any] | McpServer
+"""An entry of `tools`: an `McpServer`, or a tool dict such as a function tool.
+A function tool is flat: `{"type": "function", "name": ..., "parameters": ...}`."""
+
+ToolChoiceParam = Literal["none", "auto", "required"] | Mapping[str, Any]
 """A `tool_choice`: `none`, `auto`, `required`, or a dict such as a function to call."""
 
 
-class ChatCompletionStream:
-    """The chunks of a streamed reply, as an async iterator.
+class ResponseStream:
+    """The events of a streamed response, as an async iterator.
 
-    `create(stream=True)` returns one.
+    `create(stream=True)` returns one. It ends after `response.completed`
+    or `response.incomplete`, and `response.failed` raises `InferenceError`.
     A cancelled task ends it and raises `CancelledError`.
     `break`, `aclose()` or `async with` end it early and quietly.
     Either way the connection closes, which stops the model's reply.
@@ -358,28 +334,26 @@ class ChatCompletionStream:
         self._lines = self._split(response.aiter_bytes())
         self._deadline = deadline
         self._closed = False
-        self._chunks: list[ChatCompletionChunk] = []
-        self._calls: dict[int, dict[int, str]] = {}
-        self._done = False
-        self._final: ChatCompletion | None = None
+        self._stepped = False
+        self._final: Response | None = None
         self._failure: Exception | None = None
 
-    async def __aiter__(self) -> AsyncIterator[ChatCompletionChunk]:
+    async def __aiter__(self) -> AsyncIterator[ResponseStreamEvent]:
         try:
             while True:
                 try:
-                    chunk = await self.__anext__()
+                    event = await self.__anext__()
                 except StopAsyncIteration:
                     return
-                yield chunk
+                yield event
         finally:
             await self.aclose()
 
-    async def __anext__(self) -> ChatCompletionChunk:
+    async def __anext__(self) -> ResponseStreamEvent:
         if self._closed:
             raise StopAsyncIteration
         try:
-            chunk = await _within(self._deadline, self._next_chunk())
+            event = await _within(self._deadline, self._next_event())
         except BaseException as error:
             closed_by_caller = self._closed
             await self.aclose()
@@ -394,39 +368,33 @@ class ChatCompletionStream:
             if failure is error:
                 raise
             raise failure from error
-        if chunk is None:
-            self._done = True
+        if self._final is not None:
             await self._finish()
-            raise StopAsyncIteration
-        self._chunks.append(chunk)
-        return chunk
+        return event
 
-    async def get_final_completion(self) -> ChatCompletion:
-        """The whole reply, joined from every chunk.
+    async def get_final_response(self) -> Response:
+        """The whole response, from the stream's last event.
         It reads the rest first and fails as iteration would,
-        or with `incomplete_stream` for a stream closed before `[DONE]`."""
+        or with `incomplete_stream` for a stream closed before its last event."""
         async for _ in self:
             pass
         if self._failure is not None:
             raise self._failure
-        if not self._done:
+        if self._final is None:
             error = self._error(
-                "The stream was closed before [DONE]", "incomplete_stream"
+                "The stream was closed before response.completed", "incomplete_stream"
             )
             self._mark(error)
             raise error
-        if self._final is None:
-            self._final = _join(self._chunks, self.request_id)
         return self._final
 
     def _mark(self, failure: BaseException) -> None:
-        """Mark `failure` with the code `failed_after_tool_call` after a step."""
-        stepped = any(chunk.tool_step for chunk in self._chunks)
-        if stepped and isinstance(failure, InferenceError):
+        """Mark `failure` with the code `failed_after_tool_call` after an MCP call."""
+        if self._stepped and isinstance(failure, InferenceError):
             failure.code = "failed_after_tool_call"
 
     async def _finish(self) -> None:
-        """Close the stream after `[DONE]`.
+        """Close the stream after its last event.
         First, up to 0.1 s within the deadline go to reading the rest of the body,
         so that a connection read to its end can return to the pool for the next call.
         Any failure of that read, such as a line over 1 MiB, only closes the connection.
@@ -445,19 +413,19 @@ class ChatCompletionStream:
         self._closed = True
         await self._response.aclose()
 
-    async def __aenter__(self) -> "ChatCompletionStream":
+    async def __aenter__(self) -> "ResponseStream":
         return self
 
     async def __aexit__(self, *exc_info: object) -> None:
         await self.aclose()
 
-    async def _next_chunk(self) -> ChatCompletionChunk | None:
-        """The next chunk, or None at `[DONE]`."""
-        data = await self._next_event()
-        if data is None:
-            raise self._error("The stream ended before [DONE]", "incomplete_stream")
-        if data == "[DONE]":
-            return None
+    async def _next_event(self) -> ResponseStreamEvent:
+        """The next event. `response.failed` and `error` raise as `InferenceError`."""
+        data = await self._next_data()
+        if data is None or data == "[DONE]":
+            raise self._error(
+                "The stream ended before response.completed", "incomplete_stream"
+            )
         try:
             event = json.loads(data)
         except ValueError:
@@ -466,12 +434,20 @@ class ChatCompletionStream:
             raise self._error(
                 "The stream sent an event that is not a JSON object", "server_error"
             )
-        error = event.get("error")
-        if isinstance(error, dict):
-            message = str(error.get("message") or "The reply failed")
-            kind = str(error.get("type") or "model_error")
-            raise self._error(message, kind, _code(error))
-        return _chunk(event, self._calls)
+        kind = event.get("type")
+        if kind in ("response.failed", "error"):
+            failed = kind == "response.failed"
+            error = (
+                _dict(_dict(event.get("response")).get("error")) if failed else event
+            )
+            message = str(error.get("message") or "The response failed")
+            reason = error.get("type") if failed else None
+            raise self._error(message, str(reason or "model_error"), _code(error))
+        typed = _event(event, self.request_id)
+        self._stepped = self._stepped or isinstance(typed.item, McpCall)
+        if kind in ("response.completed", "response.incomplete"):
+            self._final = typed.response
+        return typed
 
     def _error(
         self, message: str, kind: str, code: str | None = None
@@ -479,7 +455,7 @@ class ChatCompletionStream:
         """An error of this stream, with the request id of its response."""
         return _response_error(self._response, message, kind, code=code)
 
-    async def _next_event(self) -> str | None:
+    async def _next_data(self) -> str | None:
         """The data of the next server-sent event, or None at the end of the body."""
         data: bytearray | None = None
         async for line in self._lines:
@@ -547,7 +523,7 @@ class MossInference:
         default_headers: Headers for every call, under the headers the SDK sets.
 
     Attributes:
-        chat: The chat API, called as `client.chat.completions.create(...)`.
+        responses: The Responses API, called as `client.responses.create(...)`.
     """
 
     def __init__(
@@ -569,7 +545,7 @@ class MossInference:
         self._idle_timeout = _limit("idle_timeout", idle_timeout, _DEFAULT_IDLE_TIMEOUT)
         self._max_retries = _retries(max_retries)
         self._state: tuple[asyncio.AbstractEventLoop, httpx.AsyncClient] | None = None
-        self.chat: _Chat = _Chat(self)
+        self.responses: _Responses = _Responses(self)
 
     async def close(self) -> None:
         """Close the connection pool. A later call opens a new one.
@@ -605,7 +581,7 @@ class MossInference:
         deadline: float | None,
         idle_timeout: float | None,
         retries: int,
-    ) -> ChatCompletionStream:
+    ) -> ResponseStream:
         """Send a call, with `headers` over `extra_headers` over the client's.
         A failure before the reply starts sends it again, up to `retries` times."""
         merged = self._default_headers.copy()
@@ -632,7 +608,7 @@ class MossInference:
                     continue
                 raise _transport_error(error) from error
             if response.is_success:
-                return ChatCompletionStream(response, deadline)
+                return ResponseStream(response, deadline)
             if await _retry(attempt, retries, deadline, response):
                 continue
             break
@@ -647,7 +623,7 @@ class MossInference:
         raise _status_error(response, body)
 
 
-class _Completions:
+class _Responses:
     def __init__(self, client: MossInference | None) -> None:
         self._client = client
 
@@ -656,11 +632,13 @@ class _Completions:
         self,
         *,
         model: str = "moss",
-        messages: Iterable[ChatCompletionMessageParam],
+        input: str | Iterable[ResponseInputItemParam],
         stream: Literal[True],
-        tools: Sequence[ChatCompletionToolParam] | None = None,
-        tool_choice: ChatCompletionToolChoiceOptionParam | None = None,
+        instructions: str | None = None,
+        tools: Sequence[ToolParam] | None = None,
+        tool_choice: ToolChoiceParam | None = None,
         parallel_tool_calls: bool | None = None,
+        max_output_tokens: int | None = None,
         indexes: Sequence[str] | None = None,
         retrieve: bool = True,
         cache: bool = True,
@@ -671,18 +649,20 @@ class _Completions:
         extra_headers: Mapping[str, str] | None = None,
         extra_body: Mapping[str, Any] | None = None,
         **kwargs: Any,
-    ) -> ChatCompletionStream: ...
+    ) -> ResponseStream: ...
 
     @overload
     async def create(
         self,
         *,
         model: str = "moss",
-        messages: Iterable[ChatCompletionMessageParam],
+        input: str | Iterable[ResponseInputItemParam],
         stream: Literal[False] = False,
-        tools: Sequence[ChatCompletionToolParam] | None = None,
-        tool_choice: ChatCompletionToolChoiceOptionParam | None = None,
+        instructions: str | None = None,
+        tools: Sequence[ToolParam] | None = None,
+        tool_choice: ToolChoiceParam | None = None,
         parallel_tool_calls: bool | None = None,
+        max_output_tokens: int | None = None,
         indexes: Sequence[str] | None = None,
         retrieve: bool = True,
         cache: bool = True,
@@ -693,18 +673,20 @@ class _Completions:
         extra_headers: Mapping[str, str] | None = None,
         extra_body: Mapping[str, Any] | None = None,
         **kwargs: Any,
-    ) -> ChatCompletion: ...
+    ) -> Response: ...
 
     @overload
     async def create(
         self,
         *,
         model: str = "moss",
-        messages: Iterable[ChatCompletionMessageParam],
+        input: str | Iterable[ResponseInputItemParam],
         stream: bool,
-        tools: Sequence[ChatCompletionToolParam] | None = None,
-        tool_choice: ChatCompletionToolChoiceOptionParam | None = None,
+        instructions: str | None = None,
+        tools: Sequence[ToolParam] | None = None,
+        tool_choice: ToolChoiceParam | None = None,
         parallel_tool_calls: bool | None = None,
+        max_output_tokens: int | None = None,
         indexes: Sequence[str] | None = None,
         retrieve: bool = True,
         cache: bool = True,
@@ -715,17 +697,19 @@ class _Completions:
         extra_headers: Mapping[str, str] | None = None,
         extra_body: Mapping[str, Any] | None = None,
         **kwargs: Any,
-    ) -> ChatCompletion | ChatCompletionStream: ...
+    ) -> Response | ResponseStream: ...
 
     async def create(
         self,
         *,
         model: str = "moss",
-        messages: Iterable[ChatCompletionMessageParam],
+        input: str | Iterable[ResponseInputItemParam],
         stream: bool = False,
-        tools: Sequence[ChatCompletionToolParam] | None = None,
-        tool_choice: ChatCompletionToolChoiceOptionParam | None = None,
+        instructions: str | None = None,
+        tools: Sequence[ToolParam] | None = None,
+        tool_choice: ToolChoiceParam | None = None,
         parallel_tool_calls: bool | None = None,
+        max_output_tokens: int | None = None,
         indexes: Sequence[str] | None = None,
         retrieve: bool = True,
         cache: bool = True,
@@ -736,19 +720,22 @@ class _Completions:
         extra_headers: Mapping[str, str] | None = None,
         extra_body: Mapping[str, Any] | None = None,
         **kwargs: Any,
-    ) -> ChatCompletion | ChatCompletionStream:
-        """Answer `messages` with facts from your Moss indexes.
+    ) -> Response | ResponseStream:
+        """Answer `input` with facts from your Moss indexes.
 
         None as `timeout`, `idle_timeout` or `max_retries` keeps the client's value,
         and a timeout of 0 or less turns it off for this call only.
 
         Args:
             model: The model to answer with, `moss` by default, or a vendor model.
-            messages: The chat so far, as OpenAI message dicts or reply messages.
-            stream: True streams the reply in chunks, else it comes back whole.
+            input: The text to answer, or the conversation so far as a list of items:
+                OpenAI input item dicts, and the `output` items of earlier responses.
+            stream: True streams the response as events, else it comes back whole.
+            instructions: The system message, before `input`.
             tools: The tools the model can call: OpenAI function tools and `McpServer`s.
             tool_choice: `none`, `auto`, `required`, or a dict naming a function.
             parallel_tool_calls: Whether the model can call more than one tool at once.
+            max_output_tokens: The most tokens the response can have.
             indexes: The indexes to search, by default every index of the project.
                 An empty list searches none.
             retrieve: False skips the search.
@@ -758,11 +745,11 @@ class _Completions:
             idle_timeout: The seconds each wait for data or a free connection can last.
             max_retries: The retries of this call, in place of the client's.
             extra_headers: Headers over `default_headers`, under the SDK's own.
-            extra_body: More request body fields, over `model`, `messages` and `kwargs`.
+            extra_body: More request body fields, over `model`, `input` and `kwargs`.
             **kwargs: Other OpenAI arguments, such as `temperature`, sent as is.
 
         Returns:
-            A `ChatCompletionStream` with `stream=True`, else a `ChatCompletion`.
+            A `ResponseStream` with `stream=True`, else a `Response`.
 
         Raises:
             InferenceError: The call failed. Bad arguments raise it before any request.
@@ -776,11 +763,12 @@ class _Completions:
         idle_timeout = _limit("idle_timeout", idle_timeout, client._idle_timeout)
         retries = client._max_retries if max_retries is None else _retries(max_retries)
         headers = _call_headers(indexes, retrieve, cache, api_key)
-        typed: dict[str, Any] = {"tools": tools, "tool_choice": tool_choice}
-        typed["parallel_tool_calls"] = parallel_tool_calls
+        typed: dict[str, Any] = {"instructions": instructions, "tools": tools}
+        typed.update(tool_choice=tool_choice, parallel_tool_calls=parallel_tool_calls)
+        typed["max_output_tokens"] = max_output_tokens
         body = {
             "model": model,
-            "messages": list(messages),
+            "input": input if isinstance(input, str) else list(input),
             **{name: value for name, value in typed.items() if value is not None},
             **kwargs,
             **(extra_body or {}),
@@ -799,25 +787,20 @@ class _Completions:
         )
         if stream:
             return reply
-        return await reply.get_final_completion()
+        return await reply.get_final_response()
 
 
-class _Chat:
-    def __init__(self, client: MossInference | None) -> None:
-        self.completions: _Completions = _Completions(client)
-
-
-chat: _Chat = _Chat(None)
-"""`chat.completions.create` on a client built from the environment,
+responses: _Responses = _Responses(None)
+"""`responses.create` on a client built from the environment,
 with the credentials of `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY`
 and the base URL in `MOSS_INFERENCE_URL`, when it is set."""
 
 _default: tuple[tuple[str, ...], MossInference] | None = None
-"""The client of `chat`, with the environment it came from."""
+"""The client of `responses`, with the environment it came from."""
 
 
 def _from_env() -> MossInference:
-    """The client of `chat`, built again when the environment changes."""
+    """The client of `responses`, built again when the environment changes."""
     global _default
     env = tuple(os.environ.get(name, "") for name in _ENV)
     if _default is None or _default[0] != env:
@@ -848,9 +831,9 @@ def _authorization(project_id: str, project_key: str) -> str:
 
 
 def _endpoint(base: str) -> str:
-    """The chat completions URL under `base`, an http or https URL with a host.
+    """The Responses URL under `base`, an http or https URL with a host.
     The error leaves `base` out, since a URL can hold a secret."""
-    url = base.removesuffix("/") + "/chat/completions"
+    url = base.removesuffix("/") + "/responses"
     try:
         parts = urlsplit(base)
         valid = (
@@ -1022,7 +1005,10 @@ def _transport_error(
         message = f"Could not reach the inference service: {error!r}"
         kind = "connection_error"
     elif cut:
-        message, kind = "The stream ended before [DONE]", "incomplete_stream"
+        message, kind = (
+            "The stream ended before response.completed",
+            "incomplete_stream",
+        )
     else:
         message, kind = f"The connection failed: {error!r}", "connection_error"
     if response is None:
@@ -1104,83 +1090,6 @@ def _status_error(response: httpx.Response, body: bytes) -> InferenceError:
     return _response_error(response, message, kind, status=status, code=_code(error))
 
 
-def _join(chunks: list[ChatCompletionChunk], request_id: str | None) -> ChatCompletion:
-    """One completion from every chunk of a stream, grouped by choice and tool call."""
-    parts: dict[int, list[ChunkChoice]] = {}
-    calls: dict[int, dict[int, list[ChoiceDeltaToolCall]]] = {}
-    for chunk in chunks:
-        for choice in chunk.choices:
-            parts.setdefault(choice.index, []).append(choice)
-            choice_calls = calls.setdefault(choice.index, {})
-            for piece in choice.delta.tool_calls or ():
-                choice_calls.setdefault(piece.index, []).append(piece)
-    first = chunks[0] if chunks else ChatCompletionChunk()
-    return ChatCompletion(
-        id=first.id,
-        created=first.created,
-        model=first.model,
-        choices=[_join_choice(i, part, calls[i]) for i, part in sorted(parts.items())],
-        usage=next((chunk.usage for chunk in reversed(chunks) if chunk.usage), None),
-        tool_steps=[chunk.tool_step for chunk in chunks if chunk.tool_step],
-        request_id=request_id,
-    )
-
-
-def _join_choice(
-    index: int, parts: list[ChunkChoice], calls: dict[int, list[ChoiceDeltaToolCall]]
-) -> Choice:
-    """Choice `index` of a whole reply, from its pieces in the order they came."""
-    deltas = [part.delta for part in parts]
-    tool_calls = [_join_call(call) for _, call in sorted(calls.items())] or None
-    text = "".join(d.content or "" for d in deltas)
-    # A stream can leave the role out, and OpenAI's reply role is always "assistant".
-    message = ChatCompletionMessage(
-        role=next((d.role for d in reversed(deltas) if d.role), "assistant"),
-        content=text or (None if tool_calls else ""),
-        tool_calls=tool_calls,
-    )
-    finish = next((p.finish_reason for p in reversed(parts) if p.finish_reason), None)
-    logprobs = _join_logprobs(parts)
-    return Choice(index=index, message=message, finish_reason=finish, logprobs=logprobs)
-
-
-def _join_logprobs(parts: list[ChunkChoice]) -> ChoiceLogprobs | None:
-    """The logprobs of a choice: each key's lists from its chunks, joined in order."""
-    logs = [part.logprobs for part in parts if part.logprobs is not None]
-    joined: dict[str, list[ChatCompletionTokenLogprob]] = {}
-    for log in logs:
-        for key in ("content", "refusal"):
-            tokens = getattr(log, key)
-            if tokens is not None:
-                joined.setdefault(key, []).extend(tokens)
-    return ChoiceLogprobs(**joined) if logs else None
-
-
-def _join_call(pieces: list[ChoiceDeltaToolCall]) -> ChatCompletionMessageToolCall:
-    """One tool call of a whole reply, from its pieces in the order they came.
-
-    A truthy `id`, `type` or `name` replaces and `arguments` append.
-    Other fields replace unless null, or merge one level deep when both are objects.
-    """
-    function = {"name": "", "arguments": ""}
-    call: dict[str, Any] = {"id": "", "type": "function", "function": function}
-    for piece in pieces:
-        part = _dict(piece.raw.get("function"))
-        call["id"] = piece.raw.get("id") or call["id"]
-        call["type"] = piece.raw.get("type") or call["type"]
-        function["name"] = part.get("name") or function["name"]
-        if isinstance(part.get("arguments"), str):
-            function["arguments"] += part["arguments"]
-        for key, value in piece.raw.items():
-            if key in ("index", "id", "type", "function") or value is None:
-                continue
-            both = isinstance(value, dict) and isinstance(call.get(key), dict)
-            call[key] = {**call[key], **value} if both else value
-    return ChatCompletionMessageToolCall(
-        id=call["id"], type=call["type"], function=Function(**function), raw=call
-    )
-
-
 def _dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
@@ -1189,91 +1098,70 @@ def _list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
-def _chunk(
-    event: dict[str, Any], calls: dict[int, dict[int, str]]
-) -> ChatCompletionChunk:
-    """A chunk from a decoded event, without its unknown or null keys.
-    `calls` holds the tool calls of the stream so far, for each choice."""
-    choices = [
-        _chunk_choice(_dict(item), calls) for item in _list(event.get("choices"))
-    ]
-    usage = event.get("usage")
+_ITEMS: dict[Any, Any] = {
+    "message": ResponseOutputMessage,
+    "function_call": ResponseFunctionToolCall,
+    "mcp_call": McpCall,
+}
+
+
+def _event(data: dict[str, Any], request_id: str | None) -> ResponseStreamEvent:
+    """An event from a decoded event, without its unknown or null keys."""
+    names = ("type", "sequence_number", "output_index", "item_id", "content_index")
+    known = _known(data, *names, "delta", "text", "arguments")
+    response = data.get("response")
+    if isinstance(response, dict):
+        known["response"] = _response(response, request_id)
+    if isinstance(data.get("item"), dict):
+        known["item"] = _item(data["item"])
+    return ResponseStreamEvent(**known, raw=data)
+
+
+def _response(data: dict[str, Any], request_id: str | None) -> Response:
+    """A response from its decoded object."""
+    usage = data.get("usage")
     if usage is not None:
         counts = _dict(usage)
-        completion = counts.get("completion_tokens_details")
-        prompt = counts.get("prompt_tokens_details")
         usage = _typed(
-            CompletionUsage,
+            ResponseUsage,
             counts,
-            completion_tokens_details=_typed(CompletionTokensDetails, completion),
-            prompt_tokens_details=_typed(PromptTokensDetails, prompt),
+            input_tokens_details=_typed(
+                InputTokensDetails, counts.get("input_tokens_details")
+            ),
+            output_tokens_details=_typed(
+                OutputTokensDetails, counts.get("output_tokens_details")
+            ),
         )
-    known = _known(event, "id", "object", "created", "model")
-    step = event.get("moss_tool_step")
-    known["tool_step"] = _typed(ToolStep, step, raw=step)
-    return ChatCompletionChunk(**known, choices=choices, usage=usage, raw=event)
+    names = ("id", "object", "created_at", "status", "model", "instructions")
+    return Response(
+        **_known(data, *names, "metadata"),
+        output=[
+            _item(item) for item in _list(data.get("output")) if isinstance(item, dict)
+        ],
+        usage=usage,
+        incomplete_details=_typed(IncompleteDetails, data.get("incomplete_details")),
+        raw=data,
+        request_id=request_id,
+    )
 
 
-def _chunk_choice(
-    data: dict[str, Any], calls: dict[int, dict[int, str]]
-) -> ChunkChoice:
-    known = _known(data, "index", "finish_reason")
-    raw = _dict(data.get("delta"))
-    pieces = raw.get("tool_calls")
-    if pieces is not None:
-        ids = calls.setdefault(known.get("index", 0), {})
-        pieces = [
-            _delta_call(piece, _slot(ids, piece))
-            for piece in _list(pieces)
-            if isinstance(piece, dict)
+def _item(data: dict[str, Any]) -> ResponseOutputItem:
+    """A typed output item, or the dict it came as when its type has no class here."""
+    kind = _ITEMS.get(data["type"]) if isinstance(data.get("type"), str) else None
+    if kind is None:
+        return data
+    if kind is ResponseOutputMessage:
+        content = [
+            (
+                _typed(ResponseOutputText, part)
+                if part.get("type") == "output_text"
+                else part
+            )
+            for part in _list(data.get("content"))
+            if isinstance(part, dict)
         ]
-    delta = ChoiceDelta(**_known(raw, "role", "content"), tool_calls=pieces)
-    logprobs = data.get("logprobs")
-    tokens = {key: _tokens(_dict(logprobs).get(key)) for key in ("content", "refusal")}
-    known["logprobs"] = _typed(ChoiceLogprobs, logprobs, **tokens)
-    return ChunkChoice(**known, delta=delta)
-
-
-def _slot(ids: dict[int, str], piece: dict[str, Any]) -> int:
-    """The tool call of its choice that `piece` is part of. It updates `ids`.
-
-    `ids` holds the id of each call so far, or "", most recent last.
-    A piece with an integer `index` is part of that call. Any other piece
-    joins the call that has its `id`. A new `id` starts the next call when
-    the most recent call has an id. Else the piece joins the most recent call.
-    """
-    index = piece.get("index")
-    new = piece.get("id") or ""
-    if not isinstance(index, int):
-        same = [slot for slot, known in ids.items() if new and known == new]
-        index = same[-1] if same else next(reversed(ids), 0)
-        if new and not same and ids.get(index):
-            index = max(ids) + 1
-    known = ids.pop(index, "")
-    ids[index] = new or known
-    return index
-
-
-def _delta_call(data: dict[str, Any], index: int) -> ChoiceDeltaToolCall:
-    """A tool call piece of call `index` of its choice."""
-    function = data.get("function")
-    if function is not None:
-        function = ChoiceDeltaToolCallFunction(**_known(function, "name", "arguments"))
-    known = _known(data, "id", "type")
-    return ChoiceDeltaToolCall(index=index, **known, function=function, raw=data)
-
-
-def _tokens(data: Any) -> list[ChatCompletionTokenLogprob] | None:
-    """The tokens of a list of logprobs, each with its own `top_logprobs`."""
-    if not isinstance(data, list):
-        return None
-    return [
-        ChatCompletionTokenLogprob(
-            **_known(token, "token", "logprob", "bytes"),
-            top_logprobs=_tokens(_dict(token).get("top_logprobs")),
-        )
-        for token in data
-    ]
+        return _typed(kind, data, content=content, raw=data)
+    return _typed(kind, data, raw=data)
 
 
 def _typed(kind: Any, data: Any, **values: Any) -> Any:
@@ -1292,13 +1180,11 @@ def _known(data: Any, *names: str) -> dict[str, Any]:
 
 def _plain(value: Any) -> Any:
     """JSON for this module's types: `raw` when it is set,
-    else every field that is not None, except `raw` itself.
-    A message always keeps its `content`, a None included."""
+    else every field that is not None, except `raw` itself."""
     if is_dataclass(value) and not isinstance(value, type):
         if raw := getattr(value, "raw", None):
             return raw
         names = (f.name for f in fields(value) if f.name != "raw")
         pairs = ((name, getattr(value, name)) for name in names)
-        keep = "content" if isinstance(value, ChatCompletionMessage) else None
-        return {k: v for k, v in pairs if v is not None or k == keep}
+        return {k: v for k, v in pairs if v is not None}
     raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")

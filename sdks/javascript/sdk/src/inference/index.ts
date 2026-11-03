@@ -5,14 +5,14 @@ import {
   transportError,
   type ResponseFields,
 } from "./error";
-import { ChatCompletionStream, errorText, idleTimer } from "./stream";
+import { ResponseStream, errorText, idleTimer } from "./stream";
 import type {
-  ChatCompletion,
-  ChatCompletionCreateParams,
-  ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming,
   InferenceRequestOptions,
   MossInferenceOptions,
+  Response as MossResponse,
+  ResponseCreateParams,
+  ResponseCreateParamsNonStreaming,
+  ResponseCreateParamsStreaming,
 } from "./types";
 
 /** The production gateway, up to and including `/v1`. */
@@ -51,7 +51,7 @@ function credential(what: string, value: unknown): string {
 const AUTHORITY = /^https?:\/\/([^/]*)/i;
 
 /**
- * The chat completions URL under `MOSS_INFERENCE_URL`, or under production when it is unset or empty.
+ * The Responses URL under `MOSS_INFERENCE_URL`, or under production when it is unset or empty.
  *
  * `new URL` repairs malformed text, so the text must be printable ASCII
  * that starts with `http://` or `https://`, then a host with no user info or port 0,
@@ -78,7 +78,7 @@ function endpoint(): string {
       "MOSS_INFERENCE_URL must be an absolute http or https URL with a host and no user info, query or fragment.",
     );
   }
-  return `${url.href.replace(/\/$/, "")}/chat/completions`;
+  return `${url.href.replace(/\/$/, "")}/responses`;
 }
 
 /** Throws when `options` names a gateway URL, which only `MOSS_INFERENCE_URL` sets. */
@@ -140,28 +140,28 @@ function pause(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** The `chat.completions` namespace of a {@link MossInference} client, shaped like OpenAI's. */
-export interface ChatCompletions {
+/** The `responses` namespace of a {@link MossInference} client, shaped like OpenAI's. */
+export interface Responses {
   /**
-   * Sends a chat completion through the Moss inference gateway.
+   * Creates a response through the Moss inference gateway.
    *
    * The gateway searches `indexes` and adds what it finds to the prompt.
    * Failures reject with {@link InferenceError}. With `stream: true` this
-   * resolves to a {@link ChatCompletionStream} once the gateway accepts the request,
-   * and otherwise to one {@link ChatCompletion} built from the whole stream.
+   * resolves to a {@link ResponseStream} once the gateway accepts the request,
+   * and otherwise to the `Response` of the stream's last event.
    */
   create(
-    params: ChatCompletionCreateParamsStreaming,
+    params: ResponseCreateParamsStreaming,
     options?: InferenceRequestOptions,
-  ): Promise<ChatCompletionStream>;
+  ): Promise<ResponseStream>;
   create(
-    params: ChatCompletionCreateParamsNonStreaming,
+    params: ResponseCreateParamsNonStreaming,
     options?: InferenceRequestOptions,
-  ): Promise<ChatCompletion>;
+  ): Promise<MossResponse>;
   create(
-    params: ChatCompletionCreateParams,
+    params: ResponseCreateParams,
     options?: InferenceRequestOptions,
-  ): Promise<ChatCompletionStream | ChatCompletion>;
+  ): Promise<ResponseStream | MossResponse>;
 }
 
 /**
@@ -173,8 +173,8 @@ export interface ChatCompletions {
  * makes the constructor throw {@link InferenceError} with `invalid_request_error`.
  */
 export class MossInference {
-  /** OpenAI's `chat.completions`, answered by the Moss inference gateway. */
-  readonly chat: { readonly completions: ChatCompletions };
+  /** OpenAI's `responses`, answered by the Moss inference gateway. */
+  readonly responses: Responses;
   /** Where every call goes. */
   readonly #url: string;
   /** The caller's headers for every call. */
@@ -204,17 +204,15 @@ export class MossInference {
       Accept: "text/event-stream",
     });
     this.#apiKey = options.apiKey == null ? undefined : credential("apiKey", options.apiKey);
-    const create = (params: ChatCompletionCreateParams, call?: InferenceRequestOptions) =>
+    const create = (params: ResponseCreateParams, call?: InferenceRequestOptions) =>
       this.#create(params, call);
-    this.chat = Object.freeze({
-      completions: Object.freeze({ create: create as ChatCompletions["create"] }),
-    });
+    this.responses = Object.freeze({ create: create as Responses["create"] });
   }
 
   async #create(
-    params: ChatCompletionCreateParams,
+    params: ResponseCreateParams,
     options: InferenceRequestOptions = {},
-  ): Promise<ChatCompletionStream | ChatCompletion> {
+  ): Promise<ResponseStream | MossResponse> {
     refuseURL(options);
     const { indexes, retrieve, cache, model = DEFAULT_MODEL, ...body } = params;
     if (body.apiKey !== undefined || body.api_key !== undefined)
@@ -319,8 +317,8 @@ export class MossInference {
       if (controller.signal.aborted) throw controller.signal.reason;
       throw errorFromResponse(response, text);
     }
-    const stream = new ChatCompletionStream(response, controller, idle, settle, fields, model);
-    return params.stream ? stream : stream.finalChatCompletion();
+    const stream = new ResponseStream(response, controller, idle, settle, fields);
+    return params.stream ? stream : stream.finalResponse();
   }
 }
 
@@ -340,17 +338,13 @@ function defaultClient(): MossInference {
 }
 
 /**
- * Chat completions through a {@link MossInference} client.
+ * Responses through a {@link MossInference} client.
  * Each call reads `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY` and `MOSS_INFERENCE_URL`.
  * The client is built on first use, and again when one of them changes.
  */
-export const inference: {
-  readonly chat: { readonly completions: ChatCompletions };
-} = Object.freeze({
-  chat: Object.freeze({
-    completions: Object.freeze({
-      create: (async (params: ChatCompletionCreateParams, options?: InferenceRequestOptions) =>
-        defaultClient().chat.completions.create(params, options)) as ChatCompletions["create"],
-    }),
+export const inference: { readonly responses: Responses } = Object.freeze({
+  responses: Object.freeze({
+    create: (async (params: ResponseCreateParams, options?: InferenceRequestOptions) =>
+      defaultClient().responses.create(params, options)) as Responses["create"],
   }),
 });

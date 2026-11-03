@@ -3,8 +3,8 @@ defmodule Moss.Inference.Error do
   The error of every inference call and stream.
 
   `Moss.Inference.new/3` raises it for a bad credential, option or `MOSS_INFERENCE_URL`,
-  `Moss.Inference.Chat.Completions.create/3` returns it as `{:error, error}`,
-  and a `Moss.Inference.ChatCompletionStream` raises it when the reply fails mid-stream.
+  `Moss.Inference.Responses.create/3` returns it as `{:error, error}`,
+  and a `Moss.Inference.ResponseStream` raises it when the response fails mid-stream.
 
   `type` is the gateway's `error.type` as sent, such as `"invalid_request_error"` or
   `"model_error"`, and on a 429 `"requests"`, `"tokens"` or `"capacity"`. Match a rate
@@ -14,8 +14,10 @@ defmodule Moss.Inference.Error do
   `"invalid_request_error"`, and any other status, such as a 3xx or 5xx, `"server_error"`.
   The SDK follows no redirect, so a 3xx reply is an error too. A request that never reached
   the gateway, or a connection that failed mid-reply, has `"connection_error"`, and one that
-  ran out of time has `"timeout"`. A reply that ends before `[DONE]` has `"incomplete_stream"`,
-  and an argument rejected before any request has `"invalid_request_error"`.
+  ran out of time has `"timeout"`. A stream that ends before `response.completed` or
+  `response.incomplete` has `"incomplete_stream"`, and an argument rejected before any request
+  has `"invalid_request_error"`. A `response.failed` event has its error's `type`, else `"model_error"`,
+  and an `error` event has `"model_error"`.
 
   `status` is the HTTP status of an error reply, else `nil`.
   `message` is the gateway's `error.message` or `detail`, else the
@@ -23,15 +25,15 @@ defmodule Moss.Inference.Error do
   `code` is the gateway's `error.code`, such as `"rate_limit_exceeded"`, with
   a number as its decimal text, from an error reply or an error event, else `nil`.
   A refused or failing MCP server has type `"mcp_error"` and code `"mcp_server_error"`.
-  Any failure after a tool step has code `"failed_after_tool_call"`: the tool may have
+  Any failure after an `"mcp_call"` item has code `"failed_after_tool_call"`: the tool may have
   changed data, so do not send the call again without checking what it did.
   `request_id` is the reply's `X-Moss-Request-Id` header, for any failure once a
   reply has come, and `nil` for a refused argument or a failure before any reply.
   `retry_after` is the error reply's `Retry-After` header in milliseconds, when it
   holds whole seconds, else `nil`. A failure after a 2xx reply has none.
 
-      case Moss.Inference.Chat.Completions.create(client, params, indexes: ["faq"]) do
-        {:ok, completion} -> completion
+      case Moss.Inference.Responses.create(client, params, indexes: ["faq"]) do
+        {:ok, response} -> response
         {:error, %Moss.Inference.Error{retry_after: ms}} when is_integer(ms) -> {:retry_in, ms}
         {:error, error} -> {:failed, error.request_id}
       end
