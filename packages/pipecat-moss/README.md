@@ -55,7 +55,7 @@ Await `load_index` before the pipeline starts. A service loads each index once: 
 
 ## Pipecat Compatibility
 
-Requires Python 3.11 to 3.14, `pipecat-ai` 1.8 or later (before 2.0) and `moss` 1.20 or later (before 2.0). Tested with `pipecat-ai` 1.13. With Pipecat older than 1.8, use `pipecat-moss` 0.0.x.
+Requires Python 3.11 to 3.14, `pipecat-ai` 1.8 or later (before 2.0) and `moss` 1.20 or later (before 2.0). Tested with `pipecat-ai` 1.13.
 
 ## Contributing
 
