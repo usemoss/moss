@@ -15,7 +15,6 @@ from typing import Any
 from loguru import logger
 from moss import MossClient, QueryOptions, SearchResult
 from pipecat.frames.frames import (
-    ErrorFrame,
     Frame,
     LLMContextFrame,
     LLMMessagesUpdateFrame,
@@ -134,7 +133,7 @@ class MossIndexProcessor(FrameProcessor):
 
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.exception(f"{self}: error while running retrieval: {exc}")
-            await self.push_error(ErrorFrame(error=f"{self} retrieval error: {exc}"))
+            await self.push_error(f"{self} retrieval error: {exc}")
             await self.push_frame(frame, direction)
 
     @staticmethod

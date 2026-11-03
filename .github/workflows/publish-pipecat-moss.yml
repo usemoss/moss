@@ -46,13 +46,18 @@ jobs:
           major, minor, patch = semver.group(1), semver.group(2), semver.group(3)
           major_minor = f"{major}.{minor}"
 
-          # An older version than PyPI's would publish out of order.
+          # A version below one on PyPI, pre-releases included, would publish out of order.
+          # The same version passes, so a rerun can finish a partial upload and the tag.
           with urllib.request.urlopen("https://pypi.org/pypi/pipecat-moss/json", timeout=30) as response:
-              published = json.load(response)["info"]["version"]
-          latest = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", published)
-          if not latest or tuple(map(int, semver.groups())) <= tuple(map(int, latest.groups())):
-              print(f"{version} is not newer than {published} on PyPI", file=sys.stderr)
-              sys.exit(1)
+              releases = json.load(response)["releases"]
+          ours = tuple(map(int, semver.groups()))
+          for published, files in releases.items():
+              if not files or all(file.get("yanked") for file in files):
+                  continue
+              release = re.match(r"(\d+)\.(\d+)\.(\d+)", published)
+              if not release or tuple(map(int, release.groups())) > ours:
+                  print(f"{version} is older than {published} on PyPI", file=sys.stderr)
+                  sys.exit(1)
 
           out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
           with out.open("a", encoding="utf-8") as fh:

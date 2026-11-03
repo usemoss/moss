@@ -82,6 +82,7 @@ async def test_a_failed_retrieval_still_forwards_the_frame():
     )
 
     assert down[0] is frame
+    assert "index not loaded" in up[0].error
     assert context.get_messages() == [{"role": "user", "content": "hello"}]
 
 
