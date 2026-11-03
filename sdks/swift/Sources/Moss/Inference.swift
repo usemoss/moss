@@ -1,10 +1,10 @@
 import Foundation
 
-/// A client for OpenAI-compatible chat completions that answer from your Moss indexes.
+/// A client for responses in the shape of OpenAI's Responses API that answer from your Moss indexes.
 ///
 /// It holds the project credentials, your provider key and the limits of each call,
-/// and keeps its own connections to the Moss inference gateway. `chat.completions.create`
-/// returns the whole reply, and `createStreaming` returns it chunk by chunk. A call never follows
+/// and keeps its own connections to the Moss inference gateway. `responses.create` returns
+/// the whole response, and `createStreaming` returns it event by event. A call never follows
 /// a redirect: it fails with the 3xx status instead, so the project credentials never reach another URL.
 public final class MossInference: Sendable {
     /// The base URL of the Moss inference gateway, unless `MOSS_INFERENCE_URL` sets another.
@@ -30,7 +30,7 @@ public final class MossInference: Sendable {
     /// Calls go to `https://inference.moss.dev/v1`, or to the base URL in `MOSS_INFERENCE_URL`.
     /// `apiKey` is optional: your own OpenAI, Anthropic
     /// or Google key, for a vendor model such as `gpt-4o-mini`. `moss` ignores it, and a vendor model without one is refused.
-    /// `idleTimeout` ends a call when the gateway sends nothing for that many seconds, before the reply or between any two of its bytes.
+    /// `idleTimeout` ends a call when the gateway sends nothing for that many seconds, before the response or between any two of its bytes.
     /// `timeout` limits each whole call, stream included. For either limit, `nil` or `.infinity` means none, the default for `timeout`.
     /// `maxRetries` (0 for none) sends a call again after a connection failure or a status of 408, 409, 429 or 500 and above,
     /// waiting a `Retry-After` of 60 seconds or less, else a backoff from 0.5 up to 8 seconds, within `timeout`. A stream that started is never retried.
@@ -64,30 +64,31 @@ public final class MossInference: Sendable {
 
     deinit { session.finishTasksAndInvalidate() }
 
-    /// The chat API, as in OpenAI's `client.chat.completions`.
-    public var chat: Chat { Chat(completions: Completions(client: self)) }
+    /// The Responses API, as in OpenAI's `client.responses`.
+    public var responses: Responses { Responses(client: self) }
 
-    public struct Chat: Sendable { public let completions: Completions }
-
-    /// Chat completions in the shape of OpenAI's `chat.completions`.
+    /// Responses in the shape of OpenAI's `responses`. Moss stores nothing, so `input` holds the whole conversation.
     ///
-    /// `tools` offers functions you run and MCP servers the gateway calls, and `toolChoice` and `parallelToolCalls`
-    /// steer them. Each is sent only when given and wins over the same key in `extra`, which holds the other OpenAI body fields.
+    /// `instructions` is the system message before `input`, and `maxOutputTokens` the most tokens a response may have.
+    /// `tools` offers functions you run and MCP servers the gateway calls, and `toolChoice` and `parallelToolCalls` steer them.
+    /// Each is sent only when given and wins over the same key in `extra`, which holds the other OpenAI body fields.
     /// `indexes` names the indexes to search, all of the project's when `nil` and none when empty, as with `retrieve: false`.
     /// Moss can answer an identical request from its reply cache, and `cache: false` always asks the model.
     /// `model` is `moss`, Moss's model, unless you name a vendor model such as `gpt-4o-mini`.
     /// `apiKey` replaces the client's provider key for one call, and an empty one is refused.
     /// `timeout`, `idleTimeout` and `maxRetries` replace the client's for one call. `nil` keeps the client's, and `.infinity` lifts a limit.
-    public struct Completions: Sendable {
+    public struct Responses: Sendable {
         let client: MossInference
 
-        /// Runs a chat completion and returns the whole reply.
+        /// Answers `input` and returns the whole response, `incomplete` when it was cut short.
         public func create(
             model: String = "moss",
-            messages: [ChatMessage],
+            input: Input,
+            instructions: String? = nil,
             tools: [Tool] = [],
             toolChoice: ToolChoice? = nil,
             parallelToolCalls: Bool? = nil,
+            maxOutputTokens: Int? = nil,
             indexes: [String]? = nil,
             retrieve: Bool = true,
             cache: Bool = true,
@@ -96,22 +97,29 @@ public final class MossInference: Sendable {
             idleTimeout: TimeInterval? = nil,
             maxRetries: Int? = nil,
             extra: [String: JSONValue] = [:]
-        ) async throws -> ChatCompletion {
+        ) async throws -> Response {
             let stream = try await createStreaming(
-                model: model, messages: messages, tools: tools, toolChoice: toolChoice, parallelToolCalls: parallelToolCalls,
-                indexes: indexes, retrieve: retrieve, cache: cache, apiKey: apiKey, timeout: timeout, idleTimeout: idleTimeout,
-                maxRetries: maxRetries, extra: extra
+                model: model, input: input, instructions: instructions, tools: tools, toolChoice: toolChoice,
+                parallelToolCalls: parallelToolCalls, maxOutputTokens: maxOutputTokens, indexes: indexes, retrieve: retrieve,
+                cache: cache, apiKey: apiKey, timeout: timeout, idleTimeout: idleTimeout, maxRetries: maxRetries, extra: extra
             )
-            return try await ChatCompletion(gathering: stream, model: model)
+            for try await event in stream where ["response.completed", "response.incomplete"].contains(event.type) {
+                if let response = event.response { return response }
+            }
+            throw InferenceError(
+                status: nil, type: "incomplete_stream", message: "The stream ended before response.completed", requestId: stream.requestId
+            )
         }
 
-        /// Runs a chat completion and returns its chunks as they arrive.
+        /// Answers `input` and returns its events as they arrive, up to `response.completed` or `response.incomplete`.
         public func createStreaming(
             model: String = "moss",
-            messages: [ChatMessage],
+            input: Input,
+            instructions: String? = nil,
             tools: [Tool] = [],
             toolChoice: ToolChoice? = nil,
             parallelToolCalls: Bool? = nil,
+            maxOutputTokens: Int? = nil,
             indexes: [String]? = nil,
             retrieve: Bool = true,
             cache: Bool = true,
@@ -120,7 +128,7 @@ public final class MossInference: Sendable {
             idleTimeout: TimeInterval? = nil,
             maxRetries: Int? = nil,
             extra: [String: JSONValue] = [:]
-        ) async throws -> ChatCompletionStream {
+        ) async throws -> ResponseStream {
             if let name = indexes?.first(where: { $0.isEmpty || $0.contains(",") }) {
                 throw InferenceError.invalidRequest("Index names must not be empty or contain ',': \"\(name)\"")
             }
@@ -130,11 +138,13 @@ public final class MossInference: Sendable {
             let idleTimeout = try idleTimeout.map { try MossInference.limit($0, "idleTimeout") } ?? client.idleTimeout
             let maxRetries = try maxRetries.map(MossInference.retries) ?? client.maxRetries
             var body = extra
+            if let instructions { body["instructions"] = .string(instructions) }
             if !tools.isEmpty { body["tools"] = .array(tools.map(\.json)) }
             if let toolChoice { body["tool_choice"] = toolChoice.json }
             if let parallelToolCalls { body["parallel_tool_calls"] = .bool(parallelToolCalls) }
+            if let maxOutputTokens { body["max_output_tokens"] = .int(maxOutputTokens) }
             body["model"] = .string(model)
-            body["messages"] = .array(messages.map(\.json))
+            body["input"] = input.json
             body["stream"] = true
             var request = URLRequest(
                 url: client.url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: idleTimeout ?? MossInference.noLimit
@@ -146,13 +156,13 @@ public final class MossInference: Sendable {
             if !retrieve || indexes?.isEmpty == true { request.setValue("off", forHTTPHeaderField: "X-Moss-Retrieve") }
             if !cache { request.setValue("off", forHTTPHeaderField: "X-Moss-Cache") }
             if let apiKey { request.setValue(apiKey, forHTTPHeaderField: "X-Moss-Provider-Key") }
-            return try await ChatCompletionStream.open(
+            return try await ResponseStream.open(
                 request, in: client.session, timeout: timeout, idleTimeout: idleTimeout, maxRetries: maxRetries
             )
         }
     }
 
-    /// The chat completions URL under `variable`, or under the default when it is unset or empty.
+    /// The Responses URL under `variable`, or under the default when it is unset or empty.
     /// Throws without echoing the value unless it is printable ASCII with no space, an http or https URL
     /// with a host that `isHost` accepts, a port from 1 to 65535 if it names one, and no user info, query or fragment.
     static func endpoint(_ variable: String?) throws -> URL {
@@ -166,7 +176,7 @@ public final class MossInference: Sendable {
             parts.user == nil, parts.password == nil, parts.query == nil, parts.fragment == nil
         else { throw invalid }
         if parts.percentEncodedPath.hasSuffix("/") { parts.percentEncodedPath.removeLast() }
-        parts.percentEncodedPath += "/chat/completions"
+        parts.percentEncodedPath += "/responses"
         guard let url = parts.url else { throw invalid }
         return url
     }
@@ -213,18 +223,20 @@ public final class MossInference: Sendable {
     }
 }
 
-/// A streamed chat completion, an `AsyncSequence` of chunks to iterate once.
+/// A streamed response, an `AsyncSequence` of events to iterate once.
 ///
+/// It ends after `response.completed`, or `response.incomplete` for a response cut short, whose `response`
+/// is the whole response. A `response.failed` or `error` event throws `InferenceError`.
 /// Leaving the loop early, cancelling the task or calling `cancel()` closes the connection,
 /// and the gateway then stops the model. After `cancel()` the loop ends quietly, a cancelled
 /// task throws `CancellationError`, and a passed limit throws `InferenceError` of type `timeout`.
 /// Top-level code, such as main.swift or a playground, can keep the iterator alive past a `break`,
 /// so call `cancel()` there after leaving the loop early, or the connection stays open until it ends.
 ///
-/// A body still open 0.1 seconds after `[DONE]` is cut off, which closes its connection.
+/// A body still open 0.1 seconds after the last event is cut off, which closes its connection.
 /// An event or a line over 1 MiB throws `InferenceError` of type `server_error` and closes the connection.
-public final class ChatCompletionStream: AsyncSequence, @unchecked Sendable {
-    public typealias Element = ChatCompletionChunk
+public final class ResponseStream: AsyncSequence, @unchecked Sendable {
+    public typealias Element = ResponseStreamEvent
 
     private let reader: EventReader
 
@@ -251,7 +263,7 @@ public final class ChatCompletionStream: AsyncSequence, @unchecked Sendable {
 
         deinit { reader.close(unlessIterated: false) }
 
-        public func next() async throws -> ChatCompletionChunk? { try await reader.next() }
+        public func next() async throws -> ResponseStreamEvent? { try await reader.next() }
     }
 
     /// Sends `request`, again up to `maxRetries` times after a `Retryable` failure, and returns the stream.
@@ -259,7 +271,7 @@ public final class ChatCompletionStream: AsyncSequence, @unchecked Sendable {
     /// Each wait is a `Retry-After` of 60 seconds or less, else 0.5 seconds doubled per retry, capped at 8, with up to 25 percent jitter.
     static func open(
         _ request: URLRequest, in session: URLSession, timeout: TimeInterval?, idleTimeout: TimeInterval?, maxRetries: Int
-    ) async throws -> ChatCompletionStream {
+    ) async throws -> ResponseStream {
         let start = DispatchTime.now()
         var retries = 0
         while true {
@@ -279,7 +291,7 @@ public final class ChatCompletionStream: AsyncSequence, @unchecked Sendable {
     /// A failure to connect, or a connection lost before the headers, throws as `Retryable`.
     /// A non-2xx answer throws its status, unless a limit passes or the task is cancelled while its body is read,
     /// as `Retryable` for 408, 409, 429 or 500 and above unless `x-should-retry` is `false`, or for any when it is `true`.
-    private static func send(_ request: URLRequest, in session: URLSession, call: CallDelegate) async throws -> ChatCompletionStream {
+    private static func send(_ request: URLRequest, in session: URLSession, call: CallDelegate) async throws -> ResponseStream {
         let sending = Task { try await session.bytes(for: request, delegate: call) }
         call.onExpiry { sending.cancel() }
         let (bytes, response): (URLSession.AsyncBytes, URLResponse)
@@ -313,7 +325,7 @@ public final class ChatCompletionStream: AsyncSequence, @unchecked Sendable {
             }
             throw error
         }
-        return ChatCompletionStream(reader: EventReader(bytes, call, http.requestId))
+        return ResponseStream(reader: EventReader(bytes, call, http.requestId))
     }
 }
 
@@ -322,13 +334,13 @@ private struct Retryable: Error {
     let error: InferenceError
 }
 
-/// Reads server-sent events from a response body and decodes each into a chunk.
+/// Reads server-sent events from a response body and decodes each into a `ResponseStreamEvent`.
 final class EventReader: @unchecked Sendable {
     /// The most bytes one line, or the joined data of one event, may hold.
     static let maxEventSize = 1 << 20
-    /// How long the body may stay open after `[DONE]` before the request is cancelled.
+    /// How long the body may stay open after the last event before the request is cancelled.
     /// A body that ends sooner keeps its connection for the next call while the stream is held.
-    /// `create()` lets go of the stream at `[DONE]`, so a body that is still open then closes its connection.
+    /// `create()` lets go of the stream at the last event, so a body that is still open then closes its connection.
     static let drainTime: TimeInterval = 0.1
 
     private var bytes: URLSession.AsyncBytes.Iterator
@@ -339,10 +351,8 @@ final class EventReader: @unchecked Sendable {
     let requestId: String?
     private let lock = NSLock()
     private var finished = false
-    /// Whether a chunk has carried an MCP tool step, after which every failure has the code `failed_after_tool_call`.
+    /// Whether an event has carried an `mcp_call` item, after which every failure has the code `failed_after_tool_call`.
     private var toolRan = false
-    /// The tool calls of each choice so far, by choice index.
-    private var slots: [Int: ToolSlots] = [:]
     var iterated = false
 
     init(_ bytes: URLSession.AsyncBytes, _ call: CallDelegate, _ requestId: String?) {
@@ -354,10 +364,10 @@ final class EventReader: @unchecked Sendable {
 
     func locked<T>(_ body: () -> T) -> T { lock.locked(body) }
 
-    /// The next chunk, or `nil` after `[DONE]` or `cancel()`.
-    func next() async throws -> ChatCompletionChunk? {
+    /// The next event, or `nil` after the last event or `cancel()`.
+    func next() async throws -> ResponseStreamEvent? {
         if locked({ finished }) { return nil }
-        do { return try await nextChunk() } catch {
+        do { return try await nextResponseEvent() } catch {
             let cancelled = locked { finished }
             finish()
             task.cancel()
@@ -369,29 +379,33 @@ final class EventReader: @unchecked Sendable {
         }
     }
 
-    private func nextChunk() async throws -> ChatCompletionChunk? {
+    /// The next event, which ends the stream when it is the last. `response.failed` and `error` throw.
+    private func nextResponseEvent() async throws -> ResponseStreamEvent {
         var data = ""
         while data.isEmpty {
-            guard let event = try await nextEvent() else {
-                throw failure("incomplete_stream", "The stream ended before [DONE]")
+            guard let event = try await nextEvent(), event != "[DONE]" else {
+                throw failure("incomplete_stream", "The stream ended before response.completed")
             }
             data = event
         }
-        if data == "[DONE]" {
-            finish()
-            DispatchQueue.global().asyncAfter(deadline: .now() + Self.drainTime) { [task] in task.cancel() }
-            return nil
-        }
-        guard let event = try? JSONDecoder().decode([String: JSONValue].self, from: Data(data.utf8)) else {
+        guard let raw = try? JSONDecoder().decode([String: JSONValue].self, from: Data(data.utf8)) else {
             throw failure("server_error", "The stream sent an event that is not JSON")
         }
-        if let error = event["error"], error.object != nil {
-            let type = error["type"]?.string ?? "model_error"
-            throw failure(type, error["message"]?.string ?? "The stream failed", code: InferenceError.code(Data(data.utf8)))
+        let event = ResponseStreamEvent(raw: raw, requestId: requestId)
+        switch event.type {
+        case "response.failed", "error":
+            let failed = event.type == "response.failed"
+            let error = failed ? raw["response"]?["error"] : .object(raw)
+            let code = InferenceError.code(Data(data.utf8), at: failed ? ["response", "error"] : [])
+            let type = failed ? error?["type"]?.string : nil
+            throw failure(type ?? "model_error", error?["message"]?.string ?? "The response failed", code: code)
+        case "response.completed", "response.incomplete":
+            finish()
+            DispatchQueue.global().asyncAfter(deadline: .now() + Self.drainTime) { [task] in task.cancel() }
+        default:
+            if case .mcpCall? = event.item { toolRan = true }
         }
-        let chunk = ChatCompletionChunk(event, slots: &slots)
-        toolRan = toolRan || chunk.toolStep != nil
-        return chunk
+        return event
     }
 
     private func failure(_ type: String, _ message: String, code: String? = nil) -> InferenceError {

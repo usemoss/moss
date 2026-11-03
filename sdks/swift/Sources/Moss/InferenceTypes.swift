@@ -68,26 +68,52 @@ extension JSONValue: ExpressibleByNilLiteral, ExpressibleByBooleanLiteral, Expre
     }
 }
 
-/// One message of a chat completion request.
-public enum ChatMessage: Sendable, Hashable {
-    case system(String)
-    case user(String)
-    case assistant(String)
-    /// The result of the tool call whose id is `callId`.
-    case tool(callId: String, content: String)
-    /// Any other message as its JSON object.
-    case raw([String: JSONValue])
+/// The `input` of a request: one user message, or the conversation so far as items, oldest first.
+public enum Input: Sendable, Hashable, ExpressibleByStringLiteral, ExpressibleByArrayLiteral {
+    /// The text of one user message.
+    case text(String)
+    /// The conversation so far: messages, the `output` items of earlier responses and the outputs of their function calls.
+    case items([InputItem])
 
-    /// A reply to send back, with every field of its tool calls.
-    public init(_ message: ChatCompletion.Message) { self = .raw(message.raw) }
+    /// The text of one user message.
+    public init(stringLiteral value: String) { self = .text(value) }
+    /// The items in order.
+    public init(arrayLiteral elements: InputItem...) { self = .items(elements) }
 
     var json: JSONValue {
         switch self {
-        case .system(let content): return ["role": "system", "content": .string(content)]
-        case .user(let content): return ["role": "user", "content": .string(content)]
-        case .assistant(let content): return ["role": "assistant", "content": .string(content)]
-        case .tool(let callId, let content): return ["role": "tool", "tool_call_id": .string(callId), "content": .string(content)]
-        case .raw(let object): return .object(object)
+        case .text(let text): .string(text)
+        case .items(let items): .array(items.map(\.json))
+        }
+    }
+}
+
+/// One item of `input`.
+public enum InputItem: Sendable, Hashable {
+    /// A system message.
+    case system(String)
+    /// A developer message, which ranks below a system message.
+    case developer(String)
+    /// A user message.
+    case user(String)
+    /// An earlier message of the model, as text.
+    case assistant(String)
+    /// The output of the function call whose `callId` this is.
+    case functionCallOutput(callId: String, output: String)
+    /// Any other item as its JSON object.
+    case raw([String: JSONValue])
+
+    /// An `output` item of an earlier response, sent back as it came, with every field the model sent.
+    public init(_ item: OutputItem) { self = .raw(item.raw) }
+
+    var json: JSONValue {
+        switch self {
+        case .system(let text): ["role": "system", "content": .string(text)]
+        case .developer(let text): ["role": "developer", "content": .string(text)]
+        case .user(let text): ["role": "user", "content": .string(text)]
+        case .assistant(let text): ["role": "assistant", "content": .string(text)]
+        case .functionCallOutput(let callId, let output): ["type": "function_call_output", "call_id": .string(callId), "output": .string(output)]
+        case .raw(let object): .object(object)
         }
     }
 }
@@ -104,11 +130,11 @@ public enum Tool: Sendable, Hashable {
     var json: JSONValue {
         switch self {
         case .function(let name, let description, let parameters, let strict):
-            var function: [String: JSONValue] = ["name": .string(name)]
+            var function: [String: JSONValue] = ["type": "function", "name": .string(name)]
             function["description"] = description.map(JSONValue.string)
             function["parameters"] = parameters.map(JSONValue.object)
             function["strict"] = strict.map(JSONValue.bool)
-            return ["type": "function", "function": .object(function)]
+            return .object(function)
         case .mcp(let server): return server.json
         case .raw(let object): return .object(object)
         }
@@ -133,7 +159,7 @@ public enum ToolChoice: Sendable, Hashable {
         case .auto: "auto"
         case .never: "none"
         case .required: "required"
-        case .function(let name): ["type": "function", "function": ["name": .string(name)]]
+        case .function(let name): ["type": "function", "name": .string(name)]
         case .raw(let object): .object(object)
         }
     }
@@ -148,7 +174,7 @@ public struct McpServer: Sendable, Hashable, CustomStringConvertible, CustomDebu
         case streamableHTTP = "streamable_http", sse
     }
 
-    /// The server's name, which its tool steps carry.
+    /// The server's name, which its `mcp_call` items carry.
     public let serverLabel: String
     /// The URL the gateway reaches the server at.
     public let serverURL: String
@@ -191,14 +217,15 @@ public struct McpServer: Sendable, Hashable, CustomStringConvertible, CustomDebu
 /// `status` is the HTTP status, `nil` when the call failed before a response or mid-stream.
 /// `type` is the gateway's error type, such as `capacity` or `mcp_error`, or else one of `authentication_error`,
 /// `permission_error`, `not_found_error`, `rate_limit_error`, `invalid_request_error` for another 4xx or an argument
-/// refused, `server_error` for a 3xx or 5xx, `model_error` for a stream error without a type, `connection_error` for
-/// a transport failure, `timeout` for a passed limit, or `incomplete_stream` when the reply ends before `[DONE]`.
+/// refused, `server_error` for a 3xx or 5xx, `model_error` for a `response.failed` without a type or an `error` event,
+/// `connection_error` for a transport failure, `timeout` for a passed limit, or `incomplete_stream` when the stream
+/// ends before `response.completed`.
 public struct InferenceError: LocalizedError, Sendable, Hashable {
     public let status: Int?
     public let type: String
     public let message: String
-    /// The gateway's `error.code`, with an integer code as its decimal text, or `failed_after_tool_call`
-    /// for any failure once an MCP tool step has arrived, since a tool may have changed data and the call should not be replayed.
+    /// The gateway's error `code`, with an integer code as its decimal text, or `failed_after_tool_call`
+    /// for any failure once an MCP call has arrived, since a tool may have changed data and the call should not be replayed.
     public internal(set) var code: String?
     /// The gateway's `X-Moss-Request-Id` for the call, once a response has arrived.
     public let requestId: String?
@@ -232,17 +259,17 @@ extension InferenceError {
             status: status,
             type: error?["type"]?.string ?? Self.type(forStatus: status),
             message: error?["message"]?.string ?? error?.string ?? detail ?? fallback,
-            code: Self.code(body),
+            code: Self.code(body, at: ["error"]),
             requestId: response?.requestId,
             retryAfter: response?.retryAfter
         )
     }
 
-    /// The `code` of the gateway error object in the JSON `body`: a string as it is,
+    /// The `code` of the error object at `path` in the JSON `body`: a string as it is,
     /// an integer as its decimal text, and `nil` for a fraction, an exponent, a boolean or anything else.
-    static func code(_ body: Data) -> String? {
-        let json = try? JSONSerialization.jsonObject(with: body)
-        switch ((json as? [String: Any])?["error"] as? [String: Any])?["code"] {
+    static func code(_ body: Data, at path: [String]) -> String? {
+        let error = path.reduce(try? JSONSerialization.jsonObject(with: body)) { ($0 as? [String: Any])?[$1] }
+        switch (error as? [String: Any])?["code"] {
         case let code as String: return code
         case let code as NSNumber where CFGetTypeID(code) != CFBooleanGetTypeID() && !CFNumberIsFloatType(code): return code.stringValue
         default: return nil
@@ -278,326 +305,189 @@ extension HTTPURLResponse {
     var retryAfter: TimeInterval? { value(forHTTPHeaderField: "Retry-After").flatMap(InferenceError.seconds) }
 }
 
-/// Token counts for one completion.
-public struct CompletionUsage: Sendable, Hashable {
-    /// The usage object as the gateway sent it, with every field.
+/// A whole response, the `response` of the stream's last event.
+///
+/// `status` is `completed`, or `incomplete` for a response cut short, as by `maxOutputTokens`, which
+/// `incompleteDetails` explains. `raw` is the response as it came, with the fields the typed properties leave out,
+/// such as `instructions` and `metadata`.
+public struct Response: Sendable, Hashable {
+    /// The response object as the gateway sent it.
     public let raw: [String: JSONValue]
-    public var promptTokens: Int { raw["prompt_tokens"]?.int ?? 0 }
-    public var completionTokens: Int { raw["completion_tokens"]?.int ?? 0 }
-    public var totalTokens: Int { raw["total_tokens"]?.int ?? 0 }
-    /// The completion tokens by kind, when the gateway counts them.
-    public var completionTokensDetails: CompletionTokensDetails? { raw["completion_tokens_details"]?.object.map(CompletionTokensDetails.init) }
-    /// The prompt tokens by kind, when the gateway counts them.
-    public var promptTokensDetails: PromptTokensDetails? { raw["prompt_tokens_details"]?.object.map(PromptTokensDetails.init) }
-}
+    /// The items of the response in order, which go back into the next request's `input` as `InputItem(item)`.
+    public let output: [OutputItem]
+    /// The gateway's `X-Moss-Request-Id` for the call, or `nil` when the response has none.
+    public let requestId: String?
+    /// The response's id, such as `resp_1`.
+    public var id: String { raw["id"]?.string ?? "" }
+    /// When the response was made, in seconds since 1970.
+    public var createdAt: TimeInterval { raw["created_at"]?.double ?? 0 }
+    /// `in_progress` on the first event, then `completed` or `incomplete`.
+    public var status: String? { raw["status"]?.string }
+    /// The model that answered.
+    public var model: String { raw["model"]?.string ?? "" }
+    /// The token counts, once the response has ended.
+    public var usage: Usage? { raw["usage"]?.object.map(Usage.init(raw:)) }
+    /// Why the response is `incomplete`, or `nil` when it is not.
+    public var incompleteDetails: IncompleteDetails? { raw["incomplete_details"]?.object.map(IncompleteDetails.init(raw:)) }
+    /// The text of every message in `output`, joined.
+    public var outputText: String { output.map { if case .message(let message) = $0 { message.text } else { "" } }.joined() }
 
-/// The completion tokens by kind, as in OpenAI's `CompletionTokensDetails`.
-public struct CompletionTokensDetails: Sendable, Hashable {
-    /// Tokens of a predicted output that the completion used.
-    public let acceptedPredictionTokens: Int?
-    /// Audio tokens the model made.
-    public let audioTokens: Int?
-    /// Tokens the model spent reasoning.
-    public let reasoningTokens: Int?
-    /// Tokens of a predicted output that the completion left out.
-    public let rejectedPredictionTokens: Int?
-
-    init(_ json: [String: JSONValue]) {
-        acceptedPredictionTokens = json["accepted_prediction_tokens"]?.int
-        audioTokens = json["audio_tokens"]?.int
-        reasoningTokens = json["reasoning_tokens"]?.int
-        rejectedPredictionTokens = json["rejected_prediction_tokens"]?.int
-    }
-}
-
-/// The prompt tokens by kind, as in OpenAI's `PromptTokensDetails`.
-public struct PromptTokensDetails: Sendable, Hashable {
-    /// Audio tokens in the prompt.
-    public let audioTokens: Int?
-    /// Prompt tokens the provider read from its cache.
-    public let cachedTokens: Int?
-
-    init(_ json: [String: JSONValue]) {
-        audioTokens = json["audio_tokens"]?.int
-        cachedTokens = json["cached_tokens"]?.int
-    }
-}
-
-/// The log probabilities of a choice's tokens, as in OpenAI's `ChoiceLogprobs`.
-public struct ChoiceLogprobs: Sendable, Hashable {
-    /// The content tokens, `nil` when none came.
-    public let content: [ChatCompletionTokenLogprob]?
-    /// The refusal tokens, `nil` when none came.
-    public let refusal: [ChatCompletionTokenLogprob]?
-}
-
-extension ChoiceLogprobs {
-    init(_ json: [String: JSONValue]) {
-        self.init(
-            content: json["content"]?.array?.map(ChatCompletionTokenLogprob.init),
-            refusal: json["refusal"]?.array?.map(ChatCompletionTokenLogprob.init)
-        )
-    }
-
-    /// These tokens followed by those of `next`, for each key.
-    func appending(_ next: ChoiceLogprobs) -> ChoiceLogprobs {
-        ChoiceLogprobs(
-            content: next.content.map { (content ?? []) + $0 } ?? content, refusal: next.refusal.map { (refusal ?? []) + $0 } ?? refusal
-        )
-    }
-}
-
-/// One token and how likely it was, as in OpenAI's `ChatCompletionTokenLogprob`.
-public struct ChatCompletionTokenLogprob: Sendable, Hashable {
-    /// The token's text.
-    public let token: String?
-    /// The token's log probability.
-    public let logprob: Double?
-    /// The token's UTF-8 bytes.
-    public let bytes: [Int]?
-    /// The most likely tokens at this place, each with no `topLogprobs` of its own.
-    public let topLogprobs: [ChatCompletionTokenLogprob]?
-
-    init(_ json: JSONValue) {
-        token = json["token"]?.string
-        logprob = json["logprob"]?.double
-        bytes = json["bytes"]?.array?.compactMap(\.int)
-        topLogprobs = json["top_logprobs"]?.array?.map(Self.init)
-    }
-}
-
-/// One streamed piece of a chat completion, with OpenAI's fields.
-public struct ChatCompletionChunk: Sendable, Hashable {
-    public let id: String
-    public let object: String
-    public let created: Int
-    public let model: String
-    public let choices: [Choice]
-    /// Token counts, usually on a last chunk whose `choices` is empty.
-    public let usage: CompletionUsage?
-    /// The MCP tool step this chunk carries, whose one choice has an empty delta, or `nil` on every other chunk.
-    public let toolStep: ToolStep?
-    /// The decoded event, with the fields the typed properties leave out.
-    public let raw: [String: JSONValue]
-
-    public struct Choice: Sendable, Hashable {
-        public let index: Int
-        public let delta: Delta
-        public let finishReason: String?
-        /// The log probabilities of this chunk's tokens, when `extra` asks for `logprobs`.
-        public let logprobs: ChoiceLogprobs?
-    }
-
-    public struct Delta: Sendable, Hashable {
-        public let role: String?
-        public let content: String?
-        public let toolCalls: [ToolCall]?
-    }
-
-    /// A piece of a tool call. The pieces with one `index` make up one call.
-    public struct ToolCall: Sendable, Hashable {
-        /// The piece's `index`. A piece without one takes the index of the call that has its `id`,
-        /// else of its choice's last piece if the piece or that piece's call has no id, else the next free index.
-        public let index: Int
-        public let id: String?
-        public let type: String?
-        public let function: Function?
-        /// The piece as the model sent it, with fields beyond OpenAI's such as Gemini's `extra_content`.
-        public let raw: [String: JSONValue]
-    }
-
-    public struct Function: Sendable, Hashable {
-        public let name: String?
-        public let arguments: String?
-    }
-
-    /// Reads one event, with the tool call pieces of each choice placed after those `slots` has seen.
-    init(_ raw: [String: JSONValue], slots: inout [Int: ToolSlots]) {
+    init(raw: [String: JSONValue], requestId: String?) {
         self.raw = raw
-        id = raw["id"]?.string ?? ""
-        object = raw["object"]?.string ?? "chat.completion.chunk"
-        created = raw["created"]?.int ?? 0
-        model = raw["model"]?.string ?? ""
-        usage = raw["usage"]?.object.map(CompletionUsage.init(raw:))
-        toolStep = raw["moss_tool_step"]?.object.map(ToolStep.init(raw:))
-        choices = (raw["choices"]?.array ?? []).map { choice in
-            let index = choice["index"]?.int ?? 0
-            let delta = choice["delta"]
-            let toolCalls = delta?["tool_calls"]?.array?.compactMap { call -> ToolCall? in
-                guard let object = call.object else { return nil }
-                return ToolCall(
-                    index: slots[index, default: ToolSlots()].place(index: call["index"]?.int, id: call["id"]?.string),
-                    id: call["id"]?.string, type: call["type"]?.string,
-                    function: call["function"].map { Function(name: $0["name"]?.string, arguments: $0["arguments"]?.string) },
-                    raw: object
-                )
-            }
-            return Choice(
-                index: index,
-                delta: Delta(role: delta?["role"]?.string, content: delta?["content"]?.string, toolCalls: toolCalls),
-                finishReason: choice["finish_reason"]?.string, logprobs: choice["logprobs"]?.object.map(ChoiceLogprobs.init)
-            )
+        self.requestId = requestId
+        output = (raw["output"]?.array ?? []).compactMap { $0.object.map(OutputItem.init) }
+    }
+}
+
+/// Token counts of a response.
+public struct Usage: Sendable, Hashable {
+    /// The usage object as the gateway sent it, with every field, such as Moss's own.
+    public let raw: [String: JSONValue]
+    /// The tokens of the prompt.
+    public var inputTokens: Int { raw["input_tokens"]?.int ?? 0 }
+    /// The tokens of the response.
+    public var outputTokens: Int { raw["output_tokens"]?.int ?? 0 }
+    /// The input and output tokens together.
+    public var totalTokens: Int { raw["total_tokens"]?.int ?? 0 }
+    /// The input tokens the provider read from its cache, when the gateway counts them.
+    public var cachedTokens: Int? { raw["input_tokens_details"]?["cached_tokens"]?.int }
+    /// The output tokens the model spent reasoning, when the gateway counts them.
+    public var reasoningTokens: Int? { raw["output_tokens_details"]?["reasoning_tokens"]?.int }
+}
+
+/// Why a response is `incomplete`.
+public struct IncompleteDetails: Sendable, Hashable {
+    /// The object as the gateway sent it.
+    public let raw: [String: JSONValue]
+    /// `max_output_tokens` or `content_filter`.
+    public var reason: String? { raw["reason"]?.string }
+}
+
+/// An item of a response's `output`. Its `raw` is the item as it came, which `InputItem(item)` sends back.
+public enum OutputItem: Sendable, Hashable {
+    /// A message of the model.
+    case message(OutputMessage)
+    /// A call of one of your functions.
+    case functionCall(FunctionCall)
+    /// A call that Moss ran on one of your MCP servers.
+    case mcpCall(McpCall)
+    /// An item of another type, such as `reasoning`, as its JSON object.
+    case other([String: JSONValue])
+
+    init(_ raw: [String: JSONValue]) {
+        switch raw["type"]?.string {
+        case "message": self = .message(OutputMessage(raw: raw))
+        case "function_call": self = .functionCall(FunctionCall(raw: raw))
+        case "mcp_call": self = .mcpCall(McpCall(raw: raw))
+        default: self = .other(raw)
+        }
+    }
+
+    /// The item as it came, with every field the model sent.
+    public var raw: [String: JSONValue] {
+        switch self {
+        case .message(let item): item.raw
+        case .functionCall(let item): item.raw
+        case .mcpCall(let item): item.raw
+        case .other(let raw): raw
         }
     }
 }
 
-/// The tool calls of one choice so far, which place each new piece in its call.
-struct ToolSlots {
-    /// The id of the call in each slot, empty while it has none.
-    private var ids: [Int: String] = [:]
-    /// The slot of the last piece.
-    private var last: Int?
-
-    /// Places a piece and returns its slot: its `index`, else the first slot whose call has its `id`,
-    /// else the last piece's slot if the piece or that slot's call has no id, else the next free slot.
-    mutating func place(index: Int?, id: String?) -> Int {
-        let id = id ?? ""
-        let named = id.isEmpty ? nil : ids.filter { $0.value == id }.keys.min()
-        let slot = index ?? named ?? last.flatMap { id.isEmpty || ids[$0] == "" ? $0 : nil } ?? (ids.keys.max() ?? -1) + 1
-        if !id.isEmpty || ids[slot] == nil { ids[slot] = id }
-        last = slot
-        return slot
-    }
+/// A message of the model, an item of `output`.
+public struct OutputMessage: Sendable, Hashable {
+    /// The item as it came.
+    public let raw: [String: JSONValue]
+    /// The item's id, which the events about it carry as `itemId`.
+    public var id: String { raw["id"]?.string ?? "" }
+    /// `assistant`.
+    public var role: String { raw["role"]?.string ?? "assistant" }
+    /// `in_progress`, `completed` or `incomplete`.
+    public var status: String? { raw["status"]?.string }
+    /// The parts of the message, such as an `output_text` part with its `text` and `annotations`.
+    public var content: [JSONValue] { raw["content"]?.array ?? [] }
+    /// The text of its `output_text` parts, joined.
+    public var text: String { content.filter { $0["type"] == "output_text" }.compactMap { $0["text"]?.string }.joined() }
 }
 
-/// One step of an MCP tool call the gateway runs: `call` before the tool runs, `result` after.
-public struct ToolStep: Sendable, Hashable {
-    /// The step as the gateway sent it, with any field the typed properties leave out.
+/// A call of one of your functions, an item of `output`.
+///
+/// Run the function, then send this item back as `InputItem(item)` and its result as
+/// `.functionCallOutput(callId:output:)` in the `input` of the next request. `raw` keeps
+/// every field the model sent, such as the thought signature Gemini needs in `extra_content`.
+public struct FunctionCall: Sendable, Hashable {
+    /// The item as it came.
     public let raw: [String: JSONValue]
-    /// `call` or `result`.
-    public var type: String { raw["type"]?.string ?? "" }
-    /// The id that a call and its result share.
+    /// The item's id, such as `fc_1`.
     public var id: String { raw["id"]?.string ?? "" }
-    /// The label of the MCP server whose tool ran.
+    /// The id that the call's `functionCallOutput` names.
+    public var callId: String { raw["call_id"]?.string ?? "" }
+    /// The function's name.
+    public var name: String { raw["name"]?.string ?? "" }
+    /// The arguments as JSON text.
+    public var arguments: String { raw["arguments"]?.string ?? "" }
+    /// `in_progress` or `completed`.
+    public var status: String? { raw["status"]?.string }
+}
+
+/// A call that Moss ran on one of your MCP servers, an item of `output`.
+/// Sent back in `input` as it is, it gives the model the earlier tool result.
+public struct McpCall: Sendable, Hashable {
+    /// The item as it came.
+    public let raw: [String: JSONValue]
+    /// The item's id.
+    public var id: String { raw["id"]?.string ?? "" }
+    /// The `serverLabel` of the tool's server.
     public var serverLabel: String { raw["server_label"]?.string ?? "" }
     /// The tool's name on its server.
     public var name: String { raw["name"]?.string ?? "" }
-    /// The tool's arguments as JSON text, on a `call` step.
-    public var arguments: String? { raw["arguments"]?.string }
-    /// Whether the tool failed, on a `result` step.
-    public var isError: Bool? { if case .bool(let value)? = raw["is_error"] { value } else { nil } }
-    /// How long the tool ran in milliseconds, on a `result` step.
-    public var durationMs: Double? { raw["duration_ms"]?.double }
-    /// The tool's output, on a `result` step.
+    /// The arguments as JSON text.
+    public var arguments: String { raw["arguments"]?.string ?? "" }
+    /// The tool's output, once it succeeded.
     public var output: String? { raw["output"]?.string }
+    /// What failed, once the tool failed.
+    public var error: JSONValue? {
+        guard let error = raw["error"], error != .null else { return nil }
+        return error
+    }
+    /// `in_progress`, `completed` or `failed`.
+    public var status: String? { raw["status"]?.string }
+    /// How long the tool ran in milliseconds, once it ended.
+    public var durationMs: Double? { raw["duration_ms"]?.double }
 }
 
-/// A whole chat completion, gathered from the stream.
-public struct ChatCompletion: Sendable, Hashable {
-    public let id: String
-    public let object: String
-    public let created: Int
-    public let model: String
-    public let choices: [Choice]
-    public let usage: CompletionUsage?
-    /// The MCP tool steps of the turn in the order they arrived, empty when no tool ran.
-    public let toolSteps: [ToolStep]
-    /// The gateway's `X-Moss-Request-Id` for the call, or `nil` when the response has none.
-    public let requestId: String?
+/// One event of a streamed response, such as `response.output_text.delta`, with OpenAI's fields.
+///
+/// Each type of event sets its own fields and leaves the others `nil`: `delta` on a delta,
+/// `item` on `response.output_item.added` and `.done`, and `response` on `response.created`,
+/// `response.completed` and `response.incomplete`. `raw` is the decoded event, with every field.
+public struct ResponseStreamEvent: Sendable, Hashable {
+    /// The event as the gateway sent it.
+    public let raw: [String: JSONValue]
+    /// The response so far, or the whole response on the last event.
+    public let response: Response?
+    /// The output item that the event adds or finishes.
+    public let item: OutputItem?
+    /// The event's type, such as `response.output_text.delta`.
+    public var type: String { raw["type"]?.string ?? "" }
+    /// The event's place in the stream, counted from 0.
+    public var sequenceNumber: Int? { raw["sequence_number"]?.int }
+    /// The place in `output` of the item the event is about.
+    public var outputIndex: Int? { raw["output_index"]?.int }
+    /// The id of the item the event is about.
+    public var itemId: String? { raw["item_id"]?.string }
+    /// The place in the message's `content` of the part the event is about.
+    public var contentIndex: Int? { raw["content_index"]?.int }
+    /// The new text, or the new piece of a call's arguments.
+    public var delta: String? { raw["delta"]?.string }
+    /// The whole text of a part, on `response.output_text.done`.
+    public var text: String? { raw["text"]?.string }
+    /// The whole arguments of a call, on `response.function_call_arguments.done`.
+    public var arguments: String? { raw["arguments"]?.string }
 
-    public struct Choice: Sendable, Hashable {
-        public let index: Int
-        public let message: Message
-        public let finishReason: String?
-        /// The tokens of every chunk joined in order, `nil` when no chunk had any.
-        public let logprobs: ChoiceLogprobs?
-    }
-
-    public struct Message: Sendable, Hashable {
-        public let role: String
-        /// All text of the reply. When no text came, `nil` if there are tool calls and empty if not.
-        public let content: String?
-        /// The tool calls with their arguments joined, `nil` when there are none.
-        public let toolCalls: [ToolCall]?
-
-        /// The message as JSON, with every field of each tool call, which `ChatMessage(message)` sends back.
-        public var raw: [String: JSONValue] {
-            var raw: [String: JSONValue] = ["role": .string(role), "content": content.map(JSONValue.string) ?? .null]
-            raw["tool_calls"] = toolCalls.map { .array($0.map { .object($0.raw) }) }
-            return raw
-        }
-    }
-
-    /// A tool call joined from its pieces.
-    public struct ToolCall: Sendable, Hashable {
-        /// The joined call, with every field the model sent such as Gemini's `extra_content`.
-        public let raw: [String: JSONValue]
-        public var id: String { raw["id"]?.string ?? "" }
-        public var type: String { raw["type"]?.string ?? "function" }
-        public var function: Function {
-            Function(name: raw["function"]?["name"]?.string ?? "", arguments: raw["function"]?["arguments"]?.string ?? "")
-        }
-    }
-
-    public struct Function: Sendable, Hashable {
-        public let name: String
-        public let arguments: String
-    }
-
-    /// Reads `stream` to its end and joins its chunks by choice and tool call index.
-    init(gathering stream: ChatCompletionStream, model: String) async throws {
-        var first: ChatCompletionChunk?
-        var usage: CompletionUsage?
-        var steps: [ToolStep] = []
-        var builders: [Int: ChoiceBuilder] = [:]
-        for try await chunk in stream {
-            first = first ?? chunk
-            usage = chunk.usage ?? usage
-            if let step = chunk.toolStep { steps.append(step) }
-            for choice in chunk.choices {
-                builders[choice.index, default: ChoiceBuilder()].add(choice)
-            }
-        }
-        id = first?.id ?? ""
-        object = "chat.completion"
-        created = first?.created ?? 0
-        self.model = first?.model ?? model
-        choices = builders.keys.sorted().map { builders[$0]!.choice(index: $0) }
-        self.usage = usage
-        toolSteps = steps
-        requestId = stream.requestId
-    }
-}
-
-/// Joins the deltas of one choice.
-private struct ChoiceBuilder {
-    var role: String?
-    var content: String?
-    var finishReason: String?
-    var logprobs: ChoiceLogprobs?
-    var calls: [Int: [String: JSONValue]] = [:]
-
-    /// Folds each tool call piece into the call of its `index` the way the gateway does, keeping every field.
-    mutating func add(_ choice: ChatCompletionChunk.Choice) {
-        role = choice.delta.role ?? role
-        if let text = choice.delta.content, !text.isEmpty { content = (content ?? "") + text }
-        finishReason = choice.finishReason ?? finishReason
-        if let next = choice.logprobs { logprobs = logprobs?.appending(next) ?? next }
-        for piece in choice.delta.toolCalls ?? [] {
-            let slot = piece.index
-            var call = calls[slot] ?? ["id": "", "type": "function", "function": ["name": "", "arguments": ""]]
-            var function = call["function"]?.object ?? [:]
-            if let id = piece.id, !id.isEmpty { call["id"] = .string(id) }
-            if let type = piece.type, !type.isEmpty { call["type"] = .string(type) }
-            if let name = piece.function?.name, !name.isEmpty { function["name"] = .string(name) }
-            if let arguments = piece.function?.arguments { function["arguments"] = .string((function["arguments"]?.string ?? "") + arguments) }
-            call["function"] = .object(function)
-            for (key, value) in piece.raw where !["index", "id", "type", "function"].contains(key) && value != .null {
-                if case .object(let new) = value, case .object(let old)? = call[key] {
-                    call[key] = .object(old.merging(new) { $1 })
-                } else {
-                    call[key] = value
-                }
-            }
-            calls[slot] = call
-        }
-    }
-
-    func choice(index: Int) -> ChatCompletion.Choice {
-        let toolCalls = calls.sorted { $0.key < $1.key }.map { ChatCompletion.ToolCall(raw: $0.value) }
-        let message = ChatCompletion.Message(
-            role: role ?? "assistant", content: content ?? (toolCalls.isEmpty ? "" : nil), toolCalls: toolCalls.isEmpty ? nil : toolCalls
-        )
-        return ChatCompletion.Choice(index: index, message: message, finishReason: finishReason, logprobs: logprobs)
+    init(raw: [String: JSONValue], requestId: String?) {
+        self.raw = raw
+        response = raw["response"]?.object.map { Response(raw: $0, requestId: requestId) }
+        item = raw["item"]?.object.map(OutputItem.init)
     }
 }
