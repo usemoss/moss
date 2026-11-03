@@ -29,35 +29,33 @@ export { isMossError } from "./errors";
 export type { MossError, MossErrorCode } from "./errors";
 export type { IAuthenticator, AuthToken } from "./auth/authenticator.interface";
 
-// Chat completions through the Moss inference gateway, in OpenAI's shape
+// Responses through the Moss inference gateway, in the shape of OpenAI's Responses API
 export { MossInference, inference } from "./inference";
-export type { ChatCompletions } from "./inference";
-export { ChatCompletionStream } from "./inference/stream";
+export type { Responses } from "./inference";
+export { ResponseStream } from "./inference/stream";
 export { InferenceError } from "./inference/error";
 export type { InferenceErrorType } from "./inference/error";
 export type {
-  ChatCompletion,
-  ChatCompletionChoice,
-  ChatCompletionChunk,
-  ChatCompletionChunkChoice,
-  ChatCompletionChunkDelta,
-  ChatCompletionChunkToolCall,
-  ChatCompletionContentPart,
-  ChatCompletionCreateParams,
-  ChatCompletionCreateParamsBase,
-  ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming,
-  ChatCompletionLogprobs,
-  ChatCompletionMessage,
-  ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall,
-  ChatCompletionTokenLogprob,
-  ChatCompletionTool,
-  CompletionUsage,
+  EasyInputMessage,
+  FunctionCallOutput,
+  FunctionTool,
   InferenceRequestOptions,
+  McpCall,
   McpServer,
   MossInferenceOptions,
-  ToolStep,
+  Response,
+  ResponseCreateParams,
+  ResponseCreateParamsBase,
+  ResponseCreateParamsNonStreaming,
+  ResponseCreateParamsStreaming,
+  ResponseFunctionToolCall,
+  ResponseInputItem,
+  ResponseOutputItem,
+  ResponseReasoningItem,
+  ResponseOutputMessage,
+  ResponseOutputText,
+  ResponseStreamEvent,
+  ResponseUsage,
 } from "./inference/types";
 
 // SDK-specific types

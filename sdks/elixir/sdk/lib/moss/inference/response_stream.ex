@@ -1,20 +1,20 @@
-defmodule Moss.Inference.ChatCompletionStream do
+defmodule Moss.Inference.ResponseStream do
   @moduledoc """
-  A streamed chat completion: an `Enumerable` of chunk maps, as decoded from the reply.
+  A streamed response: an `Enumerable` of the events of OpenAI's Responses API, as decoded maps.
 
-  Each chunk has OpenAI's `chat.completion.chunk` shape with string keys, such as
-  `chunk["choices"]` and `choice["delta"]["content"]`. A final chunk may carry `"usage"`
-  with an empty `"choices"` list. A tool call piece is the map the model sent, with every field.
-  Before and after each call to an MCP server, a chunk with an empty `"delta"` carries
-  `chunk["moss_tool_step"]`: `"type"` `"call"` or `"result"`, `"id"`, `"server_label"` and `"name"`,
-  then `"arguments"` on a call, and `"is_error"`, `"duration_ms"` and `"output"` on a result.
-  A failure once the reply has started raises `Moss.Inference.Error` where it happens,
-  after the chunks that came before it, with code `"failed_after_tool_call"` once a step has come.
+  Each event has string keys and its `"type"`, such as `"response.output_text.delta"` with its
+  `"delta"`, or `"response.output_item.added"` and `"response.output_item.done"` with an `"item"`.
+  The last event is `"response.completed"`, or `"response.incomplete"` for a response cut
+  by `max_output_tokens`, and its `"response"` is the whole response. The stream ends after it.
+  An item of type `"mcp_call"` is a call Moss made to an MCP server.
+  A `"response.failed"` or `"error"` event raises `Moss.Inference.Error` where it comes,
+  after the events before it, and so does any other failure once the response has started,
+  with code `"failed_after_tool_call"` once an `"mcp_call"` item has come.
   An event or line over 1 MiB raises `"server_error"` and closes the connection.
   A connection reset raises `"incomplete_stream"`, since Erlang's `:ssl` reports it as a close.
 
   The connection belongs to the process that called
-  `Moss.Inference.Chat.Completions.create/3`, so enumerate the stream there, and only once.
+  `Moss.Inference.Responses.create/3`, so enumerate the stream there, and only once.
   A stream read to its end gives its connection back for the next call.
   Halting early, for example with `Enum.take/2`, closes the connection and stops the model,
   and so does a failure. `close/1` does the same from any process, after which the stream
@@ -30,7 +30,9 @@ defmodule Moss.Inference.ChatCompletionStream do
 
   # The most bytes one line, or the data of one event, may hold.
   @event_limit 1_048_576
-  @too_large %{"type" => "server_error", "message" => "The gateway sent an event over 1 MiB."}
+
+  # The types of the event that ends a response.
+  @last ["response.completed", "response.incomplete"]
 
   # Slots of the flags every copy of a stream shares.
   @claimed 1
@@ -395,15 +397,19 @@ defmodule Moss.Inference.ChatCompletionStream do
 
   defp next(state), do: if(closed?(state), do: {:halt, state}, else: step(state))
 
-  # Once a tool has run, it may have changed data, and every error after it says so.
-  defp step(%{events: [{:chunk, %{"moss_tool_step" => %{}} = chunk} | rest]} = state) do
+  # The last event ends the stream, and whatever came after it is dropped.
+  defp step(%{events: [{:event, %{"type" => type} = event} | _]} = state) when type in @last,
+    do: {[event], %{state | events: [:end]}}
+
+  # Once an MCP tool has run, it may have changed data, and every error after it says so.
+  defp step(%{events: [{:event, %{"item" => %{"type" => "mcp_call"}} = event} | rest]} = state) do
     state = put_in(state.stream.details[:code], "failed_after_tool_call")
-    {[chunk], %{state | events: rest}}
+    {[event], %{state | events: rest}}
   end
 
-  defp step(%{events: [{:chunk, chunk} | rest]} = state), do: {[chunk], %{state | events: rest}}
-  defp step(%{events: [:done | _]} = state), do: {:halt, drain(state, drain_limits(state))}
-  defp step(%{events: [{:error, body} | _]} = state), do: fail(state, event_error(body))
+  defp step(%{events: [{:event, event} | rest]} = state), do: {[event], %{state | events: rest}}
+  defp step(%{events: [:end | _]} = state), do: {:halt, drain(state, drain_limits(state))}
+  defp step(%{events: [{:error, error} | _]} = state), do: fail(state, error)
 
   defp step(%{events: []} = state) do
     case await_part(state, state.stream.limits) do
@@ -421,7 +427,7 @@ defmodule Moss.Inference.ChatCompletionStream do
 
   defp closed?(state), do: :atomics.get(state.stream.flags, @connection) == @closed
 
-  # Reads the rest of the reply after [DONE], for @drain_timeout ms at most,
+  # Reads the rest of the reply after the last event, for @drain_timeout ms at most,
   # so that a connection read to its end can serve the next call to the gateway.
   defp drain(state, limits) do
     case await_part(state, limits) do
@@ -516,31 +522,38 @@ defmodule Moss.Inference.ChatCompletionStream do
 
   # Drops what the stream holds, and fails after the events that came before.
   defp too_large(state, events) do
-    events = Enum.reverse([{:error, @too_large} | events])
-    %{state | buffer: "", data: nil, events: events}
+    error = %Error{type: "server_error", message: "The gateway sent an event over 1 MiB."}
+    %{state | buffer: "", data: nil, events: Enum.reverse([{:error, error} | events])}
   end
 
-  defp event("[DONE]"), do: :done
+  # A response never ends with [DONE], so one that comes first cuts the stream.
+  defp event("[DONE]"), do: {:error, incomplete()}
 
   defp event(data) do
     case Jason.decode(data) do
-      {:ok, %{"error" => %{} = error}} ->
-        {:error, error}
+      {:ok, %{"type" => "response.failed", "response" => %{"error" => %{} = error}}} ->
+        {:error, event_error(error, error["type"])}
 
-      {:ok, chunk} when is_map(chunk) ->
-        {:chunk, chunk}
+      {:ok, %{"type" => "response.failed"}} ->
+        {:error, event_error(%{}, nil)}
+
+      {:ok, %{"type" => "error"} = error} ->
+        {:error, event_error(error, nil)}
+
+      {:ok, event} when is_map(event) ->
+        {:event, event}
 
       _not_an_object ->
         {:error,
-         %{"type" => "server_error", "message" => "The gateway sent an event that is not JSON."}}
+         %Error{type: "server_error", message: "The gateway sent an event that is not JSON."}}
     end
   end
 
-  defp event_error(error) do
+  defp event_error(error, type) do
     %Error{
-      type: if(is_binary(error["type"]), do: error["type"], else: "model_error"),
+      type: if(is_binary(type), do: type, else: "model_error"),
       message:
-        if(is_binary(error["message"]), do: error["message"], else: "The model stream failed."),
+        if(is_binary(error["message"]), do: error["message"], else: "The response failed."),
       code: code(error)
     }
   end
@@ -564,7 +577,7 @@ defmodule Moss.Inference.ChatCompletionStream do
   defp timeout_error, do: %Error{type: "timeout", message: "The request timed out."}
 
   defp incomplete,
-    do: %Error{type: "incomplete_stream", message: "The stream ended before [DONE]."}
+    do: %Error{type: "incomplete_stream", message: "The stream ended before response.completed."}
 
   defp remaining(:infinity), do: :infinity
   defp remaining(deadline), do: max(deadline - now(), 0)
@@ -572,9 +585,9 @@ defmodule Moss.Inference.ChatCompletionStream do
   defp now, do: System.monotonic_time(:millisecond)
 end
 
-defimpl Enumerable, for: Moss.Inference.ChatCompletionStream do
+defimpl Enumerable, for: Moss.Inference.ResponseStream do
   def reduce(stream, acc, fun),
-    do: Moss.Inference.ChatCompletionStream.resource(stream).(acc, fun)
+    do: Moss.Inference.ResponseStream.resource(stream).(acc, fun)
 
   def count(_stream), do: {:error, __MODULE__}
   def member?(_stream, _value), do: {:error, __MODULE__}

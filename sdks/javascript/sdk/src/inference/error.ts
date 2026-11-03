@@ -42,9 +42,9 @@ export class InferenceError extends Error implements MossError {
   /**
    * The gateway's `error.code`, a string or a safe integer in decimal. Undefined otherwise.
    *
-   * `failed_after_tool_call` once the stream carried an MCP tool step.
+   * `failed_after_tool_call` once the stream carried an `mcp_call` item.
    * The tool may have changed data, so do not replay the call blindly.
-   * The same holds for a call you abort after a step, which has no such code,
+   * The same holds for a call you abort after such an item, which has no such code,
    * as with `stream.controller.abort()` or a signal such as `AbortSignal.timeout()`.
    */
   readonly errorCode?: string;
@@ -79,7 +79,7 @@ export class InferenceError extends Error implements MossError {
 export interface ResponseFields {
   requestId?: string;
   retryAfter?: number;
-  /** Set once the stream carries an MCP tool step. */
+  /** Set once the stream carries an `mcp_call` item. */
   errorCode?: "failed_after_tool_call";
 }
 

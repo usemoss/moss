@@ -443,35 +443,36 @@ Pass `QueryOptions` to reuse your own embeddings or to override `top_k` on a per
 
 ## Inference
 
-`MossInference` answers chat messages with facts from your Moss indexes. It is async only, and its `chat.completions.create` takes the arguments of OpenAI's, plus an optional `indexes` list of the indexes to search. Replies have OpenAI's field names and attribute access, such as `chunk.choices[0].delta.content`, but they are dataclasses, not OpenAI's types, and a chunk's `raw` holds the decoded event. To send a reply's `message` back, append the message itself, not a `dataclasses.asdict` of it, which moves fields such as Gemini's thought signature under `raw`.
+`MossInference` answers with facts from your Moss indexes. It is async only, and its `responses.create` takes the arguments of OpenAI's Responses API, plus an optional `indexes` list of the indexes to search. Responses and events have OpenAI's field names and attribute access, such as `response.output_text` and `event.delta`, but they are dataclasses, not OpenAI's types, and each keeps the decoded JSON in `raw`.
 
 ```python
 from moss import MossInference
 
 async with MossInference("your-project-id", "your-project-key") as client:
-    stream = await client.chat.completions.create(
-        messages=[{"role": "user", "content": "Do you ship to Canada?"}],
+    stream = await client.responses.create(
+        input="Do you ship to Canada?",
         indexes=["faq"],
         stream=True,
     )
     async with stream:
-        async for chunk in stream:
-            if chunk.choices:
-                print(chunk.choices[0].delta.content or "", end="", flush=True)
+        async for event in stream:
+            if event.type == "response.output_text.delta":
+                print(event.delta, end="", flush=True)
 ```
 
-Without `stream=True` the call returns one `ChatCompletion`:
+Without `stream=True` the call returns one `Response`:
 
 ```python
 async with MossInference("your-project-id", "your-project-key") as client:
-    completion = await client.chat.completions.create(
-        messages=[{"role": "user", "content": "Do you ship to Canada?"}],
+    response = await client.responses.create(
+        instructions="Answer in one sentence.",
+        input="Do you ship to Canada?",
         indexes=["faq"],
     )
-    print(completion.choices[0].message.content)
+    print(response.output_text)
 ```
 
-With `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` set, `from moss import inference` gives the same call on a client built from them: `await inference.chat.completions.create(messages=messages)`.
+With `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` set, `from moss import inference` gives the same call on a client built from them: `await inference.responses.create(input="Hi")`.
 
 `model` is `"moss"`, the Moss model, unless you pass another. `api_key` is optional: your own OpenAI, Anthropic or Google key, for a vendor model such as `gpt-4o-mini`. `moss` ignores it, and a vendor model without one is refused. Set it on the client, or pass it to `create` for one call, where it replaces the client's:
 
@@ -479,62 +480,60 @@ With `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` set, `from moss import inference` 
 async with MossInference(
     "your-project-id", "your-project-key", api_key="your-openai-key"
 ) as client:
-    completion = await client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": "Do you ship to Canada?"}],
-        indexes=["faq"],
+    response = await client.responses.create(
+        model="gpt-4o-mini", input="Do you ship to Canada?", indexes=["faq"]
     )
 ```
 
+- `input` is a string, or the conversation so far as a list of items: OpenAI input item dicts, such as `{"role": "user", "content": "Hi"}`, and the `output` items of earlier responses. Moss stores nothing, so send the whole conversation each time. `store` is ignored, and `previous_response_id`, `background`, `include` and OpenAI's built-in tools, such as `web_search`, are refused with `invalid_request_error` and the code `unsupported_parameter`.
 - `api_key` is sent as the `X-Moss-Provider-Key` header, never in the body or an error message, and an empty one is an error.
 - A client checks its credentials, provider key, headers and timeouts when you build it. It keeps one connection pool, for the event loop it last ran in, until `close()` or the end of `async with`. A call in another loop drops that pool without closing it, so open and close a client in the loop that uses it.
-- Other OpenAI arguments, such as `temperature` or `stream_options`, reach the model unchanged, and a reply's `message` can go back into `messages`.
+- Other OpenAI arguments, such as `temperature`, `text={"format": ...}` for structured output or `reasoning={"effort": "low"}`, reach the gateway unchanged.
 - Without `indexes`, every index of the project is searched, and `indexes=[]` or `retrieve=False` skips the search. `default_headers` go with every call and `extra_headers` with one. Neither can set `Host`, `Content-Length` or `Transfer-Encoding`.
-- `timeout` limits a whole call, stream included, and `idle_timeout` limits the wait for the reply and each pause in it. Both are in seconds, and 0 or less turns one off. On the client, `timeout` is off by default and `idle_timeout` is 120, also when you pass `None`. `create` can change either for one call, where `None` keeps the client's.
+- `timeout` limits a whole call, stream included, and `idle_timeout` limits the wait for the response and each pause in it. Both are in seconds, and 0 or less turns one off. On the client, `timeout` is off by default and `idle_timeout` is 120, also when you pass `None`. `create` can change either for one call, where `None` keeps the client's.
 - Moss can answer an identical request from its reply cache; `cache=False` always asks the model.
 - `max_retries`, 2 by default, on the client or for one call, sends a call again after a connection failure or a `408`, `409`, `429` or `5xx`, waiting its `Retry-After` when it is 60 s or less, else 0.5 s doubled each time, within `timeout`. 0 turns it off.
-- Leaving a stream early, with `break` or `aclose()`, closes the connection and stops the model. A cancelled task does the same and raises `CancelledError`.
-- Failures raise `inference.InferenceError` with `status`, `type` (such as `authentication_error`, `rate_limit_error`, `model_error`, `timeout`, `connection_error` or `incomplete_stream`) and `message`. Once the service has answered, `request_id` holds its `X-Moss-Request-Id`, `code` its error code, such as `rate_limit_exceeded`, and `retry_after` the seconds an error response asks you to wait in `Retry-After`. Each is `None` when absent, and a stream and a `ChatCompletion` have a `request_id` too. A redirect is an error too, so your credentials never reach another URL.
-- Calls go to `https://inference.moss.dev/v1`. To call another gateway, set `MOSS_INFERENCE_URL` to its base URL, such as `https://gateway.example.com/v1`, and `/chat/completions` goes after it. A client reads the variable when you build it, and raises `InferenceError` for a value that is not an `http` or `https` URL with a host and no user info, query or fragment.
+- A stream ends after `response.completed`, or `response.incomplete` for a response cut by `max_output_tokens`, whose `status` is then `incomplete`. Leaving a stream early, with `break` or `aclose()`, closes the connection and stops the model. A cancelled task does the same and raises `CancelledError`.
+- Failures raise `inference.InferenceError` with `status`, `type` (such as `authentication_error`, `rate_limit_error`, `model_error`, `timeout`, `connection_error` or `incomplete_stream`) and `message`. A `response.failed` event raises it too. Once the service has answered, `request_id` holds its `X-Moss-Request-Id`, `code` its error code, such as `rate_limit_exceeded`, and `retry_after` the seconds an error response asks you to wait in `Retry-After`. Each is `None` when absent, and a stream and a `Response` have a `request_id` too. A redirect is an error too, so your credentials never reach another URL.
+- Calls go to `https://inference.moss.dev/v1`. To call another gateway, set `MOSS_INFERENCE_URL` to its base URL, such as `https://gateway.example.com/v1`, and `/responses` goes after it. A client reads the variable when you build it, and raises `InferenceError` for a value that is not an `http` or `https` URL with a host and no user info, query or fragment.
 
 ### Tool calls
 
-`tools`, `tool_choice` and `parallel_tool_calls` go to the model as you pass them. Put the reply's `message` back into `messages` as is, then one `tool` message for each call. The message keeps every field of its tool calls, such as the thought signature Gemini needs in the next turn, and each call's `raw` holds them. A call goes back as its `raw`, so a changed call needs a changed `raw`. On a stream, `await stream.get_final_completion()` gives the whole reply, joined from every chunk, the ones you already read included. If the stream was closed before its end, it fails with `incomplete_stream`, so it never returns part of a reply.
+`tools`, `tool_choice` and `parallel_tool_calls` go to the model as you pass them. A function tool is flat, as in OpenAI's Responses API. Each call comes as a `ResponseFunctionToolCall` item of `output`. Put the items back into `input` as they are, then one `function_call_output` item for each call. An item keeps every field the model sent, such as the thought signature Gemini needs in the next turn, and goes back as its `raw`. On a stream, `await stream.get_final_response()` reads the rest and gives the whole response. If the stream was closed before its end, it fails with `incomplete_stream`, so it never returns part of a response.
 
 ```python
 import json
 
+from moss.inference import ResponseFunctionToolCall
+
 tools = [{
     "type": "function",
-    "function": {
-        "name": "lookup_order",
-        "parameters": {"type": "object", "properties": {"id": {"type": "string"}}},
-    },
+    "name": "lookup_order",
+    "parameters": {"type": "object", "properties": {"id": {"type": "string"}}},
 }]
-messages = [{"role": "user", "content": "Where is order A1?"}]
+items = [{"role": "user", "content": "Where is order A1?"}]
 async with MossInference("your-project-id", "your-project-key") as client:
     while True:
-        stream = await client.chat.completions.create(
-            messages=messages, tools=tools, stream=True
-        )
-        async for chunk in stream:
-            if chunk.choices:
-                print(chunk.choices[0].delta.content or "", end="")
-        message = (await stream.get_final_completion()).choices[0].message
-        messages.append(message)
-        if not message.tool_calls:
+        stream = await client.responses.create(input=items, tools=tools, stream=True)
+        async for event in stream:
+            if event.type == "response.output_text.delta":
+                print(event.delta, end="")
+        response = await stream.get_final_response()
+        items += response.output
+        calls = [i for i in response.output if isinstance(i, ResponseFunctionToolCall)]
+        if not calls:
             break
-        for call in message.tool_calls:
-            output = lookup_order(**json.loads(call.function.arguments))
-            messages.append({"role": "tool", "tool_call_id": call.id, "content": output})
+        for call in calls:
+            output = lookup_order(**json.loads(call.arguments))
+            items.append({"type": "function_call_output", "call_id": call.call_id, "output": output})
 ```
 
 ### MCP servers
 
-An `McpServer` in `tools` lets the model call that server's tools. Moss runs them during the reply, and each call and result comes as a chunk's `tool_step`:
+An `McpServer` in `tools` lets the model call that server's tools. Moss runs them during the response, and each call comes as an `McpCall` item, in `response.output_item.added` when it starts and `response.output_item.done` when it ends:
 
 ```python
-from moss.inference import McpServer
+from moss.inference import McpCall, McpServer
 
 crm = McpServer(
     server_label="crm",
@@ -543,20 +542,18 @@ crm = McpServer(
     allowed_tools=["lookup_order"],
 )
 async with MossInference("your-project-id", "your-project-key") as client:
-    stream = await client.chat.completions.create(
-        messages=[{"role": "user", "content": "Where is order A1?"}],
-        tools=[crm],
-        stream=True,
+    stream = await client.responses.create(
+        input="Where is order A1?", tools=[crm], stream=True
     )
     async with stream:
-        async for chunk in stream:
-            if chunk.tool_step:
-                print(chunk.tool_step.type, chunk.tool_step.name)
-            elif chunk.choices:
-                print(chunk.choices[0].delta.content or "", end="")
+        async for event in stream:
+            if event.type == "response.output_item.done" and isinstance(event.item, McpCall):
+                print(event.item.name, event.item.output)
+            elif event.type == "response.output_text.delta":
+                print(event.delta, end="")
 ```
 
-A step's `type` is `call` before the tool runs, with its `arguments`, and `result` after it, with `is_error`, `duration_ms` and `output`. Without `stream=True`, `completion.tool_steps` lists the same steps, in order. Neither `server_url` nor `headers` show in the repr of an `McpServer`.
+An `McpCall` has the `server_label`, `name` and `arguments` of the call, and once it ended its `status`, `output` or `error`, and `duration_ms`. Without `stream=True`, the same items are in `response.output`, in order. Sent back in `input` with the rest of `output`, they give the model the earlier tool results. Neither `server_url` nor `headers` show in the repr of an `McpServer`.
 
 | `status` | `type` | `code` | When |
 | --- | --- | --- | --- |
@@ -565,7 +562,7 @@ A step's `type` is `call` before the tool runs, with its `arguments`, and `resul
 | 400, 424 | `mcp_error` | `mcp_server_error` | The URL was refused, or the server failed to connect or list its tools |
 | 400 | `invalid_request_error` | (none) | A bad `tools` entry, or a `server_label` or tool name used twice |
 
-Once a tool step has arrived, every `InferenceError` of that call has the code `failed_after_tool_call`: a tool may have changed data already, so do not replay the call blindly. A call you cancel or time out yourself after a step, such as with `asyncio.timeout`, may also have changed data. A stream that fails after it started is never retried.
+Once an MCP call has arrived, every `InferenceError` of that request has the code `failed_after_tool_call`: a tool may have changed data already, so do not replay the request blindly. A request you cancel or time out yourself after a call, such as with `asyncio.timeout`, may also have changed data. A stream that fails after it started is never retried.
 
 ## Telemetry
 

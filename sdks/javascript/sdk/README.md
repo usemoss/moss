@@ -316,42 +316,53 @@ const results = await mossClient.query("my-docs", "running shoes", {
 
 ## Inference
 
-`MossInference` answers OpenAI's `chat.completions.create`, with the same
-arguments and return shapes, through the Moss inference gateway. The gateway
-searches the `indexes` you pass and adds what it finds to the prompt, so code
-written for OpenAI swaps its client for `MossInference` and adds `indexes`.
+`MossInference` answers OpenAI's `responses.create`, with the arguments and
+return shapes of OpenAI's Responses API, through the Moss inference gateway. The
+gateway searches the `indexes` you pass and adds what it finds to the prompt, so
+code written for OpenAI swaps its client for `MossInference` and adds `indexes`.
 
 ```typescript
 import { MossInference } from "@moss-js/moss";
 
 const client = new MossInference("your-project-id", "your-project-key");
 
-const stream = await client.chat.completions.create({
-  messages: [{ role: "user", content: "Do you ship to Canada?" }],
+const stream = await client.responses.create({
+  input: "Do you ship to Canada?",
   indexes: ["faq"],
   stream: true,
 });
-for await (const chunk of stream) {
-  process.stdout.write(chunk.choices[0]?.delta.content ?? "");
+for await (const event of stream) {
+  if (event.type === "response.output_text.delta") process.stdout.write(event.delta ?? "");
 }
 ```
 
 `model` is optional and defaults to `"moss"`, Moss's own model. Without
-`stream: true` the call reads the whole stream and returns one completion:
+`stream: true` the call reads the whole stream and returns the `Response` of its
+last event, whose `output_text` joins the text of its messages:
 
 ```typescript
-const completion = await client.chat.completions.create(
+const response = await client.responses.create(
   {
-    messages: [{ role: "user", content: "Do you ship to Canada?" }],
+    instructions: "Answer in one sentence.",
+    input: "Do you ship to Canada?",
     indexes: ["faq"],
   },
   { timeout: 30_000 },
 );
-console.log(completion.choices[0].message.content);
+console.log(response.output_text);
 ```
 
 With `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` set,
-`inference.chat.completions.create(...)` takes the same arguments without a client.
+`inference.responses.create(...)` takes the same arguments without a client.
+
+`input` is a string, or the conversation so far as a list of items: messages
+such as `{ role: "user", content: "Hi" }`, and the `output` items of earlier
+responses. Moss stores nothing, so send the whole conversation each time.
+`store` is ignored, and `previous_response_id`, `background`, `include` and
+OpenAI's built-in tools, such as `web_search`, are refused with
+`invalid_request_error` and the `errorCode` `unsupported_parameter`. Other
+OpenAI parameters, such as `temperature`, `text: { format }` for structured
+output or `reasoning: { effort: "low" }`, reach the gateway unchanged.
 
 `apiKey` is optional: your own OpenAI, Anthropic or Google key, for a vendor
 model such as `gpt-4o-mini`. `moss` ignores it, and a vendor model without one
@@ -362,8 +373,8 @@ the client's:
 const keyed = new MossInference("your-project-id", "your-project-key", {
   apiKey: "your-openai-key",
 });
-const reply = await keyed.chat.completions.create(
-  { model: "gpt-4o-mini", messages: [{ role: "user", content: "Hi" }] },
+const reply = await keyed.responses.create(
+  { model: "gpt-4o-mini", input: "Hi" },
   { apiKey: "your-other-openai-key" },
 );
 ```
@@ -383,66 +394,77 @@ starts, after a `Retry-After` of up to 60 s, else a backoff of 0.5 s doubling
 up to 8 s, within `timeout`. `retrieve: false` or `indexes: []` skips the
 search, and leaving `indexes` out searches every index. Moss can answer an
 identical request from its reply cache; `cache: false` always asks the model.
-`stream.requestId` and a completion's `requestId`, which `JSON.stringify` leaves
+`stream.requestId` and a response's `requestId`, which `JSON.stringify` leaves
 out, hold the response's `X-Moss-Request-Id`.
 
 To call another gateway, set `MOSS_INFERENCE_URL` to
 its base URL, up to and including `/v1`, before you build the client. A
 `baseURL` or `baseUrl` option, on the client or a call, is an error.
 
-Leaving the `for await` loop early, or calling `stream.controller.abort()`,
-closes the connection, stops the model and ends the loop quietly. An abort with
-any other reason, such as the `TimeoutError` of `AbortSignal.timeout()`, throws
-that reason. Without `stream: true`, an abort rejects with the signal's reason,
-an `AbortError` for a plain `abort()`. Every other failure throws
-`InferenceError` with `status`, `type` and a Moss `code` that `isMossError`
-accepts, including an error the model reports mid-stream, a stream that ends
-early (`incomplete_stream`), a broken connection (`connection_error`) and a
-timeout (`timeout`). It also carries the gateway's `errorCode`, the response's
+A stream ends after `response.completed`, or after `response.incomplete` for a
+response cut by `max_output_tokens`, whose `status` is then `incomplete`, with
+the reason in `incomplete_details`. Leaving the `for await` loop early, or
+calling `stream.controller.abort()`, closes the connection, stops the model and
+ends the loop quietly. An abort with any other reason, such as the
+`TimeoutError` of `AbortSignal.timeout()`, throws that reason. Without
+`stream: true`, an abort rejects with the signal's reason, an `AbortError` for a
+plain `abort()`. Every other failure throws `InferenceError` with `status`,
+`type` and a Moss `code` that `isMossError` accepts, including a
+`response.failed` event, a stream that ends before its last event
+(`incomplete_stream`), a broken connection (`connection_error`) and a timeout
+(`timeout`). It also carries the gateway's `errorCode`, the response's
 `requestId` and, for a `429` or another error that sends `Retry-After`,
 `retryAfter` in milliseconds. The client does not follow redirects.
 
 ### Tool calls
 
-`tools`, `tool_choice` and `parallel_tool_calls` are sent as given. Each tool
-call keeps every field the model sent, such as Gemini's `extra_content` with the
-thought signature Gemini 3 needs back. After streaming the text,
-`finalChatCompletion()` joins the stream into the reply. Push its message into
-`messages` unchanged, add one `tool` message per call, and call again:
+`tools`, `tool_choice` and `parallel_tool_calls` are sent as given. A function
+tool is flat, as in OpenAI's Responses API. Each call comes as a
+`function_call` item of `output`, which keeps every field the model sent, such
+as Gemini's `extra_content` with the thought signature Gemini 3 needs back.
+After streaming the text, `finalResponse()` gives the whole response. Push its
+`output` items onto `input` unchanged, add one `function_call_output` item per
+call, and call again:
 
 ```typescript
-import type { ChatCompletionMessageParam } from "@moss-js/moss";
+import type { FunctionTool, ResponseInputItem } from "@moss-js/moss";
 
-const messages: ChatCompletionMessageParam[] = [
-  { role: "user", content: "Is the EQB jacket in stock?" },
-];
-const tools = [
+const input: ResponseInputItem[] = [{ role: "user", content: "Is the EQB jacket in stock?" }];
+const tools: FunctionTool[] = [
   {
-    type: "function" as const,
-    function: {
-      name: "check_stock",
-      parameters: { type: "object", properties: { sku: { type: "string" } } },
-    },
+    type: "function",
+    name: "check_stock",
+    parameters: { type: "object", properties: { sku: { type: "string" } } },
   },
 ];
-const stream = await client.chat.completions.create({ messages, tools, stream: true });
-for await (const chunk of stream) process.stdout.write(chunk.choices[0]?.delta.content ?? "");
-const { message } = (await stream.finalChatCompletion()).choices[0];
-messages.push(message);
-for (const call of message.tool_calls ?? []) {
-  const { sku } = JSON.parse(call.function.arguments);
-  messages.push({ role: "tool", tool_call_id: call.id, content: await checkStock(sku) });
+for (;;) {
+  const stream = await client.responses.create({ input, tools, stream: true });
+  for await (const event of stream) {
+    if (event.type === "response.output_text.delta") process.stdout.write(event.delta ?? "");
+  }
+  const { output } = await stream.finalResponse();
+  input.push(...output);
+  const calls = output.filter((item) => item.type === "function_call");
+  if (calls.length === 0) break;
+  for (const call of calls) {
+    const { sku } = JSON.parse(call.arguments);
+    input.push({ type: "function_call_output", call_id: call.call_id, output: await checkStock(sku) });
+  }
 }
-const answer = await client.chat.completions.create({ messages, tools });
 ```
+
+`finalResponse()` reads what the loop has not read. If the stream was closed
+before its last event, it rejects, so it never returns part of a response.
 
 ### MCP servers
 
 An `McpServer` entry in `tools` lets the gateway call that server's tools for
-the model and stream the final answer.
+the model during the response. Each call comes as an `mcp_call` item, in
+`response.output_item.added` when it starts and `response.output_item.done`
+when it ends:
 
 ```typescript
-import type { ChatCompletionMessageParam, McpServer } from "@moss-js/moss";
+import type { McpServer } from "@moss-js/moss";
 
 const crm: McpServer = {
   type: "mcp",
@@ -450,21 +472,25 @@ const crm: McpServer = {
   server_url: "https://mcp.example.com/mcp",
   headers: { Authorization: "Bearer your-crm-token" },
 };
-const messages: ChatCompletionMessageParam[] = [{ role: "user", content: "Where is order A1?" }];
-const stream = await client.chat.completions.create({ messages, tools: [crm], stream: true });
-for await (const chunk of stream) {
-  const step = chunk.moss_tool_step;
-  if (step) console.log(step.type, step.server_label, step.name, step.output ?? "");
-  else process.stdout.write(chunk.choices[0]?.delta.content ?? "");
+const stream = await client.responses.create({
+  input: "Where is order A1?",
+  tools: [crm],
+  stream: true,
+});
+for await (const event of stream) {
+  if (event.type === "response.output_item.done" && event.item?.type === "mcp_call") {
+    console.log(event.item.server_label, event.item.name, event.item.output ?? event.item.error);
+  } else if (event.type === "response.output_text.delta") {
+    process.stdout.write(event.delta ?? "");
+  }
 }
-const { moss_tool_steps } = await stream.finalChatCompletion();
-console.log(moss_tool_steps?.map((step) => `${step.type} ${step.name}`));
 ```
 
-Before and after each tool call the stream carries a chunk with an empty delta
-and a `moss_tool_step`: `call` with the `arguments`, then `result` with
-`is_error`, `duration_ms` and `output`. A completion lists them in
-`moss_tool_steps`. A turn with tools can run for a few minutes.
+An `mcp_call` item has the `server_label`, `name` and `arguments` of the call,
+and once it ended its `status`, `output` or `error`, and `duration_ms`. Without
+`stream: true`, the same items are in the response's `output`, in order.
+Sending the `output` items back in `input`, `mcp_call` items included, gives the
+model the earlier tool results. A response with tools can run for a few minutes.
 
 | `status` | `type` | `errorCode` | When |
 | --- | --- | --- | --- |
@@ -473,10 +499,10 @@ and a `moss_tool_step`: `call` with the `arguments`, then `result` with
 | 400, 424 | `mcp_error` | `mcp_server_error` | The URL was refused, or the server failed |
 | 400 | `invalid_request_error` | (none) | A bad `tools` entry, or a label or tool name used twice |
 
-After a tool step every failure has `errorCode` `failed_after_tool_call`, and
-the SDK never retries. Nor does it retry any stream that fails after it started.
-The tool may have changed data, and so may a call you abort or time out after a
-step, so do not replay such a call blindly.
+After an `mcp_call` item every failure has `errorCode` `failed_after_tool_call`,
+and the SDK never retries. Nor does it retry any stream that fails after it
+started. The tool may have changed data, and so may a call you abort or time out
+after such an item, so do not replay such a call blindly.
 
 ## 📄 License
 

@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-11-02
+
+### Changed
+
+- **Breaking change:** `Moss.Inference.Responses.create(client, params, opts)` replaces `Moss.Inference.Chat.Completions.create/3`, in the shape of OpenAI's Responses API, and calls `/responses` under the base URL. `params` take `input`, a string or a list of items, and `instructions` in place of `messages`, plus `max_output_tokens`. Function tools are flat, and so is a `tool_choice` that names one. Without `stream: true` it returns `{:ok, response}`, the `"response"` map of the last event, whose `"output"` holds the `"message"`, `"function_call"` and `"mcp_call"` items as the model sent them, plus `"output_text"`, the text of its messages joined, and `"request_id"`. With it, it returns `{:ok, %Moss.Inference.ResponseStream{}}`, an `Enumerable` of event maps, such as `response.output_text.delta`, that ends after `response.completed` or `response.incomplete`, and `Moss.Inference.ResponseStream.close/1` ends one early. A tool call's result goes back as a `function_call_output` item, after the output items. Usage has `input_tokens` and `output_tokens`. A `response.failed` or `error` event raises `Moss.Inference.Error`, and once an `mcp_call` item has arrived every error has the code `"failed_after_tool_call"`. A stream that ends, or sends `[DONE]`, before its last event is an `incomplete_stream`.
+- Requires the `moss_core` 0.28.0 NIF.
+- Every request the native core makes, such as model and index downloads, control-plane calls, authentication, uploads and telemetry, sends a `moss-sdk/<version>` User-Agent.
+
+### Removed
+
+- `Moss.Inference.Chat.Completions`, `Moss.Inference.ChatCompletionStream`, the joined `chat.completion` map with its choices, tool call joining and logprobs, and the `"moss_tool_step"` chunks and `"moss_tool_steps"` list.
+
+### Fixed
+
+- On Linux, TLS no longer trusts emSign ECC Root CA - G3, which `webpki-roots` 1.0.10 drops after the private keys of eight eMudhra intermediate CAs were compromised. macOS and Windows use the system trust store.
+
 ## [1.10.0] - 2026-10-23
 
 ### Added

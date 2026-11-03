@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-11-02
+
+### Changed
+
+- **Breaking change:** `MossInference.responses.create` replaces `chat.completions.create`, in the shape of OpenAI's Responses API, and calls `/responses` under the base URL. It takes `input`, a string or a list of items, and `instructions` in place of `messages`, plus typed `max_output_tokens`. Function tools are flat. Without `stream=True` it returns a `Response`, whose `output` holds `ResponseOutputMessage`, `ResponseFunctionToolCall` and `McpCall` items and whose `output_text` joins the text. With it, it returns a `ResponseStream` of `ResponseStreamEvent`s, such as `response.output_text.delta`, that ends after `response.completed` or `response.incomplete`, and `get_final_response()` returns the whole response. A tool call's result goes back as a `function_call_output` item. Usage is a `ResponseUsage` with `input_tokens` and `output_tokens`. A `response.failed` or `error` event raises `InferenceError`, and once an `McpCall` has arrived every error has the code `failed_after_tool_call`. `moss.inference.responses.create` makes the same call on a client built from the environment.
+- Requires `inferedge-moss-core` 0.36.0.
+- Every request the native core makes, such as model and index downloads, control-plane calls, authentication, uploads and telemetry, sends a `moss-sdk/<version>` User-Agent.
+
+### Removed
+
+- `chat.completions.create`, `ChatCompletionStream.get_final_completion()`, `ToolStep` and the chunk, choice, message, completion and logprob types.
+
+### Fixed
+
+- On Linux, TLS no longer trusts emSign ECC Root CA - G3, which `webpki-roots` 1.0.10 drops after the private keys of eight eMudhra intermediate CAs were compromised. macOS and Windows use the system trust store.
+
 ## [1.21.0] - 2026-10-23
 
 ### Added
