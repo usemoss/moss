@@ -30,7 +30,7 @@ jobs:
         id: compute
         shell: python
         run: |
-          import os, pathlib, re, sys
+          import json, os, pathlib, re, sys, urllib.request
 
           text = pathlib.Path("packages/pipecat-moss/pyproject.toml").read_text(encoding="utf-8")
           match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
@@ -46,6 +46,14 @@ jobs:
           major, minor, patch = semver.group(1), semver.group(2), semver.group(3)
           major_minor = f"{major}.{minor}"
 
+          # An older version than PyPI's would publish out of order.
+          with urllib.request.urlopen("https://pypi.org/pypi/pipecat-moss/json", timeout=30) as response:
+              published = json.load(response)["info"]["version"]
+          latest = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", published)
+          if not latest or tuple(map(int, semver.groups())) <= tuple(map(int, latest.groups())):
+              print(f"{version} is not newer than {published} on PyPI", file=sys.stderr)
+              sys.exit(1)
+
           out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
           with out.open("a", encoding="utf-8") as fh:
               fh.write(f"version={version}\n")
@@ -59,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
     permissions:
       contents: write

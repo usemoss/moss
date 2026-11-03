@@ -55,7 +55,7 @@ Await `load_index` before the pipeline starts. A service loads each index once: 
 
 ## Pipecat Compatibility
 
-Requires `pipecat-ai` 1.5 or later and `moss` 1.14 or later. Tested with `pipecat-ai` 1.13 and `moss` 1.19.
+Requires Python 3.11 or later, `pipecat-ai` 1.8 or later (before 2.0) and `moss` 1.20 or later. Tested with `pipecat-ai` 1.13. With Pipecat older than 1.8, use `pipecat-moss` 0.0.x.
 
 ## Contributing
 
@@ -102,7 +102,7 @@ python examples/moss-retrieval-demo.py
 - `system_prompt` (default: "Here is additional context retrieved from database:\n\n"): Prefix added ahead of retrieved documents
 - `cache_path` (default: none): Directory that keeps downloaded indexes on disk, so a load in a new process reads an unchanged index from disk instead of downloading it
 - `load_index(index_name, *, auto_refresh=False)`: Awaitable method that loads the given index, or checks a loaded one for a newer cloud version. `auto_refresh=True` keeps the index on the latest version while the process runs, but its periodic refresh counts as session time, so a long-running process with it on is billed for session minutes around the clock, calls or not. Leave it off unless the index must follow edits between calls
-- `query(index_name, *, top_k=5)`: Returns a `MossIndexProcessor` for the specified index; `top_k` controls result count, `alpha` blends semantic vs keyword scoring (0.0 keyword-only, 1.0 semantic-only)
+- `query(index_name, *, top_k=5, alpha=0.8)`: Returns a `MossIndexProcessor` for the specified index; `top_k` controls result count, `alpha` blends semantic vs keyword scoring (0.0 keyword-only, 1.0 semantic-only)
 
 ## License
 

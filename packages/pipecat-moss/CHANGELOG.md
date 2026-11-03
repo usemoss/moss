@@ -5,18 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-11-03
 
 ### Added
 - `MossRetrievalService(cache_path=...)` keeps downloaded indexes on disk, so a load in a new process reads an unchanged index from disk instead of downloading it.
 - `load_index(index_name, auto_refresh=...)`.
-
-### Changed
-- Requires `moss` 1.14.0 or later.
+- `MossIndexProcessor` also retrieves for `LLMMessagesUpdateFrame`.
+- The package declares its BSD-2-Clause license in its metadata.
 
 ### Fixed
-- `MossIndexProcessor` forwards the frame it received instead of building a new one, so `LLMContextFrame.speculation` and `LLMMessagesUpdateFrame.run_llm` reach the LLM.
-- `project_id` and `project_key` fall back to `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` as documented. Missing credentials raise `ValueError`.
+- `MossIndexProcessor` forwards the frame it received instead of building a new one, so `LLMContextFrame.speculation` and `LLMMessagesUpdateFrame.run_llm` reach the LLM, and forwards it after a failed retrieval too.
+- Missing credentials raise `ValueError`.
+
+## [0.1.0] - 2026-10-22
+
+### Changed
+
+- Depend on `moss>=1.20.0` instead of `inferedge-moss`; import from `moss`.
+- Require `pipecat-ai>=1.8,<2` and Python 3.11+.
+- `MossIndexProcessor` handles `LLMContextFrame` only and forwards the original frame, keeping fields such as `speculation`.
+- Queries pass `QueryOptions(top_k, alpha)`.
+- `MossRetrievalService` falls back to `MOSS_PROJECT_ID` / `MOSS_PROJECT_KEY` env vars.
+
+### Removed
+
+- `LLMMessagesFrame` and `OpenAILLMContextFrame` handling (removed in pipecat 1.8).
+- `AddDocumentsOptions` re-export (gone from the Moss SDK; use `MutationOptions`).
 
 ## [0.0.5] - 2026-07-14
 

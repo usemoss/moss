@@ -30,7 +30,6 @@ from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
-from pipecat.processors.frameworks.rtvi import RTVIObserver, RTVIObserverParams, RTVIProcessor
 from pipecat.runner.run import main as runner_main
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
@@ -116,13 +115,11 @@ use it to give accurate and detailed responses."""
 
     context = LLMContext(messages)
     context_aggregator = LLMContextAggregatorPair(context)
-    rtvi = RTVIProcessor()
 
     # Build the processing pipeline with Moss Information injection
     pipeline = Pipeline(
         [
             transport.input(),  # Transport user input
-            rtvi,  # RTVI processor
             stt,  # Speech-to-text
             context_aggregator.user(),  # User responses
             moss_service.query(index_name, top_k=top_k),  # Moss retrieval
@@ -141,7 +138,6 @@ use it to give accurate and detailed responses."""
             enable_usage_metrics=True,
             report_only_initial_ttfb=True,
         ),
-        observers=[RTVIObserver(rtvi, params=RTVIObserverParams())],
     )
 
     # Define transport event handlers
