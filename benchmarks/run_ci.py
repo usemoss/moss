@@ -16,7 +16,9 @@ import tempfile
 from dotenv import dotenv_values
 
 import bench_moss
-from corpus import get_queries
+from competitor_agreement import load_reference, score_agreement, sentence_template
+from corpus import get_queries, load_fixed_documents
+from latency_guard import check_latency, latency_context, load_baseline
 from local_moss import run_local_async
 
 
@@ -84,8 +86,10 @@ def provenance():
         "native_core": {"version": package_version("inferedge-moss-core")},
         "python": platform.python_version(),
         "platform": platform.platform(),
+        "system": platform.system(),
         "machine": platform.machine(),
         "cpu_count": os.cpu_count(),
+        "runner_label": os.getenv("MOSS_BENCHMARK_RUNNER"),
         "github_run_id": os.getenv("GITHUB_RUN_ID"),
         "github_run_attempt": os.getenv("GITHUB_RUN_ATTEMPT"),
     }
@@ -114,11 +118,31 @@ def measurement_record(measurement):
     }
 
 
+def prepare_competitor_reference(path):
+    documents, dataset_sha = load_fixed_documents()
+    reference = load_reference(path, dataset_sha, get_queries())
+    templates = {row["id"]: sentence_template(row["text"]) for row in documents}
+    reference_ids = {
+        doc_id
+        for rankings in reference["rankings"].values()
+        for hits in rankings.values()
+        for doc_id in hits
+    }
+    if not reference_ids <= templates.keys():
+        raise ValueError("Competitor reference contains IDs absent from the benchmark corpus")
+    return reference, templates
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT / ".benchmark-results/result.json")
     parser.add_argument("--env-file", type=Path, help="Explicit local credentials file; never discovered automatically")
+    parser.add_argument("--baseline", type=Path, help="Compare p95 against an approved baseline JSON file")
+    parser.add_argument("--competitor-reference", type=Path, help="Report agreement with saved competitor rankings")
     args = parser.parse_args(argv)
+    for option, path in (("--baseline", args.baseline), ("--competitor-reference", args.competitor_reference)):
+        if path and args.output.resolve() == path.resolve():
+            parser.error(f"--output and {option} must be different files")
     configuration = dict(dotenv_values(args.env_file)) if args.env_file else {}
     configuration.update(os.environ)
     project_id = configuration.get("MOSS_PROJECT_ID")
@@ -129,12 +153,22 @@ def main(argv=None):
         "status": "running",
         "started_at_utc": utc_now(),
         "benchmark_mode": "local-session-fresh",
-        "quality": {"status": "not_configured", "recall": None},
-        "regression": {"status": "not_configured", "baseline": None},
+        "quality": {"status": "not_evaluated" if args.competitor_reference else "not_configured", "recall": None},
+        "regression": {"status": "not_evaluated" if args.baseline else "not_configured", "baseline": None},
         "timing_scope": "Local query embedding plus retrieval; setup, validation and warmups excluded",
     }
     try:
         record["provenance"] = provenance()
+        baseline = None
+        if args.baseline:
+            record["regression"]["status"] = "invalid_baseline"
+            baseline = load_baseline(args.baseline)
+            record["regression"] = {"status": "not_evaluated", "baseline": baseline["baseline_commit"]}
+        reference = None
+        if args.competitor_reference:
+            record["quality"]["status"] = "invalid_reference"
+            reference, templates = prepare_competitor_reference(args.competitor_reference)
+            record["quality"]["status"] = "not_evaluated"
         write_record(args.output, record, secrets)
         if not project_id or not project_key:
             raise ValueError("Set MOSS_PROJECT_ID and MOSS_PROJECT_KEY; no .env file is loaded automatically")
@@ -143,6 +177,19 @@ def main(argv=None):
         record.update(measured)
         record["configuration"] = run.configuration
         record["setup"] = run.setup
+        context = latency_context(run.configuration, record["provenance"])
+        record["latency_context"] = context
+        if reference is not None:
+            record["quality"]["status"] = "invalid_reference"
+            if run.configuration["dataset_sha256"] != reference["dataset_sha256"]:
+                raise ValueError("Competitor agreement requires the measured and reference corpus to match")
+            agreement = score_agreement(reference, run.measurement.rankings, templates)
+            record["quality"].update(status=agreement["status"], competitor_agreement=agreement)
+        if baseline is not None:
+            result = check_latency(baseline, context, measured["latency_ms"]["p95"])
+            record["regression"] = result
+            if result["status"] != "passed":
+                raise ValueError(result["reason"])
         record["status"] = "success"
     except Exception as exc:
         record["status"] = "failed"

@@ -71,7 +71,19 @@ jobs:
         env:
           MOSS_PROJECT_ID: ${{ secrets.MOSS_PROJECT_ID }}
           MOSS_PROJECT_KEY: ${{ secrets.MOSS_PROJECT_KEY }}
-        run: python benchmarks/run_ci.py --output .benchmark-results/result.json
+          MOSS_BENCHMARK_LATENCY_GUARD_ENABLED: ${{ vars.MOSS_BENCHMARK_LATENCY_GUARD_ENABLED }}
+          MOSS_BENCHMARK_COMPETITOR_AGREEMENT_ENABLED: ${{ vars.MOSS_BENCHMARK_COMPETITOR_AGREEMENT_ENABLED }}
+          MOSS_BENCHMARK_RUNNER: ubuntu-24.04
+        shell: bash
+        run: |
+          benchmark_args=(--output .benchmark-results/result.json)
+          if [[ "$MOSS_BENCHMARK_LATENCY_GUARD_ENABLED" == "true" ]]; then
+            benchmark_args+=(--baseline benchmarks/latency-baseline.json)
+          fi
+          if [[ "$MOSS_BENCHMARK_COMPETITOR_AGREEMENT_ENABLED" == "true" ]]; then
+            benchmark_args+=(--competitor-reference benchmarks/competitor-reference.json)
+          fi
+          python benchmarks/run_ci.py "${benchmark_args[@]}"
 
       # This temporary result artifact is an initial integration stage, not
       # the durable history requested by issue #435.

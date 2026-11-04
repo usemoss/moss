@@ -19,11 +19,38 @@ sys.path.insert(0, str(BENCHMARKS))
 
 run_ci = importlib.import_module("run_ci")
 BenchmarkResult = importlib.import_module("stats").BenchmarkResult
+make_reference = importlib.import_module("competitor_agreement").make_reference
 TEST_CREDENTIALS = {"MOSS_PROJECT_ID": "fake-project-id", "MOSS_PROJECT_KEY": "fake-project-key"}
+TEST_PROVENANCE = {
+    "runtime_under_test": "installed-release",
+    "python": "3.12.8",
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu_count": 4,
+    "runner_label": "ubuntu-24.04",
+}
+WORKLOAD = {
+    "mode": "local-session",
+    "setup_mode": "fresh-build",
+    "dataset_sha256": "d" * 64,
+    "query_sha256": "e" * 64,
+    "model_id": "moss-minilm",
+    "model_artifact_id": None,
+    "doc_count": 100000,
+    "query_count": 15,
+    "top_k": 5,
+    "alpha": 1,
+    "warmup_rounds": 3,
+    "query_rounds": 50,
+}
+LATENCY_CONTEXT = {
+    "workload": WORKLOAD,
+    "runner": {"label": "ubuntu-24.04", "os": "Linux", "machine": "x86_64", "cpu_count": 4, "python": "3.12"},
+}
 
 
-def completed_run():
-    raw = [float(index % 10 + 1) for index in range(750)]
+def completed_run(latency_scale=1.0):
+    raw = [(index % 10 + 1) * latency_scale for index in range(750)]
     return SimpleNamespace(
         measurement=SimpleNamespace(
             result=BenchmarkResult("controlled measurement", raw),
@@ -31,9 +58,19 @@ def completed_run():
             first_query_ms=99.0,
             rankings={"query": ["doc_0", "doc_1", "doc_2", "doc_3", "doc_4"]},
         ),
-        configuration={"mode": "local-session", "actual_doc_count": 100000},
+        configuration={**WORKLOAD, "actual_doc_count": 100000},
         setup={"build_seconds": 2.0},
     )
+
+
+def baseline_json(**overrides):
+    return json.dumps({
+        "baseline_commit": "a" * 40,
+        "p95_ms": 8.0,
+        "max_slowdown_pct": 25.0,
+        "compatibility": LATENCY_CONTEXT,
+        **overrides,
+    })
 
 
 class ResultContractTests(unittest.TestCase):
@@ -43,7 +80,7 @@ class ResultContractTests(unittest.TestCase):
             path = Path(directory) / "result.json"
             with (
                 patch.dict(os.environ, credentials, clear=True),
-                patch.object(run_ci, "provenance", return_value={"runtime_under_test": "installed-release"}),
+                patch.object(run_ci, "provenance", return_value=TEST_PROVENANCE),
                 patch.object(run_ci, "run_local_async", call),
                 contextlib.redirect_stdout(io.StringIO()),
                 contextlib.redirect_stderr(io.StringIO()) as stderr,
@@ -51,6 +88,13 @@ class ResultContractTests(unittest.TestCase):
                 code = run_ci.main(["--output", str(path), *args])
             text = path.read_text()
             return code, json.loads(text), text, stderr.getvalue(), call
+
+    def invoke_with_baseline(self, contents, *, result=None):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "baseline.json"
+            if contents is not None:
+                path.write_text(contents)
+            return self.invoke(result=result, args=("--baseline", str(path)))
 
     def test_success_records_raw_metrics_without_claiming_quality_or_guards(self):
         code, record, _, _, call = self.invoke()
@@ -63,8 +107,90 @@ class ResultContractTests(unittest.TestCase):
         self.assertEqual(record["configuration"]["actual_doc_count"], 100000)
         self.assertEqual(record["quality"], {"status": "not_configured", "recall": None})
         self.assertEqual(record["regression"]["status"], "not_configured")
+        self.assertEqual(record["latency_context"], LATENCY_CONTEXT)
         self.assertEqual(record["provenance"]["runtime_under_test"], "installed-release")
         call.assert_awaited_once_with("fake-project-id", "fake-project-key")
+
+    def test_latency_guard_allows_the_limit_and_fails_above_it_with_metrics(self):
+        for slowdown, limit, expected in (
+            (15.0, 115.0, (0, "success", "passed")),
+            (14.9, 114.9, (1, "failed", "regressed")),
+        ):
+            with self.subTest(max_slowdown_pct=slowdown):
+                code, record, _, _, call = self.invoke_with_baseline(
+                    baseline_json(p95_ms=100.0, max_slowdown_pct=slowdown),
+                    result=completed_run(latency_scale=11.5),
+                )
+                self.assertEqual((code, record["status"], record["regression"]["status"]), expected)
+                self.assertEqual(record["latency_context"], LATENCY_CONTEXT)
+                self.assertEqual(record["regression"]["limit_p95_ms"], limit)
+                self.assertEqual(record["regression"]["observed_p95_ms"], 115.0)
+                self.assertEqual(record["latency_ms"]["p95"], 115.0)
+                self.assertEqual(record["measured_query_count"], 750)
+                self.assertEqual(len(record["raw_latencies_ms"]), 750)
+                self.assertIn("first_measured_round_rankings", record)
+                call.assert_awaited_once()
+
+    def test_missing_or_invalid_baseline_fails_before_measurement(self):
+        for case, contents in (
+            ("missing file", None),
+            ("malformed JSON", "{"),
+            ("commit", baseline_json(baseline_commit="main")),
+            ("numeric commit", baseline_json(baseline_commit=int("1" * 40))),
+            ("infinite p95", baseline_json(p95_ms=float("inf"))),
+            ("zero slowdown", baseline_json(max_slowdown_pct=0)),
+            ("boolean slowdown", baseline_json(max_slowdown_pct=True)),
+        ):
+            with self.subTest(case=case):
+                code, record, _, _, call = self.invoke_with_baseline(contents)
+                self.assertEqual((code, record["status"]), (1, "failed"))
+                self.assertEqual(record["regression"]["status"], "invalid_baseline")
+                self.assertNotIn("latency_ms", record)
+                call.assert_not_called()
+
+    def test_incompatible_baseline_fails_with_metrics(self):
+        for section, key, value in (
+            ("workload", "top_k", 10),
+            ("runner", "machine", "arm64"),
+        ):
+            with self.subTest(section=section):
+                context = {**LATENCY_CONTEXT, section: {**LATENCY_CONTEXT[section], key: value}}
+                code, record, _, _, call = self.invoke_with_baseline(baseline_json(compatibility=context))
+                self.assertEqual((code, record["status"]), (1, "failed"))
+                self.assertEqual(record["regression"]["status"], "incompatible_baseline")
+                self.assertEqual(record["latency_context"], LATENCY_CONTEXT)
+                self.assertEqual(record["latency_ms"]["p95"], 10.0)
+                self.assertEqual(len(record["raw_latencies_ms"]), 750)
+                call.assert_awaited_once()
+
+    def test_competitor_agreement_is_reported_without_failing_a_low_score(self):
+        queries = run_ci.get_queries()
+        digest = WORKLOAD["dataset_sha256"]
+        rows = [
+            {"id": f"doc-{i}", "text": f"Template {i // 5} (variant {i}, context 0)"}
+            for i in range(10)
+        ]
+        competitor_ids = [row["id"] for row in rows[:5]]
+        reference = make_reference(
+            digest, queries,
+            {engine: {q: competitor_ids for q in queries} for engine in ("pinecone", "qdrant", "chroma")},
+            {"pinecone": "llama-text-embed-v2", "qdrant": "BAAI/bge-small-en-v1.5", "chroma": "all-MiniLM-L6-v2"},
+        )
+        run = completed_run()
+        run.configuration["dataset_sha256"] = digest
+        run.measurement.rankings = {q: [row["id"] for row in rows[5:]] for q in queries}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "competitor-reference.json"
+            path.write_text(json.dumps(reference), encoding="utf-8")
+            with patch.object(run_ci, "load_fixed_documents", return_value=(rows, digest)):
+                code, record, _, _, call = self.invoke(result=run, args=("--competitor-reference", str(path)))
+
+        self.assertEqual((code, record["status"], record["quality"]["status"]), (0, "success", "measured"))
+        self.assertIsNone(record["quality"]["recall"])
+        self.assertEqual(record["quality"]["competitor_agreement"]["mean_agreement"], 0.0)
+        self.assertEqual(record["quality"]["competitor_agreement"]["scored_queries"], 15)
+        self.assertEqual(record["latency_ms"]["p95"], 10.0)
+        call.assert_awaited_once()
 
     def test_measurement_error_redacts_overlapping_credentials_before_json_encoding(self):
         credentials = {
