@@ -104,7 +104,7 @@ python examples/moss-retrieval-demo.py
 - `system_prompt` (default: "Here is additional context retrieved from database:\n\n"): Prefix added ahead of retrieved documents
 - `cache_path` (default: none): Directory that keeps downloaded indexes on disk, so a load in a new process reads an unchanged index from disk instead of downloading it
 - `load_index(index_name, *, auto_refresh=False)`: Awaitable method that loads the given index, or checks a loaded one for a newer cloud version. `auto_refresh=True` keeps the index on the latest version while the process runs, but its periodic refresh counts as session time, so a long-running process with it on is billed for session minutes around the clock, calls or not. Leave it off unless the index must follow edits between calls
-- `query(index_name, *, top_k=5, alpha=0.8)`: Returns a `MossIndexProcessor` for the specified index; `top_k` controls result count, `alpha` blends semantic vs keyword scoring (0.0 keyword-only, 1.0 semantic-only)
+- `query(index_name, *, top_k=5, alpha=0.8)`: Returns a `MossIndexProcessor` for the specified index; `top_k` controls result count, `alpha` blends semantic vs keyword scoring (0.0 keyword-only, 1.0 semantic-only). Each new query replaces the passages the processor added for the last one, so the context holds only the latest retrieval per index
 
 ## License
 

@@ -6,9 +6,11 @@
 
 from types import SimpleNamespace
 
-from pipecat.frames.frames import ErrorFrame, LLMContextFrame, TextFrame
+from pipecat.frames.frames import ErrorFrame, LLMContextFrame, LLMMessagesAppendFrame, TextFrame
+from pipecat.pipeline.pipeline import Pipeline
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat.tests.utils import run_test
+from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
+from pipecat.tests.utils import SleepFrame, run_test
 
 from pipecat_moss import MossRetrievalService, QueryOptions
 from pipecat_moss.moss_index_processor import MossIndexProcessor
@@ -27,8 +29,39 @@ class FakeClient:
         return SimpleNamespace(docs=self.docs, time_taken_ms=1.5)
 
 
+class AnswersByQuery(FakeClient):
+    def __init__(self, answers):
+        super().__init__([])
+        self.answers = answers
+
+    async def query(self, name, query, options=None):
+        self.calls.append((name, query, options))
+        return SimpleNamespace(docs=self.answers[query], time_taken_ms=1.5)
+
+
 def doc(text, **meta):
     return SimpleNamespace(text=text, metadata=meta, score=0.9)
+
+
+def turns(*exchanges):
+    """Frames that reach the user aggregator for each (assistant reply, user question).
+
+    Each turn waits for the last one to pass the processors, which share one context.
+    """
+    frames = []
+    for reply, question in exchanges:
+        messages = [{"role": "assistant", "content": reply}] if reply else []
+        messages.append({"role": "user", "content": question})
+        frames += [LLMMessagesAppendFrame(messages=messages, run_llm=True), SleepFrame(sleep=0.1)]
+    return frames
+
+
+async def run_behind_aggregator(*processors, exchanges):
+    context = LLMContext()
+    pipeline = Pipeline([LLMContextAggregatorPair(context).user(), *processors])
+    down, _ = await run_test(pipeline, frames_to_send=turns(*exchanges))
+    assert [type(frame) for frame in down].count(LLMContextFrame) == len(exchanges)
+    return [m["content"] for m in context.get_messages() if m["role"] == "system"]
 
 
 async def test_context_frame_gets_retrieved_docs():
@@ -68,6 +101,54 @@ async def test_a_failed_retrieval_still_forwards_the_frame():
     assert "index not loaded" in up[0].error
     assert isinstance(up[0].exception, RuntimeError)
     assert context.get_messages() == [{"role": "user", "content": "hello"}]
+
+
+async def test_each_turn_replaces_the_passages_of_the_last_one():
+    client = AnswersByQuery(
+        {"Who is Rex?": [doc("Rex is the dog.")], "Who is Tom?": [doc("Tom is the cat.")]}
+    )
+    processor = MossIndexProcessor(client=client, index_name="memories")
+
+    passages = await run_behind_aggregator(
+        processor, exchanges=[(None, "Who is Rex?"), ("Rex is your dog.", "Who is Tom?")]
+    )
+
+    assert len(passages) == 1
+    assert "Tom is the cat." in passages[0]
+    assert "Rex is the dog." not in passages[0]
+
+
+async def test_a_turn_without_passages_drops_the_last_ones():
+    client = AnswersByQuery({"Who is Rex?": [doc("Rex is the dog.")], "Hello": []})
+    processor = MossIndexProcessor(client=client, index_name="memories")
+
+    passages = await run_behind_aggregator(
+        processor, exchanges=[(None, "Who is Rex?"), ("Rex is your dog.", "Hello")]
+    )
+
+    assert passages == []
+
+
+async def test_each_index_keeps_only_its_own_latest_passages():
+    pets = MossIndexProcessor(
+        client=AnswersByQuery({"Rex?": [doc("Rex is the dog.")], "Tom?": [doc("Tom is the cat.")]}),
+        index_name="pets",
+    )
+    places = MossIndexProcessor(
+        client=AnswersByQuery(
+            {"Rex?": [doc("Rex lives in Lisbon.")], "Tom?": [doc("Tom lives in Porto.")]}
+        ),
+        index_name="places",
+    )
+
+    passages = await run_behind_aggregator(
+        pets, places, exchanges=[(None, "Rex?"), ("Rex is your dog.", "Tom?")]
+    )
+
+    assert len(passages) == 2
+    assert any("Tom is the cat." in passage for passage in passages)
+    assert any("Tom lives in Porto." in passage for passage in passages)
+    assert not any("Rex" in passage for passage in passages)
 
 
 async def test_duplicate_query_is_not_repeated():

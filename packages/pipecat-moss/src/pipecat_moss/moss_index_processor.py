@@ -16,6 +16,7 @@ from loguru import logger
 from moss import MossClient, QueryOptions, SearchResult
 from pipecat.frames.frames import Frame, LLMContextFrame, MetricsFrame
 from pipecat.metrics.metrics import ProcessingMetricsData
+from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 __all__ = ["MossIndexProcessor"]
@@ -41,6 +42,7 @@ class MossIndexProcessor(FrameProcessor):
         self._alpha = alpha
         self._system_prompt = system_prompt
         self._last_query = None
+        self._retrieval: dict[str, str] | None = None
 
     def can_generate_metrics(self) -> bool:
         """Signal that this processor emits metrics frames."""
@@ -101,15 +103,16 @@ class MossIndexProcessor(FrameProcessor):
                     logger.debug(f"{self}: Retrieved {len(search_result.docs)} documents in {search_result.time_taken_ms} ms")
 
                     documents = search_result.docs
-                    content: str | None = None
+                    retrieval = None
                     if documents:
                         content = self._format_documents(documents)
-                        context.add_message({"role": "system", "content": content})
+                        retrieval = {"role": "system", "content": content}
                         logger.debug(f"{self}: Added context to the LLM ->\n{content}")
                     else:
                         logger.debug(
                             f"{self}: No documents retrieved for query -> {latest_user_message}"
                         )
+                    self._replace_retrieval(context, retrieval)
 
                     self._last_query = latest_user_message
 
@@ -120,6 +123,14 @@ class MossIndexProcessor(FrameProcessor):
             logger.exception(f"{self}: error while running retrieval: {exc}")
             await self.push_error(f"{self} retrieval error: {exc}", exception=exc)
             await self.push_frame(frame, direction)
+
+    def _replace_retrieval(self, context: LLMContext, retrieval: dict[str, str] | None) -> None:
+        """Swap the passages this processor added for the last query for the new ones."""
+        if (previous := self._retrieval) is not None:
+            context.transform_messages(lambda messages: [m for m in messages if m != previous])
+        if retrieval is not None:
+            context.add_message(retrieval)
+        self._retrieval = retrieval
 
     @staticmethod
     def _get_latest_user_text(messages: Sequence[dict[str, Any]]) -> str | None:

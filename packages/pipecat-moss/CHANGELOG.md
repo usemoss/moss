@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The package declares its BSD-2-Clause license in its metadata.
 
 ### Changed
+- `MossIndexProcessor` replaces the passages it added for the last query instead of keeping every turn's passages in the context, so token use no longer grows with each turn. A turn with no results removes them.
 - Depends on `pipecat-ai` without the `runner` extra, which only the examples use.
 
 ### Fixed
