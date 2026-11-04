@@ -6,7 +6,7 @@
 
 from types import SimpleNamespace
 
-from pipecat.frames.frames import ErrorFrame, LLMContextFrame, LLMMessagesUpdateFrame, TextFrame
+from pipecat.frames.frames import ErrorFrame, LLMContextFrame, TextFrame
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.tests.utils import run_test
 
@@ -49,23 +49,6 @@ async def test_context_frame_gets_retrieved_docs():
     added = context.get_messages()[-1]
     assert added["role"] == "system"
     assert "1. Rex is the dog. (source=memories, score=0.9)" in added["content"]
-
-
-async def test_messages_update_frame_keeps_run_llm_and_gets_docs():
-    client = FakeClient([doc("Rex is the dog.")])
-    processor = MossIndexProcessor(client=client, index_name="memories")
-    frame = LLMMessagesUpdateFrame(
-        messages=[{"role": "user", "content": "What's my dog's name?"}], run_llm=True
-    )
-
-    down, _ = await run_test(
-        processor, frames_to_send=[frame], expected_down_frames=[LLMMessagesUpdateFrame]
-    )
-
-    assert down[0] is frame
-    assert frame.run_llm is True
-    assert frame.messages[-1]["role"] == "system"
-    assert "Rex is the dog." in frame.messages[-1]["content"]
 
 
 async def test_a_failed_retrieval_still_forwards_the_frame():

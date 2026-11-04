@@ -14,14 +14,8 @@ from typing import Any
 
 from loguru import logger
 from moss import MossClient, QueryOptions, SearchResult
-from pipecat.frames.frames import (
-    Frame,
-    LLMContextFrame,
-    LLMMessagesUpdateFrame,
-    MetricsFrame,
-)
+from pipecat.frames.frames import Frame, LLMContextFrame, MetricsFrame
 from pipecat.metrics.metrics import ProcessingMetricsData
-from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 __all__ = ["MossIndexProcessor"]
@@ -84,18 +78,11 @@ class MossIndexProcessor(FrameProcessor):
         """Process frames to extract queries and augment LLM context."""
         await super().process_frame(frame, direction)
 
-        context = None
-        messages = None
-
-        if isinstance(frame, LLMContextFrame):
-            context = frame.context
-        elif isinstance(frame, LLMMessagesUpdateFrame):
-            messages = frame.messages
-            context = LLMContext(messages)
-
-        if not context:
+        if not isinstance(frame, LLMContextFrame):
             await self.push_frame(frame, direction)
             return
+
+        context = frame.context
 
         try:
             context_messages = context.get_messages()
@@ -126,9 +113,7 @@ class MossIndexProcessor(FrameProcessor):
 
                     self._last_query = latest_user_message
 
-            if isinstance(frame, LLMMessagesUpdateFrame):
-                frame.messages = context.get_messages()
-            # Forward the frame itself, so fields such as `speculation` and `run_llm` survive.
+            # Forward the frame itself, so fields such as `speculation` survive.
             await self.push_frame(frame, direction)
 
         except Exception as exc:  # pragma: no cover - defensive logging

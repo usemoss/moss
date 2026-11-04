@@ -10,12 +10,12 @@ dependencies = [
     "moss>=1.20.0,<2",
     "loguru>=0.7.0",
     "pydantic>=2.0.0",
-    "pipecat-ai[runner]>=1.8,<2",
+    "pipecat-ai>=1.8,<2",
 ]
 
 [dependency-groups]
 dev = [
-    "pipecat-ai[cartesia,daily,deepgram,openai,silero,webrtc]>=1.8,<2",
+    "pipecat-ai[cartesia,daily,deepgram,openai,runner,silero,webrtc]>=1.8,<2",
     "python-dotenv>=1.2.1",
     "pytest>=8.0",
     "pytest-asyncio>=0.24",

@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `MossRetrievalService(cache_path=...)` keeps downloaded indexes on disk, so a load in a new process reads an unchanged index from disk instead of downloading it.
 - `load_index(index_name, auto_refresh=...)`.
-- `MossIndexProcessor` also retrieves for `LLMMessagesUpdateFrame`.
 - The package declares its BSD-2-Clause license in its metadata.
 
+### Changed
+- Depends on `pipecat-ai` without the `runner` extra, which only the examples use.
+
 ### Fixed
-- `MossIndexProcessor` forwards the frame it received instead of building a new one, so `LLMContextFrame.speculation` and `LLMMessagesUpdateFrame.run_llm` reach the LLM, and forwards it after a failed retrieval too.
+- `MossIndexProcessor` forwards the `LLMContextFrame` it received after a failed retrieval too.
 - Missing credentials raise `ValueError`.
 
 ## [0.1.0] - 2026-10-22
@@ -31,16 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `LLMMessagesFrame` and `OpenAILLMContextFrame` handling (removed in pipecat 1.8).
 - `AddDocumentsOptions` re-export (gone from the Moss SDK; use `MutationOptions`).
-
-## [0.0.5] - 2026-07-14
-
-### Changed
-- Bumped `pipecat-ai` minimum from `>=1.1.0` to `>=1.5.0`.
-
-## [0.0.4] - 2026-05-01
-
-### Changed
-- Updated `requires-python` from `>=3.10` to `>=3.11` to match `pipecat-ai 1.1.0` requirements.
 
 ## [0.0.3] - 2026-03-24
 
