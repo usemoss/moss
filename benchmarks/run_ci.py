@@ -3,9 +3,7 @@
 import argparse
 import asyncio
 from datetime import datetime, timezone
-import hashlib
 import importlib.metadata
-import importlib.util
 import json
 import math
 import os
@@ -23,10 +21,6 @@ from local_moss import run_local_async
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_FILES = (
-    "bench_moss.py", "corpus.py", "local_moss.py", "stats.py",
-    "run_ci.py", "requirements-ci.txt",
-)
 
 
 def utc_now():
@@ -73,48 +67,21 @@ def git_output(*args):
         return None
 
 
-def package_identity(distribution, module):
-    """Fingerprint installed source/native files, not just a version label."""
+def package_version(distribution):
     try:
-        version = importlib.metadata.version(distribution)
+        return importlib.metadata.version(distribution)
     except importlib.metadata.PackageNotFoundError:
-        return {"version": None, "module_origin": None, "files_sha256": None}
-    spec = importlib.util.find_spec(module)
-    origin = spec.origin if spec else None
-    digest = hashlib.sha256()
-    files = []
-    if spec and spec.submodule_search_locations:
-        base = Path(next(iter(spec.submodule_search_locations)))
-        files = sorted(
-            path for path in base.rglob("*")
-            if path.is_file() and path.suffix in {".py", ".pyi", ".so", ".pyd", ".dylib"}
-        )
-    elif origin:
-        base = Path(origin).parent
-        files = [Path(origin)]
-    for path in files:
-        digest.update(path.relative_to(base).as_posix().encode())
-        digest.update(b"\0")
-        digest.update(hashlib.sha256(path.read_bytes()).digest())
-    return {
-        "version": version,
-        "module_origin": origin,
-        "files_sha256": digest.hexdigest() if files else None,
-    }
+        return None
 
 
 def provenance():
+    status = git_output("status", "--porcelain")
     return {
         "repository_sha": git_output("rev-parse", "HEAD"),
-        "working_tree_dirty": bool(git_output("status", "--porcelain")),
-        "benchmark_source_sha256": {
-            name: hashlib.sha256((ROOT / "benchmarks" / name).read_bytes()).hexdigest()
-            for name in SOURCE_FILES
-        },
+        "working_tree_dirty": bool(status) if status is not None else None,
         "runtime_under_test": "installed-release",
-        "sdk": package_identity("moss", "moss"),
-        "native_core": package_identity("inferedge-moss-core", "moss_core"),
-        "dotenv_version": importlib.metadata.version("python-dotenv"),
+        "sdk": {"version": package_version("moss")},
+        "native_core": {"version": package_version("inferedge-moss-core")},
         "python": platform.python_version(),
         "platform": platform.platform(),
         "machine": platform.machine(),
