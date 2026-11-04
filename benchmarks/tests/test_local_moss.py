@@ -23,6 +23,11 @@ def hits(*ids):
 
 
 class FixedCorpusTests(unittest.TestCase):
+    def test_checked_in_corpus_matches_the_pinned_workload(self):
+        rows, digest = corpus.load_fixed_documents()
+        self.assertEqual(len(rows), 100_000)
+        self.assertEqual(digest, corpus.FIXED_CORPUS_SHA256)
+
     def test_changed_bytes_are_rejected_for_the_fixed_corpus(self):
         raw = b'[{"id":"a","text":"example"}]'
         with tempfile.TemporaryDirectory() as directory:

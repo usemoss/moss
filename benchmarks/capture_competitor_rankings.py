@@ -82,6 +82,14 @@ def local_rankings(namespace, documents, queries):
     return rankings, ONNXMiniLM_L6_V2.MODEL_NAME
 
 
+def validate_pinecone_metric(model, metric):
+    """Accept cosine and the documented cosine defaults of known models."""
+    if metric is None and model in {"llama-text-embed-v2", "multilingual-e5-large"}:
+        metric = "cosine"
+    if metric != "cosine":
+        raise CaptureError("Pinecone needs a cosine metric or a known cosine model default")
+
+
 def pinecone_text_field(description):
     from pinecone.models.indexes.schema import SemanticTextField
 
@@ -93,8 +101,9 @@ def pinecone_text_field(description):
     if not description.status.ready or not description.host or len(fields) != 1:
         raise CaptureError("Pinecone needs a ready integrated text embedding index with cosine distance")
     field_name, field = fields[0]
-    if field.metric != "cosine" or field_name in {"_id", "id"}:
-        raise CaptureError("Pinecone needs cosine distance and a text field distinct from the record ID")
+    validate_pinecone_metric(field.model, field.metric)
+    if field_name in {"_id", "id"}:
+        raise CaptureError("Pinecone needs a text field distinct from the record ID")
     return field_name, field.model
 
 

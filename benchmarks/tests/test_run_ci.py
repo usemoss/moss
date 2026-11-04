@@ -170,6 +170,7 @@ class ResultContractTests(unittest.TestCase):
     def test_incompatible_baseline_fails_with_metrics(self):
         for section, key, value in (
             ("workload", "top_k", 10),
+            ("workload", "alpha", True),
             ("runner", "machine", "arm64"),
         ):
             with self.subTest(section=section):
@@ -181,6 +182,11 @@ class ResultContractTests(unittest.TestCase):
                 self.assertEqual(record["latency_ms"]["p95"], 10.0)
                 self.assertEqual(len(record["raw_latencies_ms"]), 750)
                 call.assert_awaited_once()
+
+    def test_compatible_json_numbers_can_use_integer_or_float_notation(self):
+        context = {**LATENCY_CONTEXT, "workload": {**WORKLOAD, "alpha": 1.0}}
+        code, record, _, _, _ = self.invoke_with_baseline(baseline_json(compatibility=context))
+        self.assertEqual((code, record["regression"]["status"]), (0, "passed"))
 
     def test_competitor_agreement_is_reported_without_failing_a_low_score(self):
         queries = run_ci.get_queries()

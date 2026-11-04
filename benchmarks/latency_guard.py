@@ -70,7 +70,10 @@ def check_latency(baseline, context, p95_ms):
         f"{section}.{field}"
         for section, expected in baseline["compatibility"].items()
         for field, value in expected.items()
-        if context[section][field] != value
+        if (
+            isinstance(context[section][field], bool) != isinstance(value, bool)
+            or context[section][field] != value
+        )
     ]
     if differences:
         result["status"] = "incompatible_baseline"

@@ -108,9 +108,10 @@ the commit, local edits flag, dataset, query set, host, and installed SDK/core
 versions. The benchmark runs against the pinned SDK release installed from
 PyPI. The report records the model alias and marks its exact artifact unknown.
 
-A failed run exits nonzero and writes a report with project credentials
-redacted from errors. Recall is marked `not_configured`. The p95 regression
-check requires a configured baseline.
+Argument parsing errors exit with code 2 before report creation. Once a run
+starts, runtime failures exit with code 1 and write failure JSON when output
+file I/O permits. Project credentials are redacted from recorded errors.
+`quality.recall` is `null`. The p95 regression check requires a configured baseline.
 
 ### GitHub Actions setup
 
@@ -174,8 +175,9 @@ explicit credentials file. On first use, the local clients download their
 models. Review Pinecone usage before capture. The full capture sends corpus
 and query text to Pinecone and keeps two local indexes in memory.
 
-Run `run_ci.py --competitor-reference PATH` with a saved reference. For live
-CI, track the reviewed file as `benchmarks/competitor-reference.json` and set
+Run `python benchmarks/run_ci.py --competitor-reference PATH` with a saved
+reference. For live CI, track the reviewed file as
+`benchmarks/competitor-reference.json` and set
 `MOSS_BENCHMARK_COMPETITOR_AGREEMENT_ENABLED` to `true`. CI reads the saved
 rankings with no competitor SDKs, credentials, or service calls.
 
