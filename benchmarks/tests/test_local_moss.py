@@ -124,6 +124,27 @@ class MeasurementTests(unittest.IsolatedAsyncioTestCase):
 
 
 class LocalBuilderTests(unittest.IsolatedAsyncioTestCase):
+    async def test_closes_session_and_client_when_index_build_fails(self):
+        failure = RuntimeError("index build failed")
+        session = MagicMock(doc_count=0, add_docs=AsyncMock(side_effect=failure))
+        session.__aenter__.return_value = session
+        client = MagicMock(session=AsyncMock(return_value=session))
+        client.__aenter__.return_value = client
+        sdk = SimpleNamespace(MossClient=Mock(return_value=client), QueryOptions=SimpleNamespace)
+        with (
+            patch.dict(sys.modules, {"moss": sdk}),
+            patch.object(
+                local_moss, "load_fixed_documents",
+                return_value=([{"id": "doc-0", "text": "passage"}], "corpus-sha"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "index build failed"),
+        ):
+            await local_moss.run_local_async("test-project", "test-key")
+
+        for resource in (session, client):
+            resource.__aexit__.assert_awaited_once()
+            self.assertIs(resource.__aexit__.await_args.args[1], failure)
+
     async def test_builds_full_corpus_before_querying_without_cloud_autoload(self):
         rows = [{"id": f"doc-{i}", "text": f"passage {i}"} for i in range(7)]
         indexed = []

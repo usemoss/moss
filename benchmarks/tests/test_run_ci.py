@@ -211,6 +211,29 @@ class ResultContractTests(unittest.TestCase):
         self.assertEqual(record["latency_ms"]["p95"], 10.0)
         call.assert_awaited_once()
 
+    def test_foreign_reference_ids_fail_before_live_measurement(self):
+        queries = run_ci.get_queries()
+        digest = WORKLOAD["dataset_sha256"]
+        rows = [
+            {"id": f"doc-{i}", "text": f"Template {i} (variant {i}, context 0)"}
+            for i in range(5)
+        ]
+        ids = ["foreign-id", *[row["id"] for row in rows[1:]]]
+        reference = make_reference(
+            digest, queries,
+            {engine: {query: ids for query in queries} for engine in ("pinecone", "qdrant", "chroma")},
+            {engine: "fixture-model" for engine in ("pinecone", "qdrant", "chroma")},
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "reference.json"
+            path.write_text(json.dumps(reference), encoding="utf-8")
+            with patch.object(run_ci, "load_fixed_documents", return_value=(rows, digest)):
+                code, record, _, _, call = self.invoke(args=("--competitor-reference", str(path)))
+
+        self.assertEqual((code, record["status"], record["quality"]["status"]), (1, "failed", "invalid_reference"))
+        self.assertIn("IDs absent from the benchmark corpus", record["error"]["message"])
+        call.assert_not_called()
+
     def test_measurement_error_redacts_overlapping_credentials_before_json_encoding(self):
         credentials = {
             "MOSS_PROJECT_ID": "example-id",
