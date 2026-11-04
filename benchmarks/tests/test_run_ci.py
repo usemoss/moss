@@ -111,6 +111,25 @@ class ResultContractTests(unittest.TestCase):
         self.assertEqual(record["provenance"]["runtime_under_test"], "installed-release")
         call.assert_awaited_once_with("fake-project-id", "fake-project-key")
 
+    def test_output_cannot_replace_credentials_or_corpus(self):
+        with tempfile.TemporaryDirectory() as directory:
+            credentials = Path(directory) / "credentials.env"
+            corpus = Path(directory) / "corpus.json"
+            credentials.write_text("SENTINEL=keep\n", encoding="utf-8")
+            corpus.write_text("[]", encoding="utf-8")
+            for path, args in ((credentials, ["--env-file", str(credentials)]), (corpus, [])):
+                with (
+                    self.subTest(path=path.name),
+                    patch.object(run_ci, "FIXED_CORPUS_PATH", corpus),
+                    patch.dict(os.environ, {}, clear=True),
+                    contextlib.redirect_stderr(io.StringIO()),
+                ):
+                    original = path.read_bytes()
+                    with self.assertRaises(SystemExit) as stopped:
+                        run_ci.main(["--output", str(path), *args])
+                    self.assertEqual(stopped.exception.code, 2)
+                    self.assertEqual(path.read_bytes(), original)
+
     def test_latency_guard_allows_the_limit_and_fails_above_it_with_metrics(self):
         for slowdown, limit, expected in (
             (15.0, 115.0, (0, "success", "passed")),

@@ -17,7 +17,7 @@ from dotenv import dotenv_values
 
 import bench_moss
 from competitor_agreement import load_reference, score_agreement, sentence_template
-from corpus import get_queries, load_fixed_documents
+from corpus import FIXED_CORPUS_PATH, get_queries, load_fixed_documents
 from latency_guard import check_latency, latency_context, load_baseline
 from local_moss import run_local_async
 
@@ -140,7 +140,13 @@ def main(argv=None):
     parser.add_argument("--baseline", type=Path, help="Compare p95 against an approved baseline JSON file")
     parser.add_argument("--competitor-reference", type=Path, help="Report agreement with saved competitor rankings")
     args = parser.parse_args(argv)
-    for option, path in (("--baseline", args.baseline), ("--competitor-reference", args.competitor_reference)):
+    inputs = (
+        ("--baseline", args.baseline),
+        ("--competitor-reference", args.competitor_reference),
+        ("--env-file", args.env_file),
+        ("the fixed corpus", FIXED_CORPUS_PATH),
+    )
+    for option, path in inputs:
         if path and args.output.resolve() == path.resolve():
             parser.error(f"--output and {option} must be different files")
     configuration = dict(dotenv_values(args.env_file)) if args.env_file else {}
