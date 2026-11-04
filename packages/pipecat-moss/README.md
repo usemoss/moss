@@ -63,6 +63,8 @@ If you are contributing or want to build from source, follow the [CONTRIBUTING.m
 
 ## Running the Example
 
+The examples live in this source tree and need the dev dependencies (the Pipecat runner and the Deepgram, Cartesia and OpenAI services). Run `uv sync` here first, as [CONTRIBUTING.md](CONTRIBUTING.md) describes.
+
 ### Setup Environment Variables
 
 Create a `.env` file in the root directory with the following content:
