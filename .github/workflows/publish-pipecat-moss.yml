@@ -70,7 +70,7 @@ jobs:
 
           print(f"Publishing version: {version}")
 
-  build-and-publish:
+  build:
     needs: determine-version
     strategy:
       fail-fast: false
@@ -78,7 +78,7 @@ jobs:
         python: ["3.11", "3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     env:
       VERSION: ${{ needs.determine-version.outputs.version }}
       DIST_DIR: dist
@@ -95,7 +95,7 @@ jobs:
       - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install build
 
       - name: Validate metadata version
         shell: python
@@ -150,18 +150,48 @@ jobs:
           python -m pip install "pytest>=8.0" "pytest-asyncio>=0.24"
           python -m pytest tests
 
-      - name: Publish to PyPI
+      - name: Keep the distributions
         if: matrix.python == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipecat-moss-dist
+          path: packages/pipecat-moss/dist/*
+          if-no-files-found: error
+
+  # Publishes only after every matrix leg built and tested the package.
+  publish:
+    needs: [determine-version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.determine-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install twine
+        run: python -m pip install twine
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: pipecat-moss-dist
+          path: dist
+
+      - name: Publish to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          twine upload --skip-existing packages/pipecat-moss/dist/*
+          twine upload --skip-existing dist/*
 
       - name: Tag release
-        if: matrix.python == '3.11'
-        env:
-          VERSION: ${{ env.VERSION }}
         run: |
           git fetch --tags --force
           if git rev-parse "pipecat-moss-v${VERSION}" >/dev/null 2>&1; then
