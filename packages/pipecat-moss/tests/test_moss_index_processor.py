@@ -151,6 +151,29 @@ async def test_each_index_keeps_only_its_own_latest_passages():
     assert not any("Rex" in passage for passage in passages)
 
 
+async def test_passages_equal_to_another_index_last_ones_stay():
+    pets = MossIndexProcessor(
+        client=AnswersByQuery(
+            {"Rex?": [doc("Rex is the dog.")], "Tom?": [doc("Tom lives in Porto.")]}
+        ),
+        index_name="pets",
+    )
+    places = MossIndexProcessor(
+        client=AnswersByQuery(
+            {"Rex?": [doc("Tom lives in Porto.")], "Tom?": [doc("Porto is in Portugal.")]}
+        ),
+        index_name="places",
+    )
+
+    passages = await run_behind_aggregator(
+        pets, places, exchanges=[(None, "Rex?"), ("Rex is your dog.", "Tom?")]
+    )
+
+    assert len(passages) == 2
+    assert any("Tom lives in Porto." in passage for passage in passages)
+    assert any("Porto is in Portugal." in passage for passage in passages)
+
+
 async def test_duplicate_query_is_not_repeated():
     client = FakeClient([])
     processor = MossIndexProcessor(client=client, index_name="memories")

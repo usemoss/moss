@@ -125,9 +125,12 @@ class MossIndexProcessor(FrameProcessor):
             await self.push_frame(frame, direction)
 
     def _replace_retrieval(self, context: LLMContext, retrieval: dict[str, str] | None) -> None:
-        """Swap the passages this processor added for the last query for the new ones."""
+        """Swap the passages this processor added for the last query for the new ones.
+
+        It removes its own message object, since another processor may hold an equal one.
+        """
         if (previous := self._retrieval) is not None:
-            context.transform_messages(lambda messages: [m for m in messages if m != previous])
+            context.transform_messages(lambda messages: [m for m in messages if m is not previous])
         if retrieval is not None:
             context.add_message(retrieval)
         self._retrieval = retrieval
