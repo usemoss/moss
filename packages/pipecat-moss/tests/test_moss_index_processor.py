@@ -67,7 +67,9 @@ class Speculate(FrameProcessor):
         if isinstance(frame, SpeculatedTurn):
             turn = {"role": "user", "content": frame.text}
             provisional = LLMContext(messages=[*self.context.get_messages(), turn])
-            frame = LLMContextFrame(context=provisional, speculation=True)
+            frame = LLMContextFrame(context=provisional)
+            # Pipecat 1.8 frames take no `speculation` argument.
+            frame.speculation = True
         await self.push_frame(frame, direction)
 
 
@@ -237,7 +239,9 @@ async def test_a_speculative_turn_leaves_the_real_context_to_the_next_turn():
         ],
     )
 
-    speculation = next(f for f in down if isinstance(f, LLMContextFrame) and f.speculation)
+    speculation = next(
+        f for f in down if isinstance(f, LLMContextFrame) and getattr(f, "speculation", False)
+    )
     speculated = [m["content"] for m in speculation.context.get_messages() if m["role"] == "system"]
     assert len(speculated) == 1
     assert "Tom is the cat." in speculated[0]
@@ -257,6 +261,25 @@ async def test_a_failed_query_drops_the_last_passages():
     )
 
     assert passages == []
+
+
+async def test_asking_again_after_a_failed_query_retrieves_again():
+    client = AnswersByQuery(
+        {"Who is Rex?": [doc("Rex is the dog.")], "Who is Tom?": RuntimeError("index not loaded")}
+    )
+    processor = MossIndexProcessor(client=client, index_name="memories")
+
+    passages = await run_behind_aggregator(
+        processor,
+        exchanges=[
+            (None, "Who is Rex?"),
+            ("Rex is your dog.", "Who is Tom?"),
+            ("Sorry.", "Who is Rex?"),
+        ],
+    )
+
+    assert len(passages) == 1
+    assert "Rex is the dog." in passages[0]
 
 
 async def test_duplicate_query_is_not_repeated():

@@ -126,7 +126,10 @@ class MossIndexProcessor(FrameProcessor):
             logger.exception(f"{self}: error while running retrieval: {exc}")
             await self.push_error(f"{self} retrieval error: {exc}", exception=exc)
             # The last query's passages would answer this one, as when nothing is found.
+            # Asking the last query again must retrieve its passages again.
             self._replace_retrieval(context, None, speculative=speculative)
+            if not speculative:
+                self._last_query = None
             await self.push_frame(frame, direction)
 
     def _replace_retrieval(
