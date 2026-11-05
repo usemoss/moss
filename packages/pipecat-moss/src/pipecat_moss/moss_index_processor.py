@@ -85,6 +85,8 @@ class MossIndexProcessor(FrameProcessor):
             return
 
         context = frame.context
+        # A speculative turn's frame carries a copy of the context. Pipecat 1.8 has no such flag.
+        speculative = getattr(frame, "speculation", False)
 
         try:
             context_messages = context.get_messages()
@@ -112,9 +114,10 @@ class MossIndexProcessor(FrameProcessor):
                         logger.debug(
                             f"{self}: No documents retrieved for query -> {latest_user_message}"
                         )
-                    self._replace_retrieval(context, retrieval)
+                    self._replace_retrieval(context, retrieval, speculative=speculative)
 
-                    self._last_query = latest_user_message
+                    if not speculative:
+                        self._last_query = latest_user_message
 
             # Forward the frame itself, so fields such as `speculation` survive.
             await self.push_frame(frame, direction)
@@ -122,18 +125,25 @@ class MossIndexProcessor(FrameProcessor):
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.exception(f"{self}: error while running retrieval: {exc}")
             await self.push_error(f"{self} retrieval error: {exc}", exception=exc)
+            # The last query's passages would answer this one, as when nothing is found.
+            self._replace_retrieval(context, None, speculative=speculative)
             await self.push_frame(frame, direction)
 
-    def _replace_retrieval(self, context: LLMContext, retrieval: dict[str, str] | None) -> None:
+    def _replace_retrieval(
+        self, context: LLMContext, retrieval: dict[str, str] | None, *, speculative: bool
+    ) -> None:
         """Swap the passages this processor added for the last query for the new ones.
 
         It removes its own message object, since another processor may hold an equal one.
+        A speculative frame's context is a copy that the real context never takes in,
+        so the message to remove next time stays the one the real context still holds.
         """
         if (previous := self._retrieval) is not None:
             context.transform_messages(lambda messages: [m for m in messages if m is not previous])
         if retrieval is not None:
             context.add_message(retrieval)
-        self._retrieval = retrieval
+        if not speculative:
+            self._retrieval = retrieval
 
     @staticmethod
     def _get_latest_user_text(messages: Sequence[dict[str, Any]]) -> str | None:

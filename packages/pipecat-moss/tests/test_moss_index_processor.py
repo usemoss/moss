@@ -4,12 +4,20 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
 
+from dataclasses import dataclass
 from types import SimpleNamespace
 
-from pipecat.frames.frames import ErrorFrame, LLMContextFrame, LLMMessagesAppendFrame, TextFrame
+from pipecat.frames.frames import (
+    DataFrame,
+    ErrorFrame,
+    LLMContextFrame,
+    LLMMessagesAppendFrame,
+    TextFrame,
+)
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
+from pipecat.processors.frame_processor import FrameProcessor
 from pipecat.tests.utils import SleepFrame, run_test
 
 from pipecat_moss import MossRetrievalService, QueryOptions
@@ -36,7 +44,31 @@ class AnswersByQuery(FakeClient):
 
     async def query(self, name, query, options=None):
         self.calls.append((name, query, options))
-        return SimpleNamespace(docs=self.answers[query], time_taken_ms=1.5)
+        answer = self.answers[query]
+        if isinstance(answer, Exception):
+            raise answer
+        return SimpleNamespace(docs=answer, time_taken_ms=1.5)
+
+
+@dataclass
+class SpeculatedTurn(DataFrame):
+    text: str
+
+
+class Speculate(FrameProcessor):
+    """Runs a speculated turn over a copy of the context, as pipecat's user aggregator does."""
+
+    def __init__(self, context):
+        super().__init__()
+        self.context = context
+
+    async def process_frame(self, frame, direction):
+        await super().process_frame(frame, direction)
+        if isinstance(frame, SpeculatedTurn):
+            turn = {"role": "user", "content": frame.text}
+            provisional = LLMContext(messages=[*self.context.get_messages(), turn])
+            frame = LLMContextFrame(context=provisional, speculation=True)
+        await self.push_frame(frame, direction)
 
 
 def doc(text, **meta):
@@ -172,6 +204,59 @@ async def test_passages_equal_to_another_index_last_ones_stay():
     assert len(passages) == 2
     assert any("Tom lives in Porto." in passage for passage in passages)
     assert any("Porto is in Portugal." in passage for passage in passages)
+
+
+async def test_a_speculative_turn_leaves_the_real_context_to_the_next_turn():
+    client = AnswersByQuery(
+        {
+            "Who is Rex?": [doc("Rex is the dog.")],
+            "Who is Tom?": [doc("Tom is the cat.")],
+            "Who is Ana?": [doc("Ana is the vet.")],
+        }
+    )
+    processor = MossIndexProcessor(client=client, index_name="memories")
+    context = LLMContext()
+    pipeline = Pipeline([LLMContextAggregatorPair(context).user(), Speculate(context), processor])
+    confirmed = {"role": "user", "content": "Who is Tom?"}
+    next_turn = [
+        {"role": "assistant", "content": "Tom is your cat."},
+        {"role": "user", "content": "Who is Ana?"},
+    ]
+
+    down, _ = await run_test(
+        pipeline,
+        frames_to_send=[
+            *turns((None, "Who is Rex?")),
+            SpeculatedTurn(text="Who is Tom?"),
+            SleepFrame(sleep=0.1),
+            # A confirmed speculation is written without a second inference.
+            LLMMessagesAppendFrame(messages=[confirmed], run_llm=False),
+            SleepFrame(sleep=0.1),
+            LLMMessagesAppendFrame(messages=next_turn, run_llm=True),
+            SleepFrame(sleep=0.1),
+        ],
+    )
+
+    speculation = next(f for f in down if isinstance(f, LLMContextFrame) and f.speculation)
+    speculated = [m["content"] for m in speculation.context.get_messages() if m["role"] == "system"]
+    assert len(speculated) == 1
+    assert "Tom is the cat." in speculated[0]
+    passages = [m["content"] for m in context.get_messages() if m["role"] == "system"]
+    assert len(passages) == 1
+    assert "Ana is the vet." in passages[0]
+
+
+async def test_a_failed_query_drops_the_last_passages():
+    client = AnswersByQuery(
+        {"Who is Rex?": [doc("Rex is the dog.")], "Who is Tom?": RuntimeError("index not loaded")}
+    )
+    processor = MossIndexProcessor(client=client, index_name="memories")
+
+    passages = await run_behind_aggregator(
+        processor, exchanges=[(None, "Who is Rex?"), ("Rex is your dog.", "Who is Tom?")]
+    )
+
+    assert passages == []
 
 
 async def test_duplicate_query_is_not_repeated():
