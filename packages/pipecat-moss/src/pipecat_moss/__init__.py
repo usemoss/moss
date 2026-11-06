@@ -13,6 +13,8 @@ from moss import (
     GetDocumentsOptions,
     IndexInfo,
     MossClient,
+    MutationOptions,
+    QueryOptions,
     SearchResult,
 )
 
@@ -24,5 +26,7 @@ __all__ = [
     "IndexInfo",
     "MossClient",
     "MossRetrievalService",
+    "MutationOptions",
+    "QueryOptions",
     "SearchResult",
 ]
