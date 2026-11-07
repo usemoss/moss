@@ -17,6 +17,7 @@ public enum JSONValue: Sendable, Hashable {
     }
 
     var string: String? { if case .string(let value) = self { value } else { nil } }
+    var bool: Bool? { if case .bool(let value) = self { value } else { nil } }
     var array: [JSONValue]? { if case .array(let value) = self { value } else { nil } }
     var object: [String: JSONValue]? { if case .object(let value) = self { value } else { nil } }
     var int: Int? {
@@ -231,6 +232,9 @@ public struct InferenceError: LocalizedError, Sendable, Hashable {
     public let requestId: String?
     /// The seconds to wait before trying again, from the `Retry-After` header of an error response.
     public let retryAfter: TimeInterval?
+    /// The task of a failed `tasks.wait`, or of a `tasks.run` that failed after its create,
+    /// so you can still wait on, cancel or read it. Any other call leaves it `nil`.
+    public internal(set) var taskId: String?
 
     public var errorDescription: String? { message }
 
