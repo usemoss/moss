@@ -31,6 +31,8 @@ defmodule Moss.Inference.Error do
   reply has come, and `nil` for a refused argument or a failure before any reply.
   `retry_after` is the error reply's `Retry-After` header in milliseconds, when it
   holds whole seconds, else `nil`. A failure after a 2xx reply has none.
+  `task_id` is the task of a failed `Moss.Inference.Tasks.wait/3`, or of a `run/3` that
+  failed after its create, so you can wait on, cancel or read it. Other errors have `nil`.
 
       case Moss.Inference.Responses.create(client, params, indexes: ["faq"]) do
         {:ok, response} -> response
@@ -45,10 +47,11 @@ defmodule Moss.Inference.Error do
           message: String.t(),
           code: String.t() | nil,
           request_id: String.t() | nil,
-          retry_after: non_neg_integer() | nil
+          retry_after: non_neg_integer() | nil,
+          task_id: String.t() | nil
         }
 
-  defexception [:status, :type, :message, :code, :request_id, :retry_after]
+  defexception [:status, :type, :message, :code, :request_id, :retry_after, :task_id]
 
   @doc false
   @spec invalid(String.t()) :: t()

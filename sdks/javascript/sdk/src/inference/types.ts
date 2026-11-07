@@ -278,3 +278,151 @@ export interface ResponseStreamEvent {
   arguments?: string;
   [key: string]: any;
 }
+
+/** Where a task runs. A browser is the only environment for now. */
+export interface TaskEnvironment {
+  type: "browser";
+  /** The page the browser opens first. */
+  start_url?: string;
+  /** True asks for `live_url`, a link to watch the browser while the task runs. */
+  live_view?: boolean;
+}
+
+/** The limits of a task. The gateway sets the ones a request leaves out. */
+export interface TaskLimits {
+  /** The longest the task may run, in seconds. */
+  max_runtime_seconds?: number;
+  /** The most the task may spend, in US dollars. */
+  max_cost_usd?: number;
+}
+
+/**
+ * The parameters of `tasks.create`, sent as the JSON body unchanged.
+ * The gateway fills in what is left out, such as the model and the limits,
+ * and refuses a field it does not know with `invalid_request_error`.
+ */
+export interface TaskCreateParams {
+  /** What the agent should do, in plain words. */
+  goal: string;
+  environment: TaskEnvironment;
+  /** A JSON Schema for `result.output`. The gateway checks the answer against it. */
+  output_schema?: Record<string, unknown>;
+  limits?: TaskLimits;
+  /** A model name of the Moss catalog. The gateway picks one when it is left out. */
+  model?: string;
+  effort?: "low" | "medium" | "high";
+  /** Your own data, sent back with the task. */
+  metadata?: Record<string, unknown>;
+}
+
+/** The state of a task. It ends `completed`, `failed` or `cancelled`. */
+export type TaskStatus =
+  "queued" | "running" | "completed" | "failed" | "cancelled" | (string & {});
+
+/** The agent's answer, where `output` is the JSON object that `output_schema` asked for. */
+export interface TaskResult<Output = unknown> {
+  output_text: string;
+  output: Output | null;
+  [key: string]: any;
+}
+
+/** How the answer was checked: by the agent itself, or against `output_schema`. */
+export interface TaskVerification {
+  method: "agent_reported" | "output_schema" | (string & {});
+  /** False when the answer does not match `output_schema`, null when only the agent checked it. */
+  passed: boolean | null;
+  /** What does not match, when `passed` is false. */
+  problems?: string[];
+  [key: string]: any;
+}
+
+/** What a task used, with every field the gateway sends, such as `browser_minutes`. */
+export interface TaskUsage {
+  model_calls: number;
+  input_tokens: number;
+  cached_input_tokens: number;
+  output_tokens: number;
+  cost_usd: number;
+  [key: string]: any;
+}
+
+/** Why a task failed, such as `time_limit` or `budget_exceeded`. */
+export interface TaskError {
+  code: string;
+  message: string;
+  [key: string]: any;
+}
+
+/**
+ * A task, the JSON the gateway sent. `Output` types `result.output`.
+ * The SDK does not check it: `verification` says whether it matched `output_schema`.
+ */
+export interface Task<Output = unknown> {
+  /** Such as `task_...`. */
+  id: string;
+  object: "task";
+  status: TaskStatus;
+  goal: string;
+  environment: TaskEnvironment;
+  output_schema: Record<string, unknown> | null;
+  /** The limits the task runs with, the gateway's own where the request left one out. */
+  limits: TaskLimits;
+  model: string;
+  effort: string | null;
+  metadata: Record<string, unknown> | null;
+  /** The answer once the task ends. A failed or cancelled task can have one too. */
+  result: TaskResult<Output> | null;
+  verification: TaskVerification | null;
+  usage: TaskUsage | null;
+  error: TaskError | null;
+  /** True once `tasks.trace` has the agent's record. */
+  trace_available: boolean;
+  /** A link to watch the browser while the task runs, with `live_view`. */
+  live_url?: string | null;
+  /** True while a cancel waits for a running task to stop. */
+  cancel_requested: boolean;
+  /** ISO 8601 times. */
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  /** When the gateway removes the trace and files, 7 days after the task ends. */
+  files_expire_at?: string | null;
+  [key: string]: any;
+}
+
+/** A file of a task, such as a screenshot. */
+export interface TaskFile {
+  /** The path for `tasks.files.content`, such as `screenshots/step-1.png`. */
+  path: string;
+  /** The size in bytes. */
+  bytes: number;
+  [key: string]: any;
+}
+
+/** The files of a task. */
+export interface TaskFileList {
+  object: "list";
+  data: TaskFile[];
+  [key: string]: any;
+}
+
+/** The bytes of a task's file and their media type. The SDK never opens or renders a file. */
+export interface TaskFileContent {
+  data: Uint8Array;
+  /** The `Content-Type` the gateway sent, `application/octet-stream` when it sent none. */
+  contentType: string;
+}
+
+/** Per-call settings of the Tasks API, which sends no provider key. */
+export type TaskRequestOptions = Omit<InferenceRequestOptions, "apiKey">;
+
+/**
+ * Settings of `tasks.wait` and `tasks.run`. Every request takes the others,
+ * with the client's `timeout` for each one.
+ */
+export interface TaskWaitOptions extends Omit<TaskRequestOptions, "timeout"> {
+  /** The longest the whole wait may take, in milliseconds. None by default. */
+  timeout?: number | null;
+  /** The pause between polls in milliseconds, 2000 by default. */
+  pollInterval?: number;
+}

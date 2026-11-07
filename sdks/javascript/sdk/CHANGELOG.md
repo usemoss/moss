@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-11-07
+
+### Added
+
+- `MossInference.tasks`, typed by the `Tasks` interface, wraps the gateway's Tasks API: an agent reaches a goal in a browser within time and dollar limits. `create` queues a task from `TaskCreateParams` (`goal`, `environment`, `output_schema`, `limits`, `model`, `effort`, `metadata`) and sends only the fields given, so the gateway picks the defaults. `retrieve` and `cancel` return the `Task`, and `wait` polls it every `pollInterval` (2000 ms by default) until it is neither `queued` nor `running`, with `timeout` and `signal` in `TaskWaitOptions`, and resolves on `failed` too. `run` creates a task and waits for it in one call. `trace` returns the agent's record, `files.list` a `TaskFileList`, and `files.content` a `TaskFileContent` with the bytes and `contentType`. `Task<Output>` types `result.output`. `usage` (`TaskUsage`) keeps every field the gateway sends. `create` sends an `Idempotency-Key`, a new one per call or the one in that call's `headers`, and the same one on every retry, so a retried create never starts a second task. Task calls never send `apiKey`, and never retry a 409, which the files routes send until a task ends. `Task` has `files_expire_at`, when the gateway removes the trace and files. `InferenceError.taskId` names the task of an error of `wait` or `run`, so a task that `run` created can still be read or cancelled. `inference.tasks` is the `tasks` of a client built from the environment. See Browser tasks in the README.
+
+### Changed
+
+- `responses.create` rejects a body number that JSON cannot carry, such as `NaN` or `Infinity`, with `invalid_request_error`, where it sent `null`.
+
 ## [1.22.0] - 2026-11-02
 
 ### Changed

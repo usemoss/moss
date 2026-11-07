@@ -20,6 +20,7 @@ from typing import (
 )
 
 from .inference import MossInference as MossInference
+from .inference import MossInferenceSync as MossInferenceSync
 
 DocsInput = Union[
     Iterable[DocumentInfo],
@@ -843,4 +844,5 @@ __all__ = [
     "JobStatusResponse",
     # Inference
     "MossInference",
+    "MossInferenceSync",
 ]

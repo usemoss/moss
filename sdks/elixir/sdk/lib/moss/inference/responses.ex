@@ -88,18 +88,9 @@ defmodule Moss.Inference.Responses do
 
     with :ok <- misplaced(params),
          {:ok, headers} <- headers(client, opts),
-         {:ok, timeout} <-
-           Inference.check_timeout(Keyword.get(opts, :timeout, client.timeout), :timeout),
-         {:ok, idle} <-
-           Inference.check_timeout(
-             Keyword.get(opts, :idle_timeout, client.idle_timeout),
-             :idle_timeout
-           ),
-         {:ok, retries} <-
-           Inference.check_retries(Keyword.get(opts, :max_retries, client.max_retries)),
-         {:ok, json} <- encode(body),
-         {:ok, stream} <-
-           ResponseStream.open(client.endpoint, headers, json, timeout, idle, retries) do
+         {:ok, settings} <- Inference.settings(client, opts),
+         {:ok, json} <- Inference.encode(body),
+         {:ok, stream} <- ResponseStream.open(client.endpoint, headers, json, settings) do
       if stream?, do: {:ok, stream}, else: collect(stream)
     end
   end
@@ -107,23 +98,9 @@ defmodule Moss.Inference.Responses do
   # Checks the client and params of create/3 in its body, since a clause
   # that does not match prints the call's arguments, and with them any key in `opts`.
   defp check_arguments!(client, params) do
-    cond do
-      not client?(client) ->
-        raise ArgumentError, "the client must be a Moss.Inference built by Moss.Inference.new/3"
-
-      not is_map(params) ->
-        raise ArgumentError, "the params must be a map"
-
-      true ->
-        :ok
-    end
+    Inference.check_client!(client)
+    unless is_map(params), do: raise(ArgumentError, "the params must be a map")
   end
-
-  # A client whose URL has the parts a request needs, which one changed by hand may lack.
-  defp client?(%Inference{endpoint: %URI{host: host, port: port, path: path}}),
-    do: is_binary(host) and is_integer(port) and is_binary(path)
-
-  defp client?(_client), do: false
 
   defp misplaced(params) do
     Enum.find_value(@misplaced, :ok, fn {key, option} ->
@@ -172,20 +149,6 @@ defmodule Moss.Inference.Responses do
   defp index_name?(name) do
     is_binary(name) and name != "" and not String.contains?(name, ",") and
       Inference.header_safe?(name)
-  end
-
-  # Refuses a key given twice, such as :content and "content", since Moss would read only one.
-  defp encode(body) do
-    case Jason.encode(body, maps: :strict) do
-      {:ok, json} ->
-        {:ok, json}
-
-      {:error, %Jason.EncodeError{message: "duplicate key: " <> _key}} ->
-        invalid("A params key is given twice, for example as an atom and as a string.")
-
-      {:error, _error} ->
-        invalid("The request params could not be encoded as JSON.")
-    end
   end
 
   defp invalid(message), do: {:error, Error.invalid(message)}

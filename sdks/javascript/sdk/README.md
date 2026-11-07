@@ -320,6 +320,7 @@ const results = await mossClient.query("my-docs", "running shoes", {
 return shapes of OpenAI's Responses API, through the Moss inference gateway. The
 gateway searches the `indexes` you pass and adds what it finds to the prompt, so
 code written for OpenAI swaps its client for `MossInference` and adds `indexes`.
+It also runs [browser tasks](#browser-tasks).
 
 ```typescript
 import { MossInference } from "@moss-js/moss";
@@ -503,6 +504,103 @@ After an `mcp_call` item every failure has `errorCode` `failed_after_tool_call`,
 and the SDK never retries. Nor does it retry any stream that fails after it
 started. The tool may have changed data, and so may a call you abort or time out
 after such an item, so do not replay such a call blindly.
+
+### Browser tasks
+
+`client.tasks` gives an agent a goal to reach in a browser, within time and
+dollar limits. `run` creates the task and resolves once it is `completed`,
+`failed` or `cancelled`:
+
+```typescript
+interface Flight {
+  airline: string;
+  price: number;
+}
+
+const done = await client.tasks.run<Flight>(
+  {
+    goal: "Find the cheapest nonstop flight from SFO to JFK next Friday.",
+    environment: { type: "browser", start_url: "https://www.google.com/travel/flights" },
+    output_schema: {
+      type: "object",
+      properties: { airline: { type: "string" }, price: { type: "number" } },
+      required: ["airline", "price"],
+    },
+    limits: { max_runtime_seconds: 360, max_cost_usd: 0.25 },
+  },
+  { timeout: 600_000 },
+);
+if (done.status === "completed") {
+  console.log(done.result?.output?.price, done.verification?.passed, done.usage?.cost_usd);
+} else {
+  console.log(done.status, done.error?.code, done.error?.message);
+}
+```
+
+A task runs for minutes. To keep its id first, `create` returns the `queued`
+task at once, and `wait` polls it until it ends:
+
+```typescript
+const task = await client.tasks.create({ goal: "Find the library's opening hours.", environment: { type: "browser" } });
+const finished = await client.tasks.wait(task.id);
+```
+
+Only the fields you pass are sent. The gateway picks the `model`, `effort` and
+limits you leave out, and refuses a field it does not know. `model` is a name of
+the Moss catalog, sent as is. With `output_schema` the gateway checks the
+answer, and `verification.passed` is false, with `problems`, when it does not
+match. `result` comes back either way. The type argument types
+`result.output`, and the SDK does not check it. `usage` holds the model calls,
+tokens and `cost_usd`, plus any other field the gateway sends, such as
+`browser_minutes`.
+
+`run` and `wait` resolve on a `failed` task too, so read `status` and `error`.
+Their `timeout` limits the wait and is off by default. Past it, they throw a
+`timeout` InferenceError and the task goes on, so wait again or cancel it. They
+poll every `pollInterval`, 2000 ms by default. `signal` aborts them. Once the
+task exists, their errors carry its `taskId`, so a task that `run` created can
+still be read or cancelled. `cancel` stops a queued task at once. A running
+task comes back with `cancel_requested: true` and ends `cancelled` soon after.
+
+`trace` resolves to the agent's step-by-step record once `trace_available` is
+true, and rejects with `not_found_error` before. `files.list` lists the
+screenshots and output files once the task ends, and `files.content` resolves
+to a file's bytes and `contentType`. The SDK never opens or renders a file. The
+gateway removes the trace and files at the task's `files_expire_at`, 7 days
+after it ends:
+
+```typescript
+import { writeFile } from "node:fs/promises";
+import { basename } from "node:path";
+
+for (const file of (await client.tasks.files.list(done.id)).data) {
+  const { data } = await client.tasks.files.content(done.id, file.path);
+  await writeFile(basename(file.path), data);
+}
+```
+
+Each call takes the options of `responses.create` but `apiKey`, which task
+calls never send, and retries as `responses.create` does. `create` sends an
+`Idempotency-Key`, a new one each call or the one in that call's `headers`, and
+the same one on every retry. The gateway answers a repeated key with the same
+body, within 24 hours, with the task it created, so a retried create never
+starts a second task. To retry a create yourself, pass your own key. A key in
+the client's `headers` is not used. `inference.tasks` is the `tasks` of a client
+built from the environment, and reading it throws when the credentials are
+missing.
+
+| `status` | `type` | `errorCode` | When |
+| --- | --- | --- | --- |
+| 400 | `invalid_request_error` | `invalid_request_error` | A field or value the gateway refuses |
+| 400 | `invalid_request_error` | `model_not_found` | A model the gateway does not serve |
+| 403 | `permission_error` | `tasks_not_enabled` | Tasks are not enabled for the project |
+| 404 | `not_found_error` | `not_found_error` | No such task in the project, no trace yet, or no such file |
+| 429 | `rate_limit_error` | `too_many_queued_tasks` | Too many queued tasks; retry after `retryAfter` |
+| 409 | `invalid_request_error` | `task_not_finished` | The files of a task that has not ended |
+| 410 | `invalid_request_error` | `files_expired` | The trace or files after `files_expire_at` |
+| 422 | `invalid_request_error` | `idempotency_key_reused` | A create's key was sent before with another body |
+| 503 | `server_error` | `server_error` | Tasks are not enabled on the gateway |
+| 503 | `server_error` | `tasks_unavailable` | Tasks cannot run now; a create retries after `retryAfter` |
 
 ## 📄 License
 

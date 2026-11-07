@@ -52,6 +52,8 @@ export class InferenceError extends Error implements MossError {
   readonly requestId?: string;
   /** The `Retry-After` of an error response in milliseconds, when the header gives whole seconds. */
   readonly retryAfter?: number;
+  /** The task an error of `tasks.wait` or `tasks.run` concerns, which may still be running. */
+  readonly taskId?: string;
 
   constructor(
     message: string,
@@ -61,6 +63,7 @@ export class InferenceError extends Error implements MossError {
       errorCode?: string;
       requestId?: string;
       retryAfter?: number;
+      taskId?: string;
       cause?: unknown;
     },
   ) {
@@ -72,6 +75,7 @@ export class InferenceError extends Error implements MossError {
     this.errorCode = init.errorCode;
     this.requestId = init.requestId;
     this.retryAfter = init.retryAfter;
+    this.taskId = init.taskId;
   }
 }
 

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-11-07
+
+### Added
+
+- `MossInference.tasks` wraps the gateway's Tasks API: an agent reaches a goal in a browser within time and dollar limits. `create` queues a task from `goal`, `environment`, `output_schema`, `limits`, `model`, `effort` and `metadata`, and sends only the arguments given, so the gateway picks the defaults. `retrieve` and `cancel` return the `Task`, and `wait` polls it every `poll_interval` seconds (2 by default) until it is neither `queued` nor `running`, within `timeout`, and returns a `failed` task too. `run` creates a task and waits for it in one call. `trace` returns the agent's record, `files.list` a `TaskFileList`, and `files.content` a `TaskFileContent` with the bytes and `content_type`. `Task[T]` types `result.output`, and `TaskUsage.raw` keeps every field the gateway sends. `create` sends an `Idempotency-Key`, a new one per call or the one in that call's `extra_headers`, and the same one on every retry, so a retried create never starts a second task. Task calls never send `api_key`, and never retry a 409, which the files routes send until a task ends. `Task` has `files_expire_at`, when the gateway removes the trace and files. `InferenceError.task_id` names the task of an error of `wait` or `run`, so a task that `run` created can still be read or cancelled. `moss.inference.tasks` makes the same calls on a client built from the environment.
+- `MossInferenceSync` makes the `tasks` calls without an event loop. It runs them on an event loop in a daemon thread of its own, which `close()` or the end of `with` stops after cancelling the calls under way.
+
 ## [1.22.0] - 2026-11-02
 
 ### Changed

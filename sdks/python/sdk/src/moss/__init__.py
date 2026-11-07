@@ -112,6 +112,7 @@ __all__ = [
     "JobStatusResponse",
     # Inference
     "MossInference",
+    "MossInferenceSync",
 ]
 
 
@@ -119,6 +120,6 @@ def __getattr__(name: str) -> object:
     """Load `moss.inference` on first use, so `import moss` leaves httpx unloaded."""
     if name == "inference":
         return _import_module(".inference", __name__)
-    if name == "MossInference":
-        return _import_module(".inference", __name__).MossInference
+    if name in ("MossInference", "MossInferenceSync"):
+        return getattr(_import_module(".inference", __name__), name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

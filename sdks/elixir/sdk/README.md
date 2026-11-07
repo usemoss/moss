@@ -437,6 +437,96 @@ end
 After an `"mcp_call"` item every failure has code `failed_after_tool_call`, and the SDK never retries:
 a tool may have changed data, as it may in a call you stop after one, so never resend either blindly.
 
+### Tasks
+
+`Moss.Inference.Tasks` gives an agent a goal to reach in a browser, within time and dollar limits.
+`run/3` queues the task and returns it once it is `completed`, `failed` or `cancelled`:
+
+```elixir
+alias Moss.Inference.Tasks
+
+params = %{
+  goal: "Find the cheapest nonstop flight from SFO to JFK next Friday.",
+  environment: %{type: "browser", start_url: "https://www.google.com/travel/flights"},
+  output_schema: %{
+    type: "object",
+    properties: %{airline: %{type: "string"}, price: %{type: "number"}},
+    required: ["airline", "price"]
+  },
+  limits: %{max_runtime_seconds: 360, max_cost_usd: 0.25}
+}
+
+case Tasks.run(client, params, timeout: 600_000) do
+  {:ok, %{status: "completed"} = task} ->
+    IO.inspect({task.result.output["price"], task.verification.passed, task.usage.cost_usd})
+
+  {:ok, task} ->
+    IO.inspect({task.status, task.error && task.error.code})
+
+  {:error, error} ->
+    IO.puts("#{error.type}: #{error.message}")
+end
+```
+
+A task runs for minutes. To keep its id first, `create/3` returns the `queued` task at once,
+and `wait/3` polls it until it ends:
+
+```elixir
+{:ok, task} = Tasks.create(client, %{goal: "Find the library's opening hours.", environment: %{type: "browser"}})
+{:ok, task} = Tasks.wait(client, task.id)
+```
+
+Only the fields you pass are sent. The gateway picks the `model`, `effort` and limits you leave
+out, and refuses a field it does not know. `model` is a name of the Moss catalog, sent as is.
+With `output_schema` the gateway checks the answer, and `verification.passed` is `false`, with
+`problems`, when it does not match. `result` comes back either way, and the SDK does not check
+`result.output`. A task is a `Moss.Inference.Task` struct. Its `usage` holds the model calls,
+tokens and `cost_usd`, and `usage.raw` every field the gateway sent, such as `"browser_minutes"`.
+`task.raw` is the whole task as the gateway sent it.
+
+`run/3` and `wait/3` return `{:ok, task}` for a `failed` task too, so read `status` and `error`.
+Their `:timeout` limits the wait and is off by default. Past it, they return an error with type
+`"timeout"` and the task goes on, so wait again or cancel it. Each poll ends by then, or sooner
+with the client's `:timeout`. They poll every `:poll_interval`, `2_000` ms by default, and
+stopping their process stops the wait. Once the task is queued, every error they return has
+its id in `task_id`. `cancel/3` stops a queued task at once. A running task
+comes back with `cancel_requested: true` and ends `cancelled` soon after.
+
+`trace/3` returns the agent's step-by-step record once `trace_available` is `true`, and a
+`not_found_error` before. `Moss.Inference.Tasks.Files.list/3` lists the screenshots and output
+files, and `Moss.Inference.Tasks.Files.content/4` returns a file's bytes and `content_type`.
+The files are ready once the task ends. The gateway removes the trace and files 7 days later,
+at the task's `files_expire_at`. The SDK never opens or renders a file:
+
+```elixir
+{:ok, %{data: files}} = Tasks.Files.list(client, task.id)
+
+for file <- files do
+  {:ok, content} = Tasks.Files.content(client, task.id, file.path)
+  File.write!(Path.basename(file.path), content.data)
+end
+```
+
+Each call takes `:timeout`, `:idle_timeout` and `:max_retries` over the client's, though the
+`:timeout` of `run/3` and `wait/3` is the wait's, and no call sends the client's `:api_key`.
+Every call retries as `Responses.create/3` does, but never after a 409. Each create sends an `Idempotency-Key`, a new
+one per call or its `:idempotency_key` option, and the same one on every retry. The gateway
+answers a repeated key with the same body, within 24 hours, with the task it created, so a
+retried create never starts a second task. To retry a create yourself, pass your own key.
+
+| `status` | `type` | `code` | When |
+| --- | --- | --- | --- |
+| 400 | `invalid_request_error` | `invalid_request_error` | A field or value the gateway refuses |
+| 400 | `invalid_request_error` | `model_not_found` | A model the gateway does not serve |
+| 403 | `permission_error` | `tasks_not_enabled` | Tasks are not enabled for the project |
+| 404 | `not_found_error` | `not_found_error` | No such task in the project, no trace yet, or no such file |
+| 409 | `invalid_request_error` | `task_not_finished` | The files of a task that is still queued or running |
+| 410 | `invalid_request_error` | `files_expired` | The trace or files after the task's `files_expire_at` |
+| 422 | `invalid_request_error` | `idempotency_key_reused` | An `Idempotency-Key` sent again with another body |
+| 429 | `rate_limit_error` | `too_many_queued_tasks` | Too many queued tasks; retry after `retry_after` |
+| 503 | `server_error` | `server_error` | Tasks are not enabled on the gateway |
+| 503 | `server_error` | `tasks_unavailable` | The gateway cannot take a task now; a create retries after `retry_after` |
+
 ## Telemetry
 
 `moss` always sends usage telemetry to the Moss cloud. See [Telemetry](https://docs.moss.dev/docs/reference/telemetry) for what it contains and when it is sent.

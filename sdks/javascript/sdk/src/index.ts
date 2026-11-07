@@ -29,9 +29,9 @@ export { isMossError } from "./errors";
 export type { MossError, MossErrorCode } from "./errors";
 export type { IAuthenticator, AuthToken } from "./auth/authenticator.interface";
 
-// Responses through the Moss inference gateway, in the shape of OpenAI's Responses API
+// Responses and browser tasks through the Moss inference gateway, in the shape of OpenAI's APIs
 export { MossInference, inference } from "./inference";
-export type { Responses } from "./inference";
+export type { Responses, TaskFiles, Tasks } from "./inference";
 export { ResponseStream } from "./inference/stream";
 export { InferenceError } from "./inference/error";
 export type { InferenceErrorType } from "./inference/error";
@@ -56,6 +56,20 @@ export type {
   ResponseOutputText,
   ResponseStreamEvent,
   ResponseUsage,
+  Task,
+  TaskCreateParams,
+  TaskEnvironment,
+  TaskError,
+  TaskFile,
+  TaskFileContent,
+  TaskFileList,
+  TaskLimits,
+  TaskRequestOptions,
+  TaskResult,
+  TaskStatus,
+  TaskUsage,
+  TaskVerification,
+  TaskWaitOptions,
 } from "./inference/types";
 
 // SDK-specific types
