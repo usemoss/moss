@@ -4,8 +4,8 @@ import Foundation
 ///
 /// It holds the project credentials, your provider key and the limits of each call,
 /// and keeps its own connections to the Moss inference gateway. `responses.create` returns
-/// the whole response, and `createStreaming` returns it event by event. A call never follows
-/// a redirect: it fails with the 3xx status instead, so the project credentials never reach another URL.
+/// the whole response, `createStreaming` returns it event by event, and `tasks` runs browser tasks.
+/// A call never follows a redirect: it fails with the 3xx status instead, so the project credentials never reach another URL.
 public final class MossInference: Sendable {
     /// The base URL of the Moss inference gateway, unless `MOSS_INFERENCE_URL` sets another.
     static let defaultBaseURL = "https://inference.moss.dev/v1"
@@ -13,8 +13,15 @@ public final class MossInference: Sendable {
     static let connectTimeout: TimeInterval = 10
     /// The URLSession wait that stands for no limit.
     static let noLimit: TimeInterval = 7 * 24 * 3600
+    /// The 4xx statuses a `responses` call goes again after, as it does after a 5xx.
+    static let responseRetry: Set<Int> = [408, 409, 429]
 
+    /// The base URL of every call, up to and including `/v1`, with no trailing slash.
+    let base: String
+    /// The Responses URL, `/responses` under `base`.
     let url: URL
+    /// The `Authorization` of every call.
+    let authorization: String
     let headers: [String: String]
     let timeout: TimeInterval?
     let idleTimeout: TimeInterval?
@@ -33,7 +40,8 @@ public final class MossInference: Sendable {
     /// `idleTimeout` ends a call when the gateway sends nothing for that many seconds, before the response or between any two of its bytes.
     /// `timeout` limits each whole call, stream included. For either limit, `nil` or `.infinity` means none, the default for `timeout`.
     /// `maxRetries` (0 for none) sends a call again after a connection failure or a status of 408, 409, 429 or 500 and above,
-    /// waiting a `Retry-After` of 60 seconds or less, else a backoff from 0.5 up to 8 seconds, within `timeout`. A stream that started is never retried.
+    /// waiting a `Retry-After` of 60 seconds or less, else a backoff from 0.5 up to 8 seconds, within `timeout`. A stream that started is never retried,
+    /// and a task call never goes again after a 409.
     public init(
         projectId: String,
         projectKey: String,
@@ -46,13 +54,13 @@ public final class MossInference: Sendable {
         try Self.checkValue("projectKey", projectKey)
         try apiKey.map { try Self.checkValue("apiKey", $0) }
         if projectId.contains(":") { throw InferenceError.invalidRequest("projectId must not contain ':'") }
-        url = try Self.endpoint(ProcessInfo.processInfo.environment["MOSS_INFERENCE_URL"])
+        base = try Self.endpoint(ProcessInfo.processInfo.environment["MOSS_INFERENCE_URL"])
+        url = try Self.join(base, "/responses")
         self.timeout = try Self.limit(timeout, "timeout")
         self.idleTimeout = try Self.limit(idleTimeout, "idleTimeout")
         self.maxRetries = try Self.retries(maxRetries)
-        var headers = [
-            "Authorization": "Bearer \(projectId):\(projectKey)", "Content-Type": "application/json", "Accept": "text/event-stream",
-        ]
+        authorization = "Bearer \(projectId):\(projectKey)"
+        var headers = ["Authorization": authorization, "Content-Type": "application/json", "Accept": "text/event-stream"]
         headers["X-Moss-Provider-Key"] = apiKey
         self.headers = headers
         let configuration = URLSessionConfiguration.ephemeral
@@ -66,6 +74,9 @@ public final class MossInference: Sendable {
 
     /// The Responses API, as in OpenAI's `client.responses`.
     public var responses: Responses { Responses(client: self) }
+
+    /// Browser tasks that an agent runs on Moss within time and dollar limits, while you poll for the result.
+    public var tasks: Tasks { Tasks(client: self) }
 
     /// Responses in the shape of OpenAI's `responses`. Moss stores nothing, so `input` holds the whole conversation.
     ///
@@ -134,9 +145,7 @@ public final class MossInference: Sendable {
             }
             try indexes?.forEach { try MossInference.checkHeader("Index names", $0) }
             try apiKey.map { try MossInference.checkValue("apiKey", $0) }
-            let timeout = try timeout.map { try MossInference.limit($0, "timeout") } ?? client.timeout
-            let idleTimeout = try idleTimeout.map { try MossInference.limit($0, "idleTimeout") } ?? client.idleTimeout
-            let maxRetries = try maxRetries.map(MossInference.retries) ?? client.maxRetries
+            let (timeout, idleTimeout, maxRetries) = try client.limits(timeout: timeout, idleTimeout: idleTimeout, maxRetries: maxRetries)
             var body = extra
             if let instructions { body["instructions"] = .string(instructions) }
             if !tools.isEmpty { body["tools"] = .array(tools.map(\.json)) }
@@ -162,23 +171,39 @@ public final class MossInference: Sendable {
         }
     }
 
-    /// The Responses URL under `variable`, or under the default when it is unset or empty.
-    /// Throws without echoing the value unless it is printable ASCII with no space, an http or https URL
+    /// The refusal of a `MOSS_INFERENCE_URL`, which never echoes the value.
+    static let invalidURL = InferenceError.invalidRequest(
+        "MOSS_INFERENCE_URL must be an absolute http or https URL with a host and no user info, query or fragment"
+    )
+
+    /// The base URL in `variable` with no trailing slash, or the default when it is unset or empty.
+    /// Throws `invalidURL` unless it is printable ASCII with no space, an http or https URL
     /// with a host that `isHost` accepts, a port from 1 to 65535 if it names one, and no user info, query or fragment.
-    static func endpoint(_ variable: String?) throws -> URL {
-        let invalid = InferenceError.invalidRequest(
-            "MOSS_INFERENCE_URL must be an absolute http or https URL with a host and no user info, query or fragment"
-        )
+    static func endpoint(_ variable: String?) throws -> String {
         let base = variable.flatMap { $0.isEmpty ? nil : $0 } ?? defaultBaseURL
         guard base.unicodeScalars.allSatisfy({ (0x21...0x7E).contains($0.value) }),
             var parts = URLComponents(string: base), let text = parts.string, let host = parts.rangeOfHost, isHost(text[host]),
             ["http", "https"].contains(parts.scheme?.lowercased()), parts.port.map({ (1...65_535).contains($0) }) ?? true,
             parts.user == nil, parts.password == nil, parts.query == nil, parts.fragment == nil
-        else { throw invalid }
+        else { throw invalidURL }
         if parts.percentEncodedPath.hasSuffix("/") { parts.percentEncodedPath.removeLast() }
-        parts.percentEncodedPath += "/responses"
-        guard let url = parts.url else { throw invalid }
+        guard let trimmed = parts.string else { throw invalidURL }
+        return trimmed
+    }
+
+    /// The URL of `path`, already percent-encoded, under `base`.
+    static func join(_ base: String, _ path: String) throws -> URL {
+        guard let url = URL(string: base + path) else { throw invalidURL }
         return url
+    }
+
+    /// The limits of one call: each one given, once checked, else the client's.
+    func limits(timeout: TimeInterval?, idleTimeout: TimeInterval?, maxRetries: Int?) throws -> (TimeInterval?, TimeInterval?, Int) {
+        (
+            try timeout.map { try Self.limit($0, "timeout") } ?? self.timeout,
+            try idleTimeout.map { try Self.limit($0, "idleTimeout") } ?? self.idleTimeout,
+            try maxRetries.map(Self.retries) ?? self.maxRetries
+        )
     }
 
     /// Whether `host`, as the URL writes it, is a name with no `%`, or an IPv6
@@ -266,17 +291,35 @@ public final class ResponseStream: AsyncSequence, @unchecked Sendable {
         public func next() async throws -> ResponseStreamEvent? { try await reader.next() }
     }
 
-    /// Sends `request`, again up to `maxRetries` times after a `Retryable` failure, and returns the stream.
-    /// A wait that would pass `timeout` throws that failure at once instead, and cancelling the task ends a wait.
-    /// Each wait is a `Retry-After` of 60 seconds or less, else 0.5 seconds doubled per retry, capped at 8, with up to 25 percent jitter.
+    /// Sends `request` and returns the stream when its response headers arrive.
     static func open(
         _ request: URLRequest, in session: URLSession, timeout: TimeInterval?, idleTimeout: TimeInterval?, maxRetries: Int
     ) async throws -> ResponseStream {
+        let answer = try await Answer.send(request, in: session, timeout: timeout, idleTimeout: idleTimeout, maxRetries: maxRetries)
+        return ResponseStream(reader: EventReader(answer.bytes, answer.call, answer.response.requestId))
+    }
+}
+
+/// A 2xx response whose body is still to read, with the delegate that holds the limits of its call.
+struct Answer {
+    let bytes: URLSession.AsyncBytes
+    let response: HTTPURLResponse
+    let call: CallDelegate
+
+    /// Sends `request`, again up to `maxRetries` times after a `Retryable` failure, and returns the answer.
+    /// `statuses` are the 4xx statuses that go again, as a 5xx does.
+    /// A wait that would pass `timeout` throws that failure at once instead, and cancelling the task ends a wait.
+    /// Each wait is a `Retry-After` of 60 seconds or less, else 0.5 seconds doubled per retry, capped at 8, with up to 25 percent jitter.
+    static func send(
+        _ request: URLRequest, in session: URLSession, timeout: TimeInterval?, idleTimeout: TimeInterval?, maxRetries: Int,
+        statuses: Set<Int> = MossInference.responseRetry
+    ) async throws -> Answer {
         let start = DispatchTime.now()
         var retries = 0
         while true {
             do {
-                return try await send(request, in: session, call: CallDelegate(timeout: timeout, idleTimeout: idleTimeout, start: start))
+                let call = CallDelegate(timeout: timeout, idleTimeout: idleTimeout, start: start)
+                return try await attempt(request, in: session, call: call, statuses: statuses)
             } catch let failure as Retryable {
                 let backoff = Swift.min(0.5 * pow(2, Double(retries)), 8) * .random(in: 0.75...1)
                 let wait = failure.error.retryAfter.flatMap { $0 <= 60 ? $0 : nil } ?? backoff
@@ -287,11 +330,14 @@ public final class ResponseStream: AsyncSequence, @unchecked Sendable {
         }
     }
 
-    /// Sends `request` once and returns the stream when its response headers arrive.
+    /// Sends `request` once and returns the answer when its response headers arrive.
     /// A failure to connect, or a connection lost before the headers, throws as `Retryable`.
     /// A non-2xx answer throws its status, unless a limit passes or the task is cancelled while its body is read,
-    /// as `Retryable` for 408, 409, 429 or 500 and above unless `x-should-retry` is `false`, or for any when it is `true`.
-    private static func send(_ request: URLRequest, in session: URLSession, call: CallDelegate) async throws -> ResponseStream {
+    /// as `Retryable` for a status in `statuses` or 500 and above unless `x-should-retry` is `false`, or for any when it is `true`.
+    /// URLSession never reports a request with no body as sent, so one counts as sent from the start,
+    /// and its idle limit, not the connect limit, bounds the wait for its headers.
+    private static func attempt(_ request: URLRequest, in session: URLSession, call: CallDelegate, statuses: Set<Int>) async throws -> Answer {
+        if request.httpBody == nil { call.sent() }
         let sending = Task { try await session.bytes(for: request, delegate: call) }
         call.onExpiry { sending.cancel() }
         let (bytes, response): (URLSession.AsyncBytes, URLResponse)
@@ -300,7 +346,7 @@ public final class ResponseStream: AsyncSequence, @unchecked Sendable {
         } catch {
             call.stop()
             let failure = call.failure(error, requestId: nil)
-            if let failure = failure as? InferenceError, failure.type == "connection_error" || call.connectFailed {
+            if let failure = failure as? InferenceError, call.connectFailed || failure.type == "connection_error" {
                 throw Retryable(error: failure)
             }
             throw failure
@@ -320,12 +366,11 @@ public final class ResponseStream: AsyncSequence, @unchecked Sendable {
             let status = http?.statusCode ?? 0
             let shouldRetry = http?.value(forHTTPHeaderField: "x-should-retry")
             let error = InferenceError(response: http, body: body)
-            if shouldRetry == "true" || shouldRetry != "false" && ([408, 409, 429].contains(status) || status >= 500) {
-                throw Retryable(error: error)
-            }
+            let again = shouldRetry == "true" || shouldRetry != "false" && (statuses.contains(status) || status >= 500)
+            if again { throw Retryable(error: error) }
             throw error
         }
-        return ResponseStream(reader: EventReader(bytes, call, http.requestId))
+        return Answer(bytes: bytes, response: http, call: call)
     }
 }
 
