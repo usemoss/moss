@@ -1,6 +1,6 @@
 defmodule Moss.Inference do
   @moduledoc """
-  A client for Moss inference, which answers OpenAI's Responses call.
+  A client for Moss inference, which answers OpenAI's Responses call and runs browser tasks.
 
   Moss searches your indexes, adds what it finds to the prompt and streams the response.
   A client holds the project credentials, the gateway URL, an optional provider key
@@ -12,7 +12,8 @@ defmodule Moss.Inference do
       {:ok, response} =
         Moss.Inference.Responses.create(client, %{input: "Do you ship to Canada?"}, indexes: ["faq"])
 
-  See `Moss.Inference.Responses.create/3` for the call itself.
+  See `Moss.Inference.Responses.create/3` for the call itself,
+  and `Moss.Inference.Tasks` for tasks an agent runs in a browser.
   """
 
   alias Moss.Inference.Error
@@ -84,6 +85,52 @@ defmodule Moss.Inference do
       }
     else
       {:error, error} -> raise error
+    end
+  end
+
+  # Checks the client of a call in its body, since a clause that does not match
+  # prints the call's arguments, and with them any key in `opts`.
+  @doc false
+  @spec check_client!(term()) :: :ok
+  def check_client!(client) do
+    unless client?(client),
+      do:
+        raise(ArgumentError, "the client must be a Moss.Inference built by Moss.Inference.new/3")
+
+    :ok
+  end
+
+  # A client whose URL has the parts a request needs, which one changed by hand may lack.
+  defp client?(%__MODULE__{endpoint: %URI{host: host, port: port, path: path}}),
+    do: is_binary(host) and is_integer(port) and is_binary(path)
+
+  defp client?(_client), do: false
+
+  # The timeout, idle timeout and retries of a call, its own where given, else the client's.
+  @doc false
+  @spec settings(t(), keyword()) ::
+          {:ok, {timeout(), timeout(), non_neg_integer()}} | {:error, Error.t()}
+  def settings(client, opts) do
+    with {:ok, timeout} <- check_timeout(Keyword.get(opts, :timeout, client.timeout), :timeout),
+         {:ok, idle} <-
+           check_timeout(Keyword.get(opts, :idle_timeout, client.idle_timeout), :idle_timeout),
+         {:ok, retries} <- check_retries(Keyword.get(opts, :max_retries, client.max_retries)),
+         do: {:ok, {timeout, idle, retries}}
+  end
+
+  # Refuses a key given twice, such as :content and "content", since Moss would read only one.
+  @doc false
+  @spec encode(term()) :: {:ok, String.t()} | {:error, Error.t()}
+  def encode(body) do
+    case Jason.encode(body, maps: :strict) do
+      {:ok, json} ->
+        {:ok, json}
+
+      {:error, %Jason.EncodeError{message: "duplicate key: " <> _key}} ->
+        invalid("A params key is given twice, for example as an atom and as a string.")
+
+      {:error, _error} ->
+        invalid("The request params could not be encoded as JSON.")
     end
   end
 

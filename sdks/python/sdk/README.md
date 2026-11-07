@@ -443,7 +443,7 @@ Pass `QueryOptions` to reuse your own embeddings or to override `top_k` on a per
 
 ## Inference
 
-`MossInference` answers with facts from your Moss indexes. It is async only, and its `responses.create` takes the arguments of OpenAI's Responses API, plus an optional `indexes` list of the indexes to search. Responses and events have OpenAI's field names and attribute access, such as `response.output_text` and `event.delta`, but they are dataclasses, not OpenAI's types, and each keeps the decoded JSON in `raw`.
+`MossInference` answers with facts from your Moss indexes, and runs [browser tasks](#browser-tasks). It is async, and its `responses.create` takes the arguments of OpenAI's Responses API, plus an optional `indexes` list of the indexes to search. Responses and events have OpenAI's field names and attribute access, such as `response.output_text` and `event.delta`, but they are dataclasses, not OpenAI's types, and each keeps the decoded JSON in `raw`.
 
 ```python
 from moss import MossInference
@@ -563,6 +563,76 @@ An `McpCall` has the `server_label`, `name` and `arguments` of the call, and onc
 | 400 | `invalid_request_error` | (none) | A bad `tools` entry, or a `server_label` or tool name used twice |
 
 Once an MCP call has arrived, every `InferenceError` of that request has the code `failed_after_tool_call`: a tool may have changed data already, so do not replay the request blindly. A request you cancel or time out yourself after a call, such as with `asyncio.timeout`, may also have changed data. A stream that fails after it started is never retried.
+
+### Browser tasks
+
+`client.tasks` gives an agent a goal to reach in a browser, within time and dollar limits. `run` creates the task and returns once it is `completed`, `failed` or `cancelled`:
+
+```python
+from typing import TypedDict
+
+from moss import MossInference
+from moss.inference import Task
+
+
+class Flight(TypedDict):
+    airline: str
+    price: float
+
+
+async with MossInference("your-project-id", "your-project-key") as client:
+    done: Task[Flight] = await client.tasks.run(
+        goal="Find the cheapest nonstop flight from SFO to JFK next Friday.",
+        environment={"type": "browser", "start_url": "https://www.google.com/travel/flights"},
+        output_schema={
+            "type": "object",
+            "properties": {"airline": {"type": "string"}, "price": {"type": "number"}},
+            "required": ["airline", "price"],
+        },
+        limits={"max_runtime_seconds": 360, "max_cost_usd": 0.25},
+        timeout=600,
+    )
+    if done.status == "completed" and done.result and done.result.output:
+        print(done.result.output["price"], done.verification, done.usage)
+    else:
+        print(done.status, done.error)
+```
+
+A task runs for minutes. To keep its id first, `create` returns the `queued` task at once, and `wait` polls it until it ends: `task = await client.tasks.create(...)`, then `await client.tasks.wait(task.id)`.
+
+`MossInferenceSync` makes the same `tasks` calls without an event loop, and each returns its result. It takes the arguments of `MossInference` but `api_key`, and runs the calls on an event loop in a daemon thread of its own, which `close()` or the end of `with` stops after it cancels the calls under way, and which never holds up the interpreter's exit:
+
+```python
+from moss import MossInferenceSync
+
+with MossInferenceSync("your-project-id", "your-project-key") as client:
+    done = client.tasks.run(goal="Find the opening hours of the city library.", environment={"type": "browser"})
+    for file in client.tasks.files.list(done.id).data:
+        content = client.tasks.files.content(done.id, file.path)
+        print(file.path, content.content_type, len(content.data))
+```
+
+- Only the arguments you pass are sent. The gateway picks the `model`, `effort` and limits you leave out, and refuses a field it does not know. `model` is a name of the Moss catalog, sent as is, and `extra_body` adds body fields.
+- With `output_schema` the gateway checks the answer, and `verification.passed` is `False`, with `problems`, when it does not match. `result` comes back either way. `Task[T]` types `result.output` as `T`, such as a `TypedDict`, and the SDK does not check it.
+- `usage` holds the model calls, tokens and `cost_usd`, and its `raw` every field the gateway sent, such as `browser_minutes`. A task's `raw` is the whole task as it came.
+- `run` and `wait` return a `failed` task too, so read `status` and `error`. Their `timeout` limits the wait, in seconds, and is off by default. Past it, they raise `InferenceError` with type `timeout` and the task goes on, so wait again or cancel it. They poll every `poll_interval` seconds, 2 by default. `run` checks both before it creates the task. Once the task exists, their errors carry its `task_id`, so a task that `run` created can still be read or cancelled.
+- `cancel` stops a queued task at once. A running task comes back with `cancel_requested=True` and ends `cancelled` soon after.
+- `trace` returns the agent's step-by-step record once `trace_available` is true, and raises `not_found_error` before. `files.list` lists the screenshots and output files once the task ends, and `files.content` returns a `TaskFileContent` with the bytes in `data` and the `content_type`. The SDK never opens or renders a file. The gateway removes the trace and files at the task's `files_expire_at`, 7 days after it ends.
+- Each call takes `timeout`, `idle_timeout`, `max_retries` and `extra_headers`, as `responses.create` does, and never sends `api_key`. All of them retry as `responses.create` does. `create` sends an `Idempotency-Key`, a new one each call or the one in that call's `extra_headers`, and the same one on every retry. The gateway answers a repeated key with the same body, within 24 hours, with the task it created, so a retried create never starts a second task. To retry a create yourself, pass your own key. A key in `default_headers` is not used.
+- With `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` set, `inference.tasks` makes the same calls on a client built from them.
+
+| `status` | `type` | `code` | When |
+| --- | --- | --- | --- |
+| 400 | `invalid_request_error` | `invalid_request_error` | A field or value the gateway refuses |
+| 400 | `invalid_request_error` | `model_not_found` | A model the gateway does not serve |
+| 403 | `permission_error` | `tasks_not_enabled` | Tasks are not enabled for the project |
+| 404 | `not_found_error` | `not_found_error` | No such task in the project, no trace yet, or no such file |
+| 429 | `rate_limit_error` | `too_many_queued_tasks` | Too many queued tasks; retry after `retry_after` |
+| 409 | `invalid_request_error` | `task_not_finished` | The files of a task that has not ended |
+| 410 | `invalid_request_error` | `files_expired` | The trace or files after `files_expire_at` |
+| 422 | `invalid_request_error` | `idempotency_key_reused` | A create's key was sent before with another body |
+| 503 | `server_error` | `server_error` | Tasks are not enabled on the gateway |
+| 503 | `server_error` | `tasks_unavailable` | Tasks cannot run now; a create retries after `retry_after` |
 
 ## Telemetry
 

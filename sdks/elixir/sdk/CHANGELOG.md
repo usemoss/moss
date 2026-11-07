@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-07
+
+### Added
+
+- `Moss.Inference.Tasks` runs browser tasks: an agent works toward a goal in a browser on Moss, within time and dollar limits. `run/3` queues a task and returns it once it ends, and `create/3`, `retrieve/3`, `cancel/3`, `wait/3`, `trace/3` and `Moss.Inference.Tasks.Files.list/3` and `content/4` do each step. Each returns `{:ok, value}` or `{:error, %Moss.Inference.Error{}}`, and uses the client's credentials, `MOSS_INFERENCE_URL`, timeouts and retries, but never its `:api_key`, and no task call goes again after a 409, which the files of an unfinished task return.
+- `create/3` sends only the fields you give. Each create sends an `Idempotency-Key`, a new one per call or its `:idempotency_key` option, and the same one on every retry. The gateway answers a repeated key with the same body, within 24 hours, with the task it created, so a retried create never starts a second task. To retry a create yourself, pass your own key.
+- `wait/3` and `run/3` poll every `:poll_interval`, `2_000` ms by default, until the task is neither `queued` nor `running`, and return a `failed` or `cancelled` task as `{:ok, task}`. Their `:timeout` limits the wait, each poll included, and past it they return a `"timeout"` error while the task goes on. Once the task is queued, every error they return has its id in the `task_id` field of `Moss.Inference.Error`.
+- A task is a `Moss.Inference.Task` struct with `result`, `verification`, `usage` and `error` structs. `files_expire_at` is when the gateway removes the trace and files, 7 days after the task ends, after which they return a 410 `files_expired` error. `raw` holds the task as the gateway sent it, and `usage.raw` every usage field, such as `"browser_minutes"`. `Moss.Inference.Tasks.Files.content/4` returns a file's bytes and `content_type`, and never writes or opens the file.
+
 ## [1.11.0] - 2026-11-02
 
 ### Changed

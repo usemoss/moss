@@ -1,8 +1,11 @@
-"""Responses grounded in your Moss indexes, in the shape of OpenAI's Responses API.
+"""Responses grounded in your Moss indexes, in the shape of OpenAI's Responses API,
+and browser tasks that an agent runs on Moss.
 
 Moss adds the facts it finds in your indexes to the prompt.
 `MossInference(project_id, project_key)` is a client with your credentials.
-Its `responses.create` takes OpenAI's arguments, plus the `indexes` to search.
+Its `responses.create` takes OpenAI's arguments, plus the `indexes` to search,
+and its `tasks` queue a goal for an agent in a browser, then poll for the result.
+`MossInferenceSync` makes the `tasks` calls without an event loop.
 """
 
 import asyncio
@@ -13,25 +16,32 @@ import math
 import os
 import random
 import re
+import threading
+import uuid
 from dataclasses import dataclass, field, fields, is_dataclass
 from functools import partial
 from typing import (
     Any,
     AsyncIterator,
     Awaitable,
+    Callable,
+    Coroutine,
+    Generic,
     Iterable,
     Literal,
     Mapping,
     Sequence,
+    TypedDict,
     TypeVar,
     overload,
 )
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import httpx
 
 _PRODUCTION_URL = "https://inference.moss.dev/v1"
 _T = TypeVar("_T")
+_Output = TypeVar("_Output")
 _STATUS_TYPES = {
     401: "authentication_error",
     403: "permission_error",
@@ -49,7 +59,12 @@ _BAD_URL = (
 )
 _HTTP_HEADERS = frozenset({"host", "content-length", "transfer-encoding"})
 _RETRY_STATUSES = frozenset({408, 409, 429})
+_TASK_RETRY_STATUSES = frozenset({408, 429})
+"""The statuses below 500 a task call goes again after. The files routes send 409
+until a task ends, so a task call does not retry it."""
 _RETRY_ERRORS = (httpx.NetworkError, httpx.RemoteProtocolError, httpx.ConnectTimeout)
+_WAITING = frozenset({"queued", "running"})
+_FILE_TYPE = "application/octet-stream"
 _LIMITS = httpx.Limits(max_connections=1000, max_keepalive_connections=100)
 _ERROR_BODY_BYTES = 65_536
 _EVENT_BYTES = 1_048_576
@@ -65,6 +80,9 @@ while a service that is up connects in about a second, so a dead one fails fast.
 
 _EXCERPT_CHARS = 300
 """The most characters an error message keeps of a body that is not JSON."""
+
+_POLL_INTERVAL = 2.0
+"""The seconds between the polls of `tasks.wait`."""
 
 
 class InferenceError(RuntimeError):
@@ -82,6 +100,8 @@ class InferenceError(RuntimeError):
             since a tool may have changed data, so do not replay the call blindly.
         request_id: The `X-Moss-Request-Id` of the response, when one arrived.
         retry_after: The seconds an error response asks to wait in `Retry-After`.
+        task_id: The task an error of `tasks.wait` or `tasks.run` concerns,
+            which may still be running, so it can still be read or cancelled.
     """
 
     def __init__(
@@ -93,6 +113,7 @@ class InferenceError(RuntimeError):
         code: str | None = None,
         request_id: str | None = None,
         retry_after: float | None = None,
+        task_id: str | None = None,
     ) -> None:
         super().__init__(message)
         self.message: str = message
@@ -101,6 +122,7 @@ class InferenceError(RuntimeError):
         self.code: str | None = code
         self.request_id: str | None = request_id
         self.retry_after: float | None = retry_after
+        self.task_id: str | None = task_id
 
     def __reduce__(self) -> tuple[Any, ...]:
         """How pickle and copy rebuild the error, with `type` as a keyword."""
@@ -310,6 +332,133 @@ ToolChoiceParam = Literal["none", "auto", "required"] | Mapping[str, Any]
 """A `tool_choice`: `none`, `auto`, `required`, or a dict such as a function to call."""
 
 
+class _Environment(TypedDict):
+    type: Literal["browser"]
+
+
+class TaskEnvironmentParam(_Environment, total=False):
+    """Where a task runs. A browser is the only environment for now.
+    `start_url` is the page it opens first, and `live_view` asks for a `live_url`."""
+
+    start_url: str
+    live_view: bool
+
+
+class TaskLimitsParam(TypedDict, total=False):
+    """The limits of a task, in seconds and US dollars.
+    The gateway sets the ones a request leaves out."""
+
+    max_runtime_seconds: float
+    max_cost_usd: float
+
+
+@dataclass(frozen=True, kw_only=True)
+class TaskResult(Generic[_Output]):
+    """The agent's answer. `output` is the JSON object that `output_schema` asked for."""
+
+    output_text: str = ""
+    output: _Output | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class TaskVerification:
+    """How the answer was checked: `agent_reported` or `output_schema`.
+    `passed` is None when only the agent checked it, and False with `problems`
+    when the answer does not match `output_schema`."""
+
+    method: str = ""
+    passed: bool | None = None
+    problems: list[str] | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class TaskUsage:
+    """What a task used. `raw` holds every field the gateway sent, such as `browser_minutes`."""
+
+    model_calls: int = 0
+    input_tokens: int = 0
+    cached_input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0
+    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class TaskError:
+    """Why a task failed, with a code such as `time_limit` or `budget_exceeded`."""
+
+    code: str = ""
+    message: str = ""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Task(Generic[_Output]):
+    """A browser task. `Task[T]` types `result.output` as T, such as a TypedDict.
+
+    The SDK does not check `result.output`: `verification` says whether it matched
+    `output_schema`. `raw` is the task as it came, for the fields these types leave out.
+
+    Attributes:
+        id: The ID of the task, such as `task_...`.
+        status: `queued`, `running`, `completed`, `failed` or `cancelled`.
+        limits: The limits it runs with, the gateway's own where the request left one out.
+        result: The answer once it ends. A failed or cancelled task can have one too.
+        error: Why it failed, else None.
+        trace_available: Whether `tasks.trace` has the agent's record.
+        live_url: A link to watch the browser while it runs, with `live_view`.
+        cancel_requested: Whether a cancel waits for the running task to stop.
+        created_at: When it was queued, as ISO 8601 text, like `started_at` and `finished_at`.
+        files_expire_at: When the gateway removes the trace and files, 7 days after it ends.
+    """
+
+    id: str = ""
+    object: str = "task"
+    status: str = ""
+    goal: str = ""
+    environment: dict[str, Any] = field(default_factory=dict)
+    output_schema: dict[str, Any] | None = None
+    limits: dict[str, Any] = field(default_factory=dict)
+    model: str | None = None
+    effort: str | None = None
+    metadata: dict[str, Any] | None = None
+    result: TaskResult[_Output] | None = None
+    verification: TaskVerification | None = None
+    usage: TaskUsage | None = None
+    error: TaskError | None = None
+    trace_available: bool = False
+    live_url: str | None = None
+    cancel_requested: bool = False
+    created_at: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    files_expire_at: str | None = None
+    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class TaskFile:
+    """A file of a task, such as a screenshot, with its `path` and size in `bytes`."""
+
+    path: str = ""
+    bytes: int = 0
+
+
+@dataclass(frozen=True, kw_only=True)
+class TaskFileList:
+    """The files of a task."""
+
+    object: str = "list"
+    data: list[TaskFile] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class TaskFileContent:
+    """The bytes of a task's file and its `Content-Type`. The SDK never opens a file."""
+
+    data: bytes = b""
+    content_type: str = _FILE_TYPE
+
+
 class ResponseStream:
     """The events of a streamed response, as an async iterator.
 
@@ -511,6 +660,7 @@ class MossInference:
 
     Bad arguments or a bad URL raise `InferenceError` here, before any request.
     `close()`, or leaving `async with`, closes the connection pool.
+    The `tasks` calls never send `api_key`.
     Limits are in seconds, 0 or less turns one off, and `create` can change both.
 
     Args:
@@ -524,6 +674,7 @@ class MossInference:
 
     Attributes:
         responses: The Responses API, called as `client.responses.create(...)`.
+        tasks: The Tasks API, called as `client.tasks.create(...)`.
     """
 
     def __init__(
@@ -538,7 +689,7 @@ class MossInference:
         default_headers: Mapping[str, str] | None = None,
     ) -> None:
         self._authorization = _authorization(project_id, project_key)
-        self._url = _endpoint(os.environ.get("MOSS_INFERENCE_URL") or _PRODUCTION_URL)
+        self._base = _base_url(os.environ.get("MOSS_INFERENCE_URL") or _PRODUCTION_URL)
         self._api_key = None if api_key is None else _provider_key(api_key)
         self._default_headers = _header_map(default_headers)
         self._timeout = _limit("timeout", timeout, None)
@@ -546,6 +697,7 @@ class MossInference:
         self._max_retries = _retries(max_retries)
         self._state: tuple[asyncio.AbstractEventLoop, httpx.AsyncClient] | None = None
         self.responses: _Responses = _Responses(self)
+        self.tasks: _Tasks = _Tasks(self)
 
     async def close(self) -> None:
         """Close the connection pool. A later call opens a new one.
@@ -573,20 +725,31 @@ class MossInference:
             self._state = state
         return state[1]
 
-    async def _post(
+    async def _send(
         self,
+        method: str,
+        path: str,
         headers: dict[str, str],
         extra_headers: Mapping[str, str] | None,
-        content: bytes,
+        content: bytes | None,
         deadline: float | None,
         idle_timeout: float | None,
         retries: int,
-    ) -> ResponseStream:
-        """Send a call, with `headers` over `extra_headers` over the client's.
-        A failure before the reply starts sends it again, up to `retries` times."""
+        create: bool = False,
+        statuses: frozenset[int] = _RETRY_STATUSES,
+    ) -> httpx.Response:
+        """Send a call to `path` under the base URL, with `headers` over `extra_headers`
+        over the client's, and return its successful response, open on its body.
+        A failure before the reply starts sends it again, up to `retries` times.
+        A `create` carries the `Idempotency-Key` of `extra_headers`, else a new one,
+        and the same on every attempt. A key among the client's headers is not used.
+        """
         merged = self._default_headers.copy()
         merged.update(_header_map(extra_headers))
         merged.update({**headers, "Authorization": self._authorization})
+        if create:
+            key = _header_map(extra_headers).get("idempotency-key")
+            merged["Idempotency-Key"] = key or str(uuid.uuid4())
         http = self._pool()
         connect = _CONNECT_TIMEOUT
         if idle_timeout is not None:
@@ -594,8 +757,9 @@ class MossInference:
         timeout = httpx.Timeout(
             None, connect=connect, read=idle_timeout, pool=idle_timeout
         )
+        url = self._base + path
         request = http.build_request(
-            "POST", self._url, headers=merged, content=content, timeout=timeout
+            method, url, headers=merged, content=content, timeout=timeout
         )
         for attempt in range(retries + 1):
             try:
@@ -604,12 +768,12 @@ class MossInference:
                 raise _invalid("The headers are not valid HTTP") from None
             except (httpx.RequestError, asyncio.TimeoutError) as error:
                 again = isinstance(error, _RETRY_ERRORS)
-                if again and await _retry(attempt, retries, deadline, None):
+                if again and await _retry(attempt, retries, deadline, None, statuses):
                     continue
                 raise _transport_error(error) from error
             if response.is_success:
-                return ResponseStream(response, deadline)
-            if await _retry(attempt, retries, deadline, response):
+                return response
+            if await _retry(attempt, retries, deadline, response, statuses):
                 continue
             break
         try:
@@ -621,6 +785,49 @@ class MossInference:
         finally:
             await response.aclose()
         raise _status_error(response, body)
+
+    async def _task(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: dict[str, Any] | None = None,
+        accept: str = "application/json",
+        timeout: float | None,
+        idle_timeout: float | None,
+        max_retries: int | None,
+        extra_headers: Mapping[str, str] | None,
+    ) -> httpx.Response:
+        """Make a Tasks API call and return its response, read to its end.
+        Only a create has a `body`."""
+        timeout = _limit("timeout", timeout, self._timeout)
+        idle_timeout = _limit("idle_timeout", idle_timeout, self._idle_timeout)
+        retries = self._max_retries if max_retries is None else _retries(max_retries)
+        headers = {"Accept": accept}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        content = None if body is None else _json(body).encode()
+        loop = asyncio.get_running_loop()
+        deadline = None if timeout is None else loop.time() + timeout
+        response = await self._send(
+            method,
+            path,
+            headers,
+            extra_headers,
+            content,
+            deadline,
+            idle_timeout,
+            retries,
+            create=body is not None,
+            statuses=_TASK_RETRY_STATUSES,
+        )
+        try:
+            await _within(deadline, response.aread())
+        except (httpx.RequestError, asyncio.TimeoutError) as error:
+            raise _transport_error(error, response) from error
+        finally:
+            await response.aclose()
+        return response
 
 
 class _Responses:
@@ -774,26 +981,349 @@ class _Responses:
             **(extra_body or {}),
             "stream": True,
         }
-        try:
-            text = json.dumps(
-                body, separators=(",", ":"), allow_nan=False, default=_plain
-            )
-        except (TypeError, ValueError) as error:
-            raise _invalid(f"The request body is not valid JSON: {error}") from None
+        content = _json(body).encode()
         loop = asyncio.get_running_loop()
         deadline = None if timeout is None else loop.time() + timeout
-        reply = await client._post(
-            headers, extra_headers, text.encode(), deadline, idle_timeout, retries
+        response = await client._send(
+            "POST",
+            "/responses",
+            headers,
+            extra_headers,
+            content,
+            deadline,
+            idle_timeout,
+            retries,
         )
+        reply = ResponseStream(response, deadline)
         if stream:
             return reply
         return await reply.get_final_response()
+
+
+class _Tasks:
+    """Browser tasks that an agent runs on Moss, within time and dollar limits.
+
+    `create` queues one, `wait` polls it until it ends, and `retrieve`, `cancel`,
+    `trace` and `files` read or stop it. A failed call raises `InferenceError`.
+    None as `timeout`, `idle_timeout` or `max_retries` keeps the client's value,
+    and a timeout of 0 or less turns it off for that call only.
+    """
+
+    def __init__(self, client: MossInference | None) -> None:
+        self._client = client
+        self.files: _TaskFiles = _TaskFiles(client)
+
+    async def create(
+        self,
+        *,
+        goal: str,
+        environment: TaskEnvironmentParam,
+        output_schema: Mapping[str, Any] | None = None,
+        limits: TaskLimitsParam | None = None,
+        model: str | None = None,
+        effort: Literal["low", "medium", "high"] | None = None,
+        metadata: Mapping[str, Any] | None = None,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+        extra_body: Mapping[str, Any] | None = None,
+    ) -> Task[Any]:
+        """Queue a task, which comes back `queued`.
+
+        Only the arguments you give are sent, so the gateway picks the model and
+        the limits you leave out, and it refuses a field it does not know.
+        Each call sends a new `Idempotency-Key`, or the one in its `extra_headers`,
+        and the same one on every retry. The gateway answers a repeated key with the same
+        body, within 24 hours, with the task it created, so a retried create never starts
+        a second task. To retry a create yourself, pass your own key.
+
+        Args:
+            goal: What the agent should do, in plain words.
+            environment: Where it runs, `{"type": "browser"}` with an optional
+                `start_url` and `live_view`.
+            output_schema: A JSON Schema for `result.output`, checked by the gateway.
+            limits: `max_runtime_seconds` and `max_cost_usd`.
+            model: A model name of the Moss catalog.
+            effort: `low`, `medium` or `high`.
+            metadata: Your own data, sent back with the task.
+            timeout: The seconds the call can last.
+            idle_timeout: The seconds each wait for data or a free connection can last.
+            max_retries: The retries of this call, in place of the client's.
+            extra_headers: Headers over `default_headers`, under the SDK's own.
+            extra_body: More body fields, over the ones above.
+
+        Returns:
+            The new task, `queued`.
+        """
+        given: dict[str, Any] = {"goal": goal, "environment": environment}
+        given.update(output_schema=output_schema, limits=limits, model=model)
+        given.update(effort=effort, metadata=metadata)
+        body = {name: value for name, value in given.items() if value is not None}
+        body.update(extra_body or {})
+        client = self._client or _from_env()
+        reply = await client._task(
+            "POST",
+            "/tasks",
+            body=body,
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+        return _parse_task(_reply_object(reply))
+
+    async def retrieve(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> Task[Any]:
+        """The task with `task_id`."""
+        client = self._client or _from_env()
+        reply = await client._task(
+            "GET",
+            _task_path(task_id),
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+        return _parse_task(_reply_object(reply))
+
+    async def cancel(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> Task[Any]:
+        """Stop a task. A queued one comes back `cancelled`.
+        A running one comes back with `cancel_requested` and ends `cancelled` soon after.
+        """
+        client = self._client or _from_env()
+        reply = await client._task(
+            "POST",
+            _task_path(task_id) + "/cancel",
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+        return _parse_task(_reply_object(reply))
+
+    async def wait(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        poll_interval: float = _POLL_INTERVAL,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> Task[Any]:
+        """Poll a task every `poll_interval` seconds until it is neither `queued`
+        nor `running`, and return it. A `failed` task returns too, so read its
+        `status` and `error`. Each poll is a `retrieve` with the client's timeout.
+
+        Args:
+            task_id: The ID of the task.
+            timeout: The seconds the whole wait can last, no limit when None or 0.
+                Past it, `InferenceError` with type `timeout` is raised, and the task goes on.
+            poll_interval: The seconds between polls.
+            idle_timeout: The seconds each wait for data or a free connection can last.
+            max_retries: The retries of each poll, in place of the client's.
+            extra_headers: Headers over `default_headers`, under the SDK's own.
+
+        Returns:
+            The task, `completed`, `failed` or `cancelled`.
+        """
+        limit = _limit("timeout", timeout, None)
+        interval = _interval(poll_interval)
+        return await self._poll(
+            task_id, limit, interval, idle_timeout, max_retries, extra_headers
+        )
+
+    async def run(
+        self,
+        *,
+        goal: str,
+        environment: TaskEnvironmentParam,
+        output_schema: Mapping[str, Any] | None = None,
+        limits: TaskLimitsParam | None = None,
+        model: str | None = None,
+        effort: Literal["low", "medium", "high"] | None = None,
+        metadata: Mapping[str, Any] | None = None,
+        timeout: float | None = None,
+        poll_interval: float = _POLL_INTERVAL,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+        extra_body: Mapping[str, Any] | None = None,
+    ) -> Task[Any]:
+        """Create a task and wait for it, as `create` and then `wait` do.
+
+        `timeout` and `poll_interval` belong to the wait, and the other arguments
+        to `create`, except that the create keeps the client's timeout.
+        Both are checked before the create, so a bad one sends nothing.
+
+        Returns:
+            The task, `completed`, `failed` or `cancelled`.
+        """
+        limit = _limit("timeout", timeout, None)
+        interval = _interval(poll_interval)
+        task = await self.create(
+            goal=goal,
+            environment=environment,
+            output_schema=output_schema,
+            limits=limits,
+            model=model,
+            effort=effort,
+            metadata=metadata,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+            extra_body=extra_body,
+        )
+        return await self._poll(
+            task.id, limit, interval, idle_timeout, max_retries, extra_headers
+        )
+
+    async def _poll(
+        self,
+        task_id: str,
+        limit: float | None,
+        interval: float,
+        idle_timeout: float | None,
+        max_retries: int | None,
+        extra_headers: Mapping[str, str] | None,
+    ) -> Task[Any]:
+        """Retrieve a task every `interval` seconds until it ends, within `limit`.
+        Each retrieve gets the time left, or the client's timeout when shorter."""
+        own = (self._client or _from_env())._timeout
+        loop = asyncio.get_running_loop()
+        deadline = math.inf if limit is None else loop.time() + limit
+        status = "unfinished"
+        while True:
+            left = deadline - loop.time()
+            bound = own if limit is None else max(min(left, own or math.inf), 0.001)
+            try:
+                task = await self.retrieve(
+                    task_id,
+                    timeout=bound,
+                    idle_timeout=idle_timeout,
+                    max_retries=max_retries,
+                    extra_headers=extra_headers,
+                )
+            except InferenceError as error:
+                if error.type == "timeout" and loop.time() >= deadline:
+                    raise _late(task_id, status, limit) from error
+                error.task_id = error.task_id or task_id
+                raise
+            if task.status not in _WAITING:
+                return task
+            status = task.status
+            left = deadline - loop.time()
+            if left <= 0:
+                raise _late(task_id, status, limit)
+            await asyncio.sleep(min(interval, left))
+
+    async def trace(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> Any:
+        """The agent's step-by-step record, the JSON the gateway sent.
+        It raises `InferenceError` with `not_found_error` until `trace_available` is True,
+        and with `files_expired` after `files_expire_at`, 7 days after the task ends.
+        """
+        client = self._client or _from_env()
+        reply = await client._task(
+            "GET",
+            _task_path(task_id) + "/trace",
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+        return _reply_json(reply)
+
+
+class _TaskFiles:
+    """The screenshots and output files of a task."""
+
+    def __init__(self, client: MossInference | None) -> None:
+        self._client = client
+
+    async def list(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> TaskFileList:
+        """The files of a task once it ends, each with the `path` that `content` takes.
+        Before, it raises `task_not_finished`, and after `files_expire_at` `files_expired`.
+        """
+        client = self._client or _from_env()
+        reply = await client._task(
+            "GET",
+            _task_path(task_id) + "/files",
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+        data = _reply_object(reply)
+        items = [item for item in _list(data.get("data")) if isinstance(item, dict)]
+        return TaskFileList(
+            **_known(data, "object"), data=[_typed(TaskFile, item) for item in items]
+        )
+
+    async def content(
+        self,
+        task_id: str,
+        path: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> TaskFileContent:
+        """The bytes and the type of one file, by a `path` that `list` gave,
+        such as `screenshots/step-1.png`. The SDK never opens or renders it."""
+        client = self._client or _from_env()
+        reply = await client._task(
+            "GET",
+            f"{_task_path(task_id)}/files/{_file_path(path)}",
+            accept="*/*",
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+        kind = reply.headers.get("content-type") or _FILE_TYPE
+        return TaskFileContent(data=reply.content, content_type=kind)
 
 
 responses: _Responses = _Responses(None)
 """`responses.create` on a client built from the environment,
 with the credentials of `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY`
 and the base URL in `MOSS_INFERENCE_URL`, when it is set."""
+
+tasks: _Tasks = _Tasks(None)
+"""`tasks` on a client built from the environment, as `responses` is."""
 
 _default: tuple[tuple[str, ...], MossInference] | None = None
 """The client of `responses`, with the environment it came from."""
@@ -810,6 +1340,300 @@ def _from_env() -> MossInference:
             )
         _default = env, MossInference(env[0], env[1])
     return _default[1]
+
+
+class MossInferenceSync:
+    """A client of the Tasks API whose calls block, for code with no event loop.
+
+    It takes the arguments of `MossInference` but `api_key`, and its `tasks`
+    has the calls of `MossInference.tasks`, which return their result here.
+    They run on an event loop in a thread of its own, which the first call starts.
+    `close()`, or leaving `with`, cancels the calls under way and stops it.
+    One left open ends with the interpreter. A fork keeps no threads, so in a forked
+    child the first call starts a new thread and connection pool.
+
+    Attributes:
+        tasks: The Tasks API, called as `client.tasks.create(...)`.
+    """
+
+    def __init__(
+        self,
+        project_id: str,
+        project_key: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int = 2,
+        default_headers: Mapping[str, str] | None = None,
+    ) -> None:
+        self._client = MossInference(
+            project_id,
+            project_key,
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            default_headers=default_headers,
+        )
+        self._lock = threading.Lock()
+        self._loop: tuple[asyncio.AbstractEventLoop, threading.Thread] | None = None
+        self.tasks: _SyncTasks = _SyncTasks(self)
+
+    def close(self) -> None:
+        """Cancel the calls under way, which then raise `CancelledError`,
+        close the connection pool and stop the thread. A later call starts both again.
+        """
+        with self._lock:
+            running, self._loop = self._loop, None
+        if running is None or not running[1].is_alive():
+            return
+        loop, thread = running
+        try:
+            asyncio.run_coroutine_threadsafe(self._shutdown(), loop).result()
+        finally:
+            loop.call_soon_threadsafe(loop.stop)
+            thread.join()
+            loop.close()
+
+    def __enter__(self) -> "MossInferenceSync":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
+
+    async def _shutdown(self) -> None:
+        """Cancel the calls under way, then close the connection pool."""
+        current = asyncio.current_task()
+        others = [task for task in asyncio.all_tasks() if task is not current]
+        for task in others:
+            task.cancel()
+        await asyncio.gather(*others, return_exceptions=True)
+        await self._client.close()
+
+    def _run(
+        self, call: Callable[..., Coroutine[Any, Any, _T]], /, **arguments: Any
+    ) -> _T:
+        """Run `call(**arguments)` on the event loop of a daemon thread, which never
+        holds up the interpreter's exit, and wait for its result.
+        An interrupt here, such as Ctrl-C, cancels the call there."""
+        with self._lock:
+            if self._loop is None or not self._loop[1].is_alive():
+                loop = asyncio.new_event_loop()
+                thread = threading.Thread(
+                    target=loop.run_forever, name="MossInferenceSync", daemon=True
+                )
+                thread.start()
+                self._loop = loop, thread
+            future = asyncio.run_coroutine_threadsafe(call(**arguments), self._loop[0])
+        try:
+            return future.result()
+        except BaseException:
+            future.cancel()
+            raise
+
+
+class _SyncTasks:
+    """The `tasks` of `MossInferenceSync`: the calls of `MossInference.tasks`, which block."""
+
+    def __init__(self, client: MossInferenceSync) -> None:
+        self._sync = client
+        self._tasks = client._client.tasks
+        self.files: _SyncTaskFiles = _SyncTaskFiles(client)
+
+    def create(
+        self,
+        *,
+        goal: str,
+        environment: TaskEnvironmentParam,
+        output_schema: Mapping[str, Any] | None = None,
+        limits: TaskLimitsParam | None = None,
+        model: str | None = None,
+        effort: Literal["low", "medium", "high"] | None = None,
+        metadata: Mapping[str, Any] | None = None,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+        extra_body: Mapping[str, Any] | None = None,
+    ) -> Task[Any]:
+        """Queue a task, which comes back `queued`, as `MossInference.tasks.create` does."""
+        return self._sync._run(
+            self._tasks.create,
+            goal=goal,
+            environment=environment,
+            output_schema=output_schema,
+            limits=limits,
+            model=model,
+            effort=effort,
+            metadata=metadata,
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+            extra_body=extra_body,
+        )
+
+    def retrieve(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> Task[Any]:
+        """The task with `task_id`."""
+        return self._sync._run(
+            self._tasks.retrieve,
+            task_id=task_id,
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+
+    def cancel(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> Task[Any]:
+        """Stop a task, as `MossInference.tasks.cancel` does."""
+        return self._sync._run(
+            self._tasks.cancel,
+            task_id=task_id,
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+
+    def run(
+        self,
+        *,
+        goal: str,
+        environment: TaskEnvironmentParam,
+        output_schema: Mapping[str, Any] | None = None,
+        limits: TaskLimitsParam | None = None,
+        model: str | None = None,
+        effort: Literal["low", "medium", "high"] | None = None,
+        metadata: Mapping[str, Any] | None = None,
+        timeout: float | None = None,
+        poll_interval: float = _POLL_INTERVAL,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+        extra_body: Mapping[str, Any] | None = None,
+    ) -> Task[Any]:
+        """Create a task and wait for it, as `MossInference.tasks.run` does."""
+        return self._sync._run(
+            self._tasks.run,
+            goal=goal,
+            environment=environment,
+            output_schema=output_schema,
+            limits=limits,
+            model=model,
+            effort=effort,
+            metadata=metadata,
+            timeout=timeout,
+            poll_interval=poll_interval,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+            extra_body=extra_body,
+        )
+
+    def wait(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        poll_interval: float = _POLL_INTERVAL,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> Task[Any]:
+        """Poll a task until it ends, as `MossInference.tasks.wait` does."""
+        return self._sync._run(
+            self._tasks.wait,
+            task_id=task_id,
+            timeout=timeout,
+            poll_interval=poll_interval,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+
+    def trace(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> Any:
+        """The agent's step-by-step record, as `MossInference.tasks.trace` gives it."""
+        return self._sync._run(
+            self._tasks.trace,
+            task_id=task_id,
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+
+
+class _SyncTaskFiles:
+    """The `tasks.files` of `MossInferenceSync`, whose calls block."""
+
+    def __init__(self, client: MossInferenceSync) -> None:
+        self._sync = client
+        self._tasks = client._client.tasks.files
+
+    def list(
+        self,
+        task_id: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> TaskFileList:
+        """The files of a task once it ends, each with the `path` that `content` takes.
+        Before, it raises `task_not_finished`, and after `files_expire_at` `files_expired`.
+        """
+        return self._sync._run(
+            self._tasks.list,
+            task_id=task_id,
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
+
+    def content(
+        self,
+        task_id: str,
+        path: str,
+        *,
+        timeout: float | None = None,
+        idle_timeout: float | None = None,
+        max_retries: int | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+    ) -> TaskFileContent:
+        """The bytes and the type of one file, by a `path` that `list` gave."""
+        return self._sync._run(
+            self._tasks.content,
+            task_id=task_id,
+            path=path,
+            timeout=timeout,
+            idle_timeout=idle_timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
+        )
 
 
 def _invalid(message: str) -> InferenceError:
@@ -830,10 +1654,10 @@ def _authorization(project_id: str, project_key: str) -> str:
     return f"Bearer {project_id}:{project_key}"
 
 
-def _endpoint(base: str) -> str:
-    """The Responses URL under `base`, an http or https URL with a host.
+def _base_url(base: str) -> str:
+    """`base` without its trailing slash, when it is an http or https URL with a host.
     The error leaves `base` out, since a URL can hold a secret."""
-    url = base.removesuffix("/") + "/responses"
+    url = base.removesuffix("/")
     try:
         parts = urlsplit(base)
         valid = (
@@ -950,12 +1774,17 @@ def _retries(value: int) -> int:
 
 
 async def _retry(
-    attempt: int, retries: int, deadline: float | None, response: httpx.Response | None
+    attempt: int,
+    retries: int,
+    deadline: float | None,
+    response: httpx.Response | None,
+    statuses: frozenset[int] = _RETRY_STATUSES,
 ) -> bool:
     """Whether a call that failed before its reply goes again, after a wait.
 
     `response` is None for a connection failure, else it is closed to go again.
-    `x-should-retry` decides when it is `true` or `false`, and else its status.
+    `x-should-retry` decides when it is `true` or `false`, and else its status:
+    one of `statuses` or a 5xx.
     The wait is a `Retry-After` of at most 60 s, else 0.5 s doubled for each attempt,
     at most 8 s and up to a quarter less at random. A wait past `deadline` gives False.
     """
@@ -964,8 +1793,8 @@ async def _retry(
     after = None
     if response is not None:
         status = response.status_code
-        again = status in _RETRY_STATUSES or status >= 500
         should = response.headers.get("x-should-retry", "")
+        again = status in statuses or status >= 500
         if not {"true": True, "false": False}.get(should, again):
             return False
         after = _seconds(response.headers.get("retry-after", ""))
@@ -1178,13 +2007,94 @@ def _known(data: Any, *names: str) -> dict[str, Any]:
     return {k: v for k, v in _dict(data).items() if k in names and v is not None}
 
 
+def _json(body: dict[str, Any]) -> str:
+    """`body` as JSON text, or `invalid_request_error` when it has no JSON form."""
+    try:
+        return json.dumps(body, separators=(",", ":"), allow_nan=False, default=_plain)
+    except (TypeError, ValueError) as error:
+        raise _invalid(f"The request body is not valid JSON: {error}") from None
+
+
+def _task_path(task_id: str) -> str:
+    """The URL path of a task, after its ID is checked and encoded."""
+    if not isinstance(task_id, str) or task_id in ("", ".", ".."):
+        raise _invalid("task_id must be the ID of a task, such as task_...")
+    return "/tasks/" + quote(task_id, safe="")
+
+
+def _file_path(path: str) -> str:
+    """The URL path of a task's file, each part encoded.
+    An empty, `.` or `..` part is an error, since it would change the URL."""
+    parts = path.split("/") if isinstance(path, str) else [""]
+    if any(part in ("", ".", "..") for part in parts):
+        raise _invalid(
+            "path must be a path that files.list gave, such as screenshots/step-1.png"
+        )
+    return "/".join(quote(part, safe="") for part in parts)
+
+
+def _late(task_id: str, status: str, limit: float | None) -> InferenceError:
+    """The error of a wait that ran out of time, which leaves the task running."""
+    return InferenceError(
+        f"Task {task_id} is still {status} after {limit:g} s. "
+        "It goes on: wait again or cancel it.",
+        type="timeout",
+        task_id=task_id,
+    )
+
+
+def _interval(value: float) -> float:
+    """`value`, when it is a positive number of seconds."""
+    number = isinstance(value, (int, float)) and not isinstance(value, bool)
+    if not number or not 0 < value < math.inf:
+        raise _invalid("poll_interval must be a positive number of seconds")
+    return float(value)
+
+
+def _reply_json(response: httpx.Response) -> Any:
+    """The JSON of a Tasks API reply."""
+    try:
+        return json.loads(response.content)
+    except ValueError:
+        message = "The gateway sent a reply that is not JSON"
+        raise _response_error(response, message, "server_error") from None
+
+
+def _reply_object(response: httpx.Response) -> dict[str, Any]:
+    """The JSON object of a Tasks API reply."""
+    value = _reply_json(response)
+    if not isinstance(value, dict):
+        message = "The gateway sent a reply that is not a JSON object"
+        raise _response_error(response, message, "server_error")
+    return value
+
+
+_TASK_PARTS = frozenset({"result", "verification", "usage", "error", "raw"})
+
+
+def _parse_task(data: dict[str, Any]) -> Task[Any]:
+    """A task from its decoded object."""
+    names = [item.name for item in fields(Task) if item.name not in _TASK_PARTS]
+    usage = data.get("usage")
+    return Task(
+        **_known(data, *names),
+        result=_typed(TaskResult, data.get("result")),
+        verification=_typed(TaskVerification, data.get("verification")),
+        usage=_typed(TaskUsage, usage, raw=_dict(usage)),
+        error=_typed(TaskError, data.get("error")),
+        raw=data,
+    )
+
+
 def _plain(value: Any) -> Any:
     """JSON for this module's types: `raw` when it is set,
-    else every field that is not None, except `raw` itself."""
+    else every field that is not None, except `raw` itself. A mapping is a dict."""
     if is_dataclass(value) and not isinstance(value, type):
         if raw := getattr(value, "raw", None):
             return raw
         names = (f.name for f in fields(value) if f.name != "raw")
         pairs = ((name, getattr(value, name)) for name in names)
         return {k: v for k, v in pairs if v is not None}
+    if isinstance(value, Mapping):
+        return dict(value)
     raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")

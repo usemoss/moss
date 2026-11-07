@@ -25,28 +25,41 @@ export function idleTimer(ms: number | null, onIdle: () => void): IdleTimer {
 }
 
 /**
- * Reads an error body, arming `idle` while each read waits.
- * It stops after {@link MAX_ERROR_BODY} bytes and cancels the rest of the body.
+ * Reads a body, arming `idle` while each read waits.
+ * It stops once `max` bytes are in and cancels the rest of the body.
  */
-export async function errorText(response: Response, idle: IdleTimer): Promise<string> {
-  if (!response.body) return "";
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let text = "";
+export async function readBody(
+  response: Response,
+  idle: IdleTimer,
+  max = Infinity,
+): Promise<Uint8Array> {
+  const parts: Uint8Array[] = [];
   let size = 0;
+  const reader = response.body?.getReader();
   try {
-    while (size < MAX_ERROR_BODY) {
+    while (reader && size < max) {
       idle.arm();
       const { value, done } = await reader.read();
       idle.clear();
       if (done) break;
+      parts.push(value);
       size += value.byteLength;
-      text += decoder.decode(value, { stream: true });
     }
-    return text + decoder.decode();
   } finally {
-    reader.cancel().catch(() => {});
+    reader?.cancel().catch(() => {});
   }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const part of parts) {
+    body.set(part, offset);
+    offset += part.byteLength;
+  }
+  return body;
+}
+
+/** Reads an error body, up to {@link MAX_ERROR_BODY} bytes, as text. */
+export async function errorText(response: Response, idle: IdleTimer): Promise<string> {
+  return new TextDecoder().decode(await readBody(response, idle, MAX_ERROR_BODY));
 }
 
 /** True for the reason of a plain `abort()`, which ends a stream quietly. */
