@@ -84,7 +84,10 @@ export interface ResponseCreateParamsBase {
   temperature?: number | null;
   top_p?: number | null;
   /** Such as `{ format: { type: "json_schema", name, schema } }` for structured output. */
-  text?: { format?: { type: string; [key: string]: any }; [key: string]: any } | null;
+  text?: {
+    format?: { type: string; [key: string]: any };
+    [key: string]: any;
+  } | null;
   /** Such as `{ effort: "low" }`. */
   reasoning?: { effort?: string | null; [key: string]: any } | null;
   metadata?: Record<string, string> | null;
@@ -114,6 +117,7 @@ export interface MossInferenceOptions {
   /**
    * Your own OpenAI, Anthropic or Google key, for a vendor model such as `gpt-4o-mini`.
    * `moss` ignores it, and a vendor model without one is refused. A call's `apiKey` wins.
+   * Used by `responses` only: tasks never send it.
    */
   apiKey?: string;
   /** The limit for each whole call, streaming included. None by default. */
@@ -250,7 +254,9 @@ export interface Response {
   output_text: string;
   usage: ResponseUsage | null;
   error: { code: string; message: string; [key: string]: any } | null;
-  incomplete_details: { reason: "max_output_tokens" | "content_filter" | (string & {}) } | null;
+  incomplete_details: {
+    reason: "max_output_tokens" | "content_filter" | (string & {});
+  } | null;
   instructions: string | null;
   metadata: Record<string, string> | null;
   /** The `X-Moss-Request-Id` of the HTTP response. */
@@ -413,8 +419,17 @@ export interface TaskFileContent {
   contentType: string;
 }
 
-/** Per-call settings of the Tasks API, which sends no provider key. */
+/** Per-call settings of a Tasks API call that is not a create, which sends no provider key. */
 export type TaskRequestOptions = Omit<InferenceRequestOptions, "apiKey">;
+
+/** Settings of `tasks.create`. Only its own `apiKey` goes as `X-Moss-Provider-Key`. */
+export interface TaskCreateOptions extends TaskRequestOptions {
+  /**
+   * The provider key for the task's model calls. The client's `apiKey` is never used for tasks.
+   * An empty string is an error.
+   */
+  apiKey?: string;
+}
 
 /**
  * Settings of `tasks.wait` and `tasks.run`. Every request takes the others,
@@ -425,4 +440,13 @@ export interface TaskWaitOptions extends Omit<TaskRequestOptions, "timeout"> {
   timeout?: number | null;
   /** The pause between polls in milliseconds, 2000 by default. */
   pollInterval?: number;
+}
+
+/** Settings of `tasks.run`: those of `wait`, and the `apiKey` of the create. */
+export interface TaskRunOptions extends TaskWaitOptions {
+  /**
+   * The provider key for the task's model calls. The client's `apiKey` is never used for tasks.
+   * An empty string is an error.
+   */
+  apiKey?: string;
 }

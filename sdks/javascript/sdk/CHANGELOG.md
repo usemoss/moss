@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-11-10
+
+### Changed
+
+- `tasks.create` and `tasks.run` send the `apiKey` of their options (`TaskCreateOptions`, `TaskRunOptions`) as `X-Moss-Provider-Key`, for the task's model calls. They never send the client's `apiKey`, which is for `responses`, so without a key in the call no provider key is sent; an empty one rejects with `invalid_request_error` before any request. The other task calls never send it.
+
 ## [1.23.0] - 2026-11-07
 
 ### Added

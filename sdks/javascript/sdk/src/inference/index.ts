@@ -15,10 +15,12 @@ import type {
   ResponseCreateParamsNonStreaming,
   ResponseCreateParamsStreaming,
   Task,
+  TaskCreateOptions,
   TaskCreateParams,
   TaskFileContent,
   TaskFileList,
   TaskRequestOptions,
+  TaskRunOptions,
   TaskWaitOptions,
 } from "./types";
 
@@ -108,7 +110,10 @@ function baseURL(): string {
 
 /** Throws when `options` names a gateway URL, which only `MOSS_INFERENCE_URL` sets. */
 function refuseURL(options: object): void {
-  const { baseURL, baseUrl } = options as { baseURL?: unknown; baseUrl?: unknown };
+  const { baseURL, baseUrl } = options as {
+    baseURL?: unknown;
+    baseUrl?: unknown;
+  };
   if (baseURL !== undefined || baseUrl !== undefined)
     throw invalid("Set the gateway URL in MOSS_INFERENCE_URL. There is no baseURL option.");
 }
@@ -227,10 +232,12 @@ export interface Tasks {
    * Each call sends a new `Idempotency-Key`, or the one in its own `headers`, and the same on every
    * retry. The gateway answers a repeated key with the same body, within 24 hours, with the task
    * it created, so a retried create never starts a second task. To retry one yourself, pass a key.
+   * Only the call's own `apiKey` goes as `X-Moss-Provider-Key`, for the task's model calls; see
+   * the pricing docs. The client's `apiKey` is never used, and no other task call sends a key.
    */
   create<Output = unknown>(
     params: TaskCreateParams,
-    options?: TaskRequestOptions,
+    options?: TaskCreateOptions,
   ): Promise<Task<Output>>;
   /** Fetches a task by its id. */
   retrieve<Output = unknown>(taskId: string, options?: TaskRequestOptions): Promise<Task<Output>>;
@@ -248,10 +255,11 @@ export interface Tasks {
   wait<Output = unknown>(taskId: string, options?: TaskWaitOptions): Promise<Task<Output>>;
   /**
    * Creates a task and waits for it, as `create` and then `wait` do.
-   * `timeout` and `pollInterval` apply to the wait, and the other options to every request.
+   * `timeout` and `pollInterval` apply to the wait, `apiKey` to the create, and the other options
+   * to every request.
    * An error after the create carries the new task's `taskId`, so it can still be read or cancelled.
    */
-  run<Output = unknown>(params: TaskCreateParams, options?: TaskWaitOptions): Promise<Task<Output>>;
+  run<Output = unknown>(params: TaskCreateParams, options?: TaskRunOptions): Promise<Task<Output>>;
   /**
    * The agent's step-by-step record, as the gateway sent it.
    * It rejects with `not_found_error` until `trace_available` is true,
@@ -340,14 +348,12 @@ function waiting(options: TaskWaitOptions) {
 }
 
 /** The `tasks` namespace over `send`, which makes one Tasks API request. */
-function tasksOf(
-  send: (call: TaskCall, options?: TaskRequestOptions) => Promise<TaskReply>,
-): Tasks {
-  const task = async <Output>(call: TaskCall, options?: TaskRequestOptions) =>
+function tasksOf(send: (call: TaskCall, options?: TaskCreateOptions) => Promise<TaskReply>): Tasks {
+  const task = async <Output>(call: TaskCall, options?: TaskCreateOptions) =>
     decode(await send(call, options)) as Task<Output>;
   const retrieve = async <Output>(taskId: string, options?: TaskRequestOptions) =>
     task<Output>({ method: "GET", path: taskPath(taskId) }, options);
-  const create = async <Output>(params: TaskCreateParams, options?: TaskRequestOptions) =>
+  const create = async <Output>(params: TaskCreateParams, options?: TaskCreateOptions) =>
     task<Output>({ method: "POST", path: "/tasks", body: params }, options);
   const poll = async <Output>(taskId: string, settings: ReturnType<typeof waiting>) => {
     const { limit, pollInterval, call } = settings;
@@ -381,9 +387,9 @@ function tasksOf(
       task<Output>({ method: "POST", path: `${taskPath(taskId)}/cancel` }, options),
     wait: async <Output>(taskId: string, options: TaskWaitOptions = {}) =>
       poll<Output>(taskId, waiting(options)),
-    run: async <Output>(params: TaskCreateParams, options: TaskWaitOptions = {}) => {
+    run: async <Output>(params: TaskCreateParams, { apiKey, ...options }: TaskRunOptions = {}) => {
       const settings = waiting(options);
-      const { id } = await create(params, settings.call);
+      const { id } = await create(params, { ...settings.call, apiKey });
       return poll<Output>(id, settings);
     },
     trace: async (taskId: string, options?: TaskRequestOptions) =>
@@ -427,7 +433,7 @@ export class MossInference {
   readonly #timeout: number | null;
   readonly #idleTimeout: number | null;
   readonly #maxRetries: number;
-  /** The provider key for calls that do not pass their own. */
+  /** The provider key for `responses` calls that do not pass their own. Tasks never use it. */
   readonly #apiKey: string | undefined;
 
   constructor(projectId: string, projectKey: string, options: MossInferenceOptions = {}) {
@@ -471,18 +477,27 @@ export class MossInference {
     return headers;
   }
 
-  async #task(call: TaskCall, options: TaskRequestOptions = {}): Promise<TaskReply> {
+  async #task(call: TaskCall, options: TaskCreateOptions = {}): Promise<TaskReply> {
     refuseURL(options);
     const settings = this.#settings(options);
     if (call.within !== undefined)
       settings.timeout = Math.max(Math.min(settings.timeout ?? MAX_DELAY, call.within), 1);
-    const own: Record<string, string> = { Accept: call.accept ?? "application/json" };
+    const own: Record<string, string> = {
+      Accept: call.accept ?? "application/json",
+    };
     if (call.body) {
+      if ("apiKey" in call.body || "api_key" in call.body)
+        throw invalid("Pass the provider key as apiKey in the options of create, not in params.");
       own["Content-Type"] = "application/json";
       own["Idempotency-Key"] = headersOf(options.headers).get("Idempotency-Key") ?? randomUUID();
+      if (options.apiKey != null) own["X-Moss-Provider-Key"] = credential("apiKey", options.apiKey);
     }
     const headers = this.#merge(options.headers, own);
-    const init = { method: call.method, headers, body: call.body && json(call.body) };
+    const init = {
+      method: call.method,
+      headers,
+      body: call.body && json(call.body),
+    };
     const { response, controller, idle, settle, fields } = await this.#send(
       this.#base + call.path,
       init,
@@ -577,7 +592,11 @@ export class MossInference {
       let wait = Math.min(500 * 2 ** attempt, 8000) * (1 - Math.random() / 4);
       try {
         idle.arm();
-        response = await fetch(url, { ...init, signal: controller.signal, redirect: "manual" });
+        response = await fetch(url, {
+          ...init,
+          signal: controller.signal,
+          redirect: "manual",
+        });
         idle.clear();
         fields = responseFields(response);
         const after = fields.retryAfter ?? Infinity;

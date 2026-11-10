@@ -508,7 +508,9 @@ end
 ```
 
 Each call takes `:timeout`, `:idle_timeout` and `:max_retries` over the client's, though the
-`:timeout` of `run/3` and `wait/3` is the wait's, and no call sends the client's `:api_key`.
+`:timeout` of `run/3` and `wait/3` is the wait's. `create/3` and `run/3` send only the
+call's own `:api_key` option as `X-Moss-Provider-Key`, for the task's model calls; see the pricing
+docs. Tasks never use the client's `:api_key`, and the other calls never send a key.
 Every call retries as `Responses.create/3` does, but never after a 409. Each create sends an `Idempotency-Key`, a new
 one per call or its `:idempotency_key` option, and the same one on every retry. The gateway
 answers a repeated key with the same body, within 24 hours, with the task it created, so a
