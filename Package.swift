@@ -10,8 +10,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "MossC",
-            url: "https://github.com/usemoss/moss/releases/download/v0.14.0/Moss.xcframework.zip",
-            checksum: "a0b5cdfe735d2c24539de64f768af82b8dbeb790065f3f23227bf0ed03e81990"
+            url: "https://github.com/usemoss/moss/releases/download/v0.15.0/Moss.xcframework.zip",
+            checksum: "17c98a935dae8eb1ca3953599d8b6e1654abb2076b4e2a90bbd869cdcda4dcc7"
         ),
         .target(
             name: "MossRuntimeBridge",

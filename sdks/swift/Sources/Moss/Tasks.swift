@@ -4,7 +4,9 @@ extension MossInference {
     /// Browser tasks: an agent works toward a goal in a browser on Moss, within time and dollar limits.
     ///
     /// `run` creates a task and waits until it ends, as `create` and then `wait` do,
-    /// and `retrieve`, `cancel`, `trace` and `files` read or stop a task. Task calls never send the provider key.
+    /// and `retrieve`, `cancel`, `trace` and `files` read or stop a task. `create` and `run` send only
+    /// their own `apiKey` as `X-Moss-Provider-Key`, for the task's model calls; see the pricing docs.
+    /// Tasks never use the client's `apiKey`, and the other task calls never send a key.
     /// `timeout`, `idleTimeout` and `maxRetries` replace the client's for one call, as they do for `responses`,
     /// but the `timeout` of `run` and `wait` limits the whole wait. A failed call throws `InferenceError`.
     /// Task calls retry as `responses` does, but never after a 409.
@@ -21,6 +23,7 @@ extension MossInference {
         /// Each create sends an `Idempotency-Key`, a new one per call or `idempotencyKey`, and the same one on every retry.
         /// The gateway answers a repeated key with the same body, within 24 hours, with the task it created,
         /// so a retried create never starts a second task. To retry a create yourself, pass your own key.
+        /// `apiKey` is sent for the task's model calls, and an empty one is refused. The client's `apiKey` is never used.
         public func create(
             goal: String,
             environment: TaskEnvironment,
@@ -30,11 +33,13 @@ extension MossInference {
             effort: TaskEffort? = nil,
             metadata: [String: JSONValue]? = nil,
             idempotencyKey: String? = nil,
+            apiKey: String? = nil,
             timeout: TimeInterval? = nil,
             idleTimeout: TimeInterval? = nil,
             maxRetries: Int? = nil,
             extra: [String: JSONValue] = [:]
         ) async throws -> MossTask {
+            try apiKey.map { try MossInference.checkValue("apiKey", $0) }
             var body = extra
             body["goal"] = .string(goal)
             body["environment"] = .object(environment.raw)
@@ -44,7 +49,8 @@ extension MossInference {
             if let effort { body["effort"] = .string(effort.rawValue) }
             if let metadata { body["metadata"] = .object(metadata) }
             let reply = try await client.fetch(
-                "POST", "/tasks", body: body, idempotencyKey: idempotencyKey, timeout: timeout, idleTimeout: idleTimeout, maxRetries: maxRetries
+                "POST", "/tasks", body: body, idempotencyKey: idempotencyKey, apiKey: apiKey, timeout: timeout,
+                idleTimeout: idleTimeout, maxRetries: maxRetries
             )
             return MossTask(raw: try reply.object())
         }
@@ -97,6 +103,7 @@ extension MossInference {
             effort: TaskEffort? = nil,
             metadata: [String: JSONValue]? = nil,
             idempotencyKey: String? = nil,
+            apiKey: String? = nil,
             timeout: TimeInterval? = nil,
             pollInterval: TimeInterval = 2,
             idleTimeout: TimeInterval? = nil,
@@ -106,7 +113,8 @@ extension MossInference {
             let waiting = try Waiting(timeout: timeout, pollInterval: pollInterval)
             let task = try await create(
                 goal: goal, environment: environment, outputSchema: outputSchema, limits: limits, model: model, effort: effort,
-                metadata: metadata, idempotencyKey: idempotencyKey, idleTimeout: idleTimeout, maxRetries: maxRetries, extra: extra
+                metadata: metadata, idempotencyKey: idempotencyKey, apiKey: apiKey, idleTimeout: idleTimeout, maxRetries: maxRetries,
+                extra: extra
             )
             return try await poll(task.id, waiting, idleTimeout: idleTimeout, maxRetries: maxRetries)
         }
@@ -184,10 +192,11 @@ extension MossInference {
     }
 
     /// Makes one Tasks API call to `path` under the base URL and returns its reply, read to the end.
-    /// Only a create has a `body`. It sends an `Idempotency-Key`, `idempotencyKey` or a new one, on every attempt.
+    /// Only a create has a `body`. It sends an `Idempotency-Key`, `idempotencyKey` or a new one, on every attempt,
+    /// and `apiKey` as `X-Moss-Provider-Key`.
     func fetch(
         _ method: String, _ path: String, body: [String: JSONValue]? = nil, accept: String = "application/json", idempotencyKey: String? = nil,
-        timeout: TimeInterval?, idleTimeout: TimeInterval?, maxRetries: Int?
+        apiKey: String? = nil, timeout: TimeInterval?, idleTimeout: TimeInterval?, maxRetries: Int?
     ) async throws -> Reply {
         let (timeout, idleTimeout, maxRetries) = try limits(timeout: timeout, idleTimeout: idleTimeout, maxRetries: maxRetries)
         try idempotencyKey.map { try Self.checkValue("idempotencyKey", $0) }
@@ -202,6 +211,7 @@ extension MossInference {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(idempotencyKey ?? UUID().uuidString.lowercased(), forHTTPHeaderField: "Idempotency-Key")
         }
+        if let apiKey { request.setValue(apiKey, forHTTPHeaderField: "X-Moss-Provider-Key") }
         let answer = try await Answer.send(
             request, in: session, timeout: timeout, idleTimeout: idleTimeout, maxRetries: maxRetries, statuses: Self.taskRetry
         )
