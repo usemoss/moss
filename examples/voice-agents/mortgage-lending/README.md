@@ -44,7 +44,7 @@ like one continuous thread to the customer.
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - [uv](https://github.com/astral-sh/uv) (or `pip` + `venv`)
 - A [Moss](https://moss.dev) project (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`)
 - API keys for your voice providers:

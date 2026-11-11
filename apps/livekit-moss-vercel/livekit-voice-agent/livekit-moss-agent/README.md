@@ -6,7 +6,7 @@ The agent acts as a customer support assistant, fetching relevant information fr
 
 ## 📋 Prerequisites
 
-- **Python 3.10+**
+- **Python 3.11+**
 - **[uv](https://docs.astral.sh/uv/)** (recommended package manager)
 - **LiveKit Cloud account** (or local LiveKit server)
 - **Moss account** (from [portal.usemoss.dev](https://portal.usemoss.dev))

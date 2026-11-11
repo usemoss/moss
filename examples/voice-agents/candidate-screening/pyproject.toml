@@ -3,7 +3,7 @@ name = "candidate-screening-voice-agent"
 version = "0.1.0"
 description = "Live voice screening interview grounded in two Moss indexes (job description + candidate resume)."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "python-dotenv>=1.0.0",
     "moss>=1.0.1",

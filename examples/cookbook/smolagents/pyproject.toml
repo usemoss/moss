@@ -7,7 +7,7 @@ name = "smolagents-moss-cookbook"
 version = "0.1.0"
 description = "Smolagents cookbook example for Moss semantic search"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "BSD-2-Clause" }
 authors = [
     { name = "InferEdge Inc.", email = "contact@moss.dev" }

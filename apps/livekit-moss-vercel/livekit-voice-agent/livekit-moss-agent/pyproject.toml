@@ -3,7 +3,7 @@ name = "livekit-voice-agent"
 version = "0.1.0"
 description = "Voice AI agent built with LiveKit Agents framework"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "livekit-agents[mcp]>=1.2.0",
     "livekit-plugins-openai>=1.0.0",
