@@ -161,7 +161,9 @@
     "verify-package": "node scripts/verify-package.mjs"
   },
   "overrides": {
-    "fast-uri": "4.2.3"
+    "fast-uri": "4.2.3",
+    "minimatch@>=7 <11.0.1": "^11.0.8",
+    "glob@>=10 <14": "^14.0.5"
   },
   "dependencies": {
     "@moss-dev/moss": "^1.3.2",

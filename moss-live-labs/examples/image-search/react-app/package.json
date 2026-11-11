@@ -15,7 +15,8 @@
     "react-router-dom": "^7.18.2"
   },
   "overrides": {
-    "postcss": "8.5.32"
+    "postcss": "8.5.32",
+    "minimatch@>=7 <11.0.1": "^11.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
