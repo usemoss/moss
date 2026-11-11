@@ -14,7 +14,7 @@
   },
   "overrides": {
     "esbuild": "^0.28.0",
-    "postcss": "^8.5.19",
-    "vite": "^8.1.4"
+    "postcss": "^8.5.23",
+    "vite": "^8.1.6"
   }
 }
