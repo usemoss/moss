@@ -9,15 +9,15 @@
     "test": "tsx --test test_mastra.ts"
   },
   "dependencies": {
-    "@mastra/core": "^1.26.0",
+    "@mastra/core": "^1.82.0",
     "@moss-dev/moss": "latest",
     "dotenv": "^16.4.5",
-    "zod": "^3.23.8"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/node": "^20.12.11",
     "tsx": "^4.22.4",
-    "typescript": "^5.6.3",
-    "@types/node": "^20.12.11"
+    "typescript": "^5.6.3"
   },
   "overrides": {
     "uuid": "^14.0.0",
