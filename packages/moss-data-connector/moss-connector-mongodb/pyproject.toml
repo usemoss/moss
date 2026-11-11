@@ -3,7 +3,7 @@ name = "moss-connector-mongodb"
 version = "0.0.1"
 description = "MongoDB source connector for moss-connectors."
 readme = "README.md"
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.11,<3.15"
 license = "BSD-2-Clause"
 license-files = ["LICENSE"]
 authors = [{ name = "InferEdge Inc.", email = "contact@moss.dev" }]
@@ -12,7 +12,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -47,7 +46,7 @@ package-dir = { "moss_connector_mongodb" = "src" }
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP"]

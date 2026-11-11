@@ -58,7 +58,8 @@
       "brace-expansion@2": "^2.1.7",
       "js-yaml@4": "^4.3.2",
       "source-map-js": "^1.2.2",
-      "tar": "^7.5.18"
+      "tar": "^7.5.18",
+      "minimatch@>=7 <11.0.1": "^11.0.8"
     }
   },
   "packageManager": "pnpm@9.15.9"
