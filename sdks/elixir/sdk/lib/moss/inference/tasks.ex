@@ -23,7 +23,9 @@ defmodule Moss.Inference.Tasks do
 
   Each call returns `{:ok, value}`, or `{:error, %Moss.Inference.Error{}}` for a refused
   argument, an error reply or a failed connection. Task calls use the client's credentials,
-  gateway URL, timeouts and retries, and never send its `:api_key`.
+  gateway URL, timeouts and retries. `create/3` and `run/3` send only the call's own
+  `:api_key` option as `X-Moss-Provider-Key`, for the task's model calls; see the pricing docs.
+  Tasks never use the client's `:api_key`, and the other task calls never send a key.
   A `client` that is not a `Moss.Inference`, or an unknown option, raises `ArgumentError`.
 
   Options of every call:
@@ -37,6 +39,7 @@ defmodule Moss.Inference.Tasks do
   alias Moss.Inference.{Error, Request, Task}
 
   @options [:timeout, :idle_timeout, :max_retries]
+  @create_options [:api_key, :idempotency_key | @options]
   # The 4xx statuses a task call goes again after. A 409 says the task has not finished.
   @retried [408, 429]
   @poll_interval 2_000
@@ -71,12 +74,14 @@ defmodule Moss.Inference.Tasks do
   `params` that are not a map raise `ArgumentError`, and `params` JSON cannot carry,
   or that give a key twice, return an `invalid_request_error`.
 
-  Options: `:idempotency_key`, a non-empty string of printable ASCII, and the options of every call.
+  Options: `:idempotency_key`, a non-empty string of printable ASCII, `:api_key`, your own
+  provider key for the task's model calls, which an empty one refuses (the client's is never used), and the
+  options of every call.
   """
   @spec create(Inference.t(), params(), keyword()) :: {:ok, Task.t()} | {:error, Error.t()}
   def create(client, params, opts \\ []) do
     check_arguments!(client, params)
-    Inference.check_options!(opts, [:idempotency_key | @options])
+    Inference.check_options!(opts, @create_options)
 
     with {:ok, json} <- Inference.encode(params),
          {:ok, reply} <- fetch(client, "POST", "/tasks", opts, json, "application/json"),
@@ -128,18 +133,19 @@ defmodule Moss.Inference.Tasks do
   Queues a task and waits for it, as `create/3` and then `wait/3` do.
 
   `:timeout` and `:poll_interval` are the wait's, and checked before the task is queued.
-  `:idle_timeout` and `:max_retries` apply to every request, and `:idempotency_key` to the create.
+  `:idle_timeout` and `:max_retries` apply to every request, and `:idempotency_key`
+  and `:api_key` to the create.
   Once the task is queued, every error has its id in `task_id`, so you can wait on or cancel it.
   """
   @spec run(Inference.t(), params(), keyword()) :: {:ok, Task.t()} | {:error, Error.t()}
   def run(client, params, opts \\ []) do
     check_arguments!(client, params)
-    Inference.check_options!(opts, [:poll_interval, :idempotency_key | @options])
+    Inference.check_options!(opts, [:poll_interval | @create_options])
     {wait, opts} = Keyword.split(opts, [:timeout, :poll_interval])
 
     with {:ok, wait} <- waiting(wait),
          {:ok, task} <- create(client, params, opts),
-         do: poll(client, task.id, Keyword.delete(opts, :idempotency_key), wait)
+         do: poll(client, task.id, Keyword.drop(opts, [:idempotency_key, :api_key]), wait)
   end
 
   @doc """
@@ -198,32 +204,38 @@ defmodule Moss.Inference.Tasks do
   # Only a create has a `body`, which goes with one Idempotency-Key on every attempt.
   defp fetch(client, method, path, opts, body, accept) do
     with {:ok, settings} <- Inference.settings(client, opts),
-         {:ok, headers} <- headers(client, body, opts[:idempotency_key], accept),
+         {:ok, headers} <- headers(client, body, opts, accept),
          do: Request.fetch(method, url(client, path), headers, body, settings, @retried)
   end
 
-  # The client's credentials without its provider key, which task calls never send.
-  defp headers(client, body, key, accept) do
-    credentials = List.keydelete(client.headers, "x-moss-provider-key", 0)
-    headers = credentials ++ [{"accept", accept}]
+  # The client's credentials, without its provider key. Only a create sends the call's own.
+  defp headers(client, nil, _opts, accept), do: {:ok, credentials(client) ++ [{"accept", accept}]}
 
-    cond do
-      body == nil ->
-        {:ok, headers}
-
-      key == nil ->
-        {:ok, headers ++ create_headers(Uniq.UUID.uuid4())}
-
-      is_binary(key) and key != "" and Inference.header_safe?(key) ->
-        {:ok, headers ++ create_headers(key)}
-
-      true ->
-        {:error,
-         Error.invalid(
-           ":idempotency_key must be a non-empty string of printable ASCII " <>
-             "without surrounding spaces."
-         )}
+  defp headers(client, _body, opts, accept) do
+    with {:ok, provider} <- Inference.provider_key(opts[:api_key]),
+         {:ok, key} <- idempotency_key(opts[:idempotency_key]) do
+      {:ok, credentials(client) ++ provider ++ [{"accept", accept} | create_headers(key)]}
     end
+  end
+
+  defp credentials(client), do: List.keydelete(client.headers, "x-moss-provider-key", 0)
+
+  defp idempotency_key(nil), do: {:ok, Uniq.UUID.uuid4()}
+
+  defp idempotency_key(key) when is_binary(key) and key != "" do
+    if Inference.header_safe?(key),
+      do: {:ok, key},
+      else: bad_idempotency_key()
+  end
+
+  defp idempotency_key(_key), do: bad_idempotency_key()
+
+  defp bad_idempotency_key do
+    {:error,
+     Error.invalid(
+       ":idempotency_key must be a non-empty string of printable ASCII " <>
+         "without surrounding spaces."
+     )}
   end
 
   defp create_headers(key), do: [{"content-type", "application/json"}, {"idempotency-key", key}]

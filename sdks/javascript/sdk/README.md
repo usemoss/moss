@@ -579,8 +579,11 @@ for (const file of (await client.tasks.files.list(done.id)).data) {
 }
 ```
 
-Each call takes the options of `responses.create` but `apiKey`, which task
-calls never send, and retries as `responses.create` does. `create` sends an
+Each call takes the options of `responses.create`, and retries as it does.
+`create` and `run` also take `apiKey`, and send only that call's key as
+`X-Moss-Provider-Key`, for the task's model calls; see the pricing docs. Tasks
+never use the client's `apiKey`, and the other calls never send a key.
+`create` sends an
 `Idempotency-Key`, a new one each call or the one in that call's `headers`, and
 the same one on every retry. The gateway answers a repeated key with the same
 body, within 24 hours, with the task it created, so a retried create never

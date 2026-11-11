@@ -660,7 +660,8 @@ class MossInference:
 
     Bad arguments or a bad URL raise `InferenceError` here, before any request.
     `close()`, or leaving `async with`, closes the connection pool.
-    The `tasks` calls never send `api_key`.
+    `api_key` is for `responses` only: tasks never send it.
+    `tasks.create` and `tasks.run` send only an `api_key` passed to that call.
     Limits are in seconds, 0 or less turns one off, and `create` can change both.
 
     Args:
@@ -797,15 +798,18 @@ class MossInference:
         idle_timeout: float | None,
         max_retries: int | None,
         extra_headers: Mapping[str, str] | None,
+        api_key: str | None = None,
     ) -> httpx.Response:
         """Make a Tasks API call and return its response, read to its end.
-        Only a create has a `body`."""
+        Only a create has a `body`, and only a create sends an `api_key`."""
         timeout = _limit("timeout", timeout, self._timeout)
         idle_timeout = _limit("idle_timeout", idle_timeout, self._idle_timeout)
         retries = self._max_retries if max_retries is None else _retries(max_retries)
         headers = {"Accept": accept}
         if body is not None:
             headers["Content-Type"] = "application/json"
+        if api_key is not None:
+            headers["X-Moss-Provider-Key"] = api_key
         content = None if body is None else _json(body).encode()
         loop = asyncio.get_running_loop()
         deadline = None if timeout is None else loop.time() + timeout
@@ -1023,6 +1027,7 @@ class _Tasks:
         model: str | None = None,
         effort: Literal["low", "medium", "high"] | None = None,
         metadata: Mapping[str, Any] | None = None,
+        api_key: str | None = None,
         timeout: float | None = None,
         idle_timeout: float | None = None,
         max_retries: int | None = None,
@@ -1037,6 +1042,8 @@ class _Tasks:
         and the same one on every retry. The gateway answers a repeated key with the same
         body, within 24 hours, with the task it created, so a retried create never starts
         a second task. To retry a create yourself, pass your own key.
+        Only this call's `api_key` goes as `X-Moss-Provider-Key`, for the task's model
+        calls; see the pricing docs. The client's `api_key` is never used for tasks.
 
         Args:
             goal: What the agent should do, in plain words.
@@ -1047,6 +1054,7 @@ class _Tasks:
             model: A model name of the Moss catalog.
             effort: `low`, `medium` or `high`.
             metadata: Your own data, sent back with the task.
+            api_key: Your vendor model key for this task. The client's is never used.
             timeout: The seconds the call can last.
             idle_timeout: The seconds each wait for data or a free connection can last.
             max_retries: The retries of this call, in place of the client's.
@@ -1062,6 +1070,7 @@ class _Tasks:
         body = {name: value for name, value in given.items() if value is not None}
         body.update(extra_body or {})
         client = self._client or _from_env()
+        api_key = None if api_key is None else _provider_key(api_key)
         reply = await client._task(
             "POST",
             "/tasks",
@@ -1070,6 +1079,7 @@ class _Tasks:
             idle_timeout=idle_timeout,
             max_retries=max_retries,
             extra_headers=extra_headers,
+            api_key=api_key,
         )
         return _parse_task(_reply_object(reply))
 
@@ -1159,6 +1169,7 @@ class _Tasks:
         model: str | None = None,
         effort: Literal["low", "medium", "high"] | None = None,
         metadata: Mapping[str, Any] | None = None,
+        api_key: str | None = None,
         timeout: float | None = None,
         poll_interval: float = _POLL_INTERVAL,
         idle_timeout: float | None = None,
@@ -1185,6 +1196,7 @@ class _Tasks:
             model=model,
             effort=effort,
             metadata=metadata,
+            api_key=api_key,
             idle_timeout=idle_timeout,
             max_retries=max_retries,
             extra_headers=extra_headers,
@@ -1345,8 +1357,8 @@ def _from_env() -> MossInference:
 class MossInferenceSync:
     """A client of the Tasks API whose calls block, for code with no event loop.
 
-    It takes the arguments of `MossInference` but `api_key`, and its `tasks`
-    has the calls of `MossInference.tasks`, which return their result here.
+    It takes the arguments of `MossInference`, and its `tasks` has the calls
+    of `MossInference.tasks`, which return their result here.
     They run on an event loop in a thread of its own, which the first call starts.
     `close()`, or leaving `with`, cancels the calls under way and stops it.
     One left open ends with the interpreter. A fork keeps no threads, so in a forked
@@ -1361,6 +1373,7 @@ class MossInferenceSync:
         project_id: str,
         project_key: str,
         *,
+        api_key: str | None = None,
         timeout: float | None = None,
         idle_timeout: float | None = None,
         max_retries: int = 2,
@@ -1369,6 +1382,7 @@ class MossInferenceSync:
         self._client = MossInference(
             project_id,
             project_key,
+            api_key=api_key,
             timeout=timeout,
             idle_timeout=idle_timeout,
             max_retries=max_retries,
@@ -1449,6 +1463,7 @@ class _SyncTasks:
         model: str | None = None,
         effort: Literal["low", "medium", "high"] | None = None,
         metadata: Mapping[str, Any] | None = None,
+        api_key: str | None = None,
         timeout: float | None = None,
         idle_timeout: float | None = None,
         max_retries: int | None = None,
@@ -1465,6 +1480,7 @@ class _SyncTasks:
             model=model,
             effort=effort,
             metadata=metadata,
+            api_key=api_key,
             timeout=timeout,
             idle_timeout=idle_timeout,
             max_retries=max_retries,
@@ -1520,6 +1536,7 @@ class _SyncTasks:
         model: str | None = None,
         effort: Literal["low", "medium", "high"] | None = None,
         metadata: Mapping[str, Any] | None = None,
+        api_key: str | None = None,
         timeout: float | None = None,
         poll_interval: float = _POLL_INTERVAL,
         idle_timeout: float | None = None,
@@ -1537,6 +1554,7 @@ class _SyncTasks:
             model=model,
             effort=effort,
             metadata=metadata,
+            api_key=api_key,
             timeout=timeout,
             poll_interval=poll_interval,
             idle_timeout=idle_timeout,

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-11-10
+
+### Changed
+
+- `tasks.create` and `tasks.run` take `api_key`, and send only that call's key as `X-Moss-Provider-Key`, for the task's model calls. They never send the client's `api_key`, which is for `responses`, so without a key in the call no provider key is sent; an empty one raises `InferenceError` before any request. The other task calls never send it. `MossInferenceSync` takes `api_key` too.
+
 ## [1.23.0] - 2026-11-07
 
 ### Added
