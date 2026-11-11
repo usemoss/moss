@@ -23,6 +23,8 @@ public final class MossInference: Sendable {
     /// The `Authorization` of every call.
     let authorization: String
     let headers: [String: String]
+    /// The provider key of every `responses` call and of a task's `create`, unless a call brings its own.
+    let apiKey: String?
     let timeout: TimeInterval?
     let idleTimeout: TimeInterval?
     let maxRetries: Int
@@ -37,6 +39,7 @@ public final class MossInference: Sendable {
     /// Calls go to `https://inference.moss.dev/v1`, or to the base URL in `MOSS_INFERENCE_URL`.
     /// `apiKey` is optional: your own OpenAI, Anthropic
     /// or Google key, for a vendor model such as `gpt-4o-mini`. `moss` ignores it, and a vendor model without one is refused.
+    /// A task's `create` and `run` send it too, as `X-Moss-Provider-Key`, for the task's model calls; see the pricing docs.
     /// `idleTimeout` ends a call when the gateway sends nothing for that many seconds, before the response or between any two of its bytes.
     /// `timeout` limits each whole call, stream included. For either limit, `nil` or `.infinity` means none, the default for `timeout`.
     /// `maxRetries` (0 for none) sends a call again after a connection failure or a status of 408, 409, 429 or 500 and above,
@@ -54,6 +57,7 @@ public final class MossInference: Sendable {
         try Self.checkValue("projectKey", projectKey)
         try apiKey.map { try Self.checkValue("apiKey", $0) }
         if projectId.contains(":") { throw InferenceError.invalidRequest("projectId must not contain ':'") }
+        self.apiKey = apiKey
         base = try Self.endpoint(ProcessInfo.processInfo.environment["MOSS_INFERENCE_URL"])
         url = try Self.join(base, "/responses")
         self.timeout = try Self.limit(timeout, "timeout")
