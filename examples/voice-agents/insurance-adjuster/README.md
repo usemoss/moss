@@ -90,6 +90,8 @@ The live `claim-{policy}-{timestamp}` session is created per call and is not pre
 
 ### 1. Install dependencies
 
+Requires Python 3.11+ and [uv](https://github.com/astral-sh/uv).
+
 ```bash
 cd examples/voice-agents/insurance-adjuster
 uv sync

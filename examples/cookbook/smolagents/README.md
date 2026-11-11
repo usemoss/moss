@@ -8,7 +8,7 @@ Traditional vector databases add 200–500 ms per retrieval hop. Moss loads inde
 
 ## Installation
 
-We recommend [uv](https://docs.astral.sh/uv/) for dependency management.
+Requires Python 3.11+. We recommend [uv](https://docs.astral.sh/uv/) for dependency management.
 
 ~~~bash
 cd examples/cookbook/smolagents

@@ -21,6 +21,8 @@
   },
   "overrides": {
     "uuid": "^14.0.0",
-    "fast-uri": "4.1.1"
+    "fast-uri": "4.2.3",
+    "@ai-sdk/provider-utils-v5": "npm:@ai-sdk/provider-utils@^3.0.28",
+    "@ai-sdk/provider-utils-v6": "npm:@ai-sdk/provider-utils@^4.0.33"
   }
 }

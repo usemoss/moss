@@ -17,13 +17,14 @@
     "livekit-client": "^2.15.8",
     "livekit-server-sdk": "^2.13.2",
     "motion": "^12.16.0",
-    "next": "^15.3.0",
+    "next": "^15.5.28",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.3.0"
   },
   "overrides": {
-    "postcss": "8.5.19"
+    "postcss": "8.5.23",
+    "brace-expansion@1": "^1.1.21"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

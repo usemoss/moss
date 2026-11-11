@@ -14,9 +14,9 @@
   "license": "ISC",
   "type": "commonjs",
   "overrides": {
-    "postcss": "8.5.19"
+    "postcss": "8.5.32"
   },
   "devDependencies": {
-    "vitepress": "^2.0.0-alpha.12"
+    "vitepress": "2.0.0-alpha.21"
   }
 }

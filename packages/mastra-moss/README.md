@@ -13,7 +13,7 @@ npm install @moss-tools/mastra @moss-dev/moss @mastra/core zod
 ## Prerequisites
 
 - Moss project ID and project key — get them from the [Moss Portal](https://portal.usemoss.dev)
-- Node.js 18+
+- Node.js 22.13+ (required by `@mastra/core`)
 
 ## Quickstart
 

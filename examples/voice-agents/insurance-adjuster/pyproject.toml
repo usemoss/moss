@@ -3,7 +3,7 @@ name = "insurance-adjuster-voice-agent"
 version = "0.1.0"
 description = "Field insurance claims adjuster voice agent. Per-policy Moss index for policyholder data; shared claims-kb index for HO-3 policy language, state guidelines, and coverage rules. Multi-index ambient retrieval on every adjuster turn."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "python-dotenv>=1.0.0",
     "moss>=1.1.1",
