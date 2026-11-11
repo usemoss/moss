@@ -1303,7 +1303,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "livekit-agents", extras = ["openai", "deepgram", "silero", "turn-detector", "cartesia"], specifier = ">=1.0" },
+    { name = "livekit-agents", extras = ["openai", "deepgram", "silero", "turn-detector", "cartesia"], specifier = ">=1.8.11" },
     { name = "moss", specifier = ">=1.1.1" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
 ]

@@ -7,5 +7,5 @@ requires-python = ">=3.14"
 dependencies = [
     "python-dotenv>=1.0.0",
     "moss>=1.1.1",
-    "livekit-agents[openai,deepgram,silero,turn-detector,cartesia,google,inference]>=1.0",
+    "livekit-agents[openai,deepgram,silero,turn-detector,cartesia,google,inference]>=1.8.11",
 ]
