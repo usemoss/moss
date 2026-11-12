@@ -298,7 +298,9 @@ Check out issues labeled [`good first issue`](https://github.com/usemoss/moss/la
 
 ## License
 
-The SDKs that Moss releases sync into [`sdks/`](sdks/) are licensed under the [PolyForm Shield License 1.0.0](https://polyformproject.org/licenses/shield/1.0.0/): Swift now, as its `LICENSE.txt` states, and JavaScript, Python and Elixir from their next release, which replaces each folder's BSD `LICENSE` with a PolyForm Shield `LICENSE.txt`. The Go SDK in `sdks/go`, and code already contributed under the BSD 2-Clause License, stay under it. Everything else in this repository is under the [BSD 2-Clause License](LICENSE).
+The SDKs that Moss releases sync into [`sdks/`](sdks/), Swift, JavaScript, Python and Elixir, are licensed under the [PolyForm Shield License 1.0.0](https://polyformproject.org/licenses/shield/1.0.0/), as each folder's `LICENSE.txt` states. The Go SDK in `sdks/go`, and code already contributed under the BSD 2-Clause License, stay under it. Everything else in this repository is under the [BSD 2-Clause License](LICENSE).
+
+The binaries attached to this repository's releases are not covered by its BSD license: `Moss.xcframework.zip`, which the `MossC` target of [`Package.swift`](Package.swift) downloads, the `libmoss` C SDK archives, which the Go SDK links, and the Android AAR. They are licensed under the PolyForm Shield License 1.0.0. Each one carries the terms as `LICENSE.txt`, beside `LICENSE-THIRD-PARTY.txt`, the licenses of the third-party code it links.
 
 ---
 

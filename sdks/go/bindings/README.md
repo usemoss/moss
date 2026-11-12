@@ -39,3 +39,9 @@ go test -tags libmoss ./...
 ```
 
 The Go SDK module can then be built with the same flags and tag.
+
+## License
+
+This module is licensed under the BSD 2-Clause License in [`LICENSE`](LICENSE).
+The `libmoss` C SDK it links is not. `libmoss` is licensed under the [PolyForm Shield License 1.0.0](https://polyformproject.org/licenses/shield/1.0.0/),
+and each `libmoss` release archive carries the terms as `LICENSE.txt`.
