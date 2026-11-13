@@ -15,6 +15,7 @@ Current status:
 Important note:
 
 - all runtime operations require the `libmoss` C SDK plus `-tags libmoss`
+- `libmoss` is licensed under the PolyForm Shield License 1.0.0, not the BSD 2-Clause License of the Go modules
 
 The public SDK module lives under [`sdks/go/sdk/`](./sdk/), and the native
 bindings module lives under [`sdks/go/bindings/`](./bindings/).

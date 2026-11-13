@@ -168,3 +168,9 @@ CGO_LDFLAGS="-L<libmoss-sdk-root>/lib" \
 LD_LIBRARY_PATH="<libmoss-sdk-root>/lib" \
 go test -tags libmoss ./...
 ```
+
+## License
+
+This module is licensed under the BSD 2-Clause License in [`LICENSE`](LICENSE).
+The `libmoss` C SDK it links is not. `libmoss` is licensed under the [PolyForm Shield License 1.0.0](https://polyformproject.org/licenses/shield/1.0.0/),
+and the `libmoss` archives released after `c-sdk-v0.31.0` carry the terms as `LICENSE.txt`.
