@@ -947,8 +947,8 @@ class _Responses:
             tool_choice: `none`, `auto`, `required`, or a dict naming a function.
             parallel_tool_calls: Whether the model can call more than one tool at once.
             max_output_tokens: The most tokens the response can have.
-            indexes: The indexes to search, by default every index of the project.
-                An empty list searches none.
+            indexes: The indexes to search, none when empty. Left out,
+                Moss searches those in an `X-Moss-Indexes` header, else none.
             retrieve: False skips the search.
             cache: False always asks the model, never Moss's reply cache.
             api_key: Your vendor model key for this call, in place of the client's.

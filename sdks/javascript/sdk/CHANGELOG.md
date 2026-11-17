@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [1.25.0] - 2026-11-17
+
+### Changed
+
+- A new client loads an index from `cachePath` in about one round trip to the Moss cloud when an earlier client of the same project in the process still holds its embedding model. Clients in one process share the project's token, their connections to the cloud and each loaded embedding model, and every load still checks the cloud version of the index. Closing the last client that uses a model frees it at once, so a client created after that fetches a new grant and opens the model again. A cached `loadIndex` also asks for the index metadata and its model provenance at once. From Europe, about 130 ms from the Moss cloud, a cached 960-document index loaded in a new client that found its model loaded in 200 to 290 ms instead of 2.5 to 2.8 s, a cached 50,400-document index in 0.8 to 1.4 s instead of 3.0 to 3.1 s, and the first client in a process in 1.9 to 2.2 s instead of 2.5 to 2.8 s. A client opened several idle minutes after the last one closed reconnects and opens the model again, which took 1.6 to 1.7 s. `close()` no longer exchanges the project key a second time, and took about 0.8 s instead of 1.4 to 1.8 s.
+- `loadIndex` and `loadIndexes` need less memory. The index file, downloaded or read from `cachePath`, is freed once it is parsed, and its vectors and documents move into the loaded index instead of being copied. A load that writes the download to `cachePath` frees the file once it is written and copies the documents into the index. On an Apple M2, loading 250,000 documents with 384-dimension vectors peaked at 943 MB instead of 1,550 MB, and at about 1,210 MB when the load writes the download to `cachePath`. Auto-refresh of an index loaded without `cachePath` installs a newer version the same way. Search results and cache files are unchanged.
+- Queries with a metadata filter test it while they score the vectors, in parallel on large indexes, and skip the vectors of documents it rejects. The filter values of `$gt`, `$gte`, `$lt`, `$lte` and `$near` are parsed once per query instead of once per document. On an Apple M2, an embedding or hybrid query over 100,000 documents with 1,536-dimension vectors and a filter that keeps 5% of them ran about six times faster. Results are unchanged.
+- `new MossClient(projectId, auth)` throws a `MossError` with the code `INVALID_ARGUMENT` when `projectId` is not a non-empty string, or when `auth` is neither a non-empty project key nor an authenticator with a `getAuthToken` function. The message names the argument. A missing project key is no longer taken for an authenticator that fails on the first call with "The authentication callback did not return a token.".
+- Creating an index whose name is taken fails with the code `INVALID_ARGUMENT` and the message "An index with this name already exists. Delete it or choose another name.", and a call the service refuses because a build for the index is still running, such as adding documents during a build, fails the same way with "A build is already running for this index. Wait for it to finish, then try again.", instead of the generic "The Moss service rejected the request as invalid.". The code is unchanged, and `detail` still names the service's code.
+
+### Deprecated
+
+- Versions of `@moss-js/moss` below 1.9.0, and every release of `@moss-dev/moss` and `@inferedge/moss`, reach end of support on 2026-12-17 and will stop working then. Upgrade to this release or a later one.
+
+### Fixed
+
+- `MossClient.createIndex`, `createIndexFromFiles`, `addDocs` and `deleteDocs` calls on one index run one at a time across every `MossClient` that uses the same loaded copy of the core. Each call keeps the index until it returns, the wait for its build included, so parallel writes to one index take as long as the same writes one after another. `SessionIndex.pushIndex` waits its turn with them, but keeps the index only until the service accepts the push, not through its build. Calls on different indexes still run in parallel. `deleteIndex` does not wait for them, since the service cancels a running build of the index it deletes. Parallel calls on one index used to reach the service together, which refused some of them and reported others as done without storing them: of three parallel `addDocs` calls with one new document each, only one document was stored. A call the service refuses because a build of the index is running, such as one started from another process, is sent again, with waits that grow from about one second to eight and add up to at most 60 seconds. If the service still refuses it after those waits, it fails with the code `INVALID_ARGUMENT` and the message "A build is already running for this index. Wait for it to finish, then try again.", as it used to on the first refusal. Writes to one index from separate copies of the core, processes or hosts do not wait for each other. Such a write is sent again, with the same waits, only when the service refuses it with `BUILD_IN_PROGRESS`. The Moss cloud service refuses a write that overlaps a running build, but an index service without that refusal can accept the write and drop it.
+- The `indexes` documentation of `responses.create` and the README say that a call that leaves `indexes` out searches only the indexes in an `X-Moss-Indexes` header, and none without one, as the gateway does.
+
 ## [1.24.0] - 2026-11-10
 
 ### Changed
@@ -228,7 +247,7 @@
 ### Changed
 
 - Published as `@moss-js/moss`, depending on `@moss-js/moss-core` 0.24.0. Install with `npm install @moss-js/moss`. `@moss-dev/moss` stays at 1.7.1 and receives no further releases.
-- Foundation models (`moss-minilm`, `moss-mediumlm`, `moss-litelm`) download in the native model format when the project has access to it, and resume interrupted downloads. Other projects keep the existing model files. No API change.
+- Foundation models (`moss-minilm`, `moss-mediumlm`, `moss-litelm`) download in the native model format when the project has access to it, and resume interrupted downloads. No API change.
 
 ### Removed
 

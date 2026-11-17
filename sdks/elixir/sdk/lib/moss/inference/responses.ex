@@ -68,8 +68,7 @@ defmodule Moss.Inference.Responses do
   or an unknown option raises `ArgumentError`, which holds no key.
 
   Options:
-    - `:indexes` - names of the Moss indexes to search, `[]` for none,
-      else every index in the project
+    - `:indexes` - names of the Moss indexes to search, none when left out or `[]`
     - `:retrieve` - `false` skips the search and adds no facts (default `true`)
     - `:cache` - `false` always asks the model, never Moss's reply cache (default `true`)
     - `:api_key` - your own OpenAI, Anthropic or Google key for this call, else the client's.

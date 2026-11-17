@@ -256,23 +256,29 @@ defmodule Moss.Session do
   @impl true
   def init(opts) do
     Process.flag(:trap_exit, true)
-    name        = Keyword.fetch!(opts, :name)
-    model_id    = Keyword.fetch!(opts, :model_id)
-    project_id  = Keyword.fetch!(opts, :project_id)
-    project_key = Keyword.fetch!(opts, :project_key)
+    name        = Keyword.get(opts, :name)
+    model_id    = Keyword.get(opts, :model_id)
+    project_id  = Keyword.get(opts, :project_id)
+    project_key = Keyword.get(opts, :project_key)
     client_id   = Keyword.get(opts, :client_id, nil)
     device_id   = Keyword.get(opts, :device_id, nil)
     moss_device_id = Keyword.get(opts, :moss_device_id, nil)
     cache_path  = Keyword.get(opts, :cache_path, nil)
 
-    case Nif.session_new(name, model_id, project_id, project_key, client_id) do
-      {:ok, ref} ->
-        if device_id || moss_device_id,
-          do: Nif.session_set_identity(ref, device_id, nil, moss_device_id)
-        {:ok, %{ref: ref, cache_path: cache_path}}
+    required = [
+      index_name: name,
+      model_id: model_id,
+      project_id: project_id,
+      project_key: project_key
+    ]
 
-      {:error, reason} ->
-        {:stop, reason}
+    with :ok <- Moss.Client.check_strings(required, client_id: client_id),
+         {:ok, ref} <- Nif.session_new(name, model_id, project_id, project_key, client_id) do
+      if device_id || moss_device_id,
+        do: Nif.session_set_identity(ref, device_id, nil, moss_device_id)
+      {:ok, %{ref: ref, cache_path: cache_path}}
+    else
+      {:error, reason} -> {:stop, reason}
     end
   end
 

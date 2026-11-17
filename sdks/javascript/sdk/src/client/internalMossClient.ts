@@ -52,6 +52,24 @@ function queryTuning(options?: SdkQueryOptions): NativeQueryTuning | undefined {
   return { minScore: options.minScore, candidateDepth: options.candidateDepth };
 }
 
+/** Throws INVALID_ARGUMENT unless `projectId` and `auth` can authenticate a client. */
+function assertCredentials(projectId: unknown, auth: unknown): void {
+  if (typeof projectId !== "string" || projectId === "") {
+    throw mossError("INVALID_ARGUMENT", "projectId must be a non-empty string.");
+  }
+  const key = typeof auth === "string" && auth !== "";
+  const authenticator =
+    typeof auth === "object" &&
+    auth !== null &&
+    typeof (auth as { getAuthToken?: unknown }).getAuthToken === "function";
+  if (!key && !authenticator) {
+    throw mossError(
+      "INVALID_ARGUMENT",
+      "projectKey must be a non-empty string, or an authenticator with a getAuthToken function.",
+    );
+  }
+}
+
 /** Render an unknown throwable as a diagnostic string without throwing again. */
 function describeCause(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -205,6 +223,7 @@ export class InternalMossClient {
     auth: string | IAuthenticator,
     options?: MossClientOptions,
   ) {
+    assertCredentials(projectId, auth);
     this.configuredIdentity = validateMossIdentity(options?.identity);
     this.cachePathDeviceId = resolveCachePathDeviceId(options?.cachePath);
     this.projectId = projectId;

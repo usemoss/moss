@@ -31,7 +31,7 @@ from moss_core import (
 from .docs_input import Chunker, DocsInput, reject_chunking_for_custom
 from .job_handle import JobHandle
 from .manage_http import request_manage
-from .session_index import SessionIndex
+from .session_index import SessionIndex, require_query_options
 from .web_source import (
     CreateRefreshCadence,
     CreateWebSourceResult,
@@ -391,7 +391,13 @@ class MossClient:
         name: str,
         options: Optional[GetDocumentsOptions] = None,
     ) -> List[DocumentInfo]:
-        """Retrieve documents from an index."""
+        """
+        Retrieve documents from a cloud index: all of them, or those in `options.doc_ids`.
+
+        Only `doc_ids` reaches the cloud.
+        A session from `session()` supports the other options in its own `get_docs`.
+        Here `filter`, `sort_by`, `ascending=False` or `group_by` raise `InvalidArgumentError`.
+        """
         self._ensure_open()
         return await asyncio.to_thread(self._manage.get_docs, name, options)
 
@@ -692,8 +698,11 @@ class MossClient:
                     {"field": "city", "condition": {"$eq": "NYC"}},
                     {"field": "price", "condition": {"$lt": "50"}},
                 ]})
+                `group_by` is not supported here: on a loaded index it raises
+                `InvalidArgumentError`, after the `NOT_FOUND` check above.
         """
         self._ensure_open()
+        require_query_options(options)
         is_loaded = await asyncio.to_thread(self._manager.has_index, name)
         if not is_loaded:
             error = MossError(
@@ -746,11 +755,13 @@ class MossClient:
             options: Query options (top_k, alpha, embedding, filter, min_score,
                 candidate_depth). `candidate_depth` sets the length of each
                 global per-signal list before fusion, as in `query`.
+                `group_by` is not supported and raises `InvalidArgumentError`.
 
         Returns:
             A `SearchResult` whose `docs` carry `index_name` set per result.
         """
         self._ensure_open()
+        require_query_options(options)
         if not names:
             raise InvalidArgumentError("query_multi_index requires at least one index name")
 
@@ -762,6 +773,7 @@ class MossClient:
         filter = getattr(options, "filter", None)
         min_score = getattr(options, "min_score", None)
         candidate_depth = getattr(options, "candidate_depth", None)
+        group_by = getattr(options, "group_by", None)
 
         if query_embedding is not None:
             return await asyncio.to_thread(
@@ -774,6 +786,7 @@ class MossClient:
                 alpha=alpha,
                 min_score=min_score,
                 candidate_depth=candidate_depth,
+                group_by=group_by,
             )
 
         # An index that cannot embed text raises InvalidArgumentError, a ValueError.
@@ -786,6 +799,7 @@ class MossClient:
             alpha=alpha,
             min_score=min_score,
             candidate_depth=candidate_depth,
+            group_by=group_by,
         )
 
     # -- Local in-session indexing ----------------------------------
@@ -937,6 +951,7 @@ class MossClient:
         filter = getattr(options, "filter", None)
         min_score = getattr(options, "min_score", None)
         candidate_depth = getattr(options, "candidate_depth", None)
+        group_by = getattr(options, "group_by", None)
 
         if query_embedding is None:
             # An index that cannot embed text raises InvalidArgumentError, a ValueError.
@@ -949,6 +964,7 @@ class MossClient:
                 filter,
                 min_score,
                 candidate_depth,
+                group_by=group_by,
             )
 
         return await asyncio.to_thread(
@@ -961,6 +977,7 @@ class MossClient:
             filter,
             min_score,
             candidate_depth,
+            group_by=group_by,
         )
 
     def _resolve_model_id(

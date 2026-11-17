@@ -65,7 +65,8 @@ export interface ResponseCreateParamsBase {
   instructions?: string | null;
   stream?: boolean | null;
   /**
-   * Moss indexes to search, every index when left out and none when empty.
+   * Moss indexes to search, none when empty. Left out, Moss
+   * searches the indexes in an `X-Moss-Indexes` header, else none.
    * Names travel in a single header, so each must be Latin-1 text with no comma.
    */
   indexes?: string[];

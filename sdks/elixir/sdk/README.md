@@ -89,7 +89,7 @@ end
 
 - Elixir 1.15 or higher
 - OTP 26 or higher
-- Valid InferEdge project credentials
+- Valid Moss project credentials
 
 ### Environment Setup
 
@@ -104,9 +104,11 @@ end
 
 2. **Get your credentials:**
 
-Sign up at [Moss Platform](https://portal.usemoss.dev) to get your `project_id` and `project_key`.
+Sign in to the [Moss portal](https://portal.usemoss.dev), copy your project ID and create a key on the **API Keys** page.
 
-3. **Set up environment variables (optional):**
+3. **Pass them to the client:**
+
+`Moss.Client.new` takes the project ID and key as arguments. Where they come from is your choice; the example below reads them from environment variables:
 
 ```bash
 export MOSS_PROJECT_ID="your-project-id"
@@ -116,7 +118,8 @@ export MOSS_PROJECT_KEY="your-project-key"
 ### Basic Usage
 
 ```elixir
-{:ok, client} = Moss.Client.new("your-project-id", "your-project-key")
+{:ok, client} =
+  Moss.Client.new(System.fetch_env!("MOSS_PROJECT_ID"), System.fetch_env!("MOSS_PROJECT_KEY"))
 
 # Create and populate an index
 documents = [
@@ -330,9 +333,10 @@ reach the gateway unchanged.
 for a bad one. It takes `:api_key`, `:timeout` (milliseconds for a whole call, default
 `:infinity`), `:idle_timeout` (milliseconds Moss may stay silent, default `120_000`) and
 `:max_retries` (retries of a failed connection or a 408, 409, 429 or 5xx reply, default `2`).
-A call takes `:api_key`, `:timeout`, `:idle_timeout` and `:max_retries` too, over the client's,
-plus `retrieve: false` or `indexes: []` to skip the search. A call's options go in its last
-argument, and `params` that hold one return an error.
+A call takes `:api_key`, `:timeout`, `:idle_timeout` and `:max_retries` too, over the client's.
+Moss searches only the indexes a call names in `:indexes`, so leaving it out, `indexes: []` or
+`retrieve: false` skips the search. A call's options go in its last argument, and `params` that
+hold one return an error.
 Moss can answer an identical request from its reply cache; `cache: false` always asks the model.
 
 `:api_key` is optional: your own OpenAI, Anthropic or Google key, for a vendor model such as
