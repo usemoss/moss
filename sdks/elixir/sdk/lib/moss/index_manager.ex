@@ -216,19 +216,19 @@ defmodule Moss.IndexManager do
   @impl true
   def init(opts) do
     Process.flag(:trap_exit, true)
-    project_id = Keyword.fetch!(opts, :project_id)
-    project_key = Keyword.fetch!(opts, :project_key)
+    project_id = Keyword.get(opts, :project_id)
+    project_key = Keyword.get(opts, :project_key)
     client_id = Keyword.get(opts, :client_id, nil)
     device_id = Keyword.get(opts, :device_id, nil)
     cache_path = Moss.Client.normalize_cache_path(Keyword.get(opts, :cache_path, nil))
+    required = [project_id: project_id, project_key: project_key]
 
-    case Nif.manager_new(project_id, project_key, nil, client_id) do
-      {:ok, ref} ->
-        if device_id, do: Nif.manager_set_device_id(ref, device_id)
-        {:ok, %{ref: ref, cache_path: cache_path}}
-
-      {:error, reason} ->
-        {:stop, reason}
+    with :ok <- Moss.Client.check_strings(required, client_id: client_id),
+         {:ok, ref} <- Nif.manager_new(project_id, project_key, nil, client_id) do
+      if device_id, do: Nif.manager_set_device_id(ref, device_id)
+      {:ok, %{ref: ref, cache_path: cache_path}}
+    else
+      {:error, reason} -> {:stop, reason}
     end
   end
 

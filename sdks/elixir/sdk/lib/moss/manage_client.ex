@@ -13,7 +13,11 @@ defmodule Moss.ManageClient do
           {:ok, reference()} | {:error, Moss.Error.t()}
   def new(project_id, project_key, opts \\ []) do
     client_id = Keyword.get(opts, :client_id, nil)
-    Nif.manage_new(project_id, project_key, nil, client_id)
+    required = [project_id: project_id, project_key: project_key]
+
+    with :ok <- Moss.Client.check_strings(required, client_id: client_id) do
+      Nif.manage_new(project_id, project_key, nil, client_id)
+    end
   end
 
   @doc "Create a cloud index with initial documents."

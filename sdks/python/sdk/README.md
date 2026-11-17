@@ -103,8 +103,8 @@ against: every result scores 0.0 and `min_score` raises an error.
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- Valid InferEdge project credentials
+- Python 3.10 or higher
+- Valid Moss project credentials
 
 ### Environment Setup
 
@@ -116,9 +116,11 @@ pip install moss
 
 2. **Get your credentials:**
 
-Sign up at [InferEdge Platform](https://platform.inferedge.dev) to get your `project_id` and `project_key`.
+Sign in to the [Moss portal](https://portal.usemoss.dev), copy your project ID and create a key on the **API Keys** page.
 
-3. **Set up environment variables (optional):**
+3. **Pass them to the client:**
+
+`MossClient` takes the project ID and key as arguments. Where they come from is your choice; the example below reads them from environment variables:
 
 ```bash
 export MOSS_PROJECT_ID="your-project-id"
@@ -131,11 +133,12 @@ export MOSS_CLOUD_API_BASE_URL="https://service.usemoss.dev"
 
 ```python
 import asyncio
+import os
 from moss import MossClient, DocumentInfo, QueryOptions
 
 async def main():
     # Initialize client
-    client = MossClient("your-project-id", "your-project-key")
+    client = MossClient(os.environ["MOSS_PROJECT_ID"], os.environ["MOSS_PROJECT_KEY"])
     
     # Create and populate an index
     documents = [
@@ -489,7 +492,7 @@ async with MossInference(
 - `api_key` is sent as the `X-Moss-Provider-Key` header, never in the body or an error message, and an empty one is an error.
 - A client checks its credentials, provider key, headers and timeouts when you build it. It keeps one connection pool, for the event loop it last ran in, until `close()` or the end of `async with`. A call in another loop drops that pool without closing it, so open and close a client in the loop that uses it.
 - Other OpenAI arguments, such as `temperature`, `text={"format": ...}` for structured output or `reasoning={"effort": "low"}`, reach the gateway unchanged.
-- Without `indexes`, every index of the project is searched, and `indexes=[]` or `retrieve=False` skips the search. `default_headers` go with every call and `extra_headers` with one. Neither can set `Host`, `Content-Length` or `Transfer-Encoding`.
+- Moss searches the indexes a call names in `indexes`, else those in an `X-Moss-Indexes` header, else none, and `indexes=[]` or `retrieve=False` skips the search. `default_headers` go with every call and `extra_headers` with one. Neither can set `Host`, `Content-Length` or `Transfer-Encoding`.
 - `timeout` limits a whole call, stream included, and `idle_timeout` limits the wait for the response and each pause in it. Both are in seconds, and 0 or less turns one off. On the client, `timeout` is off by default and `idle_timeout` is 120, also when you pass `None`. `create` can change either for one call, where `None` keeps the client's.
 - Moss can answer an identical request from its reply cache; `cache=False` always asks the model.
 - `max_retries`, 2 by default, on the client or for one call, sends a call again after a connection failure or a `408`, `409`, `429` or `5xx`, waiting its `Retry-After` when it is 60 s or less, else 0.5 s doubled each time, within `timeout`. 0 turns it off.

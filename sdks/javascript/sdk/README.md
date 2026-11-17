@@ -392,8 +392,9 @@ for that call. Neither `headers` can set `Host`, `Content-Length` or
 `maxRetries` (2 by default, `0` for none) sends a call again when the connection
 fails, or when the gateway answers 408, 409, 429 or 5xx before the stream
 starts, after a `Retry-After` of up to 60 s, else a backoff of 0.5 s doubling
-up to 8 s, within `timeout`. `retrieve: false` or `indexes: []` skips the
-search, and leaving `indexes` out searches every index. Moss can answer an
+up to 8 s, within `timeout`. Moss searches the indexes a call names in
+`indexes`, else those in an `X-Moss-Indexes` header, else none, and
+`indexes: []` or `retrieve: false` skips the search. Moss can answer an
 identical request from its reply cache; `cache: false` always asks the model.
 `stream.requestId` and a response's `requestId`, which `JSON.stringify` leaves
 out, hold the response's `X-Moss-Request-Id`.

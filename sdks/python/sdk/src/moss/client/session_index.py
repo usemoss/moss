@@ -20,6 +20,12 @@ from moss_core import (
 from .docs_input import Chunker, DocsInput, reject_chunking_for_custom
 
 
+def require_query_options(options: object) -> None:
+    """Raise TypeError unless `options` is a QueryOptions or None."""
+    if options is not None and not isinstance(options, QueryOptions):
+        raise TypeError(f"options must be a QueryOptions or None, not {type(options).__name__}.")
+
+
 class SessionIndex:
     """
     A local in-session index for real-time indexing and querying.
@@ -200,6 +206,7 @@ class SessionIndex:
         Returns:
             SearchResult with scored documents.
         """
+        require_query_options(options)
         top_k = getattr(options, "top_k", None)
         top_k = top_k if top_k is not None else 5
         alpha = getattr(options, "alpha", None)

@@ -34,8 +34,10 @@ defmodule Moss.Client do
 
   @default_model_id "moss-minilm"
 
+  @derive {Inspect, except: [:project_key]}
   defstruct [:project_id, :project_key, :client_id, :manage_ref, :manager_pid, :cache_path]
 
+  @typedoc "A client. `inspect/2` leaves out `project_key`."
   @type t :: %__MODULE__{
           project_id: String.t(),
           project_key: String.t(),
@@ -422,6 +424,28 @@ defmodule Moss.Client do
   end
 
   def normalize_cache_path(_), do: nil
+
+  # The NIFs that take the project key raise badarg on an argument they cannot decode,
+  # and the BEAM prints every argument of the call. A guard clause would print them too,
+  # so their callers check each argument here and return `{:error, %Moss.Error{}}` instead.
+  @doc false
+  @spec check_strings(keyword(), keyword()) :: :ok | {:error, Moss.Error.t()}
+  def check_strings(required, optional \\ []) do
+    wrong =
+      Enum.find(required, fn {_name, value} -> not utf8?(value) end) ||
+        Enum.find(optional, fn {_name, value} -> not is_nil(value) and not utf8?(value) end)
+
+    case wrong do
+      nil ->
+        :ok
+
+      {name, _value} ->
+        label = name |> Atom.to_string() |> String.replace("_", " ")
+        {:error, Moss.Error.invalid_argument("The #{label} must be a UTF-8 string.")}
+    end
+  end
+
+  defp utf8?(value), do: is_binary(value) and String.valid?(value)
 
   defp ensure_device_id_file(dir) do
     file = Path.join(dir, ".moss-device-id")

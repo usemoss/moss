@@ -223,7 +223,14 @@ class MossClient:
         self,
         name: str,
         options: Optional[GetDocumentsOptions] = None,
-    ) -> List[DocumentInfo]: ...
+    ) -> List[DocumentInfo]:
+        """Retrieve documents from a cloud index: all of them, or those in `options.doc_ids`.
+
+        Only `doc_ids` reaches the cloud, so `filter`, `sort_by`,
+        `ascending=False` and `group_by` raise InvalidArgumentError.
+        A session from `session()` applies them in its own `get_docs`.
+        """
+        ...
 
     async def create_web_source(
         self,
@@ -297,6 +304,10 @@ class MossClient:
 
         A blank query with no options.embedding returns no results at every
         alpha and embeds nothing. With an embedding, a blank query ranks by it.
+
+        Raises TypeError when options is not a QueryOptions or None,
+        MossError NOT_FOUND when the index is not loaded, and then
+        InvalidArgumentError for options.group_by, which only SessionIndex.query applies.
         """
         ...
 
@@ -313,6 +324,7 @@ class MossClient:
         0.0 keyword-only, in between hybrid via Reciprocal Rank Fusion.
         Each result doc carries index_name set to its source index.
         A blank query with no options.embedding returns no results.
+        A wrong options type and options.group_by raise as in query.
         """
         ...
 
@@ -445,6 +457,7 @@ class SessionIndex:
 
         A blank query with no options.embedding returns no results at every
         alpha and embeds nothing. With an embedding, a blank query ranks by it.
+        Raises TypeError when options is not a QueryOptions or None.
         """
         ...
 
@@ -705,6 +718,10 @@ class QueryOptions:
     alpha: Optional[float]
     filter: Optional[Dict[str, Any]]
     group_by: Optional[ParentGrouping]
+    """Groups results by parent. Only SessionIndex.query applies it.
+
+    MossClient.query and query_multi_index raise InvalidArgumentError for it.
+    """
     min_score: Optional[float]
     """Drops results whose score is below this floor, from 0 to 1.
 

@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-11-17
+
+### Changed
+
+- A new client loads an index from `:cache_path` in about one round trip to the Moss cloud when an earlier client of the same project in the process still holds its embedding model. Clients in one process share the project's token, their connections to the cloud and each loaded embedding model, and every load still checks the cloud version of the index. Closing the last client that uses a model frees it at once, so a client created after that fetches a new grant and opens the model again. A cached `load_index/3` also asks for the index metadata and its model provenance at once. From Europe, about 130 ms from the Moss cloud, a cached 960-document index loaded in a new client that found its model loaded in 200 to 290 ms instead of 2.5 to 2.8 s, a cached 50,400-document index in 0.8 to 1.4 s instead of 3.0 to 3.1 s, and the first client in a process in 1.9 to 2.2 s instead of 2.5 to 2.8 s. A client opened several idle minutes after the last one closed reconnects and opens the model again, which took 1.6 to 1.7 s. `close/1` no longer exchanges the project key a second time, and took about 0.8 s instead of 1.4 to 1.8 s.
+- `load_index/3` and `load_indexes/3` need less memory. The index file, downloaded or read from `:cache_path`, is freed once it is parsed, and its vectors and documents move into the loaded index instead of being copied. A load that writes the download to `:cache_path` frees the file once it is written and copies the documents into the index. On an Apple M2, loading 250,000 documents with 384-dimension vectors peaked at 943 MB instead of 1,550 MB, and at about 1,210 MB when the load writes the download to `:cache_path`. Auto-refresh of an index loaded without `:cache_path` installs a newer version the same way. Search results and cache files are unchanged.
+- Queries with a metadata filter test it while they score the vectors, in parallel on large indexes, and skip the vectors of documents it rejects. The filter values of `$gt`, `$gte`, `$lt`, `$lte` and `$near` are parsed once per query instead of once per document. On an Apple M2, an embedding or hybrid query over 100,000 documents with 1,536-dimension vectors and a filter that keeps 5% of them ran about six times faster. Results are unchanged.
+- Creating an index whose name is taken fails with the code `:invalid_argument` and the message "An index with this name already exists. Delete it or choose another name.", and a call the service refuses because a build for the index is still running, such as adding documents during a build, fails the same way with "A build is already running for this index. Wait for it to finish, then try again.", instead of the generic "The Moss service rejected the request as invalid.". The code is unchanged, and `detail` still names the service's code.
+
+### Deprecated
+
+- Versions of `moss` below 1.2.0 reach end of support on 2026-12-17 and will stop working then. Upgrade to this release or a later one.
+
+### Fixed
+
+- `inspect/2` of a `Moss.Client` leaves out `project_key`, so crash reports, `IO.inspect/2` and error trackers no longer print the project key.
+- `Moss.Client.new/3` and `Moss.Client.session/3` return `{:error, %Moss.Error{code: :invalid_argument}}` when the project id, project key, index name or model id is not a UTF-8 string. `new/3` used to raise an `ArgumentError` and `session/3` to return `{:error, {:badarg, stacktrace}}`, both with the project key in the stacktrace.
+- `Moss.Client.create_index/4`, `create_index_from_files/5`, `add_docs/4` and `delete_docs/3` calls on one index run one at a time across every `Moss.Client` that uses the same loaded copy of the core. Each call keeps the index until it returns, the wait for its build included, so parallel writes to one index take as long as the same writes one after another. `Moss.Session.push_index/1` waits its turn with them, but keeps the index only until the service accepts the push, not through its build. Calls on different indexes still run in parallel. `delete_index/2` does not wait for them, since the service cancels a running build of the index it deletes. Calls on one index through separate clients used to reach the service together, which refused some of them and reported others as done without storing them: of three parallel `add_docs/4` calls with one new document each, only one document was stored. A call the service refuses because a build of the index is running, such as one started from another process, is sent again, with waits that grow from about one second to eight and add up to at most 60 seconds. If the service still refuses it after those waits, it fails with the code `:invalid_argument` and the message "A build is already running for this index. Wait for it to finish, then try again.", as it used to on the first refusal. Writes to one index from separate copies of the core, processes or hosts do not wait for each other. Such a write is sent again, with the same waits, only when the service refuses it with `BUILD_IN_PROGRESS`. The Moss cloud service refuses a write that overlaps a running build, but an index service without that refusal can accept the write and drop it.
+- The `:indexes` documentation of `Moss.Inference.Responses.create/3` and the README say that Moss searches only the indexes a call names, so a call that leaves `:indexes` out runs no search, as the gateway does.
+- The README links the Moss portal for credentials and passes them to `Moss.Client.new` as arguments, since it reads no environment variable for them.
+
 ## [1.13.0] - 2026-11-10
 
 ### Changed
@@ -198,7 +219,7 @@
 ### Changed
 
 - The per-device id is now sourced by the native core; `Moss.DeviceId` is removed. Same file (`~/.moss/.moss-device-id`), same id. `Moss.Client.new/3`'s `:cache_path` is forwarded to the core's `load_index`, which adopts `<cache_path>/.moss-device-id` (created when missing, as before) and also caches loaded indexes on disk under that directory; a blank `:cache_path` is treated as unset, and the `$XDG_CACHE_HOME/moss` location is no longer consulted. `Moss.Client.session/3` copies the client manager's resolved identity onto the session. `MossCore.Nif.manager_set_device_id/2` and `session_set_device_id/2` keep the current id when given `nil`; `manager_device_identity/1` and `session_set_identity/4` are new.
-- Foundation models (`moss-minilm`, `moss-mediumlm`, `moss-litelm`) download in the native model format when the project has access to it, and resume interrupted downloads. Other projects keep the existing model files. No API change.
+- Foundation models (`moss-minilm`, `moss-mediumlm`, `moss-litelm`) download in the native model format when the project has access to it, and resume interrupted downloads. No API change.
 
 ## [1.1.0] - 2026-08-26
 
