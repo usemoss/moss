@@ -87,7 +87,7 @@ public final class MossInference: Sendable {
     /// `instructions` is the system message before `input`, and `maxOutputTokens` the most tokens a response may have.
     /// `tools` offers functions you run and MCP servers the gateway calls, and `toolChoice` and `parallelToolCalls` steer them.
     /// Each is sent only when given and wins over the same key in `extra`, which holds the other OpenAI body fields.
-    /// `indexes` names the indexes to search, all of the project's when `nil` and none when empty, as with `retrieve: false`.
+    /// `indexes` names the indexes to search, none when `nil` or empty, as with `retrieve: false`.
     /// Moss can answer an identical request from its reply cache, and `cache: false` always asks the model.
     /// `model` is `moss`, Moss's model, unless you name a vendor model such as `gpt-4o-mini`.
     /// `apiKey` replaces the client's provider key for one call, and an empty one is refused.

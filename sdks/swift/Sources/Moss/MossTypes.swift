@@ -257,8 +257,8 @@ public struct LoadIndexOptions: Sendable {
     /// Optional sandbox path used to cache the index on disk so subsequent
     /// launches don't re-download. Applies to `MossClient.loadIndex`; sessions
     /// persist via `MossSession.save(toCachePath:)` instead. Pass
-    /// `FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.path`
-    /// or similar.
+    /// `FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!.path`,
+    /// which backups do not copy.
     public var cachePath: String?
 
     public init(autoRefresh: Bool = false, pollingIntervalSeconds: UInt64 = 600, cachePath: String? = nil) {
