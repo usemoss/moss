@@ -1,6 +1,6 @@
 [project]
 name = "moss-connector-huggingface"
-version = "0.0.1"
+version = "0.0.2"
 description = "HuggingFace Datasets source connector for moss-connectors."
 readme = "README.md"
 requires-python = ">=3.10,<3.15"

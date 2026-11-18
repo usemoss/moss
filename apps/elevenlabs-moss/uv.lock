@@ -158,7 +158,7 @@ wheels = [
 
 [[package]]
 name = "elevenlabs-moss"
-version = "0.0.1"
+version = "0.0.2"
 source = { directory = "../../packages/elevenlabs-moss" }
 dependencies = [
     { name = "elevenlabs" },

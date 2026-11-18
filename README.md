@@ -302,6 +302,8 @@ The SDKs that Moss releases sync into [`sdks/`](sdks/), Swift, JavaScript, Pytho
 
 The binaries attached to this repository's releases are not covered by its BSD license: `Moss.xcframework.zip`, which the `MossC` target of [`Package.swift`](Package.swift) downloads, the `libmoss` C SDK archives, which the Go SDK links, and the Android AAR. They are licensed under the PolyForm Shield License 1.0.0. Releases after `v0.15.0` (iOS), `c-sdk-v0.31.0` and `android-sdk-v0.31.0` carry the terms in each binary as `LICENSE.txt`, beside `LICENSE-THIRD-PARTY.txt`, the licenses of the third-party code it links. Earlier binaries have no `LICENSE.txt`.
 
+The [licensing page](https://docs.moss.dev/docs/reference/licensing) of the documentation lists the terms of every Moss package and release binary.
+
 ---
 
 <div align="center">
