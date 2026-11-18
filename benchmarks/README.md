@@ -178,8 +178,8 @@ and query text to Pinecone and keeps two local indexes in memory.
 Run `python benchmarks/run_ci.py --competitor-reference PATH` with a saved
 reference. For live CI, track the reviewed file as
 `benchmarks/competitor-reference.json` and set
-`MOSS_BENCHMARK_COMPETITOR_AGREEMENT_ENABLED` to `true`. CI reads the saved
-rankings with no competitor SDKs, credentials, or service calls.
+`MOSS_BENCHMARK_COMPETITOR_AGREEMENT_ENABLED` to `true`. The live measurement
+job reads the saved rankings with no competitor SDKs, credentials, or service calls.
 
 A template gets one vote per competitor that returns it. For each query,
 the score is the fraction of templates with two or more votes that Moss
@@ -192,9 +192,11 @@ recall remains unconfigured.
 ### Offline checks
 
 ```bash
+python -m pip install -r benchmarks/requirements-ci.txt pinecone==10.3.0
 python -m unittest discover -s benchmarks/tests -v
 python -m compileall -q benchmarks
 ```
 
 These tests check index setup, timing, and reporting with a fake Moss session
-and run without project credentials.
+and run without project credentials. The collector configuration test uses
+real Pinecone SDK model types without creating a client or calling its service.
