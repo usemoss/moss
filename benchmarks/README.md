@@ -163,7 +163,9 @@ corpus and queries as Moss. Each engine receives text and handles embedding.
 Qdrant uses local FastEmbed and Chroma uses its default local embedding model.
 Pinecone requires an existing, dedicated dense cosine index created with
 `create_for_model` for integrated embedding. The collector uses a temporary
-namespace and cleans it up on exit.
+namespace and attempts to delete it on exit using the SDK's bounded retries.
+If deletion still fails, capture exits nonzero and identifies the namespace
+for manual cleanup.
 
 ```bash
 python -m pip install 'pinecone>=10,<11' 'qdrant-client[fastembed]>=1.14.2,<2' 'chromadb>=1,<2' 'python-dotenv>=1,<2'
