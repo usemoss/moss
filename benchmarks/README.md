@@ -167,6 +167,10 @@ namespace and attempts to delete it on exit using the SDK's bounded retries.
 If deletion still fails, capture exits nonzero and identifies the namespace
 for manual cleanup.
 
+Forced termination, such as SIGKILL, can bypass cleanup. Keep the namespace
+printed before upload and, after a killed run, check Pinecone for that namespace
+and delete it if it remains.
+
 ```bash
 python -m pip install 'pinecone>=10,<11' 'qdrant-client[fastembed]>=1.14.2,<2' 'chromadb>=1,<2' 'python-dotenv>=1,<2'
 python benchmarks/capture_competitor_rankings.py --env-file benchmarks/.env --output .benchmark-results/competitor-reference.json
