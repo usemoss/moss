@@ -1,7 +1,7 @@
 #
-# Copyright (c) 2025, InferEdge Inc.
+# Copyright (c) 2025 InferEdge Inc.
 #
-# SPDX-License-Identifier: BSD 2-Clause License
+# SPDX-License-Identifier: BSD-2-Clause
 #
 
 """VAPI webhook signature verification."""

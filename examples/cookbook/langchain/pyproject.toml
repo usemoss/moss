@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-moss"
-version = "0.1.0"
+version = "0.1.1"
 description = "LangChain integration for Moss semantic search"
 readme = "README.md"
 requires-python = ">=3.11"

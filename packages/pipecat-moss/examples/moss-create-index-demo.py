@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2026, Moss Team
+# Copyright (c) 2025 InferEdge Inc.
 #
 # SPDX-License-Identifier: BSD-2-Clause
 #
