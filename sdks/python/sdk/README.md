@@ -213,6 +213,42 @@ await client.load_index("my-docs", auto_refresh=True)
 await client.load_index("other-docs", cache_path="/tmp/moss")
 ```
 
+### Keep models between clients
+
+Clients in one process share each embedding model that `load_index` or
+`load_indexes` opens, and closing the last client that uses a model frees it. If
+you create a client per call or request, pass `keep_models=True` so the next
+client of the project reuses the model instead of opening it again. A kept model
+stays loaded until the grant it was opened under is within 30 seconds of expiring,
+at most about four and a half minutes after it was opened. A model that only a
+session loads is not kept.
+
+```python
+async with MossClient("your-project-id", "your-project-key", keep_models=True) as client:
+    await client.load_index("my-docs", cache_path="/var/cache/moss")
+    results = await client.query("my-docs", "programming language")
+```
+
+### Forking servers
+
+A client built before `os.fork()` works in each forked worker, as under gunicorn
+`--preload`, a Celery prefork pool or `multiprocessing` with the fork start method.
+The worker keeps the indexes the parent loaded, starts its own runtime, connections
+and telemetry, and opens its own embedding model on first use. Auto refresh of an
+index loaded before the fork stays in the parent, so a worker sees a newer version
+after `load_index`. Fork only while no other thread is inside a call on the client,
+as a gunicorn master does after it loads the app. A worker forked while a query or
+load ran loads its indexes again.
+
+```python
+client = MossClient("your-project-id", "your-project-key")
+asyncio.run(client.load_index("my-docs"))  # once, in the gunicorn master
+
+
+async def search(text: str):  # in each worker
+    return await client.query("my-docs", text)
+```
+
 ### Offline-tolerant load
 
 With a `cache_path` set and a snapshot already on disk, a load whose cloud

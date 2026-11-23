@@ -70,6 +70,16 @@ function assertCredentials(projectId: unknown, auth: unknown): void {
   }
 }
 
+/** The `keepModels` option, `false` when unset. */
+function readKeepModels(options?: MossClientOptions): boolean {
+  const keep: unknown = options?.keepModels;
+  if (keep === undefined) return false;
+  if (typeof keep !== "boolean") {
+    throw mossError("INVALID_ARGUMENT", "keepModels must be a boolean.");
+  }
+  return keep;
+}
+
 /** Render an unknown throwable as a diagnostic string without throwing again. */
 function describeCause(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -218,12 +228,18 @@ export class InternalMossClient {
    */
   private readonly authNotifyFn?: AuthNotifyFn;
 
+  /**
+   * @param clientId - The client id the native manage client and index manager report,
+   *   the one the owning `MossClient` gives its sessions. A new one each when omitted.
+   */
   constructor(
     projectId: string,
     auth: string | IAuthenticator,
     options?: MossClientOptions,
+    clientId: string | null = null,
   ) {
     assertCredentials(projectId, auth);
+    const keepModels = readKeepModels(options);
     this.configuredIdentity = validateMossIdentity(options?.identity);
     this.cachePathDeviceId = resolveCachePathDeviceId(options?.cachePath);
     this.projectId = projectId;
@@ -234,13 +250,35 @@ export class InternalMossClient {
     this.authenticator = new CachingAuthenticator(inner);
 
     const runtime = MossCore as unknown as {
-      ManageClient?: new (projectId: string, projectKey: string) => InternalMossClient["manageClient"];
-      IndexManager?: new (projectId: string, projectKey: string) => InternalMossClient["indexManager"];
+      ManageClient?: new (
+        projectId: string,
+        projectKey: string,
+        baseUrl?: string | null,
+        clientId?: string | null,
+      ) => InternalMossClient["manageClient"];
+      IndexManager?: new (
+        projectId: string,
+        projectKey: string,
+        baseUrl?: string | null,
+        clientId?: string | null,
+        keepModels?: boolean | null,
+      ) => InternalMossClient["indexManager"];
       resolveAuthRequest?: (requestId: number, token: string) => void;
       rejectAuthRequest?: (requestId: number, error: string) => void;
       default?: {
-        ManageClient?: new (projectId: string, projectKey: string) => InternalMossClient["manageClient"];
-        IndexManager?: new (projectId: string, projectKey: string) => InternalMossClient["indexManager"];
+        ManageClient?: new (
+          projectId: string,
+          projectKey: string,
+          baseUrl?: string | null,
+          clientId?: string | null,
+        ) => InternalMossClient["manageClient"];
+        IndexManager?: new (
+          projectId: string,
+          projectKey: string,
+          baseUrl?: string | null,
+          clientId?: string | null,
+          keepModels?: boolean | null,
+        ) => InternalMossClient["indexManager"];
         resolveAuthRequest?: (requestId: number, token: string) => void;
         rejectAuthRequest?: (requestId: number, error: string) => void;
       };
@@ -254,8 +292,8 @@ export class InternalMossClient {
 
     if (typeof auth === "string") {
       // Server-side path: CloudClient inside Rust reads MOSS_INDEX_URL from env; no URL passed here.
-      this.manageClient = new ManageClientCtor(projectId, auth);
-      this.indexManager = new IndexManagerCtor(projectId, auth);
+      this.manageClient = new ManageClientCtor(projectId, auth, null, clientId);
+      this.indexManager = new IndexManagerCtor(projectId, auth, null, clientId, keepModels);
     } else {
       // Custom authenticator path: wire auth bridge through the notify function
       const resolveAuthRequest =
@@ -336,10 +374,21 @@ export class InternalMossClient {
       // Access withAuthenticator factory methods — these are added in the NAPI bindings
       // alongside the standard constructors
       const ManageClientWithAuth = ManageClientCtor as unknown as {
-        withAuthenticator(projectId: string, notifyFn: AuthNotifyFn): InternalMossClient["manageClient"];
+        withAuthenticator(
+          projectId: string,
+          notifyFn: AuthNotifyFn,
+          baseUrl?: string | null,
+          clientId?: string | null,
+        ): InternalMossClient["manageClient"];
       };
       const IndexManagerWithAuth = IndexManagerCtor as unknown as {
-        withAuthenticator(projectId: string, notifyFn: AuthNotifyFn): InternalMossClient["indexManager"];
+        withAuthenticator(
+          projectId: string,
+          notifyFn: AuthNotifyFn,
+          baseUrl?: string | null,
+          clientId?: string | null,
+          keepModels?: boolean | null,
+        ): InternalMossClient["indexManager"];
       };
 
       if (!ManageClientWithAuth.withAuthenticator || !IndexManagerWithAuth.withAuthenticator) {
@@ -349,8 +398,14 @@ export class InternalMossClient {
         );
       }
 
-      this.manageClient = ManageClientWithAuth.withAuthenticator(projectId, notifyFn);
-      this.indexManager = IndexManagerWithAuth.withAuthenticator(projectId, notifyFn);
+      this.manageClient = ManageClientWithAuth.withAuthenticator(projectId, notifyFn, null, clientId);
+      this.indexManager = IndexManagerWithAuth.withAuthenticator(
+        projectId,
+        notifyFn,
+        null,
+        clientId,
+        keepModels,
+      );
     }
 
     this.applyIdentity(this.indexManager as unknown as IdentityTarget);
@@ -683,12 +738,13 @@ export class InternalMossClient {
    * Build a core `SessionIndex` authenticated via the same JS-authenticator
    * bridge used for `IndexManager` — lets custom-auth clients (short-lived
    * JWTs, no project key) open sessions. The returned core handle is wrapped
-   * by `SessionIndex._fromInner`.
+   * by `SessionIndex._fromInner`. `clientId` is the client id the session reports.
    */
   async createAuthenticatedSessionInner(
     name: string,
     modelId: string,
     modelArtifact?: ModelArtifactIdentity,
+    clientId?: string,
   ): Promise<MossCore.SessionIndex> {
     if (!this.authNotifyFn) {
       throw new Error(
@@ -731,7 +787,7 @@ export class InternalMossClient {
       this.projectId,
       this.authNotifyFn,
       null,
-      null,
+      clientId ?? null,
       modelArtifact?.version ?? null,
       modelArtifact?.manifestSha256 ?? null,
     );

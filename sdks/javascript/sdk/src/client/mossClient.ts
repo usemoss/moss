@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { InternalMossClient } from "./internalMossClient";
 import { SessionIndex } from "./sessionIndex";
 import type { IAuthenticator, AuthToken } from "../auth/authenticator.interface";
@@ -73,6 +74,11 @@ export class MossClient {
   readonly #projectKey: string | null;
   /** The `cachePath` option, the default root for session snapshots. */
   readonly #cachePath?: string;
+  /**
+   * The client id its sessions, index manager and manage client report.
+   * Its sessions and index manager that open a model at once share one issuer call.
+   */
+  readonly #clientId = randomUUID();
   #closed = false;
   #closePromise?: Promise<void>;
   #sessions = new Set<WeakRef<SessionIndex>>();
@@ -81,14 +87,14 @@ export class MossClient {
    * Creates a new MossClient instance.
    * @param projectId - Your project identifier.
    * @param projectKey - Your project key (server-side use).
-   * @param options - Optional cache path and stable host identity.
+   * @param options - Optional cache path, stable host identity and `keepModels`.
    */
   constructor(projectId: string, projectKey: string, options?: MossClientOptions);
   /**
    * Creates a new MossClient instance.
    * @param projectId - Your project identifier.
    * @param authenticator - Custom IAuthenticator (browser/delegated auth use).
-   * @param options - Optional cache path and stable host identity.
+   * @param options - Optional cache path, stable host identity and `keepModels`.
    */
   constructor(projectId: string, authenticator: IAuthenticator, options?: MossClientOptions);
   constructor(
@@ -96,7 +102,7 @@ export class MossClient {
     auth: string | IAuthenticator,
     options?: MossClientOptions,
   ) {
-    this.#internal = new InternalMossClient(projectId, auth, options);
+    this.#internal = new InternalMossClient(projectId, auth, options, this.#clientId);
     this.#projectId = projectId;
     this.#projectKey = typeof auth === "string" ? auth : null;
     this.#cachePath = options?.cachePath;
@@ -682,7 +688,7 @@ export class MossClient {
         modelId,
         this.#projectId,
         this.#projectKey,
-        undefined,
+        this.#clientId,
         applyIdentity,
         modelArtifact,
         this.#cachePath,
@@ -694,6 +700,7 @@ export class MossClient {
         indexName,
         modelId,
         modelArtifact,
+        this.#clientId,
       );
       session = SessionIndex._fromInner(indexName, inner, applyIdentity, this.#cachePath);
     }
@@ -718,7 +725,8 @@ export class MossClient {
    * Release the client's native resources (the index manager's loaded
    * indexes, pollers, and telemetry). Idempotent. All client methods
    * reject with "MossClient is closed" afterwards. Does not stop the
-   * process-wide shared runtime.
+   * process-wide shared runtime. An embedding model no other client uses
+   * is freed as well, unless `keepModels` keeps it for a later client.
    *
    * Also closes every live session created by this client (sessions can
    * still be closed individually first; close is idempotent).

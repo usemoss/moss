@@ -18,6 +18,7 @@ import random
 import re
 import threading
 import uuid
+import weakref
 from dataclasses import dataclass, field, fields, is_dataclass
 from functools import partial
 from typing import (
@@ -1354,6 +1355,27 @@ def _from_env() -> MossInference:
     return _default[1]
 
 
+_SYNC_CLIENTS: "weakref.WeakSet[MossInferenceSync]" = weakref.WeakSet()
+_INHERITED_LOOPS: list[tuple[asyncio.AbstractEventLoop, threading.Thread]] = []
+
+
+def _forget_parent_loops() -> None:
+    """Gives each sync client of a forked child a new lock and no loop.
+
+    The lock and the loop belong to the parent's threads. The loops stay referenced
+    here, so the child never closes them, nor the connections they hold.
+    """
+    for client in list(_SYNC_CLIENTS):
+        client._lock = threading.Lock()
+        running, client._loop = client._loop, None
+        if running is not None:
+            _INHERITED_LOOPS.append(running)
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_forget_parent_loops)
+
+
 class MossInferenceSync:
     """A client of the Tasks API whose calls block, for code with no event loop.
 
@@ -1391,6 +1413,7 @@ class MossInferenceSync:
         self._lock = threading.Lock()
         self._loop: tuple[asyncio.AbstractEventLoop, threading.Thread] | None = None
         self.tasks: _SyncTasks = _SyncTasks(self)
+        _SYNC_CLIENTS.add(self)
 
     def close(self) -> None:
         """Cancel the calls under way, which then raise `CancelledError`,

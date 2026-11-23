@@ -472,6 +472,20 @@ export interface MossClientOptions {
    * non-billable. Moss's own stable UUID is still sent as `mossDeviceId`.
    */
   identity?: MossIdentity;
+
+  /**
+   * Keeps loaded embedding models in memory after their clients close.
+   *
+   * When `true`, the embedding model of each index that `loadIndex` or `loadIndexes`
+   * opens stays loaded after the last client using it closes, so a later client of the
+   * project in this process reuses it once its own grant for the same artifact arrives,
+   * without opening it again. A model that only a session loads is not kept. A kept model
+   * is freed once the grant it was opened under is within 30 seconds of expiring, at most
+   * about four and a half minutes after it was opened with today's grants. Defaults to
+   * `false`, where closing the last client that uses a model frees it at once, unless a
+   * client with `keepModels` loaded it too.
+   */
+  keepModels?: boolean;
 }
 
 /**

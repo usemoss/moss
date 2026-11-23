@@ -169,6 +169,7 @@ class MossClient:
         project_key: str,
         *,
         cache_path: Optional[str] = None,
+        keep_models: bool = False,
     ) -> None:
         """Create a client.
 
@@ -178,13 +179,24 @@ class MossClient:
         default (`~/.moss`). Sessions from this client save to
         `<cache_path>/sessions/<project id>/` when `save_to_disk` gets no directory.
         Parity with the JS SDK's `MossClientOptions`.
+
+        `keep_models` keeps the embedding model of each index that `load_index` or
+        `load_indexes` opens in memory after the last client using it closes, so a later
+        client of the project in this process reuses it once its own grant for the same
+        artifact arrives, without opening it again. A model that only a `session()` loads
+        is not kept. A kept model is freed once the grant it was opened under is within 30
+        seconds of expiring, at most about four and a half minutes after it was opened with
+        today's grants. It is off by default, and then closing the last client that uses a
+        model frees it at once, unless a client with `keep_models=True` loaded it too.
         """
         self._project_id = project_id
         self._project_key = project_key
         self._cache_path = cache_path
         self._client_id = str(uuid.uuid4())
         self._manage = ManageClient(project_id, project_key, client_id=self._client_id)
-        self._manager = IndexManager(project_id, project_key, client_id=self._client_id)
+        self._manager = IndexManager(
+            project_id, project_key, client_id=self._client_id, keep_models=keep_models
+        )
         self._sessions: "weakref.WeakSet[SessionIndex]" = weakref.WeakSet()
         # Adopt the client cache_path's persistent device identity now, before
         # any load. Otherwise a session() opened first reads and pins the native

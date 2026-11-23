@@ -105,7 +105,19 @@ class MossClient:
         project_key: str,
         *,
         cache_path: Optional[str] = None,
-    ) -> None: ...
+        keep_models: bool = False,
+    ) -> None:
+        """Create a client.
+
+        `keep_models` keeps the embedding model of each index that `load_index` or
+        `load_indexes` opens in memory after the last client using it closes, so a later
+        client of the project in this process reuses it once its own grant for the same
+        artifact arrives, without opening it again. A model that only a `session()` loads
+        is not kept. A kept model is freed once the grant it was opened under is within 30
+        seconds of expiring, at most about four and a half minutes after it was opened with
+        today's grants. It is off by default, and then closing the last client that uses a
+        model frees it at once, unless a client with `keep_models=True` loaded it too.
+        """
 
     async def session(
         self,

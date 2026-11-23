@@ -116,6 +116,12 @@ See [Telemetry](https://docs.moss.dev/docs/reference/telemetry) for every field 
 
 `client.close()` also closes every live session created from that client. Closing a session individually first is fine; `close()` is idempotent on both.
 
+Clients in one process share each embedding model that `loadIndex` or `loadIndexes` opens, and closing the last client that uses a model frees it. If you create a client per call or request, set `keepModels` so the next client reuses the model instead of opening it again. A kept model stays loaded until the grant it was opened under is within 30 seconds of expiring, at most about four and a half minutes after it was opened. A model that only a session loads is not kept:
+
+```typescript
+const mossClient = new MossClient("your-project-id", "your-project-key", { keepModels: true });
+```
+
 On Node 24 and later, both `MossClient` and sessions implement `Symbol.asyncDispose`, so you can use `await using` instead of a manual `try/finally`:
 
 ```typescript
