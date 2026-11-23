@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-11-23
+
+### Added
+
+- `Moss.Client.new/3` takes `:keep_models`, false by default. With `keep_models: true`, a model that `load_index/3` or `load_indexes/3` opens stays loaded after the last client using it closes, so a later client of the project reuses it and loads a cached index without opening the model again, once its own grant for the same artifact arrives, until the grant it was opened under is within 30 seconds of expiring, with today's grants at most about four and a half minutes after the model was opened. A later load then fetches a new grant and opens the model again.
+
+### Changed
+
+- The GitHub link of the `moss_core` Hex package is usemoss/moss-core-nif, which publishes its precompiled NIFs, in place of usemoss/moss, which does not hold its source.
+- A client or session that reuses an embedding model another client of the project holds, or one that `:keep_models` kept, now asks the issuer for its own grant first. That adds one round trip and still skips the decrypt and session start. A client the issuer refuses now fails to load the model instead of using one another client opened.
+
+### Fixed
+
+- A session keeps its saved snapshot to itself while it serves vectors from it, also after `save_to_disk/2` writes a new generation. `load_from_disk` and `save_to_disk/2` of the same session name and cache path in a second session, in this node or another process, return `{:error, %Moss.Error{code: :internal}}` with the message "The saved session snapshot is open in another session." while the first session process is alive. A save used to replace the file that held the lock, so after one save a second session could load and save the same snapshot beside the first and overwrite its saves. The lock is the file `session.lock` in the session's directory, and it holds on Windows too. Loading from a directory this process cannot write works when the snapshot already has its `session.lock`, which every save writes, and fails otherwise. A snapshot that an earlier version saved has none. Add an empty `session.lock` file to its directory, or load a copy: while nothing saves to the snapshot, copy its directory under the same name into another directory, make the copy writable by the process, and pass that other directory as the cache path. Earlier versions take no `session.lock`, so a process on one of them and a process on this version do not lock each other out. Keep every process on an earlier version stopped while a process on this version has the same cache path open.
+
 ## [1.14.0] - 2026-11-17
 
 ### Changed

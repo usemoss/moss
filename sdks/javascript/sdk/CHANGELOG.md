@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-11-23
+
+### Added
+
+- The `keepModels` option of `MossClientOptions`, off by default, keeps the embedding model of each index a client loads after the last client of the project in the process closes, so a client created next loads a cached index without opening the model again, once its own grant for the same artifact arrives. A kept model stays loaded until the grant it was opened under is within 30 seconds of expiring, at most about four and a half minutes after it was opened with today's grants. This suits a client per call or session. `new MossClient` throws a `MossError` with the code `INVALID_ARGUMENT` when `keepModels` is set to something other than a boolean.
+
+### Changed
+
+- The sessions, the index manager and the manage client of one `MossClient` report its client id. Its sessions and index manager that open a model at the same time share one issuer call, with a project key or an `IAuthenticator`.
+- A client or session that reuses an embedding model another client of the project holds, or one that `keepModels` kept, now asks the issuer for its own grant first. That adds one round trip and still skips the decrypt and session start. A client the issuer refuses now fails to load the model instead of using one another client opened.
+
+### Fixed
+
+- A session keeps its saved snapshot to itself while it serves vectors from it, also after `saveToDisk` writes a new generation. `loadFromDisk` and `saveToDisk` of the same session name and cache path in a second session, in this process or another, throw a `MossError` with the code `INTERNAL` and the message "The saved session snapshot is open in another session." while the first session is alive. A save used to replace the file that held the lock, so after one save a second session could load and save the same snapshot beside the first and overwrite its saves. The lock is the file `session.lock` in the session's directory, and it holds on Windows too. Loading from a directory this process cannot write works when the snapshot already has its `session.lock`, which every save writes, and fails otherwise. A snapshot that an earlier version saved has none. Add an empty `session.lock` file to its directory, or load a copy: while nothing saves to the snapshot, copy its directory under the same name into another directory, make the copy writable by the process, and pass that other directory as the cache path. Earlier versions take no `session.lock`, so a process on one of them and a process on this version do not lock each other out. Keep every process on an earlier version stopped while a process on this version has the same cache path open.
+
 ## [1.25.0] - 2026-11-17
 
 ### Changed

@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-11-23
+
+### Added
+
+- `MossClient(project_id, project_key, keep_models=True)`, off by default, keeps the embedding model of each index a client loads after the last client of the project in the process closes, so a client created next loads a cached index without opening the model again, once its own grant for the same artifact arrives. A kept model stays loaded until the grant it was opened under is within 30 seconds of expiring, at most about four and a half minutes after it was opened with today's grants, so its memory is freed then rather than at `close()`. This suits a client per call or session. A forked child keeps no model its parent loaded.
+
+### Changed
+
+- A client or session that reuses an embedding model another client of the project holds, or one that `keep_models` kept, now asks the issuer for its own grant first. That adds one round trip and still skips the decrypt and session start. A client the issuer refuses now fails to load the model instead of using one another client opened.
+
+### Fixed
+
+- A session keeps its saved snapshot to itself while it serves vectors from it, also after `save_to_disk` writes a new generation. `load_from_disk` and `save_to_disk` of the same session name and cache path in a second session, in this process or another, raise `MossError` with code `INTERNAL` and the message "The saved session snapshot is open in another session." while the first session is alive. A save used to replace the file that held the lock, so after one save a second session could load and save the same snapshot beside the first and overwrite its saves. The lock is the file `session.lock` in the session's directory, and it holds on Windows too. Loading from a directory this process cannot write works when the snapshot already has its `session.lock`, which every save writes, and fails otherwise. A snapshot that an earlier version saved has none. Add an empty `session.lock` file to its directory, or load a copy: while nothing saves to the snapshot, copy its directory under the same name into another directory, make the copy writable by the process, and pass that other directory as the cache path. Earlier versions take no `session.lock`, so a process on one of them and a process on this version do not lock each other out. Keep every process on an earlier version stopped while a process on this version has the same cache path open.
+- A `MossClient` or session built before `os.fork()`, as under gunicorn `--preload`, a Celery prefork pool or `multiprocessing` with the fork start method, works in the forked child instead of hanging there. The child keeps the indexes the parent loaded, and starts its own runtime, connections and telemetry. `load_index`, a query with text and `close()` in the child waited forever before, and a child sent no telemetry. A fork while another thread is inside a call on the same client or session is not supported.
+- A query in a forked child no longer waits forever once the parent has run a query, including on a client built in the child.
+- `MossInferenceSync` gives a forked child a new lock, so a call in the child never waits on a lock that a parent thread held at the fork.
+
 ## [1.25.0] - 2026-11-17
 
 ### Changed

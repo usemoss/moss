@@ -57,19 +57,31 @@ defmodule Moss.Client do
     - `:cache_path` (directory for the on-disk index cache used by `load_index/3`;
       `<cache_path>/.moss-device-id` is created when missing and adopted as the device id;
       sessions from this client save to `<cache_path>/sessions/<project id>/` by default)
+    - `:keep_models` (boolean, default false): keep each embedding model
+      that `load_index/3` or `load_indexes/3` opens after the last client
+      using it closes, so a later client of the same project in this node
+      reuses it once its own grant for the same artifact arrives, without
+      opening it again. A kept model stays loaded until its grant is within
+      30 seconds of expiring, at most four and a half minutes after it opened
+      with today's grants. With false, this client keeps no model, so closing
+      the last client that uses a model frees it at once unless a client with
+      `keep_models: true` loaded it.
   """
   @spec new(String.t(), String.t(), keyword()) :: {:ok, t()} | {:error, Moss.Error.t()}
   def new(project_id, project_key, opts \\ []) do
     client_id = Uniq.UUID.uuid4()
-    cache_path = normalize_cache_path(Keyword.get(opts, :cache_path, nil))
+    keep_models = Keyword.get(opts, :keep_models, false)
 
-    with {:ok, ref} <- Moss.ManageClient.new(project_id, project_key,
+    with :ok <- Moss.IndexManager.check_keep_models(keep_models),
+         cache_path = normalize_cache_path(Keyword.get(opts, :cache_path, nil)),
+         {:ok, ref} <- Moss.ManageClient.new(project_id, project_key,
                          client_id: client_id),
          {:ok, pid} <- Moss.IndexManager.start(
                          project_id: project_id,
                          project_key: project_key,
                          client_id: client_id,
-                         cache_path: cache_path
+                         cache_path: cache_path,
+                         keep_models: keep_models
                        ) do
       Process.link(pid)
       {:ok,

@@ -18,11 +18,15 @@ defmodule Moss.IndexManager do
 
   Optional:
     - `:server_name` — GenServer name registration
+    - `:keep_models` (boolean, default false), as in `Moss.Client.new/3`
   """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     {server_name_opts, opts} = pop_server_name(opts)
-    GenServer.start_link(__MODULE__, opts, server_name_opts)
+
+    with :ok <- check_keep_models(Keyword.get(opts, :keep_models, false)) do
+      GenServer.start_link(__MODULE__, opts, server_name_opts)
+    end
   end
 
   # Unlinked start for a caller that links afterwards, so the caller's normal
@@ -220,12 +224,14 @@ defmodule Moss.IndexManager do
     project_key = Keyword.get(opts, :project_key)
     client_id = Keyword.get(opts, :client_id, nil)
     device_id = Keyword.get(opts, :device_id, nil)
-    cache_path = Moss.Client.normalize_cache_path(Keyword.get(opts, :cache_path, nil))
+    keep_models = Keyword.get(opts, :keep_models, false)
     required = [project_id: project_id, project_key: project_key]
 
     with :ok <- Moss.Client.check_strings(required, client_id: client_id),
-         {:ok, ref} <- Nif.manager_new(project_id, project_key, nil, client_id) do
+         :ok <- check_keep_models(keep_models),
+         {:ok, ref} <- Nif.manager_new(project_id, project_key, nil, client_id, keep_models) do
       if device_id, do: Nif.manager_set_device_id(ref, device_id)
+      cache_path = Moss.Client.normalize_cache_path(Keyword.get(opts, :cache_path, nil))
       {:ok, %{ref: ref, cache_path: cache_path}}
     else
       {:error, reason} -> {:stop, reason}
@@ -334,6 +340,14 @@ defmodule Moss.IndexManager do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
+
+  # A value the NIF cannot decode would raise badarg with the project key among its arguments.
+  @doc false
+  @spec check_keep_models(term()) :: :ok | {:error, Moss.Error.t()}
+  def check_keep_models(keep_models) when is_boolean(keep_models), do: :ok
+
+  def check_keep_models(_keep_models),
+    do: {:error, Moss.Error.invalid_argument(":keep_models must be a boolean.")}
 
   defp query_opts(opts, default_top_k \\ 5) do
     top_k = Keyword.get(opts, :top_k, default_top_k)
