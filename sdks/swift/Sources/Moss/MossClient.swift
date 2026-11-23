@@ -48,45 +48,55 @@ public final class MossClient: @unchecked Sendable {
     /// The consumer doesn't supply this — it's an SDK concern, not an
     /// app concern, and keeping it inside the SDK ensures every
     /// consumer reports telemetry the same way.
-    public init(projectId: String, projectKey: String) throws {
+    ///
+    /// `options.keepModels` keeps the models the client loads for later clients; see `ClientOptions`.
+    public init(
+        projectId: String,
+        projectKey: String,
+        options: ClientOptions = ClientOptions()
+    ) throws {
+        try Self.requireClientOptionsAPI(options)
         try Self.ensureModelCacheDir()
         let did = Self.stableDeviceId()
-        var raw: OpaquePointer?
+        var raw: UnsafeMutableRawPointer?
         let r = projectId.withCString { pid in
             projectKey.withCString { pkey in
                 did.withCString { d in
-                    moss_client_new_with_device_id(pid, pkey, d, &raw)
+                    moss_runtime_bridge_client_new(pid, pkey, d, options.keepModels ? 1 : 0, &raw)
                 }
             }
         }
         try Self.throwIfErr(r)
         guard let raw else { throw Self.missingResult() }
-        self.handle = raw
+        self.handle = OpaquePointer(raw)
         self.authBox = nil
     }
 
     /// Construct a client whose bearer tokens come from [authenticator].
-    /// See the static-key initializer for the device-id behavior.
+    /// See the static-key initializer for the device id and `options`.
     public init(
         projectId: String,
         authenticator: any Authenticator,
-        baseUrl: String? = nil
+        baseUrl: String? = nil,
+        options: ClientOptions = ClientOptions()
     ) throws {
+        try Self.requireClientOptionsAPI(options)
         try Self.ensureModelCacheDir()
         let box = AuthenticatorBox(authenticator)
         let userData = Unmanaged.passUnretained(box).toOpaque()
         let did = Self.stableDeviceId()
 
-        var raw: OpaquePointer?
+        var raw: UnsafeMutableRawPointer?
         let r = projectId.withCString { pid in
             withOptionalCString(baseUrl) { base in
                 did.withCString { d in
-                    moss_client_new_with_authenticator_and_device_id(
+                    moss_runtime_bridge_client_new_with_authenticator(
                         pid,
                         mossSwiftAuthNotify,
                         userData,
                         base,
                         d,
+                        options.keepModels ? 1 : 0,
                         &raw
                     )
                 }
@@ -94,7 +104,7 @@ public final class MossClient: @unchecked Sendable {
         }
         try Self.throwIfErr(r)
         guard let raw else { throw Self.missingResult() }
-        self.handle = raw
+        self.handle = OpaquePointer(raw)
         self.authBox = box
     }
 
@@ -594,10 +604,19 @@ public final class MossClient: @unchecked Sendable {
     /// signal. Wire this from `applicationDidReceiveMemoryWarning` /
     /// `UIApplication.didReceiveMemoryWarningNotification`. Returns the
     /// number of indexes that were unloaded.
+    ///
+    /// It also frees each model in the app that `ClientOptions.keepModels`
+    /// keeps and no client or session uses, whatever options this client has.
+    /// A closed client frees only those models and returns 0, so the app can
+    /// answer memory pressure while no client is open.
     public func onMemoryPressure(_ level: MemoryPressureLevel = .critical) async throws -> Int {
         let levelRaw = level.rawValue
         return try await Task.detached { [self] () throws -> Int in
-            let h = try borrowHandle()
+            guard let h = try? borrowHandle() else {
+                guard Self.clientOptionsAPIAvailable else { return 0 }
+                try Self.throwIfErr(moss_client_release_memory(nil, levelRaw, nil))
+                return 0
+            }
             defer { returnHandle() }
             var unloaded: Int = 0
             // `MossMemoryPressure` is the same cbindgen-generated enum/typedef
@@ -647,6 +666,12 @@ public final class MossClient: @unchecked Sendable {
     /// `options.vectorQuantization` picks the on-disk vector precision
     /// used by `MossSession.save(toCachePath:)` and defaults to the
     /// platform value (INT8 on iOS for every model).
+    ///
+    /// With `options.autoLoadOnInit` (the default) the session loads the cloud
+    /// index of the same name before it returns. An index that does not exist yet
+    /// opens an empty session, and any other failed load, such as no network or a
+    /// rejected model artifact, throws its `MossError`. Pass `autoLoadOnInit: false`
+    /// to skip the load; `SessionOptions.autoLoadOnInit` says when opening still needs the network.
     public func session(
         _ name: String,
         options: SessionOptions = SessionOptions()
@@ -741,6 +766,24 @@ public final class MossClient: @unchecked Sendable {
             filter_json: filter,
             embedding: nil,
             embedding_dim: 0
+        )
+    }
+
+    /// True when the linked native runtime takes client options.
+    /// An older xcframework refuses `keepModels` and builds other clients with the defaults.
+    static var clientOptionsAPIAvailable: Bool {
+        moss_runtime_bridge_client_options_available() != 0
+    }
+
+    /// Throws for options the linked runtime cannot honor.
+    static func requireClientOptionsAPI(
+        _ options: ClientOptions,
+        available: Bool = clientOptionsAPIAvailable
+    ) throws {
+        guard options.keepModels, !available else { return }
+        throw MossError(
+            code: MossError.internalError,
+            message: "The linked Moss runtime does not provide client options (moss_client_new_with_options); update Moss.xcframework"
         )
     }
 

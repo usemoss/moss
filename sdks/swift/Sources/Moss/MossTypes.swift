@@ -207,9 +207,10 @@ public struct SessionOptions: Sendable {
     public var vectorQuantization: VectorQuantization
     /// When `true` (the default), `MossClient.session(_:)` auto-loads the named
     /// index from the cloud at creation time (resolve + download + hydrate)
-    /// before returning. Set `false` for a local-only session: creation returns
-    /// immediately and you populate it yourself - e.g. restore from the on-disk
-    /// cache first and only hit the cloud on a miss:
+    /// before returning, and throws when that load fails. An index that does not
+    /// exist yet opens an empty session. Set `false` for a local-only session:
+    /// creation returns immediately and you populate it yourself - e.g. restore
+    /// from the on-disk cache first and only hit the cloud on a miss:
     ///
     /// ```swift
     /// let session = try await client.session(
@@ -242,6 +243,26 @@ public struct SessionOptions: Sendable {
         self.modelId = modelId
         self.vectorQuantization = vectorQuantization
         self.autoLoadOnInit = autoLoadOnInit
+    }
+}
+
+/// Options bag for the `MossClient` initializers.
+public struct ClientOptions: Sendable {
+    /// Keeps each model the client loads after the last client using it closes.
+    ///
+    /// Clients of one project in the app share each embedding model that
+    /// `loadIndex` or `loadIndexes` opens. With `false`, the default, closing the
+    /// last client that uses a model frees it at once, unless a client with `keepModels`
+    /// loaded it too. With `true`, the model stays loaded for later clients of the project,
+    /// which then load a cached index once their own grant for the same artifact arrives,
+    /// without opening it again, until the grant it was opened under is within 30 seconds of
+    /// expiring.
+    /// `onMemoryPressure` on any client, open or closed, frees at once each kept model no client or
+    /// session uses.
+    public var keepModels: Bool
+
+    public init(keepModels: Bool = false) {
+        self.keepModels = keepModels
     }
 }
 
