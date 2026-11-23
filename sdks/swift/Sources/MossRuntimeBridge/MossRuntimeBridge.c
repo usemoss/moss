@@ -291,3 +291,101 @@ const char *moss_runtime_bridge_query_result_doc_index_name(const void *doc) {
     return NULL;
 #endif
 }
+
+// ── Client options API ───────────────────────────────────────────────
+
+#if defined(MOSS_CLIENT_OPTIONS_VERSION) && MOSS_CLIENT_OPTIONS_VERSION >= 1
+static MossClientOptions moss_runtime_bridge_client_options(uint8_t keep_models) {
+    MossClientOptions options = {0};
+    options.struct_size = (uint32_t)sizeof(options);
+    options.version = MOSS_CLIENT_OPTIONS_VERSION;
+    options.flags = keep_models ? MOSS_CLIENT_OPTIONS_FLAG_KEEP_MODELS : 0;
+    return options;
+}
+#endif
+
+uint8_t moss_runtime_bridge_client_options_available(void) {
+#if defined(MOSS_CLIENT_OPTIONS_VERSION) && MOSS_CLIENT_OPTIONS_VERSION >= 1
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int32_t moss_runtime_bridge_client_new(
+    const char *project_id,
+    const char *project_key,
+    const char *device_id,
+    uint8_t keep_models,
+    void **out_client
+) {
+    if (out_client == NULL) {
+        return -1;
+    }
+    *out_client = NULL;
+    MossClient *client = NULL;
+#if defined(MOSS_CLIENT_OPTIONS_VERSION) && MOSS_CLIENT_OPTIONS_VERSION >= 1
+    MossClientOptions options = moss_runtime_bridge_client_options(keep_models);
+    int32_t result = moss_client_new_with_device_id_and_options(
+        project_id,
+        project_key,
+        device_id,
+        &options,
+        &client
+    );
+#else
+    if (keep_models) {
+        return -7;
+    }
+    int32_t result = moss_client_new_with_device_id(
+        project_id,
+        project_key,
+        device_id,
+        &client
+    );
+#endif
+    *out_client = client;
+    return result;
+}
+
+int32_t moss_runtime_bridge_client_new_with_authenticator(
+    const char *project_id,
+    MossRuntimeBridgeAuthNotify notify_fn,
+    void *user_data,
+    const char *base_url,
+    const char *device_id,
+    uint8_t keep_models,
+    void **out_client
+) {
+    if (out_client == NULL) {
+        return -1;
+    }
+    *out_client = NULL;
+    MossClient *client = NULL;
+#if defined(MOSS_CLIENT_OPTIONS_VERSION) && MOSS_CLIENT_OPTIONS_VERSION >= 1
+    MossClientOptions options = moss_runtime_bridge_client_options(keep_models);
+    int32_t result = moss_client_new_with_authenticator_device_id_and_options(
+        project_id,
+        notify_fn,
+        user_data,
+        base_url,
+        device_id,
+        &options,
+        &client
+    );
+#else
+    if (keep_models) {
+        return -7;
+    }
+    int32_t result = moss_client_new_with_authenticator_and_device_id(
+        project_id,
+        notify_fn,
+        user_data,
+        base_url,
+        device_id,
+        &client
+    );
+#endif
+    *out_client = client;
+    return result;
+}

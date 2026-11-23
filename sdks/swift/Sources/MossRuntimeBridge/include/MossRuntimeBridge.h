@@ -56,6 +56,24 @@ int32_t moss_runtime_bridge_load_indexes_failed_code_at(const void *result, uint
 void moss_runtime_bridge_free_load_indexes_result(void *result);
 const char *moss_runtime_bridge_query_result_doc_index_name(const void *doc);
 
+/* Client options API (MOSS_CLIENT_OPTIONS_VERSION >= 1). These always link.
+   A runtime with it gets the constructors that take options. An older runtime
+   gets the constructors without options when keep_models is 0, and -7 otherwise. */
+typedef void (*MossRuntimeBridgeAuthNotify)(uint32_t request_id, void *user_data);
+uint8_t moss_runtime_bridge_client_options_available(void);
+int32_t moss_runtime_bridge_client_new(const char *project_id,
+                                       const char *project_key,
+                                       const char *device_id,
+                                       uint8_t keep_models,
+                                       void **out_client);
+int32_t moss_runtime_bridge_client_new_with_authenticator(const char *project_id,
+                                                          MossRuntimeBridgeAuthNotify notify_fn,
+                                                          void *user_data,
+                                                          const char *base_url,
+                                                          const char *device_id,
+                                                          uint8_t keep_models,
+                                                          void **out_client);
+
 #ifdef __cplusplus
 }
 #endif
