@@ -24,6 +24,7 @@ skills-lock.json
 
 *.egg-info
 .moss-cache
+.benchmark-results/
 
 # Swift / SwiftPM build artifacts
 .build/

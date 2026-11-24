@@ -1,0 +1,4 @@
+# Minimal runtime for the local-session benchmark; no competitor services.
+moss==1.22.0
+inferedge-moss-core==0.36.0
+python-dotenv==1.2.4
