@@ -174,7 +174,8 @@ use it to give accurate and detailed responses."""
 
     runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
 
-    await runner.run(worker)
+    await runner.add_workers(worker)
+    await runner.run()
 
 # Runner entry point
 async def bot(runner_args: RunnerArguments):
