@@ -48,7 +48,7 @@ async def build_pipeline(transport, stt, llm, tts, context_aggregator) -> Pipeli
     ])
 
 # In each bot: pipeline = await build_pipeline(...), then run it with a
-# PipelineTask and PipelineRunner, as examples/moss-retrieval-demo.py does.
+# PipelineWorker and WorkerRunner, as examples/moss-retrieval-demo.py does.
 ```
 
 Await `load_index` before the pipeline starts. A service loads each index once: later and concurrent calls wait for that same load, so every bot in the process shares one copy of the index and the embedding model. A new service, or a new process, holds its own copy. See `examples/moss-retrieval-demo.py` for a complete working example, which starts the load while the transport connects.

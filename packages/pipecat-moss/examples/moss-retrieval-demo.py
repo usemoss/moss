@@ -26,10 +26,12 @@ from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMMessagesAppendFrame
 from pipecat.pipeline.pipeline import Pipeline
-from pipecat.pipeline.runner import PipelineRunner
-from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
+from pipecat.processors.aggregators.llm_response_universal import (
+    LLMContextAggregatorPair,
+    LLMUserAggregatorParams,
+)
 from pipecat.runner.run import main as runner_main
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
@@ -37,6 +39,7 @@ from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
+from pipecat.workers.runner import WorkerRunner
 
 from pipecat_moss import MossRetrievalService
 
@@ -72,11 +75,13 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
-        voice_id="71a7ad14-091c-4e8e-a314-022ece01c121",  # British Reading Lady
+        settings=CartesiaTTSService.Settings(
+            voice="71a7ad14-091c-4e8e-a314-022ece01c121",  # British Reading Lady
+        ),
     )
     llm = OpenAILLMService(
         api_key=os.getenv("OPENAI_API_KEY"),
-        model=os.getenv("OPENAI_MODEL", "gpt-4"),
+        settings=OpenAILLMService.Settings(model=os.getenv("OPENAI_MODEL", "gpt-4")),
     )
 
     # Moss retrieval settings
@@ -114,7 +119,11 @@ use it to give accurate and detailed responses."""
     ]
 
     context = LLMContext(messages)
-    context_aggregator = LLMContextAggregatorPair(context)
+    # The user aggregator takes the VAD analyzer. TransportParams has no such field.
+    context_aggregator = LLMContextAggregatorPair(
+        context,
+        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
+    )
 
     # Build the processing pipeline with Moss Information injection
     pipeline = Pipeline(
@@ -130,8 +139,8 @@ use it to give accurate and detailed responses."""
         ]
     )
 
-    # Create and configure the pipeline task
-    task = PipelineTask(
+    # Create and configure the pipeline worker
+    worker = PipelineWorker(
         pipeline,
         params=PipelineParams(
             enable_metrics=True,
@@ -145,7 +154,7 @@ use it to give accurate and detailed responses."""
     async def on_client_connected(transport, client):
         logger.debug("Customer connected to support")
         # Kick off the conversation with a customer support greeting
-        await task.queue_frames(
+        await worker.queue_frames(
             [LLMMessagesAppendFrame(
                 messages=[{
                     "role": "system",
@@ -161,11 +170,12 @@ use it to give accurate and detailed responses."""
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
         logger.debug("Customer disconnected from support")
-        await task.cancel()
+        await worker.cancel()
 
-    runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
+    runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
 
-    await runner.run(task)
+    await runner.add_workers(worker)
+    await runner.run()
 
 # Runner entry point
 async def bot(runner_args: RunnerArguments):
@@ -194,7 +204,6 @@ async def bot(runner_args: RunnerArguments):
         "webrtc": lambda: TransportParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
-            vad_analyzer=SileroVADAnalyzer(),
         ),
     }
 
