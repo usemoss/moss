@@ -117,11 +117,24 @@ jobs:
       # tarball, including on a retry after a failed publish.
       - name: Tag release
         id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           TAG="vercel-sdk-v${VERSION}"
           TAGGED_SHA=$(git ls-remote origin "refs/tags/$TAG" | cut -f1)
 
-          if [[ -n "$(npm view "@moss-tools/vercel-sdk@$VERSION" version 2>/dev/null)" ]]; then
+          # npm view exits 1 both for a missing version and for a failed
+          # lookup; only E404 means the version isn't there.
+          if LOOKUP=$(npm view "@moss-tools/vercel-sdk@$VERSION" version --json 2>/dev/null); then
+            PUBLISHED=true
+          elif [[ "$(jq -r '.error.code // empty' <<<"$LOOKUP" 2>/dev/null)" == "E404" ]]; then
+            PUBLISHED=false
+          else
+            echo "Couldn't check npm for @moss-tools/vercel-sdk@$VERSION: $LOOKUP" >&2
+            exit 1
+          fi
+
+          if [[ "$PUBLISHED" == true ]]; then
             if [[ "$TAGGED_SHA" == "$GITHUB_SHA" ]]; then
               echo "@moss-tools/vercel-sdk@$VERSION is already on npm and tagged at $GITHUB_SHA, nothing left to do"
               echo "published=true" >> "$GITHUB_OUTPUT"
@@ -137,7 +150,16 @@ jobs:
           fi
 
           # The version never reached npm, so a tag left by a failed run marks
-          # nothing and can move to the commit being published now.
+          # nothing and can move, but only forward: re-running an older failed
+          # run mustn't publish older code over a fix.
+          if [[ -n "$TAGGED_SHA" ]]; then
+            COMPARE=$(gh api "repos/$GITHUB_REPOSITORY/compare/$TAGGED_SHA...$GITHUB_SHA" --jq .status)
+            if [[ "$COMPARE" != "ahead" ]]; then
+              echo "$TAG points at $TAGGED_SHA, which $GITHUB_SHA doesn't build on ($COMPARE). Release from a newer commit, or delete the tag." >&2
+              exit 1
+            fi
+          fi
+
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git tag -f "$TAG"
