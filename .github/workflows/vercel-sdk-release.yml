@@ -26,6 +26,11 @@ jobs:
         id: compute
         shell: bash
         run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Publish vercel-sdk only runs from main, not $GITHUB_REF" >&2
+            exit 1
+          fi
+
           cd packages/vercel-sdk
           VERSION=$(node -p "require('./package.json').version")
 
@@ -103,11 +108,30 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
+      # Skipping a version that's already out lets a re-run finish a release
+      # whose tag push failed after the publish went through.
       - name: Publish to npm
-        run: npm publish "$RUNNER_TEMP/moss-tools-vercel-sdk-$VERSION.tgz" --access public --ignore-scripts
+        run: |
+          if [[ -n "$(npm view "@moss-tools/vercel-sdk@$VERSION" version 2>/dev/null)" ]]; then
+            echo "@moss-tools/vercel-sdk@$VERSION is already on npm, skipping publish"
+            exit 0
+          fi
+
+          # npm 11 refuses to publish a prerelease to the default latest tag.
+          DIST_TAG=latest
+          if [[ "$VERSION" == *-* ]]; then
+            DIST_TAG=next
+          fi
+
+          npm publish "$RUNNER_TEMP/moss-tools-vercel-sdk-$VERSION.tgz" --access public --ignore-scripts --tag "$DIST_TAG"
 
       - name: Tag release
         run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/vercel-sdk-v${VERSION}" >/dev/null; then
+            echo "Tag vercel-sdk-v${VERSION} already exists"
+            exit 0
+          fi
+
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git tag "vercel-sdk-v${VERSION}"
