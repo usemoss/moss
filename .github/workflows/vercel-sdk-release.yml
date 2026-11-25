@@ -71,7 +71,12 @@ jobs:
 
       - name: Pack the package
         working-directory: ${{ env.PKG_DIR }}
-        run: npm pack --pack-destination "$RUNNER_TEMP"
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          TARBALL="$RUNNER_TEMP/moss-tools-vercel-sdk-$VERSION.tgz"
+          for f in package/dist/index.js package/dist/index.d.ts; do
+            tar -tzf "$TARBALL" | grep -qx "$f" || { echo "$f is missing from $TARBALL" >&2; exit 1; }
+          done
 
       - name: Keep the package
         uses: actions/upload-artifact@v4
@@ -108,15 +113,33 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      # Skipping a version that's already out lets a re-run finish a release
-      # whose tag push failed after the publish went through.
-      - name: Publish to npm
+      # Tagging first means the tag always marks the commit that built the
+      # tarball, and a re-run after a failed publish finds its own tag.
+      - name: Tag release
         run: |
-          if [[ -n "$(npm view "@moss-tools/vercel-sdk@$VERSION" version 2>/dev/null)" ]]; then
-            echo "@moss-tools/vercel-sdk@$VERSION is already on npm, skipping publish"
+          TAG="vercel-sdk-v${VERSION}"
+          TAGGED_SHA=$(git ls-remote origin "refs/tags/$TAG" | cut -f1)
+
+          if [[ "$TAGGED_SHA" == "$GITHUB_SHA" ]]; then
+            echo "$TAG already points at $GITHUB_SHA"
             exit 0
           fi
+          if [[ -n "$TAGGED_SHA" ]]; then
+            echo "$TAG already points at $TAGGED_SHA, not $GITHUB_SHA. Bump the version in package.json." >&2
+            exit 1
+          fi
+          if [[ -n "$(npm view "@moss-tools/vercel-sdk@$VERSION" version 2>/dev/null)" ]]; then
+            echo "@moss-tools/vercel-sdk@$VERSION is already on npm. Bump the version in package.json." >&2
+            exit 1
+          fi
 
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Publish to npm
+        run: |
           # npm 11 refuses to publish a prerelease to the default latest tag.
           DIST_TAG=latest
           if [[ "$VERSION" == *-* ]]; then
@@ -124,15 +147,3 @@ jobs:
           fi
 
           npm publish "$RUNNER_TEMP/moss-tools-vercel-sdk-$VERSION.tgz" --access public --ignore-scripts --tag "$DIST_TAG"
-
-      - name: Tag release
-        run: |
-          if git ls-remote --exit-code --tags origin "refs/tags/vercel-sdk-v${VERSION}" >/dev/null; then
-            echo "Tag vercel-sdk-v${VERSION} already exists"
-            exit 0
-          fi
-
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git tag "vercel-sdk-v${VERSION}"
-          git push origin "vercel-sdk-v${VERSION}"
