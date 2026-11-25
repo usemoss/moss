@@ -59,7 +59,7 @@ Search, loadIndex, addDocs, and deleteDocs also accept:
 
 `@moss-js/moss` queries indexes loaded on the device. The search tool loads an index the first time it searches it, so that first call also downloads the index and warms its model. To avoid that delay, load the index before the agent runs, with `await client.loadIndex('docs')`.
 
-After `mossAddDocsTool` or `mossDeleteDocsTool` changes an index that these tools loaded, they reload it so search sees the change.
+After `mossAddDocsTool` or `mossDeleteDocsTool` changes an index that the search tool or `mossLoadIndexTool` loaded, they reload it so search sees the change. They don't reload an index you loaded with `client.loadIndex`, so if the agent can also add or delete documents, either let the search tool load the index or pass `{ autoRefresh: true }` to `client.loadIndex` so it picks up changes on its own.
 
 ## Upgrading from 0.1
 
