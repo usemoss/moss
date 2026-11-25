@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { MossClient } from '@moss-dev/moss';
+import type { MossClient } from '@moss-js/moss';
+import { isStale, loadForSearch } from './loaded.js';
 
 export interface MossSearchToolOptions {
   client: MossClient;
@@ -39,9 +40,19 @@ export function mossSearchTool(options: MossSearchToolOptions) {
     execute: async (input) => {
       const resolvedIndexName =
         boundIndexName ?? (input as unknown as { indexName: string }).indexName;
-      return client.query(resolvedIndexName, input.query, {
-        topK: input.topK,
-      });
+      const query = () =>
+        client.query(resolvedIndexName, input.query, { topK: input.topK });
+      // A failed post-mutation reload left an old copy loaded; try again, and fall back to it.
+      if (isStale(client, resolvedIndexName)) {
+        await loadForSearch(client, resolvedIndexName).catch(() => {});
+      }
+      try {
+        return await query();
+      } catch (err) {
+        if ((err as { code?: string } | null)?.code !== 'NOT_FOUND') throw err;
+        await loadForSearch(client, resolvedIndexName);
+        return query();
+      }
     },
   });
 }

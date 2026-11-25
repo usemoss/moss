@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { MossClient } from '@moss-dev/moss';
+import type { LoadIndexOptions, MossClient } from '@moss-js/moss';
+import { loadIndex } from './loaded.js';
 
 export interface MossCreateIndexToolOptions {
   client: MossClient;
@@ -85,19 +86,19 @@ export function mossLoadIndexTool(options: MossLoadIndexToolOptions) {
   return tool({
     description:
       description ??
-      'Load a MOSS index into memory for fast local querying. Without loading, queries go to the cloud API. After loading, queries run in-memory.',
+      'Load a MOSS index into memory so it can be queried. The search tool loads an index on first use; load it here to do that ahead of time or to turn on auto-refresh.',
     inputSchema,
     execute: async (input) => {
       const resolvedIndexName =
         boundIndexName ?? (input as unknown as { indexName: string }).indexName;
-      const opts: Record<string, unknown> = {};
+      const opts: LoadIndexOptions = {};
       if (input.autoRefresh) {
         opts.autoRefresh = true;
         if (input.pollingIntervalInSeconds != null) {
           opts.pollingIntervalInSeconds = input.pollingIntervalInSeconds;
         }
       }
-      const loaded = await client.loadIndex(resolvedIndexName, opts);
+      const loaded = await loadIndex(client, resolvedIndexName, opts);
       return { indexName: loaded, status: 'loaded' };
     },
   });

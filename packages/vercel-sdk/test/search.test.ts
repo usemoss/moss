@@ -67,6 +67,60 @@ describe('mossSearchTool', () => {
     });
   });
 
+  it('loads an unloaded index once, then retries the query', async () => {
+    const client = createMockClient();
+    const notLoaded = Object.assign(new Error('not loaded'), { code: 'NOT_FOUND' });
+    client.query
+      .mockRejectedValueOnce(notLoaded)
+      .mockRejectedValueOnce(notLoaded);
+    client.loadIndex.mockResolvedValue('my-index');
+    const searchTool = mossSearchTool({ client, indexName: 'my-index' });
+    const opts = { toolCallId: 'call-1', messages: [], abortSignal: new AbortController().signal };
+
+    const results = await Promise.all([
+      searchTool.execute!({ query: 'a', topK: 5 }, opts),
+      searchTool.execute!({ query: 'b', topK: 5 }, opts),
+    ]);
+
+    expect(client.loadIndex).toHaveBeenCalledTimes(1);
+    expect(client.loadIndex).toHaveBeenCalledWith('my-index');
+    expect(client.query).toHaveBeenCalledTimes(4);
+    expect(results[0]).toHaveProperty('docs');
+    expect(results[1]).toHaveProperty('docs');
+  });
+
+  it('loads the index again when it is no longer loaded', async () => {
+    const client = createMockClient();
+    const notLoaded = Object.assign(new Error('not loaded'), { code: 'NOT_FOUND' });
+    client.query
+      .mockRejectedValueOnce(notLoaded)
+      .mockResolvedValueOnce({ docs: [] })
+      .mockRejectedValueOnce(notLoaded);
+    client.loadIndex.mockResolvedValue('my-index');
+    const searchTool = mossSearchTool({ client, indexName: 'my-index' });
+    const opts = { toolCallId: 'call-1', messages: [], abortSignal: new AbortController().signal };
+
+    await searchTool.execute!({ query: 'a', topK: 5 }, opts);
+    const result = await searchTool.execute!({ query: 'b', topK: 5 }, opts);
+
+    expect(client.loadIndex).toHaveBeenCalledTimes(2);
+    expect(result).toHaveProperty('docs');
+  });
+
+  it('does not load the index for other errors', async () => {
+    const client = createMockClient();
+    client.query.mockRejectedValueOnce(Object.assign(new Error('nope'), { code: 'UNAUTHORIZED' }));
+    const searchTool = mossSearchTool({ client, indexName: 'my-index' });
+
+    await expect(
+      searchTool.execute!(
+        { query: 'a', topK: 5 },
+        { toolCallId: 'call-1', messages: [], abortSignal: new AbortController().signal },
+      ),
+    ).rejects.toThrow('nope');
+    expect(client.loadIndex).not.toHaveBeenCalled();
+  });
+
   it('accepts a custom description', () => {
     const client = createMockClient();
     const searchTool = mossSearchTool({

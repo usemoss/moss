@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { MossClient } from '@moss-dev/moss';
+import type { MossClient } from '@moss-js/moss';
+import { reloadIfLoaded } from './loaded.js';
 
 export interface MossAddDocsToolOptions {
   client: MossClient;
@@ -52,7 +53,9 @@ export function mossAddDocsTool(options: MossAddDocsToolOptions) {
     execute: async (input) => {
       const resolvedIndexName =
         boundIndexName ?? (input as unknown as { indexName: string }).indexName;
-      return client.addDocs(resolvedIndexName, input.docs);
+      const result = await client.addDocs(resolvedIndexName, input.docs);
+      await reloadIfLoaded(client, resolvedIndexName);
+      return result;
     },
   });
 }
@@ -86,7 +89,9 @@ export function mossDeleteDocsTool(options: MossDeleteDocsToolOptions) {
     execute: async (input) => {
       const resolvedIndexName =
         boundIndexName ?? (input as unknown as { indexName: string }).indexName;
-      return client.deleteDocs(resolvedIndexName, input.docIds);
+      const result = await client.deleteDocs(resolvedIndexName, input.docIds);
+      await reloadIfLoaded(client, resolvedIndexName);
+      return result;
     },
   });
 }
