@@ -85,9 +85,22 @@ jobs:
         run: |
           pnpm pack --pack-destination "$RUNNER_TEMP"
           TARBALL="$RUNNER_TEMP/vitepress-plugin-moss-$VERSION.tgz"
-          for f in package/dist/index.js package/dist/index.cjs package/dist/index.d.ts package/Search.vue; do
+          for f in package/dist/index.js package/dist/index.d.ts package/Search.vue; do
             tar -tzf "$TARBALL" | grep -qx "$f" || { echo "$f is missing from $TARBALL" >&2; exit 1; }
           done
+
+      # Install the tarball as a consumer would, then load it and resolve its
+      # types, so a broken entry point fails here instead of on npm.
+      - name: Smoke-test the tarball
+        run: |
+          TSC="$GITHUB_WORKSPACE/$PKG_DIR/node_modules/.bin/tsc"
+          CONSUMER="$RUNNER_TEMP/consumer"
+          mkdir -p "$CONSUMER" && cd "$CONSUMER"
+          echo '{"name":"consumer","private":true,"type":"module"}' > package.json
+          npm install --no-audit --no-fund --ignore-scripts --legacy-peer-deps "$RUNNER_TEMP/vitepress-plugin-moss-$VERSION.tgz"
+          node -e "import('vitepress-plugin-moss').then(m => { if (typeof m.mossIndexerPlugin !== 'function') throw new Error('mossIndexerPlugin export missing'); console.log('import ok') })"
+          echo "import { mossIndexerPlugin } from 'vitepress-plugin-moss'; export const plugin: typeof mossIndexerPlugin = mossIndexerPlugin" > check.mts
+          "$TSC" --noEmit --strict --skipLibCheck --module nodenext --moduleResolution nodenext check.mts
 
       - name: Keep the package
         uses: actions/upload-artifact@v4
@@ -101,7 +114,7 @@ jobs:
   publish:
     needs: [determine-version, build]
     runs-on: ubuntu-latest
-    environment: Production
+    environment: npm-publish
     permissions:
       contents: write # for tagging
       id-token: write

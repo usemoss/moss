@@ -5,8 +5,10 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'index.ts',
-      formats: ['es', 'cjs'],
-      fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
+      // ESM only, like VitePress itself. A CommonJS build can't load obug,
+      // which is ESM-only and whose require() returns createDebug itself.
+      formats: ['es'],
+      fileName: () => 'index.js',
     },
     rollupOptions: {
       external: [

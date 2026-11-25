@@ -94,7 +94,7 @@ jobs:
   publish:
     needs: [determine-version, build]
     runs-on: ubuntu-latest
-    environment: Production
+    environment: npm-publish
     permissions:
       contents: write # for tagging
       id-token: write

@@ -40,12 +40,20 @@ fi
 # npm 11 refuses to put a prerelease on latest unless told to. Do that only
 # while latest is itself a prerelease (the package has no stable release yet),
 # so a beta never replaces a stable latest.
+CURRENT_LATEST=$(npm_lookup "$PACKAGE" dist-tags.latest)
 DIST_TAG=latest
-if [[ "$VERSION" == *-* ]]; then
-  CURRENT_LATEST=$(npm_lookup "$PACKAGE" dist-tags.latest)
-  if [[ -n "$CURRENT_LATEST" && "$CURRENT_LATEST" != *-* ]]; then
-    DIST_TAG=next
-  fi
+CURRENT="$CURRENT_LATEST"
+if [[ "$VERSION" == *-* && -n "$CURRENT_LATEST" && "$CURRENT_LATEST" != *-* ]]; then
+  DIST_TAG=next
+  CURRENT=$(npm_lookup "$PACKAGE" dist-tags.next)
+fi
+
+# An explicit --tag skips npm's own check, so a retry of an older failed
+# release would otherwise move the dist-tag back past a newer one.
+SEMVER="$(npm root -g)/npm/node_modules/semver"
+if [[ -n "$CURRENT" ]] && ! node -e 'process.exit(require(process.argv[1]).gt(process.argv[2], process.argv[3]) ? 0 : 1)' "$SEMVER" "$VERSION" "$CURRENT"; then
+  echo "$PACKAGE@$VERSION isn't newer than $CURRENT on the $DIST_TAG dist-tag. Bump the version in package.json." >&2
+  exit 1
 fi
 echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
 
@@ -68,4 +76,5 @@ fi
 git config user.name "github-actions"
 git config user.email "github-actions@users.noreply.github.com"
 git tag -f "$TAG"
-git push -f origin "$TAG"
+# The lease makes the push fail if the tag changed after the checks above.
+git push --force-with-lease="refs/tags/$TAG:$TAGGED_SHA" origin "refs/tags/$TAG"

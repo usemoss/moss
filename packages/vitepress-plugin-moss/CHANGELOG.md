@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - Swapped runtime browser SDK from `@inferedge/moss` to `@moss-dev/moss-web
+- Ships ESM only, like VitePress. The CommonJS build threw on `require()` and its `index.d.cts` types were never generated.
 
 ---
 
