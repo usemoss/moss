@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { MossClient } from '@moss-dev/moss';
+import type { MossClient } from '@moss-js/moss';
 
 export interface MossCreateIndexToolOptions {
   client: MossClient;
