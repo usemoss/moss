@@ -114,34 +114,34 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       # Tagging first means the tag always marks the commit that built the
-      # tarball, and a re-run after a failed publish finds its own tag.
+      # tarball, including on a retry after a failed publish.
       - name: Tag release
         id: tag
         run: |
           TAG="vercel-sdk-v${VERSION}"
           TAGGED_SHA=$(git ls-remote origin "refs/tags/$TAG" | cut -f1)
 
-          if [[ "$TAGGED_SHA" == "$GITHUB_SHA" ]]; then
-            echo "$TAG already points at $GITHUB_SHA"
-            if [[ -n "$(npm view "@moss-tools/vercel-sdk@$VERSION" version 2>/dev/null)" ]]; then
-              echo "@moss-tools/vercel-sdk@$VERSION is already on npm, nothing left to do"
-              echo "published=true" >> "$GITHUB_OUTPUT"
-            fi
-            exit 0
-          fi
-          if [[ -n "$TAGGED_SHA" ]]; then
-            echo "$TAG already points at $TAGGED_SHA, not $GITHUB_SHA. Bump the version in package.json, or delete the tag if that version never reached npm." >&2
-            exit 1
-          fi
           if [[ -n "$(npm view "@moss-tools/vercel-sdk@$VERSION" version 2>/dev/null)" ]]; then
+            if [[ "$TAGGED_SHA" == "$GITHUB_SHA" ]]; then
+              echo "@moss-tools/vercel-sdk@$VERSION is already on npm and tagged at $GITHUB_SHA, nothing left to do"
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             echo "@moss-tools/vercel-sdk@$VERSION is already on npm. Bump the version in package.json." >&2
             exit 1
           fi
 
+          if [[ "$TAGGED_SHA" == "$GITHUB_SHA" ]]; then
+            echo "$TAG already points at $GITHUB_SHA"
+            exit 0
+          fi
+
+          # The version never reached npm, so a tag left by a failed run marks
+          # nothing and can move to the commit being published now.
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git tag "$TAG"
-          git push origin "$TAG"
+          git tag -f "$TAG"
+          git push -f origin "$TAG"
 
       - name: Publish to npm
         if: steps.tag.outputs.published != 'true'
