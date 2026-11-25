@@ -116,16 +116,21 @@ jobs:
       # Tagging first means the tag always marks the commit that built the
       # tarball, and a re-run after a failed publish finds its own tag.
       - name: Tag release
+        id: tag
         run: |
           TAG="vercel-sdk-v${VERSION}"
           TAGGED_SHA=$(git ls-remote origin "refs/tags/$TAG" | cut -f1)
 
           if [[ "$TAGGED_SHA" == "$GITHUB_SHA" ]]; then
             echo "$TAG already points at $GITHUB_SHA"
+            if [[ -n "$(npm view "@moss-tools/vercel-sdk@$VERSION" version 2>/dev/null)" ]]; then
+              echo "@moss-tools/vercel-sdk@$VERSION is already on npm, nothing left to do"
+              echo "published=true" >> "$GITHUB_OUTPUT"
+            fi
             exit 0
           fi
           if [[ -n "$TAGGED_SHA" ]]; then
-            echo "$TAG already points at $TAGGED_SHA, not $GITHUB_SHA. Bump the version in package.json." >&2
+            echo "$TAG already points at $TAGGED_SHA, not $GITHUB_SHA. Bump the version in package.json, or delete the tag if that version never reached npm." >&2
             exit 1
           fi
           if [[ -n "$(npm view "@moss-tools/vercel-sdk@$VERSION" version 2>/dev/null)" ]]; then
@@ -139,6 +144,7 @@ jobs:
           git push origin "$TAG"
 
       - name: Publish to npm
+        if: steps.tag.outputs.published != 'true'
         run: |
           # npm 11 refuses to publish a prerelease to the default latest tag.
           DIST_TAG=latest
