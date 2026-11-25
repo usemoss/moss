@@ -2,6 +2,11 @@
   "name": "vitepress-plugin-moss",
   "version": "1.0.0-beta.2",
   "description": "Moss semantic search plugin for VitePress",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usemoss/moss.git",
+    "directory": "packages/vitepress-plugin-moss"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

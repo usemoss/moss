@@ -26,6 +26,11 @@ jobs:
         id: compute
         shell: bash
         run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Publish n8n-nodes-moss only runs from main, not $GITHUB_REF" >&2
+            exit 1
+          fi
+
           cd packages/n8n-nodes-moss
           VERSION=$(node -p "require('./package.json').version")
 
@@ -39,11 +44,9 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Publishing version: $VERSION"
 
-  build-and-publish:
+  build:
     needs: determine-version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     env:
       PKG_DIR: packages/n8n-nodes-moss
@@ -55,7 +58,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          registry-url: "https://registry.npmjs.org"
           cache: "npm"
           cache-dependency-path: ${{ env.PKG_DIR }}/package-lock.json
 
@@ -71,72 +73,59 @@ jobs:
         working-directory: ${{ env.PKG_DIR }}
         run: npm test
 
-      - name: Validate release tag before publish
-        id: tagcheck
-        env:
-          VERSION: ${{ env.VERSION }}
-        run: |
-          git fetch --tags --force
-          TAG="n8n-nodes-moss-v${VERSION}"
-          HEAD_SHA="$(git rev-parse HEAD)"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "head=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
-
-          if git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
-            TAG_SHA="$(git rev-list -n 1 "refs/tags/$TAG")"
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "sha=${TAG_SHA}" >> "$GITHUB_OUTPUT"
-            if [[ "$TAG_SHA" != "$HEAD_SHA" ]]; then
-              echo "ERROR: $TAG points at ${TAG_SHA}, but this checkout is ${HEAD_SHA}."
-              echo "Refusing to publish HEAD because an existing tag already claims this version."
-              exit 1
-            fi
-            echo "Tag $TAG already points at HEAD"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Check whether version is already published
-        id: published
+      # --ignore-scripts skips prepack, which would build and test again.
+      - name: Pack the package
         working-directory: ${{ env.PKG_DIR }}
         run: |
-          if npm view "n8n-nodes-moss@${VERSION}" version >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "n8n-nodes-moss@${VERSION} is already on npm; skipping publish"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
+          TARBALL="$RUNNER_TEMP/n8n-nodes-moss-$VERSION.tgz"
+          for f in package/dist/nodes/Moss/Moss.node.js package/dist/credentials/MossApi.credentials.js; do
+            tar -tzf "$TARBALL" | grep -qx "$f" || { echo "$f is missing from $TARBALL" >&2; exit 1; }
+          done
 
-      - name: Publish to npm
-        if: steps.published.outputs.exists != 'true'
-        working-directory: ${{ env.PKG_DIR }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-        # --ignore-scripts avoids re-running prepublishOnly after the explicit build/test steps
-        run: npm publish --access public --ignore-scripts
+      - name: Keep the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/n8n-nodes-moss-${{ env.VERSION }}.tgz
+          if-no-files-found: error
+
+  # npm trusts this job through OIDC (trusted publishing), so it runs no package
+  # code: it only uploads the tarball the build job made.
+  publish:
+    needs: [determine-version, build]
+    runs-on: ubuntu-latest
+    environment: Production
+    permissions:
+      contents: write # for tagging
+      id-token: write
+
+    env:
+      VERSION: ${{ needs.determine-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the package
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}
+
+      # Trusted publishing needs Node 22.14 and npm 11.5.1 or later.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Tag release
+        id: tag
         env:
-          VERSION: ${{ env.VERSION }}
-          ALREADY_PUBLISHED: ${{ steps.published.outputs.exists }}
-          TAG_EXISTS: ${{ steps.tagcheck.outputs.exists }}
-          TAG: ${{ steps.tagcheck.outputs.tag }}
-        run: |
-          if [[ "$TAG_EXISTS" == "true" ]]; then
-            echo "Tag $TAG already points at HEAD; nothing to do"
-            exit 0
-          fi
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/npm-release-tag.sh "n8n-nodes-moss" "n8n-nodes-moss-v${VERSION}"
 
-          if [[ "$ALREADY_PUBLISHED" == "true" ]]; then
-            echo "ERROR: n8n-nodes-moss@${VERSION} is already on npm, but git tag $TAG is missing."
-            echo "Refusing to tag the current checkout because it may not match the published artifact."
-            echo "Recover manually: identify the commit that produced the npm package, then:"
-            echo "  git tag $TAG <published-commit-sha>"
-            echo "  git push origin $TAG"
-            exit 1
-          fi
-
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git tag "$TAG"
-          git push origin "$TAG"
+      - name: Publish to npm
+        if: steps.tag.outputs.published != 'true'
+        env:
+          DIST_TAG: ${{ steps.tag.outputs.dist_tag }}
+        run: npm publish "$RUNNER_TEMP/n8n-nodes-moss-$VERSION.tgz" --access public --ignore-scripts --tag "$DIST_TAG"

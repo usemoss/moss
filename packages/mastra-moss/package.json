@@ -2,6 +2,11 @@
   "name": "@moss-tools/mastra",
   "version": "0.1.0",
   "description": "Moss semantic search tools for Mastra agents",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usemoss/moss.git",
+    "directory": "packages/mastra-moss"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
