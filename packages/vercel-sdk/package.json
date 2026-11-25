@@ -2,6 +2,11 @@
   "name": "@moss-tools/vercel-sdk",
   "version": "0.2.0",
   "description": "Vercel AI SDK tools for MOSS semantic search",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usemoss/moss.git",
+    "directory": "packages/vercel-sdk"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {

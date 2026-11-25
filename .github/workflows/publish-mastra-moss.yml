@@ -26,6 +26,11 @@ jobs:
         id: compute
         shell: bash
         run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Publish @moss-tools/mastra only runs from main, not $GITHUB_REF" >&2
+            exit 1
+          fi
+
           cd packages/mastra-moss
           VERSION=$(node -p "require('./package.json').version")
 
@@ -39,11 +44,9 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Publishing version: $VERSION"
 
-  build-and-publish:
+  build:
     needs: determine-version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     env:
       PKG_DIR: packages/mastra-moss
@@ -55,7 +58,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          registry-url: "https://registry.npmjs.org"
           cache: "npm"
           cache-dependency-path: ${{ env.PKG_DIR }}/package-lock.json
 
@@ -71,22 +73,58 @@ jobs:
         working-directory: ${{ env.PKG_DIR }}
         run: node -e "import('./dist/index.js').then(m => console.log('import ok; exports:', Object.keys(m)))"
 
-      - name: Publish to npm
+      - name: Pack the package
         working-directory: ${{ env.PKG_DIR }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-        run: npm publish --access public
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          TARBALL="$RUNNER_TEMP/moss-tools-mastra-$VERSION.tgz"
+          for f in package/dist/index.js package/dist/index.d.ts; do
+            tar -tzf "$TARBALL" | grep -qx "$f" || { echo "$f is missing from $TARBALL" >&2; exit 1; }
+          done
+
+      - name: Keep the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/moss-tools-mastra-${{ env.VERSION }}.tgz
+          if-no-files-found: error
+
+  # npm trusts this job through OIDC (trusted publishing), so it runs no package
+  # code: it only uploads the tarball the build job made.
+  publish:
+    needs: [determine-version, build]
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write # for tagging
+      id-token: write
+
+    env:
+      VERSION: ${{ needs.determine-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the package
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}
+
+      # Trusted publishing needs Node 22.14 and npm 11.5.1 or later.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Tag release
+        id: tag
         env:
-          VERSION: ${{ env.VERSION }}
-        run: |
-          git fetch --tags --force
-          if git rev-parse "mastra-moss-v${VERSION}" >/dev/null 2>&1; then
-            echo "Tag mastra-moss-v${VERSION} already exists"
-          else
-            git config user.name "github-actions"
-            git config user.email "github-actions@users.noreply.github.com"
-            git tag "mastra-moss-v${VERSION}"
-            git push origin "mastra-moss-v${VERSION}"
-          fi
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/npm-release-tag.sh "@moss-tools/mastra" "mastra-moss-v${VERSION}"
+
+      - name: Publish to npm
+        if: steps.tag.outputs.published != 'true'
+        env:
+          DIST_TAG: ${{ steps.tag.outputs.dist_tag }}
+        run: npm publish "$RUNNER_TEMP/moss-tools-mastra-$VERSION.tgz" --access public --ignore-scripts --tag "$DIST_TAG"

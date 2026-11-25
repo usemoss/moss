@@ -26,6 +26,11 @@ jobs:
         id: compute
         shell: bash
         run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Publish moss-md-indexer only runs from main, not $GITHUB_REF" >&2
+            exit 1
+          fi
+
           cd packages/moss-md-indexer
           VERSION=$(node -p "require('./package.json').version")
 
@@ -37,11 +42,9 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Publishing version: $VERSION"
 
-  build-and-publish:
+  build:
     needs: determine-version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     env:
       PKG_DIR: packages/moss-md-indexer
@@ -57,12 +60,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          registry-url: "https://registry.npmjs.org"
           cache: "pnpm"
           cache-dependency-path: ${{ env.PKG_DIR }}/pnpm-lock.yaml
-
-      - name: Show version to be published
-        run: echo "Publishing version ${{ env.VERSION }}"
 
       - name: Install dependencies
         working-directory: ${{ env.PKG_DIR }}
@@ -72,17 +71,58 @@ jobs:
         working-directory: ${{ env.PKG_DIR }}
         run: pnpm build
 
-      - name: Publish to npm
+      - name: Pack the package
         working-directory: ${{ env.PKG_DIR }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-        run: pnpm publish --no-git-checks --access public
+        run: |
+          pnpm pack --pack-destination "$RUNNER_TEMP"
+          TARBALL="$RUNNER_TEMP/moss-tools-md-indexer-$VERSION.tgz"
+          for f in package/dist/index.js package/dist/index.d.ts; do
+            tar -tzf "$TARBALL" | grep -qx "$f" || { echo "$f is missing from $TARBALL" >&2; exit 1; }
+          done
+
+      - name: Keep the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/moss-tools-md-indexer-${{ env.VERSION }}.tgz
+          if-no-files-found: error
+
+  # npm trusts this job through OIDC (trusted publishing), so it runs no package
+  # code: it only uploads the tarball the build job made.
+  publish:
+    needs: [determine-version, build]
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write # for tagging
+      id-token: write
+
+    env:
+      VERSION: ${{ needs.determine-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the package
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}
+
+      # Trusted publishing needs Node 22.14 and npm 11.5.1 or later.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Tag release
+        id: tag
         env:
-          VERSION: ${{ env.VERSION }}
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git tag "moss-md-indexer-v${VERSION}"
-          git push origin "moss-md-indexer-v${VERSION}"
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/npm-release-tag.sh "@moss-tools/md-indexer" "moss-md-indexer-v${VERSION}"
+
+      - name: Publish to npm
+        if: steps.tag.outputs.published != 'true'
+        env:
+          DIST_TAG: ${{ steps.tag.outputs.dist_tag }}
+        run: npm publish "$RUNNER_TEMP/moss-tools-md-indexer-$VERSION.tgz" --access public --ignore-scripts --tag "$DIST_TAG"
