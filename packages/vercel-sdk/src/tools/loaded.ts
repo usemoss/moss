@@ -40,7 +40,8 @@ function startLoad(client: MossClient, indexName: string, options?: LoadIndexOpt
     },
     () => {
       entry.inFlight = false;
-      entry.stale = true;
+      // Mark the latest entry: a reload queued behind this one hasn't landed yet either.
+      (indexes.get(indexName) ?? entry).stale = true;
       // A first load that fails leaves nothing loaded to keep fresh.
       if (!prev && indexes.get(indexName) === entry) indexes.delete(indexName);
     },

@@ -182,6 +182,33 @@ describe('reloading after mutations', () => {
     });
   });
 
+  it('makes search wait for a queued reload when the one before it fails', async () => {
+    const client = createMockClient();
+    client.query
+      .mockRejectedValueOnce(Object.assign(new Error('not loaded'), { code: 'NOT_FOUND' }))
+      .mockResolvedValue({ docs: [] });
+    let finishSecondReload!: (name: string) => void;
+    client.loadIndex
+      .mockResolvedValueOnce('my-index')
+      .mockRejectedValueOnce(new Error('download failed'))
+      .mockReturnValueOnce(new Promise((resolve) => { finishSecondReload = resolve; }));
+    const search = mossSearchTool({ client, indexName: 'my-index' });
+    const addDocs = mossAddDocsTool({ client, indexName: 'my-index' });
+    await search.execute!({ query: 'q', topK: 5 }, toolCallContext);
+
+    const first = addDocs.execute!({ docs: [{ id: 'doc1', text: 'hello' }] }, toolCallContext);
+    const second = addDocs.execute!({ docs: [{ id: 'doc2', text: 'hi' }] }, toolCallContext);
+    await first;
+    const searched = search.execute!({ query: 'q', topK: 5 }, toolCallContext);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(client.query).toHaveBeenCalledTimes(2);
+
+    finishSecondReload('my-index');
+    await Promise.all([second, searched]);
+    expect(client.query).toHaveBeenCalledTimes(3);
+    expect(client.loadIndex).toHaveBeenCalledTimes(3);
+  });
+
   it('retries a failed reload on the next search and mutation', async () => {
     const client = createMockClient();
     client.query
