@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { MossClient } from '@moss-js/moss';
-import { recordLoad } from './loaded.js';
+import type { LoadIndexOptions, MossClient } from '@moss-js/moss';
+import { loadIndex } from './loaded.js';
 
 export interface MossCreateIndexToolOptions {
   client: MossClient;
@@ -91,18 +91,14 @@ export function mossLoadIndexTool(options: MossLoadIndexToolOptions) {
     execute: async (input) => {
       const resolvedIndexName =
         boundIndexName ?? (input as unknown as { indexName: string }).indexName;
-      const opts: Record<string, unknown> = {};
+      const opts: LoadIndexOptions = {};
       if (input.autoRefresh) {
         opts.autoRefresh = true;
         if (input.pollingIntervalInSeconds != null) {
           opts.pollingIntervalInSeconds = input.pollingIntervalInSeconds;
         }
       }
-      const loaded = await recordLoad(
-        client,
-        resolvedIndexName,
-        client.loadIndex(resolvedIndexName, opts),
-      );
+      const loaded = await loadIndex(client, resolvedIndexName, opts);
       return { indexName: loaded, status: 'loaded' };
     },
   });

@@ -55,6 +55,23 @@ Search, loadIndex, addDocs, and deleteDocs also accept:
 
 - `indexName` — prebind to a specific index. When omitted, the LLM must specify the index name as part of the tool input.
 
+## Loading indexes
+
+`@moss-js/moss` queries indexes loaded on the device. The search tool loads an index the first time it searches it, so that first call also downloads the index and warms its model. To avoid that delay, load the index before the agent runs, with `await client.loadIndex('docs')`.
+
+After `mossAddDocsTool` or `mossDeleteDocsTool` changes an index that these tools loaded, they reload it so search sees the change.
+
+## Upgrading from 0.1
+
+0.1 took a `MossClient` from `@moss-dev/moss`, which reaches end of support on 2026-12-17. 0.2 takes a `MossClient` from `@moss-js/moss` 1.16 or later:
+
+```bash
+npm uninstall @moss-dev/moss
+npm install @moss-tools/vercel-sdk@^0.2.0 @moss-js/moss
+```
+
+Then import `MossClient` from `@moss-js/moss`. The tools and their options are unchanged.
+
 ## Examples
 
 ### Prebound index (simpler schema for the LLM)

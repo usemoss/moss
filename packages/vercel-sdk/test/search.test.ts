@@ -89,6 +89,24 @@ describe('mossSearchTool', () => {
     expect(results[1]).toHaveProperty('docs');
   });
 
+  it('loads the index again when it is no longer loaded', async () => {
+    const client = createMockClient();
+    const notLoaded = Object.assign(new Error('not loaded'), { code: 'NOT_FOUND' });
+    client.query
+      .mockRejectedValueOnce(notLoaded)
+      .mockResolvedValueOnce({ docs: [] })
+      .mockRejectedValueOnce(notLoaded);
+    client.loadIndex.mockResolvedValue('my-index');
+    const searchTool = mossSearchTool({ client, indexName: 'my-index' });
+    const opts = { toolCallId: 'call-1', messages: [], abortSignal: new AbortController().signal };
+
+    await searchTool.execute!({ query: 'a', topK: 5 }, opts);
+    const result = await searchTool.execute!({ query: 'b', topK: 5 }, opts);
+
+    expect(client.loadIndex).toHaveBeenCalledTimes(2);
+    expect(result).toHaveProperty('docs');
+  });
+
   it('does not load the index for other errors', async () => {
     const client = createMockClient();
     client.query.mockRejectedValueOnce(Object.assign(new Error('nope'), { code: 'UNAUTHORIZED' }));

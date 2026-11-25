@@ -1,6 +1,6 @@
 {
   "name": "@moss-tools/vercel-sdk",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Vercel AI SDK tools for MOSS semantic search",
   "type": "module",
   "sideEffects": false,
@@ -31,7 +31,7 @@
   "author": "InferEdge Inc.",
   "license": "BSD-2-Clause",
   "peerDependencies": {
-    "@moss-js/moss": "^1.9.0",
+    "@moss-js/moss": "^1.16.0",
     "ai": "^6.0.0 || ^7.0.0",
     "zod": "^3.25.76 || ^4.1.8"
   },
