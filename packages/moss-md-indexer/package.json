@@ -1,6 +1,11 @@
 {
   "name": "@moss-tools/md-indexer",
   "version": "1.0.0-beta.3",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usemoss/moss.git",
+    "directory": "packages/moss-md-indexer"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
