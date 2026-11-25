@@ -39,11 +39,9 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Publishing version: $VERSION"
 
-  build-and-publish:
+  build:
     needs: determine-version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # for tagging
 
     env:
       PKG_DIR: packages/vercel-sdk
@@ -55,12 +53,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
           cache: "npm"
           cache-dependency-path: ${{ env.PKG_DIR }}/package-lock.json
-
-      - name: Show version to be published
-        run: echo "Publishing version ${{ env.VERSION }}"
 
       - name: Install dependencies
         working-directory: ${{ env.PKG_DIR }}
@@ -70,15 +64,49 @@ jobs:
         working-directory: ${{ env.PKG_DIR }}
         run: npm run build
 
-      - name: Publish to npm
+      - name: Pack the package
         working-directory: ${{ env.PKG_DIR }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-        run: npm publish --access public
+        run: npm pack --pack-destination "$RUNNER_TEMP"
+
+      - name: Keep the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/moss-tools-vercel-sdk-${{ env.VERSION }}.tgz
+          if-no-files-found: error
+
+  # npm trusts this job through OIDC (trusted publishing), so it runs no package
+  # code: it only uploads the tarball the build job made.
+  publish:
+    needs: [determine-version, build]
+    runs-on: ubuntu-latest
+    environment: Production
+    permissions:
+      contents: write # for tagging
+      id-token: write
+
+    env:
+      VERSION: ${{ needs.determine-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the package
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}
+
+      # Trusted publishing needs Node 22.14 and npm 11.5.1 or later.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish to npm
+        run: npm publish "$RUNNER_TEMP/moss-tools-vercel-sdk-$VERSION.tgz" --access public --ignore-scripts
 
       - name: Tag release
-        env:
-          VERSION: ${{ env.VERSION }}
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
