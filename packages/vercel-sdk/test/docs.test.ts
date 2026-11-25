@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mossAddDocsTool, mossDeleteDocsTool } from '../src/tools/docs.js';
+import { mossSearchTool } from '../src/tools/search.js';
 
 function createMockClient() {
   return {
@@ -111,5 +112,52 @@ describe('mossDeleteDocsTool', () => {
     const tool = mossDeleteDocsTool({ client, description: 'Custom delete' });
 
     expect(tool.description).toBe('Custom delete');
+  });
+});
+
+describe('reloading after mutations', () => {
+  it('reloads an index the search tool loaded, so search sees the change', async () => {
+    const client = createMockClient();
+    client.query
+      .mockRejectedValueOnce(Object.assign(new Error('not loaded'), { code: 'NOT_FOUND' }))
+      .mockResolvedValue({ docs: [] });
+    client.loadIndex.mockResolvedValue('my-index');
+    const search = mossSearchTool({ client, indexName: 'my-index' });
+    const addDocs = mossAddDocsTool({ client, indexName: 'my-index' });
+    const deleteDocs = mossDeleteDocsTool({ client, indexName: 'my-index' });
+
+    await search.execute!({ query: 'q', topK: 5 }, toolCallContext);
+    expect(client.loadIndex).toHaveBeenCalledTimes(1);
+
+    await addDocs.execute!({ docs: [{ id: 'doc1', text: 'hello' }] }, toolCallContext);
+    expect(client.loadIndex).toHaveBeenCalledTimes(2);
+
+    await deleteDocs.execute!({ docIds: ['doc1'] }, toolCallContext);
+    expect(client.loadIndex).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not load an index the tools never loaded', async () => {
+    const client = createMockClient();
+    const addDocs = mossAddDocsTool({ client, indexName: 'my-index' });
+
+    await addDocs.execute!({ docs: [{ id: 'doc1', text: 'hello' }] }, toolCallContext);
+
+    expect(client.loadIndex).not.toHaveBeenCalled();
+  });
+
+  it('still returns the mutation result when the reload fails', async () => {
+    const client = createMockClient();
+    client.query
+      .mockRejectedValueOnce(Object.assign(new Error('not loaded'), { code: 'NOT_FOUND' }))
+      .mockResolvedValue({ docs: [] });
+    client.loadIndex.mockResolvedValueOnce('my-index').mockRejectedValueOnce(new Error('download failed'));
+    await mossSearchTool({ client, indexName: 'my-index' }).execute!({ query: 'q', topK: 5 }, toolCallContext);
+
+    const result = await mossAddDocsTool({ client, indexName: 'my-index' }).execute!(
+      { docs: [{ id: 'doc1', text: 'hello' }] },
+      toolCallContext,
+    );
+
+    expect(result).toEqual({ indexName: 'test-index', docsAdded: 1 });
   });
 });
